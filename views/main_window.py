@@ -127,6 +127,9 @@ class MainWindow(QMainWindow):
         
         # Theme anwenden
         self._apply_theme()
+
+        # Übersicht-Subtabs (Dashboard/Verlauf/…) gemäß Settings ein-/ausblenden
+        self._apply_overview_subtabs_from_settings()
         
         # Bei Bedarf beim Start alle Tabs aktualisieren
         if self.settings.refresh_on_start:
@@ -191,33 +194,38 @@ class MainWindow(QMainWindow):
         
         # === ANSICHT-MENÜ ===
         view_menu = menubar.addMenu("&Ansicht")
-        
-        # Theme-Untermenü (NEU!)
-        theme_menu = view_menu.addMenu("🎨 &Theme")
-        
-        self.action_light = QAction("☀️ &Hell (Light)", self)
-        self.action_light.setCheckable(True)
-        self.action_light.setChecked(self.settings.theme == "light")
-        self.action_light.triggered.connect(lambda: self._change_theme("light"))
-        theme_menu.addAction(self.action_light)
-        
-        self.action_dark = QAction("🌙 &Dunkel (Dark)", self)
-        self.action_dark.setCheckable(True)
-        self.action_dark.setChecked(self.settings.theme == "dark")
-        self.action_dark.triggered.connect(lambda: self._change_theme("dark"))
-        theme_menu.addAction(self.action_dark)
-        
-        theme_menu.addSeparator()
-        
-        # Erscheinungsprofile (NEU v0.16)
-        theme_profiles_action = QAction("🎨 &Erscheinungsprofile...", self)
-        theme_profiles_action.setStatusTip("Farbprofile verwalten")
-        theme_profiles_action.triggered.connect(self._show_theme_profiles)
-        theme_menu.addAction(theme_profiles_action)
-        
+        # Anzeigen-Untermenü (Tabs/Module ein- & ausblenden)
+        anzeigen_menu = view_menu.addMenu("&Anzeigen")
+
+        # Übersicht → Subtabs ein/ausblenden
+        overview_menu = anzeigen_menu.addMenu("📈 Ü&bersicht")
+        self._overview_visibility_actions = {}
+
+        # Sichtbarkeit aus Settings laden (Default: alles sichtbar)
+        vis = self.settings.get('overview_visible_subtabs', {}) or {}
+        specs = []
+        try:
+            specs = self.overview_tab.get_subtab_specs()
+        except Exception:
+            specs = []
+
+        if specs:
+            for key, title in specs:
+                act = QAction(title, self)
+                act.setCheckable(True)
+                act.setChecked(bool(vis.get(key, True)))
+                act.toggled.connect(lambda checked, k=key: self._toggle_overview_subtab(k, checked))
+                overview_menu.addAction(act)
+                self._overview_visibility_actions[key] = act
+        else:
+            # Fallback: falls Übersicht keine Specs liefert
+            dummy = QAction('(Keine Optionen verfügbar)', self)
+            dummy.setEnabled(False)
+            overview_menu.addAction(dummy)
+
         view_menu.addSeparator()
-        
-        # Zu Tabs wechseln (navigiert zum Widget, nicht zur Position)
+
+        # Zu Tabs wechseln (navigiert zum Widget, nicht zur Position) (navigiert zum Widget, nicht zur Position)
         goto_budget = QAction("💰 &Budget", self)
         goto_budget.setShortcut("Ctrl+1")
         goto_budget.triggered.connect(lambda: self._goto_tab(self.budget_tab))
@@ -448,8 +456,10 @@ class MainWindow(QMainWindow):
         self.settings.theme = theme
         
         # Radio-Buttons aktualisieren
-        self.action_light.setChecked(theme == "light")
-        self.action_dark.setChecked(theme == "dark")
+        if hasattr(self, 'action_light'):
+            self.action_light.setChecked(theme == "light")
+        if hasattr(self, 'action_dark'):
+            self.action_dark.setChecked(theme == "dark")
         
         self.statusBar().showMessage(f"Theme: {theme}", 2000)
 
@@ -457,6 +467,81 @@ class MainWindow(QMainWindow):
         """Wendet das aktuelle Theme an"""
         # Theme Manager verwenden
         self.theme_manager.apply_theme()
+
+        # Nach Theme-Wechsel: Typ-Farben/Badges neu anwenden
+        try:
+            if hasattr(self, "tracking_tab") and hasattr(self.tracking_tab, "refresh"):
+                self.tracking_tab.refresh()
+            if hasattr(self, "overview_tab") and hasattr(self.overview_tab, "refresh"):
+                self.overview_tab.refresh()
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------
+    # Ansicht → Anzeigen → Übersicht: Subtabs ein/ausblenden
+    # ------------------------------------------------------------
+    def _get_overview_subtab_visibility(self) -> dict:
+        """Lädt/normalisiert die Sichtbarkeit der Übersicht-Subtabs aus den Settings."""
+        specs = []
+        try:
+            specs = self.overview_tab.get_subtab_specs()
+        except Exception:
+            specs = []
+        default = {k: True for k, _t in specs}
+        saved = self.settings.get('overview_visible_subtabs', None)
+        if isinstance(saved, dict):
+            vis = default.copy()
+            for k, v in saved.items():
+                if k in vis:
+                    vis[k] = bool(v)
+            return vis
+        return default
+
+    def _apply_overview_subtabs_from_settings(self) -> None:
+        """Wendet die gespeicherte Sichtbarkeit direkt auf die Übersicht an."""
+        vis = self._get_overview_subtab_visibility()
+        if hasattr(self.overview_tab, 'apply_subtab_visibility'):
+            self.overview_tab.apply_subtab_visibility(vis)
+        else:
+            # Fallback: einzelne Tabs
+            for k, on in vis.items():
+                if hasattr(self.overview_tab, 'set_subtab_visible'):
+                    self.overview_tab.set_subtab_visible(k, bool(on))
+
+        # Menü-Checkboxen synchronisieren
+        if hasattr(self, '_overview_visibility_actions'):
+            for k, act in self._overview_visibility_actions.items():
+                act.blockSignals(True)
+                act.setChecked(bool(vis.get(k, True)))
+                act.blockSignals(False)
+
+        # Normalisierte Map speichern
+        if vis:
+            self.settings.set('overview_visible_subtabs', vis)
+
+    def _toggle_overview_subtab(self, key: str, checked: bool) -> None:
+        """Callback aus dem Menü: ein/ausblenden + persistieren."""
+        vis = self._get_overview_subtab_visibility()
+        if not vis or key not in vis:
+            return
+
+        # Mindestens 1 Tab sichtbar lassen
+        vis[key] = bool(checked)
+        if not any(vis.values()):
+            vis[key] = True
+            if hasattr(self, '_overview_visibility_actions') and key in self._overview_visibility_actions:
+                act = self._overview_visibility_actions[key]
+                act.blockSignals(True)
+                act.setChecked(True)
+                act.blockSignals(False)
+            self.statusBar().showMessage('Mindestens ein Übersicht-Reiter muss sichtbar bleiben.', 3000)
+            return
+
+        self.settings.set('overview_visible_subtabs', vis)
+        if hasattr(self.overview_tab, 'apply_subtab_visibility'):
+            self.overview_tab.apply_subtab_visibility(vis)
+        elif hasattr(self.overview_tab, 'set_subtab_visible'):
+            self.overview_tab.set_subtab_visible(key, bool(checked))
 
     def _save_budget(self):
         """Speichert das Budget"""

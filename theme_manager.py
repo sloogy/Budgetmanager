@@ -1,6 +1,7 @@
 """
-Vollständiger Theme Manager für Budgetmanager
-Verwaltet Themes, Profile und Stylesheets zentral
+Verbesserter Theme Manager für Budgetmanager
+JSON-basierte Profile mit vollständiger Farb-Kontrolle
+Version 0.18.0
 """
 
 from __future__ import annotations
@@ -11,65 +12,45 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QColor
 
 
+class ThemeProfile:
+    """Repräsentiert ein komplettes Theme-Profil"""
+    
+    def __init__(self, name: str, data: Dict[str, Any]):
+        self.name = name
+        self.data = data
+    
+    def get(self, key: str, default: Any = None) -> Any:
+        """Hole Wert aus Profil"""
+        return self.data.get(key, default)
+    
+    def set(self, key: str, value: Any):
+        """Setze Wert in Profil"""
+        self.data[key] = value
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Konvertiere zu Dictionary"""
+        return self.data.copy()
+    
+    @classmethod
+    def from_dict(cls, name: str, data: Dict[str, Any]) -> 'ThemeProfile':
+        """Erstelle Profil aus Dictionary"""
+        return cls(name, data)
+
+
 class ThemeManager:
     """
     Zentraler Theme Manager für die gesamte Anwendung.
-    Verwaltet:
-    - Basis-Themes (hell/dunkel)
-    - Benutzerdefinierte Appearance Profile
-    - Dynamisches Laden und Anwenden von Themes
+    
+    Features:
+    - JSON-basierte Profile (~/.budgetmanager/themes/)
+    - Vordefinierte Themes (hell/dunkel Varianten)
+    - Vollständige Farb-Kontrolle
+    - Typ-Colorierung (Einnahmen/Ausgaben/Ersparnisse)
+    - Fix für Dropdown-Probleme
     """
     
-    # Basis-Themes (hell/dunkel)
-    _base_themes = {
-        "light": {
-            "modus": "hell",
-            "hintergrund_app": "#ffffff",
-            "hintergrund_panel": "#f6f7f9",
-            "hintergrund_seitenleiste": "#f0f2f5",
-            "sidebar_panel_bg": "#eef2f7",
-            "filter_panel_bg": "#f6f7f9",
-            "text": "#111111",
-            "text_gedimmt": "#444444",
-            "akzent": "#2f80ed",
-            "tabelle_hintergrund": "#ffffff",
-            "tabelle_alt": "#f7f9fc",
-            "tabelle_header": "#eef2f7",
-            "tabelle_gitter": "#d6dbe3",
-            "auswahl_hintergrund": "#2f80ed",
-            "auswahl_text": "#ffffff",
-            "negativ_text": "#e74c3c",
-            "typ_einnahmen": "#2ecc71",
-            "typ_ausgaben": "#e74c3c",
-            "typ_ersparnisse": "#3498db",
-            "schriftgroesse": 10,
-        },
-        "dark": {
-            "modus": "dunkel",
-            "hintergrund_app": "#1e1e1e",
-            "hintergrund_panel": "#2d2d2d",
-            "hintergrund_seitenleiste": "#252525",
-            "sidebar_panel_bg": "#2a2a2a",
-            "filter_panel_bg": "#2d2d2d",
-            "text": "#e0e0e0",
-            "text_gedimmt": "#aaaaaa",
-            "akzent": "#0078d4",
-            "tabelle_hintergrund": "#1e1e1e",
-            "tabelle_alt": "#252525",
-            "tabelle_header": "#2d2d2d",
-            "tabelle_gitter": "#3d3d3d",
-            "auswahl_hintergrund": "#0078d4",
-            "auswahl_text": "#ffffff",
-            "negativ_text": "#ff6b6b",
-            "typ_einnahmen": "#4caf50",
-            "typ_ausgaben": "#f44336",
-            "typ_ersparnisse": "#2196f3",
-            "schriftgroesse": 10,
-        }
-    }
-    
     # Vordefinierte Profile
-    _predefined_profiles = {
+    PREDEFINED_PROFILES = {
         "Standard Hell": {
             "modus": "hell",
             "hintergrund_app": "#ffffff",
@@ -91,6 +72,12 @@ class ThemeManager:
             "typ_ausgaben": "#e74c3c",
             "typ_ersparnisse": "#3498db",
             "schriftgroesse": 10,
+            # Dropdown-Farben
+            "dropdown_bg": "#ffffff",
+            "dropdown_text": "#111111",
+            "dropdown_selection": "#2f80ed",
+            "dropdown_selection_text": "#ffffff",
+            "dropdown_border": "#d6dbe3",
         },
         "Standard Dunkel": {
             "modus": "dunkel",
@@ -113,286 +100,326 @@ class ThemeManager:
             "typ_ausgaben": "#f44336",
             "typ_ersparnisse": "#2196f3",
             "schriftgroesse": 10,
+            # Dropdown-Farben
+            "dropdown_bg": "#2d2d2d",
+            "dropdown_text": "#e0e0e0",
+            "dropdown_selection": "#0078d4",
+            "dropdown_selection_text": "#ffffff",
+            "dropdown_border": "#3d3d3d",
         },
-        "Blau-Grau": {
+        "Hell - Grün": {
+            "modus": "hell",
+            "hintergrund_app": "#ffffff",
+            "hintergrund_panel": "#f7faf9",
+            "hintergrund_seitenleiste": "#f0f5f3",
+            "sidebar_panel_bg": "#eef7f3",
+            "filter_panel_bg": "#f7faf9",
+            "text": "#111111",
+            "text_gedimmt": "#444444",
+            "akzent": "#27ae60",
+            "tabelle_hintergrund": "#ffffff",
+            "tabelle_alt": "#f7fcf9",
+            "tabelle_header": "#eef7f3",
+            "tabelle_gitter": "#d6e8df",
+            "auswahl_hintergrund": "#27ae60",
+            "auswahl_text": "#ffffff",
+            "negativ_text": "#e74c3c",
+            "typ_einnahmen": "#27ae60",
+            "typ_ausgaben": "#e74c3c",
+            "typ_ersparnisse": "#3498db",
+            "schriftgroesse": 10,
+            "dropdown_bg": "#ffffff",
+            "dropdown_text": "#111111",
+            "dropdown_selection": "#27ae60",
+            "dropdown_selection_text": "#ffffff",
+            "dropdown_border": "#d6e8df",
+        },
+        "Dunkel - Blau": {
             "modus": "dunkel",
-            "hintergrund_app": "#263238",
-            "hintergrund_panel": "#37474f",
-            "hintergrund_seitenleiste": "#2c3a41",
-            "sidebar_panel_bg": "#324148",
-            "filter_panel_bg": "#37474f",
-            "text": "#eceff1",
-            "text_gedimmt": "#b0bec5",
-            "akzent": "#42a5f5",
-            "tabelle_hintergrund": "#263238",
-            "tabelle_alt": "#2e3c43",
-            "tabelle_header": "#37474f",
-            "tabelle_gitter": "#455a64",
-            "auswahl_hintergrund": "#42a5f5",
+            "hintergrund_app": "#0d1b2a",
+            "hintergrund_panel": "#1b263b",
+            "hintergrund_seitenleiste": "#0f1e2e",
+            "sidebar_panel_bg": "#162636",
+            "filter_panel_bg": "#1b263b",
+            "text": "#e0e1dd",
+            "text_gedimmt": "#9db4c0",
+            "akzent": "#1976d2",
+            "tabelle_hintergrund": "#0d1b2a",
+            "tabelle_alt": "#0f1e2e",
+            "tabelle_header": "#1b263b",
+            "tabelle_gitter": "#2c3e50",
+            "auswahl_hintergrund": "#1976d2",
             "auswahl_text": "#ffffff",
             "negativ_text": "#ef5350",
             "typ_einnahmen": "#66bb6a",
             "typ_ausgaben": "#ef5350",
             "typ_ersparnisse": "#42a5f5",
             "schriftgroesse": 10,
+            "dropdown_bg": "#1b263b",
+            "dropdown_text": "#e0e1dd",
+            "dropdown_selection": "#1976d2",
+            "dropdown_selection_text": "#ffffff",
+            "dropdown_border": "#2c3e50",
         },
-        "Grün-Natur": {
-            "modus": "hell",
-            "hintergrund_app": "#f1f8e9",
-            "hintergrund_panel": "#dcedc8",
-            "hintergrund_seitenleiste": "#c5e1a5",
-            "sidebar_panel_bg": "#d4e9bc",
-            "filter_panel_bg": "#dcedc8",
-            "text": "#33691e",
-            "text_gedimmt": "#558b2f",
-            "akzent": "#7cb342",
-            "tabelle_hintergrund": "#f1f8e9",
-            "tabelle_alt": "#e8f5e0",
-            "tabelle_header": "#dcedc8",
-            "tabelle_gitter": "#aed581",
-            "auswahl_hintergrund": "#7cb342",
-            "auswahl_text": "#ffffff",
-            "negativ_text": "#d32f2f",
-            "typ_einnahmen": "#43a047",
-            "typ_ausgaben": "#e53935",
-            "typ_ersparnisse": "#1e88e5",
-            "schriftgroesse": 10,
-        },
-        "Lila-Premium": {
+        "Dunkel - Grün": {
             "modus": "dunkel",
-            "hintergrund_app": "#1a1a2e",
-            "hintergrund_panel": "#16213e",
-            "hintergrund_seitenleiste": "#0f1626",
-            "sidebar_panel_bg": "#141d33",
-            "filter_panel_bg": "#16213e",
-            "text": "#eee4e1",
-            "text_gedimmt": "#c1b8b5",
-            "akzent": "#bb86fc",
-            "tabelle_hintergrund": "#1a1a2e",
-            "tabelle_alt": "#1e1e35",
-            "tabelle_header": "#16213e",
-            "tabelle_gitter": "#2d3561",
-            "auswahl_hintergrund": "#bb86fc",
-            "auswahl_text": "#000000",
-            "negativ_text": "#cf6679",
-            "typ_einnahmen": "#03dac6",
-            "typ_ausgaben": "#cf6679",
-            "typ_ersparnisse": "#bb86fc",
-            "schriftgroesse": 10,
-        },
-        "Orange-Warm": {
-            "modus": "hell",
-            "hintergrund_app": "#fff8e1",
-            "hintergrund_panel": "#ffecb3",
-            "hintergrund_seitenleiste": "#ffe082",
-            "sidebar_panel_bg": "#ffe69c",
-            "filter_panel_bg": "#ffecb3",
-            "text": "#e65100",
-            "text_gedimmt": "#f57c00",
-            "akzent": "#ff9800",
-            "tabelle_hintergrund": "#fff8e1",
-            "tabelle_alt": "#fff3d8",
-            "tabelle_header": "#ffecb3",
-            "tabelle_gitter": "#ffd54f",
-            "auswahl_hintergrund": "#ff9800",
+            "hintergrund_app": "#0a1612",
+            "hintergrund_panel": "#1b2d24",
+            "hintergrund_seitenleiste": "#0e1f18",
+            "sidebar_panel_bg": "#15271e",
+            "filter_panel_bg": "#1b2d24",
+            "text": "#e8f5e9",
+            "text_gedimmt": "#a5d6a7",
+            "akzent": "#388e3c",
+            "tabelle_hintergrund": "#0a1612",
+            "tabelle_alt": "#0e1f18",
+            "tabelle_header": "#1b2d24",
+            "tabelle_gitter": "#2e4a35",
+            "auswahl_hintergrund": "#388e3c",
             "auswahl_text": "#ffffff",
-            "negativ_text": "#d32f2f",
-            "typ_einnahmen": "#43a047",
-            "typ_ausgaben": "#e53935",
-            "typ_ersparnisse": "#1e88e5",
+            "negativ_text": "#ef5350",
+            "typ_einnahmen": "#66bb6a",
+            "typ_ausgaben": "#ef5350",
+            "typ_ersparnisse": "#64b5f6",
             "schriftgroesse": 10,
-        }
+            "dropdown_bg": "#1b2d24",
+            "dropdown_text": "#e8f5e9",
+            "dropdown_selection": "#388e3c",
+            "dropdown_selection_text": "#ffffff",
+            "dropdown_border": "#2e4a35",
+        },
+        "Kontrast - Schwarz/Weiß": {
+            "modus": "hell",
+            "hintergrund_app": "#ffffff",
+            "hintergrund_panel": "#f0f0f0",
+            "hintergrund_seitenleiste": "#e8e8e8",
+            "sidebar_panel_bg": "#e0e0e0",
+            "filter_panel_bg": "#f0f0f0",
+            "text": "#000000",
+            "text_gedimmt": "#333333",
+            "akzent": "#000000",
+            "tabelle_hintergrund": "#ffffff",
+            "tabelle_alt": "#f8f8f8",
+            "tabelle_header": "#e0e0e0",
+            "tabelle_gitter": "#cccccc",
+            "auswahl_hintergrund": "#000000",
+            "auswahl_text": "#ffffff",
+            "negativ_text": "#8b0000",
+            "typ_einnahmen": "#006400",
+            "typ_ausgaben": "#8b0000",
+            "typ_ersparnisse": "#00008b",
+            "schriftgroesse": 11,
+            "dropdown_bg": "#ffffff",
+            "dropdown_text": "#000000",
+            "dropdown_selection": "#000000",
+            "dropdown_selection_text": "#ffffff",
+            "dropdown_border": "#000000",
+        },
+        "Pastell - Sanft": {
+            "modus": "hell",
+            "hintergrund_app": "#fffef7",
+            "hintergrund_panel": "#f5f5f0",
+            "hintergrund_seitenleiste": "#f0f0e8",
+            "sidebar_panel_bg": "#ede7f6",
+            "filter_panel_bg": "#f5f5f0",
+            "text": "#5d4e6d",
+            "text_gedimmt": "#8b7e8f",
+            "akzent": "#b39ddb",
+            "tabelle_hintergrund": "#fffef7",
+            "tabelle_alt": "#fafaf5",
+            "tabelle_header": "#ede7f6",
+            "tabelle_gitter": "#d9d9d9",
+            "auswahl_hintergrund": "#b39ddb",
+            "auswahl_text": "#ffffff",
+            "negativ_text": "#e57373",
+            "typ_einnahmen": "#81c784",
+            "typ_ausgaben": "#e57373",
+            "typ_ersparnisse": "#64b5f6",
+            "schriftgroesse": 10,
+            "dropdown_bg": "#fffef7",
+            "dropdown_text": "#5d4e6d",
+            "dropdown_selection": "#b39ddb",
+            "dropdown_selection_text": "#ffffff",
+            "dropdown_border": "#d9d9d9",
+        },
     }
     
     def __init__(self, settings):
         """
-        Initialisiert den Theme Manager.
+        Initialisiere Theme Manager
         
         Args:
-            settings: Settings-Instanz zur Speicherung von Profilen
+            settings: Settings-Objekt der Anwendung
         """
         self.settings = settings
-        self.current_profile = None
-        self.custom_profiles = {}
-        self._load_profiles()
-    
-    def _load_profiles(self):
-        """Lädt alle Profile aus den Settings."""
-        # Benutzerdefinierte Profile laden
-        profiles = self.settings.get('appearance_profiles', {})
-        if isinstance(profiles, dict):
-            self.custom_profiles = profiles.copy()
+        self.profiles_dir = Path.home() / ".budgetmanager" / "themes"
+        self.profiles_dir.mkdir(parents=True, exist_ok=True)
         
-        # Aktives Profil laden
-        active = self.settings.get('appearance_profile_active', '')
-        if active:
-            self.current_profile = active
-        elif self.settings.theme:
-            # Fallback auf altes Theme-System
-            self.current_profile = "Standard Hell" if self.settings.theme == "light" else "Standard Dunkel"
-    
-    def _save_profiles(self):
-        """Speichert alle Profile in die Settings."""
-        self.settings.set('appearance_profiles', self.custom_profiles)
-        if self.current_profile:
-            self.settings.set('appearance_profile_active', self.current_profile)
-        self.settings.save()
-    
-    def get_all_profiles(self) -> Dict[str, Dict[str, Any]]:
-        """
-        Gibt alle verfügbaren Profile zurück (vordefiniert + benutzerdefiniert).
+        self._current_profile_name = None
+        self._current_profile = None
         
-        Returns:
-            Dictionary mit Profilnamen als Keys
-        """
-        profiles = self._predefined_profiles.copy()
-        profiles.update(self.custom_profiles)
-        return profiles
+        # Initialisiere vordefinierte Profile
+        self._initialize_predefined_profiles()
+        
+        # Lade benutzerdefinierte Profile
+        self._load_custom_profiles()
     
-    def get_profile(self, name: str) -> Optional[Dict[str, Any]]:
-        """
-        Gibt ein spezifisches Profil zurück.
-        
-        Args:
-            name: Name des Profils
-        
-        Returns:
-            Profil-Dictionary oder None
-        """
-        all_profiles = self.get_all_profiles()
-        return all_profiles.get(name)
+    def _initialize_predefined_profiles(self):
+        """Erstelle vordefinierte Profile als JSON-Dateien"""
+        for name, data in self.PREDEFINED_PROFILES.items():
+            filepath = self._get_profile_path(name)
+            if not filepath.exists():
+                self._save_profile_to_file(name, data)
     
-    def get_current_profile(self) -> Optional[Dict[str, Any]]:
-        """
-        Gibt das aktuell aktive Profil zurück.
-        
-        Returns:
-            Profil-Dictionary oder None
-        """
-        if self.current_profile:
-            return self.get_profile(self.current_profile)
+    def _load_custom_profiles(self):
+        """Lade alle benutzerdefinierten Profile aus dem Verzeichnis"""
+        # Wird bei Bedarf geladen, keine zentrale Liste mehr nötig
+        pass
+    
+    def _get_profile_path(self, profile_name: str) -> Path:
+        """Generiere Dateipfad für Profil"""
+        # Konvertiere Name zu Dateinamen
+        filename = profile_name.lower().replace(" ", "_").replace("-", "_")
+        filename = "".join(c for c in filename if c.isalnum() or c == "_")
+        return self.profiles_dir / f"{filename}.json"
+    
+    def _save_profile_to_file(self, name: str, data: Dict[str, Any]) -> bool:
+        """Speichere Profil als JSON"""
+        try:
+            filepath = self._get_profile_path(name)
+            with open(filepath, 'w', encoding='utf-8') as f:
+                profile_data = {"name": name, **data}
+                json.dump(profile_data, f, indent=2, ensure_ascii=False)
+            return True
+        except Exception as e:
+            print(f"Fehler beim Speichern des Profils '{name}': {e}")
+            return False
+    
+    def _load_profile_from_file(self, name: str) -> Optional[Dict[str, Any]]:
+        """Lade Profil aus JSON"""
+        try:
+            filepath = self._get_profile_path(name)
+            if not filepath.exists():
+                return None
+            
+            with open(filepath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                # Entferne 'name' aus den Daten, da es bereits bekannt ist
+                data.pop('name', None)
+                return data
+        except Exception as e:
+            print(f"Fehler beim Laden des Profils '{name}': {e}")
+            return None
+    
+    def get_all_profiles(self) -> List[str]:
+        """Liste alle verfügbaren Profile"""
+        profiles = []
+        for filepath in self.profiles_dir.glob("*.json"):
+            try:
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    profiles.append(data.get('name', filepath.stem))
+            except Exception:
+                pass
+        return sorted(profiles)
+    
+    def get_profile(self, name: str) -> Optional[ThemeProfile]:
+        """Hole ein spezifisches Profil"""
+        data = self._load_profile_from_file(name)
+        if data:
+            return ThemeProfile(name, data)
         return None
     
+    def get_current_profile(self) -> Optional[ThemeProfile]:
+        """Hole aktuelles Profil"""
+        if self._current_profile is None:
+            # Lade aus Settings
+            profile_name = self.settings.get("appearance_profile", "Standard Hell")
+            self.set_current_profile(profile_name)
+        
+        return self._current_profile
+    
     def set_current_profile(self, name: str):
-        """
-        Setzt das aktuelle Profil.
-        
-        Args:
-            name: Name des Profils
-        """
-        if name in self.get_all_profiles():
-            self.current_profile = name
-            self._save_profiles()
+        """Setze aktuelles Profil"""
+        profile = self.get_profile(name)
+        if profile:
+            self._current_profile_name = name
+            self._current_profile = profile
+            self.settings.set("appearance_profile", name)
     
-    def create_profile(self, name: str, profile_data: Dict[str, Any]) -> bool:
+    def create_profile(self, name: str, base_profile: Optional[str] = None) -> bool:
         """
-        Erstellt ein neues benutzerdefiniertes Profil.
+        Erstelle neues benutzerdefiniertes Profil
         
         Args:
-            name: Name des Profils
-            profile_data: Profil-Daten
-        
-        Returns:
-            True bei Erfolg, False wenn Name bereits existiert
-        """
-        if name in self._predefined_profiles:
-            return False  # Vordefinierte Profile können nicht überschrieben werden
-        
-        self.custom_profiles[name] = profile_data
-        self._save_profiles()
-        return True
-    
-    def update_profile(self, name: str, profile_data: Dict[str, Any]) -> bool:
-        """
-        Aktualisiert ein bestehendes Profil.
-        
-        Args:
-            name: Name des Profils
-            profile_data: Neue Profil-Daten
-        
-        Returns:
-            True bei Erfolg, False wenn Profil nicht existiert oder vordefiniert ist
-        """
-        if name in self._predefined_profiles:
-            return False  # Vordefinierte Profile können nicht geändert werden
-        
-        if name not in self.custom_profiles:
-            return False
-        
-        self.custom_profiles[name] = profile_data
-        self._save_profiles()
-        return True
-    
-    def delete_profile(self, name: str) -> bool:
-        """
-        Löscht ein benutzerdefiniertes Profil.
-        
-        Args:
-            name: Name des Profils
-        
-        Returns:
-            True bei Erfolg, False wenn Profil nicht existiert oder vordefiniert ist
-        """
-        if name in self._predefined_profiles:
-            return False  # Vordefinierte Profile können nicht gelöscht werden
-        
-        if name not in self.custom_profiles:
-            return False
-        
-        del self.custom_profiles[name]
-        
-        # Falls das gelöschte Profil aktiv war, auf Standard zurücksetzen
-        if self.current_profile == name:
-            self.current_profile = "Standard Hell"
-        
-        self._save_profiles()
-        return True
-    
-    def is_predefined(self, name: str) -> bool:
-        """
-        Prüft ob ein Profil vordefiniert ist.
-        
-        Args:
-            name: Name des Profils
-        
-        Returns:
-            True wenn vordefiniert
-        """
-        return name in self._predefined_profiles
-    
-    def export_profile(self, name: str, filepath: str) -> bool:
-        """
-        Exportiert ein Profil als JSON-Datei.
-        
-        Args:
-            name: Name des Profils
-            filepath: Ziel-Dateipfad
+            name: Name des neuen Profils
+            base_profile: Name des Basis-Profils (Standard: "Standard Hell")
         
         Returns:
             True bei Erfolg
         """
+        if name in self.get_all_profiles():
+            return False
+        
+        # Hole Basis-Profil
+        if base_profile is None:
+            base_profile = "Standard Hell"
+        
+        base_data = self._load_profile_from_file(base_profile)
+        if base_data is None:
+            base_data = self.PREDEFINED_PROFILES.get(base_profile, self.PREDEFINED_PROFILES["Standard Hell"])
+        
+        return self._save_profile_to_file(name, base_data)
+    
+    def update_profile(self, name: str, data: Dict[str, Any]) -> bool:
+        """Aktualisiere existierendes Profil"""
+        if name not in self.get_all_profiles():
+            return False
+        
+        return self._save_profile_to_file(name, data)
+    
+    def delete_profile(self, name: str) -> bool:
+        """Lösche Profil (nur benutzerdefinierte)"""
+        if name in self.PREDEFINED_PROFILES:
+            return False  # Vordefinierte Profile können nicht gelöscht werden
+        
+        try:
+            filepath = self._get_profile_path(name)
+            if filepath.exists():
+                filepath.unlink()
+                
+                # Wenn aktuelles Profil gelöscht wurde, wechsle zu Standard
+                if self._current_profile_name == name:
+                    self.set_current_profile("Standard Hell")
+                
+                return True
+        except Exception as e:
+            print(f"Fehler beim Löschen des Profils '{name}': {e}")
+        
+        return False
+    
+    def is_predefined(self, name: str) -> bool:
+        """Prüfe ob Profil vordefiniert ist"""
+        return name in self.PREDEFINED_PROFILES
+    
+    def export_profile(self, name: str, filepath: str) -> bool:
+        """Exportiere Profil als JSON"""
         profile = self.get_profile(name)
-        if not profile:
+        if profile is None:
             return False
         
         try:
-            export_data = {
-                "name": name,
-                "profile": profile,
-                "version": "1.0"
-            }
             with open(filepath, 'w', encoding='utf-8') as f:
+                export_data = {"name": name, **profile.data}
                 json.dump(export_data, f, indent=2, ensure_ascii=False)
             return True
-        except Exception:
+        except Exception as e:
+            print(f"Fehler beim Exportieren des Profils: {e}")
             return False
     
     def import_profile(self, filepath: str) -> Optional[str]:
         """
-        Importiert ein Profil aus einer JSON-Datei.
-        
-        Args:
-            filepath: Quell-Dateipfad
+        Importiere Profil aus JSON
         
         Returns:
             Name des importierten Profils oder None bei Fehler
@@ -401,541 +428,653 @@ class ThemeManager:
             with open(filepath, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             
-            name = data.get('name', 'Importiert')
-            profile = data.get('profile', {})
+            name = data.pop('name', 'Importiert')
             
-            # Namenskonflikte vermeiden
+            # Stelle sicher dass Name eindeutig ist
             original_name = name
             counter = 1
             while name in self.get_all_profiles():
                 name = f"{original_name} ({counter})"
                 counter += 1
             
-            self.custom_profiles[name] = profile
-            self._save_profiles()
-            return name
-        except Exception:
-            return None
+            if self._save_profile_to_file(name, data):
+                return name
+        except Exception as e:
+            print(f"Fehler beim Importieren des Profils: {e}")
+        
+        return None
     
-    def build_stylesheet(self, profile: Optional[Dict[str, Any]] = None) -> str:
+    def build_stylesheet(self, profile: Optional[ThemeProfile] = None) -> str:
         """
-        Erstellt ein komplettes Stylesheet aus einem Profil.
+        Generiere komplettes Stylesheet aus Profil
         
         Args:
-            profile: Profil-Dictionary (optional, verwendet aktuelles Profil wenn None)
+            profile: Theme-Profil (Standard: aktuelles Profil)
         
         Returns:
-            QSS Stylesheet als String
+            QSS-Stylesheet als String
         """
         if profile is None:
             profile = self.get_current_profile()
             if profile is None:
-                profile = self._base_themes["light"]
+                profile = ThemeProfile("Standard Hell", self.PREDEFINED_PROFILES["Standard Hell"])
         
-        # Werte extrahieren
-        app_bg = profile.get("hintergrund_app", "#ffffff")
-        panel_bg = profile.get("hintergrund_panel", "#f6f7f9")
-        side_bg = profile.get("hintergrund_seitenleiste", "#f0f2f5")
-        sidebar_panel_bg = profile.get("sidebar_panel_bg", side_bg)
-        filter_panel_bg = profile.get("filter_panel_bg", panel_bg)
-        text = profile.get("text", "#111111")
-        text_muted = profile.get("text_gedimmt", "#444444")
-        accent = profile.get("akzent", "#2f80ed")
+        p = profile.data
         
-        table_bg = profile.get("tabelle_hintergrund", "#ffffff")
-        table_alt = profile.get("tabelle_alt", "#f7f9fc")
-        table_header = profile.get("tabelle_header", "#eef2f7")
-        grid = profile.get("tabelle_gitter", "#d6dbe3")
-        sel_bg = profile.get("auswahl_hintergrund", "#2f80ed")
-        sel_text = profile.get("auswahl_text", "#ffffff")
+        # Basis-Farben
+        bg_app = p.get("hintergrund_app", "#ffffff")
+        bg_panel = p.get("hintergrund_panel", "#f6f7f9")
+        bg_sidebar = p.get("hintergrund_seitenleiste", "#f0f2f5")
+        sidebar_panel_bg = p.get("sidebar_panel_bg", "#eef2f7")
+        filter_panel_bg = p.get("filter_panel_bg", "#f6f7f9")
+        text = p.get("text", "#111111")
+        text_dim = p.get("text_gedimmt", "#444444")
+        accent = p.get("akzent", "#2f80ed")
         
-        negative = profile.get("negativ_text", "#e74c3c")
-        income = profile.get("typ_einnahmen", "#2ecc71")
-        expense = profile.get("typ_ausgaben", "#e74c3c")
-        savings = profile.get("typ_ersparnisse", "#3498db")
+        # Tabellen-Farben
+        table_bg = p.get("tabelle_hintergrund", "#ffffff")
+        table_alt = p.get("tabelle_alt", "#f7f9fc")
+        table_header = p.get("tabelle_header", "#eef2f7")
+        table_grid = p.get("tabelle_gitter", "#d6dbe3")
         
-        font_size = int(profile.get("schriftgroesse", 10))
+        # Auswahl-Farben
+        sel_bg = p.get("auswahl_hintergrund", "#2f80ed")
+        sel_text = p.get("auswahl_text", "#ffffff")
         
-        # Berechne abgeleitete Farben
-        hover_bg = self._adjust_color(accent, 10)
-        pressed_bg = self._adjust_color(accent, -10)
-        border_color = self._adjust_color(grid, -10)
+        # Dropdown-Farben (FIX für schwarze Schrift/Hintergrund)
+        dropdown_bg = p.get("dropdown_bg", bg_panel)
+        dropdown_text = p.get("dropdown_text", text)
+        dropdown_sel = p.get("dropdown_selection", accent)
+        dropdown_sel_text = p.get("dropdown_selection_text", "#ffffff")
+        dropdown_border = p.get("dropdown_border", table_grid)
         
-        qss = f"""
-        /* === BASIS === */
-        QWidget {{
-            font-size: {font_size}pt;
-            color: {text};
-            background-color: {app_bg};
-        }}
+        # Negative Farbe
+        neg_text = p.get("negativ_text", "#e74c3c")
         
-        QMainWindow, QDialog {{
-            background-color: {app_bg};
-        }}
+        # Schriftgröße
+        font_size = p.get("schriftgroesse", 10)
         
-        /* === PANELS & GROUPBOX === */
-        QGroupBox {{
-            background-color: {panel_bg};
-            border: 2px solid {border_color};
-            border-radius: 8px;
-            margin-top: 12px;
-            padding: 10px;
-            font-weight: bold;
-        }}
+        stylesheet = f"""
+/* ============================================================
+   BUDGETMANAGER - GLOBALES STYLESHEET
+   Profil: {profile.name}
+   ============================================================ */
+
+/* === HAUPTFENSTER UND DIALOGE === */
+QMainWindow, QDialog {{
+    background-color: {bg_app};
+    color: {text};
+    font-size: {font_size}pt;
+}}
+
+/* === LABELS === */
+QLabel {{
+    color: {text};
+    background-color: transparent;
+}}
+
+QLabel[styleClass="header"] {{
+    font-size: {font_size + 4}pt;
+    font-weight: bold;
+    color: {accent};
+}}
+
+QLabel[styleClass="subheader"] {{
+    font-size: {font_size + 2}pt;
+    font-weight: bold;
+    color: {text};
+}}
+
+/* === BUTTONS === */
+QPushButton {{
+    background-color: {accent};
+    color: {sel_text};
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-weight: bold;
+    min-height: 28px;
+}}
+
+QPushButton:hover {{
+    background-color: {self._adjust_color(accent, 15)};
+}}
+
+QPushButton:pressed {{
+    background-color: {self._adjust_color(accent, -15)};
+}}
+
+QPushButton:disabled {{
+    background-color: {text_dim};
+    color: {bg_panel};
+}}
+
+QPushButton[styleClass="secondary"] {{
+    background-color: {bg_panel};
+    color: {text};
+    border: 1px solid {table_grid};
+}}
+
+QPushButton[styleClass="secondary"]:hover {{
+    background-color: {table_alt};
+}}
+
+QPushButton[styleClass="danger"] {{
+    background-color: {neg_text};
+    color: #ffffff;
+}}
+
+QPushButton[styleClass="danger"]:hover {{
+    background-color: {self._adjust_color(neg_text, -15)};
+}}
+
+/* === INPUT-FELDER === */
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit {{
+    background-color: {bg_panel};
+    color: {text};
+    border: 1px solid {table_grid};
+    border-radius: 4px;
+    padding: 6px;
+    selection-background-color: {sel_bg};
+    selection-color: {sel_text};
+}}
+
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, 
+QSpinBox:focus, QDoubleSpinBox:focus, QDateEdit:focus {{
+    border: 2px solid {accent};
+    padding: 5px;
+}}
+
+QLineEdit:disabled, QTextEdit:disabled, QPlainTextEdit:disabled,
+QSpinBox:disabled, QDoubleSpinBox:disabled, QDateEdit:disabled {{
+    background-color: {table_alt};
+    color: {text_dim};
+}}
+
+/* === COMBOBOX (FIX FÜR SCHWARZE SCHRIFT) === */
+QComboBox {{
+    background-color: {dropdown_bg};
+    color: {dropdown_text};
+    border: 1px solid {dropdown_border};
+    border-radius: 4px;
+    padding: 6px;
+    padding-right: 25px;
+    selection-background-color: {dropdown_sel};
+    selection-color: {dropdown_sel_text};
+}}
+
+QComboBox:hover {{
+    border: 1px solid {accent};
+}}
+
+QComboBox:focus {{
+    border: 2px solid {accent};
+}}
+
+QComboBox::drop-down {{
+    subcontrol-origin: padding;
+    subcontrol-position: top right;
+    width: 25px;
+    border: none;
+}}
+
+QComboBox::down-arrow {{
+    image: none;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid {dropdown_text};
+    margin-right: 8px;
+}}
+
+QComboBox:disabled {{
+    background-color: {table_alt};
+    color: {text_dim};
+}}
+
+/* Dropdown-Liste (FIX FÜR SCHWARZEN HINTERGRUND) */
+QComboBox QAbstractItemView {{
+    background-color: {dropdown_bg};
+    color: {dropdown_text};
+    border: 1px solid {dropdown_border};
+    selection-background-color: {dropdown_sel};
+    selection-color: {dropdown_sel_text};
+    outline: none;
+}}
+
+QComboBox QAbstractItemView::item {{
+    background-color: {dropdown_bg};
+    color: {dropdown_text};
+    padding: 6px;
+    min-height: 28px;
+}}
+
+QComboBox QAbstractItemView::item:selected {{
+    background-color: {dropdown_sel};
+    color: {dropdown_sel_text};
+}}
+
+QComboBox QAbstractItemView::item:hover {{
+    background-color: {table_alt};
+}}
+
+/* === TABELLEN === */
+QTableWidget, QTableView {{
+    background-color: {table_bg};
+    alternate-background-color: {table_alt};
+    gridline-color: {table_grid};
+    color: {text};
+    border: 1px solid {table_grid};
+    selection-background-color: {sel_bg};
+    selection-color: {sel_text};
+}}
+
+QTableWidget::item, QTableView::item {{
+    padding: 4px;
+    border: none;
+}}
+
+QTableWidget::item:selected, QTableView::item:selected {{
+    background-color: {sel_bg};
+    color: {sel_text};
+}}
+
+QTableWidget::item:hover, QTableView::item:hover {{
+    background-color: {table_alt};
+}}
+
+QHeaderView::section {{
+    background-color: {table_header};
+    color: {text};
+    padding: 8px;
+    border: none;
+    border-right: 1px solid {table_grid};
+    border-bottom: 1px solid {table_grid};
+    font-weight: bold;
+}}
+
+QHeaderView::section:hover {{
+    background-color: {self._adjust_color(table_header, 10)};
+}}
+
+/* === SCROLLBARS === */
+QScrollBar:vertical {{
+    background-color: {bg_panel};
+    width: 14px;
+    border: none;
+}}
+
+QScrollBar::handle:vertical {{
+    background-color: {text_dim};
+    border-radius: 7px;
+    min-height: 30px;
+    margin: 2px;
+}}
+
+QScrollBar::handle:vertical:hover {{
+    background-color: {accent};
+}}
+
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+    height: 0px;
+}}
+
+QScrollBar:horizontal {{
+    background-color: {bg_panel};
+    height: 14px;
+    border: none;
+}}
+
+QScrollBar::handle:horizontal {{
+    background-color: {text_dim};
+    border-radius: 7px;
+    min-width: 30px;
+    margin: 2px;
+}}
+
+QScrollBar::handle:horizontal:hover {{
+    background-color: {accent};
+}}
+
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{
+    width: 0px;
+}}
+
+/* === TABS === */
+QTabWidget::pane {{
+    border: 1px solid {table_grid};
+    background-color: {bg_panel};
+}}
+
+QTabBar::tab {{
+    background-color: {bg_panel};
+    color: {text};
+    padding: 10px 20px;
+    border: 1px solid {table_grid};
+    border-bottom: none;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+}}
+
+QTabBar::tab:selected {{
+    background-color: {bg_app};
+    color: {accent};
+    font-weight: bold;
+    border-bottom: 2px solid {accent};
+}}
+
+QTabBar::tab:hover:!selected {{
+    background-color: {table_alt};
+}}
+
+/* === MENÜS === */
+QMenuBar {{
+    background-color: {bg_panel};
+    color: {text};
+    border-bottom: 1px solid {table_grid};
+}}
+
+QMenuBar::item {{
+    background-color: transparent;
+    padding: 6px 12px;
+}}
+
+QMenuBar::item:selected {{
+    background-color: {accent};
+    color: {sel_text};
+}}
+
+QMenu {{
+    background-color: {bg_panel};
+    color: {text};
+    border: 1px solid {table_grid};
+}}
+
+QMenu::item {{
+    padding: 6px 30px 6px 20px;
+}}
+
+QMenu::item:selected {{
+    background-color: {accent};
+    color: {sel_text};
+}}
+
+QMenu::separator {{
+    height: 1px;
+    background-color: {table_grid};
+    margin: 4px 0px;
+}}
+
+/* === GROUPBOX === */
+QGroupBox {{
+    border: 1px solid {table_grid};
+    border-radius: 4px;
+    margin-top: 12px;
+    font-weight: bold;
+    padding: 12px;
+    background-color: transparent;
+}}
+
+QGroupBox::title {{
+    subcontrol-origin: margin;
+    subcontrol-position: top left;
+    padding: 0 8px;
+    color: {accent};
+    background-color: {bg_app};
+}}
+
+/* === CHECKBOX & RADIOBUTTON === */
+QCheckBox, QRadioButton {{
+    color: {text};
+    spacing: 8px;
+}}
+
+QCheckBox::indicator, QRadioButton::indicator {{
+    width: 18px;
+    height: 18px;
+    border: 2px solid {table_grid};
+    background-color: {bg_panel};
+}}
+
+QCheckBox::indicator:hover, QRadioButton::indicator:hover {{
+    border: 2px solid {accent};
+}}
+
+QCheckBox::indicator:checked {{
+    background-color: {accent};
+    border: 2px solid {accent};
+    image: none;
+}}
+
+QRadioButton::indicator {{
+    border-radius: 9px;
+}}
+
+QRadioButton::indicator:checked {{
+    background-color: {accent};
+    border: 2px solid {accent};
+}}
+
+QCheckBox:disabled, QRadioButton:disabled {{
+    color: {text_dim};
+}}
+
+/* === PROGRESSBAR === */
+QProgressBar {{
+    background-color: {bg_panel};
+    border: 1px solid {table_grid};
+    border-radius: 4px;
+    text-align: center;
+    color: {text};
+    height: 20px;
+}}
+
+QProgressBar::chunk {{
+    background-color: {accent};
+    border-radius: 3px;
+}}
+
+/* === SLIDER === */
+QSlider::groove:horizontal {{
+    background-color: {bg_panel};
+    height: 6px;
+    border-radius: 3px;
+}}
+
+QSlider::handle:horizontal {{
+    background-color: {accent};
+    width: 16px;
+    height: 16px;
+    margin: -5px 0;
+    border-radius: 8px;
+}}
+
+QSlider::handle:horizontal:hover {{
+    background-color: {self._adjust_color(accent, 15)};
+}}
+
+/* === STATUSBAR === */
+QStatusBar {{
+    background-color: {bg_panel};
+    color: {text};
+    border-top: 1px solid {table_grid};
+}}
+
+/* === TOOLBAR === */
+QToolBar {{
+    background-color: {bg_panel};
+    border: none;
+    spacing: 4px;
+    padding: 4px;
+}}
+
+QToolButton {{
+    background-color: transparent;
+    color: {text};
+    border: none;
+    padding: 6px;
+    border-radius: 4px;
+}}
+
+QToolButton:hover {{
+    background-color: {table_alt};
+}}
+
+QToolButton:pressed {{
+    background-color: {accent};
+    color: {sel_text};
+}}
+
+/* === SPLITTER === */
+QSplitter::handle {{
+    background-color: {table_grid};
+}}
+
+QSplitter::handle:horizontal {{
+    width: 2px;
+}}
+
+QSplitter::handle:vertical {{
+    height: 2px;
+}}
+
+QSplitter::handle:hover {{
+    background-color: {accent};
+}}
+
+/* === SPEZIELLE PANELS === */
+QWidget[styleClass="sidebar"] {{
+    background-color: {bg_sidebar};
+    border-right: 1px solid {table_grid};
+}}
+
+QWidget[styleClass="sidebar-panel"] {{
+    background-color: {sidebar_panel_bg};
+    border: 1px solid {table_grid};
+    border-radius: 4px;
+    padding: 8px;
+}}
+
+QWidget[styleClass="filter-panel"] {{
+    background-color: {filter_panel_bg};
+    border: 1px solid {table_grid};
+    border-radius: 4px;
+    padding: 12px;
+}}
+
+/* === TOOLTIPS === */
+QToolTip {{
+    background-color: {bg_panel};
+    color: {text};
+    border: 1px solid {table_grid};
+    border-radius: 4px;
+    padding: 4px;
+}}
+
+/* === NEGATIVE ZAHLEN === */
+QLabel[negativeValue="true"], QTableWidget::item[negativeValue="true"] {{
+    color: {neg_text};
+}}
+
+/* === BESONDERE WIDGET-STATES === */
+*:disabled {{
+    color: {text_dim};
+}}
+"""
         
-        QGroupBox::title {{
-            subcontrol-origin: margin;
-            left: 10px;
-            padding: 0 6px;
-            color: {text};
-        }}
-        
-        /* === MENÜ === */
-        QMenuBar {{
-            background-color: {panel_bg};
-            color: {text};
-            border-bottom: 1px solid {border_color};
-            padding: 4px;
-        }}
-        
-        QMenuBar::item {{
-            background-color: transparent;
-            padding: 6px 12px;
-            border-radius: 4px;
-        }}
-        
-        QMenuBar::item:selected {{
-            background-color: {hover_bg};
-        }}
-        
-        QMenu {{
-            background-color: {panel_bg};
-            color: {text};
-            border: 1px solid {border_color};
-            border-radius: 4px;
-            padding: 4px;
-        }}
-        
-        QMenu::item {{
-            padding: 6px 30px 6px 10px;
-            border-radius: 3px;
-        }}
-        
-        QMenu::item:selected {{
-            background-color: {accent};
-            color: {sel_text};
-        }}
-        
-        QMenu::separator {{
-            height: 1px;
-            background-color: {border_color};
-            margin: 4px 8px;
-        }}
-        
-        /* === TABS === */
-        QTabWidget::pane {{
-            border: 1px solid {border_color};
-            background-color: {app_bg};
-            border-radius: 4px;
-        }}
-        
-        QTabBar::tab {{
-            background-color: {panel_bg};
-            color: {text};
-            border: 1px solid {border_color};
-            padding: 8px 16px;
-            margin-right: 2px;
-            border-top-left-radius: 4px;
-            border-top-right-radius: 4px;
-        }}
-        
-        QTabBar::tab:selected {{
-            background-color: {app_bg};
-            border-bottom-color: {app_bg};
-            font-weight: bold;
-        }}
-        
-        QTabBar::tab:hover {{
-            background-color: {hover_bg};
-        }}
-        
-        /* === TABELLEN === */
-        QTableWidget {{
-            background-color: {table_bg};
-            alternate-background-color: {table_alt};
-            gridline-color: {grid};
-            color: {text};
-            border: 1px solid {border_color};
-            border-radius: 4px;
-        }}
-        
-        QTableWidget::item {{
-            padding: 4px;
-        }}
-        
-        QTableWidget::item:selected {{
-            background-color: {sel_bg};
-            color: {sel_text};
-        }}
-        
-        QHeaderView::section {{
-            background-color: {table_header};
-            color: {text};
-            padding: 6px;
-            border: none;
-            border-right: 1px solid {grid};
-            border-bottom: 1px solid {grid};
-            font-weight: bold;
-        }}
-        
-        QHeaderView::section:first {{
-            border-top-left-radius: 4px;
-        }}
-        
-        QHeaderView::section:last {{
-            border-top-right-radius: 4px;
-            border-right: none;
-        }}
-        
-        /* === BUTTONS === */
-        QPushButton {{
-            background-color: {accent};
-            color: {sel_text};
-            border: none;
-            padding: 6px 16px;
-            border-radius: 4px;
-            font-weight: 500;
-        }}
-        
-        QPushButton:hover {{
-            background-color: {hover_bg};
-        }}
-        
-        QPushButton:pressed {{
-            background-color: {pressed_bg};
-        }}
-        
-        QPushButton:disabled {{
-            background-color: {grid};
-            color: {text_muted};
-        }}
-        
-        /* === INPUTS === */
-        QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox, QDateEdit {{
-            background-color: {table_bg};
-            color: {text};
-            border: 1px solid {border_color};
-            padding: 6px;
-            border-radius: 4px;
-        }}
-        
-        QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, 
-        QComboBox:focus, QDateEdit:focus {{
-            border: 2px solid {accent};
-        }}
-        
-        QComboBox::drop-down {{
-            border: none;
-            background-color: {panel_bg};
-            width: 20px;
-            border-top-right-radius: 4px;
-            border-bottom-right-radius: 4px;
-        }}
-        
-        QComboBox::down-arrow {{
-            image: none;
-            border-left: 5px solid transparent;
-            border-right: 5px solid transparent;
-            border-top: 5px solid {text};
-            margin-right: 5px;
-        }}
-        
-        QComboBox QAbstractItemView {{
-            background-color: {panel_bg};
-            color: {text};
-            selection-background-color: {accent};
-            selection-color: {sel_text};
-            border: 1px solid {border_color};
-            border-radius: 4px;
-            padding: 4px;
-        }}
-        
-        /* === SPINBOX BUTTONS === */
-        QSpinBox::up-button, QDoubleSpinBox::up-button,
-        QSpinBox::down-button, QDoubleSpinBox::down-button {{
-            background-color: {panel_bg};
-            border: none;
-            width: 16px;
-        }}
-        
-        QSpinBox::up-button:hover, QDoubleSpinBox::up-button:hover,
-        QSpinBox::down-button:hover, QDoubleSpinBox::down-button:hover {{
-            background-color: {hover_bg};
-        }}
-        
-        /* === CHECKBOXEN & RADIO === */
-        QCheckBox, QRadioButton {{
-            color: {text};
-            spacing: 8px;
-        }}
-        
-        QCheckBox::indicator, QRadioButton::indicator {{
-            width: 18px;
-            height: 18px;
-            border: 2px solid {border_color};
-            background-color: {table_bg};
-            border-radius: 3px;
-        }}
-        
-        QCheckBox::indicator:checked, QRadioButton::indicator:checked {{
-            background-color: {accent};
-            border-color: {accent};
-        }}
-        
-        /* === SCROLLBARS === */
-        QScrollBar:vertical {{
-            background-color: {panel_bg};
-            width: 14px;
-            border: none;
-            border-radius: 7px;
-            margin: 0;
-        }}
-        
-        QScrollBar::handle:vertical {{
-            background-color: {border_color};
-            min-height: 20px;
-            border-radius: 7px;
-            margin: 2px;
-        }}
-        
-        QScrollBar::handle:vertical:hover {{
-            background-color: {text_muted};
-        }}
-        
-        QScrollBar:horizontal {{
-            background-color: {panel_bg};
-            height: 14px;
-            border: none;
-            border-radius: 7px;
-            margin: 0;
-        }}
-        
-        QScrollBar::handle:horizontal {{
-            background-color: {border_color};
-            min-width: 20px;
-            border-radius: 7px;
-            margin: 2px;
-        }}
-        
-        QScrollBar::handle:horizontal:hover {{
-            background-color: {text_muted};
-        }}
-        
-        QScrollBar::add-line, QScrollBar::sub-line {{
-            background: none;
-            border: none;
-        }}
-        
-        QScrollBar::add-page, QScrollBar::sub-page {{
-            background: none;
-        }}
-        
-        /* === PROGRESS BAR === */
-        QProgressBar {{
-            background-color: {panel_bg};
-            border: 1px solid {border_color};
-            border-radius: 4px;
-            color: {text};
-            text-align: center;
-            height: 20px;
-        }}
-        
-        QProgressBar::chunk {{
-            background-color: {accent};
-            border-radius: 3px;
-        }}
-        
-        /* === STATUS BAR === */
-        QStatusBar {{
-            background-color: {panel_bg};
-            color: {text};
-            border-top: 1px solid {border_color};
-        }}
-        
-        /* === LABELS === */
-        QLabel {{
-            color: {text};
-        }}
-        
-        QLabel#kpi_label {{
-            color: {text_muted};
-            font-size: {font_size - 1}pt;
-        }}
-        
-        QLabel#info_label {{
-            padding: 10px;
-            background-color: {panel_bg};
-            border: 1px solid {border_color};
-            border-radius: 5px;
-        }}
-        
-        /* === SPEZIAL: TYP-FARBEN === */
-        QLabel#typ_einnahmen {{
-            color: {income};
-            font-weight: bold;
-        }}
-        
-        QLabel#typ_ausgaben {{
-            color: {expense};
-            font-weight: bold;
-        }}
-        
-        QLabel#typ_ersparnisse {{
-            color: {savings};
-            font-weight: bold;
-        }}
-        
-        /* === NEGATIVE WERTE === */
-        QLabel#negativ {{
-            color: {negative};
-        }}
-        
-        /* === TOOLTIPS === */
-        QToolTip {{
-            background-color: {panel_bg};
-            color: {text};
-            border: 1px solid {border_color};
-            border-radius: 4px;
-            padding: 5px;
-        }}
-        """
-        
-        return qss
+        return stylesheet
     
-    def apply_theme(self, app: Optional[QApplication] = None, 
-                    profile_name: Optional[str] = None):
+    def apply_theme(self, app: Optional[QApplication] = None, profile_name: Optional[str] = None):
         """
-        Wendet ein Theme auf die Anwendung an.
+        Wende Theme auf Anwendung an
         
         Args:
-            app: QApplication Instanz (optional, wird automatisch geholt wenn None)
-            profile_name: Name des Profils (optional, verwendet aktuelles wenn None)
+            app: QApplication-Instanz (Standard: aktuelle App)
+            profile_name: Name des Profils (Standard: aktuelles Profil)
         """
         if app is None:
             app = QApplication.instance()
-            if app is None:
-                return
         
-        # Profil bestimmen
+        if app is None:
+            return
+        
         if profile_name:
-            profile = self.get_profile(profile_name)
-            if profile:
-                self.current_profile = profile_name
-        else:
-            profile = self.get_current_profile()
+            self.set_current_profile(profile_name)
         
-        # Stylesheet erstellen und anwenden
-        stylesheet = self.build_stylesheet(profile)
-        app.setStyleSheet(stylesheet)
-        
-        # Settings speichern
-        self._save_profiles()
+        profile = self.get_current_profile()
+        if profile:
+            stylesheet = self.build_stylesheet(profile)
+            app.setStyleSheet(stylesheet)
     
-    def apply_base_theme(self, app: Optional[QApplication] = None, 
-                         theme: str = "light"):
+    def get_type_colors(self, profile: Optional[ThemeProfile] = None) -> Dict[str, str]:
         """
-        Wendet ein Basis-Theme an (light/dark).
+        Hole Typ-Farben aus Profil für type_color_helper
         
         Args:
-            app: QApplication Instanz
-            theme: "light" oder "dark"
+            profile: Theme-Profil (Standard: aktuelles Profil)
+        
+        Returns:
+            Dictionary mit Typ-Namen und Hex-Farben
         """
-        if theme not in self._base_themes:
-            theme = "light"
+        if profile is None:
+            profile = self.get_current_profile()
+            if profile is None:
+                return {}
         
-        profile = self._base_themes[theme]
-        stylesheet = self.build_stylesheet(profile)
+        return {
+            "Einnahmen": profile.get("typ_einnahmen", "#2ecc71"),
+            "Ausgaben": profile.get("typ_ausgaben", "#e74c3c"),
+            "Ersparnisse": profile.get("typ_ersparnisse", "#3498db"),
+        }
+    
+    def get_negative_color(self, profile: Optional[ThemeProfile] = None) -> str:
+        """Hole Farbe für negative Zahlen"""
+        if profile is None:
+            profile = self.get_current_profile()
+            if profile is None:
+                return "#e74c3c"
         
-        if app is None:
-            app = QApplication.instance()
-            if app is None:
-                return
-        
-        app.setStyleSheet(stylesheet)
+        return profile.get("negativ_text", "#e74c3c")
     
     @staticmethod
     def _adjust_color(color: str, percent: int) -> str:
         """
-        Passt eine Farbe um einen Prozentsatz an (heller/dunkler).
+        Passe Helligkeit einer Farbe an
         
         Args:
-            color: Hex-Farbcode
-            percent: Prozent (+/-), positiv = heller, negativ = dunkler
+            color: Hex-Farbe (#RRGGBB)
+            percent: Prozent zur Anpassung (+/- 0-100)
         
         Returns:
-            Angepasster Hex-Farbcode
+            Angepasste Hex-Farbe
         """
         try:
-            qcolor = QColor(color)
-            h, s, v, a = qcolor.getHsvF()
+            color = color.lstrip('#')
+            r, g, b = int(color[0:2], 16), int(color[2:4], 16), int(color[4:6], 16)
             
-            # Value anpassen
-            v = max(0.0, min(1.0, v + (percent / 100.0)))
+            # Berechne Anpassung
+            adjustment = int(255 * (percent / 100))
             
-            qcolor.setHsvF(h, s, v, a)
-            return qcolor.name()
+            r = max(0, min(255, r + adjustment))
+            g = max(0, min(255, g + adjustment))
+            b = max(0, min(255, b + adjustment))
+            
+            return f"#{r:02X}{g:02X}{b:02X}"
         except:
             return color
     
     @staticmethod
     def get_predefined_profiles() -> List[str]:
-        """
-        Gibt die Namen aller vordefinierten Profile zurück.
-        
-        Returns:
-            Liste von Profilnamen
-        """
-        return list(ThemeManager._predefined_profiles.keys())
-    
-    def get_custom_profiles(self) -> List[str]:
-        """
-        Gibt die Namen aller benutzerdefinierten Profile zurück.
-        
-        Returns:
-            Liste von Profilnamen
-        """
-        return list(self.custom_profiles.keys())
+        """Hole Liste vordefinierter Profile"""
+        return list(ThemeManager.PREDEFINED_PROFILES.keys())
 
 
-# Hilfsfunktion für build_stylesheet (von appearance_profiles_dialog.py verwendet)
-def build_stylesheet(profile: Dict[str, Any]) -> str:
-    """
-    Erstellt ein Stylesheet aus einem Profil (für Kompatibilität).
-    
-    Args:
-        profile: Profil-Dictionary
-    
-    Returns:
-        QSS Stylesheet als String
-    """
-    manager = ThemeManager(None)
-    return manager.build_stylesheet(profile)
+# Singleton-Instanz
+_theme_manager_instance = None
 
 
-# Hilfsfunktionen für Kompatibilität mit altem Code
-def get_light_theme() -> str:
-    """Gibt das helle Basis-Theme zurück (Legacy)."""
-    manager = ThemeManager(None)
-    return manager.build_stylesheet(ThemeManager._base_themes["light"])
-
-
-def get_dark_theme() -> str:
-    """Gibt das dunkle Basis-Theme zurück (Legacy)."""
-    manager = ThemeManager(None)
-    return manager.build_stylesheet(ThemeManager._base_themes["dark"])
-
-
-def apply_theme(app: QApplication, theme: str) -> None:
-    """Wendet ein Basis-Theme an (Legacy)."""
-    manager = ThemeManager(None)
-    manager.apply_base_theme(app, theme)
+def get_theme_manager(settings=None) -> ThemeManager:
+    """Hole globale ThemeManager-Instanz"""
+    global _theme_manager_instance
+    if _theme_manager_instance is None and settings is not None:
+        _theme_manager_instance = ThemeManager(settings)
+    return _theme_manager_instance

@@ -43,6 +43,17 @@ def apply_tracking_type_colors(table, type_colors: dict[str, str], negative_colo
         if typ_item:
             typ_txt = typ_item.text().strip()
             col_hex = type_colors.get(typ_txt)
+            if not col_hex:
+                aliases = {
+                    "Einkommen": ["Einnahmen", "Income"],
+                    "Einnahmen": ["Einkommen", "Income"],
+                    "Ausgaben": ["Expenses", "Expense"],
+                    "Ersparnisse": ["Sparen", "Savings"],
+                }
+                for alt in aliases.get(typ_txt, []):
+                    col_hex = type_colors.get(alt)
+                    if col_hex:
+                        break
             if col_hex:
                 typ_item.setForeground(QBrush(QColor(col_hex)))
                 typ_item.setFont(typ_item.font())  # keep

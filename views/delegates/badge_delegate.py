@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt, QRect
 from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen, QBrush
-from PySide6.QtWidgets import QStyledItemDelegate
+from PySide6.QtWidgets import QStyledItemDelegate, QStyle
 
 
 def _ideal_text_color(bg: QColor) -> QColor:
@@ -39,6 +39,18 @@ class BadgeDelegate(QStyledItemDelegate):
 
         bg_hex = self.color_map.get(text)
         if not bg_hex:
+            # Fallback: verschiedene Bezeichnungen (Legacy/EN)
+            aliases = {
+                "Einkommen": ["Einnahmen", "Income"],
+                "Einnahmen": ["Einkommen", "Income"],
+                "Ausgaben": ["Expenses", "Expense"],
+                "Ersparnisse": ["Sparen", "Savings"],
+            }
+            for alt in aliases.get(text, []):
+                bg_hex = self.color_map.get(alt)
+                if bg_hex:
+                    break
+        if not bg_hex:
             super().paint(painter, option, index)
             return
 
@@ -53,7 +65,14 @@ class BadgeDelegate(QStyledItemDelegate):
         # Also erst default draw (ohne Text), dann Badge.
         # Trick: wir nutzen super, aber nullen Text durch Pen transparent nicht sauber -> daher minimal:
         # Wir füllen Selection selbst.
-        if option.state & option.State_Selected:
+        # PySide6: Selection-State hängt an QStyle (nicht am option-Objekt).
+        # (option.State_Selected existiert nicht → würde zu wiederholten Paint-Fehlern führen.)
+        selected_flag = (
+            QStyle.StateFlag.State_Selected
+            if hasattr(QStyle, "StateFlag")
+            else QStyle.State_Selected
+        )
+        if option.state & selected_flag:
             painter.fillRect(option.rect, option.palette.highlight())
 
         # Badge Größe abhängig vom Text

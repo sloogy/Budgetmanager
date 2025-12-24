@@ -131,6 +131,24 @@ class OverviewTab(QWidget):
         comparison = self._create_year_comparison_tab()
         self.tabs.addTab(comparison, "📅 Jahresvergleich")
 
+        # Sub-Tab Keys (für Menü: Ansicht → Anzeigen → Übersicht)
+        self._overview_subtabs = [
+            ("dashboard", "📊 Dashboard"),
+            ("compare", "📋 Budget vs. Tracking"),
+            ("timeline", "📈 Verlauf"),
+            ("ranking", "🏆 Top-Kategorien"),
+            ("forecast", "🔮 Prognose"),
+            ("year_comparison", "📅 Jahresvergleich"),
+        ]
+        self._overview_subtab_index = {
+            "dashboard": 0,
+            "compare": 1,
+            "timeline": 2,
+            "ranking": 3,
+            "forecast": 4,
+            "year_comparison": 5,
+        }
+
         # === HAUPTLAYOUT ===
         main_layout = QVBoxLayout()
         main_layout.addLayout(filter_layout)
@@ -218,7 +236,11 @@ class OverviewTab(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
-        
+        # Badge/Pillen Darstellung für Typ-Spalte
+        self._compare_badge_delegate = BadgeDelegate(self.table, color_map=self.settings.get("type_colors", {}))
+        self.table.setItemDelegateForColumn(0, self._compare_badge_delegate)
+        self.table.setColumnWidth(0, 120)
+
         # Info-Label
         info = QLabel("💡 Grün = unter Budget | Rot = über Budget | % = Ausnutzung des Budgets")
         info.setObjectName("info_label")
@@ -265,6 +287,11 @@ class OverviewTab(QWidget):
         self.last.setHorizontalHeaderLabels(["Datum","Typ","Kategorie","Betrag","Details"])
         self.last.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.last.setAlternatingRowColors(True)
+
+        # Badge/Pillen Darstellung für Typ-Spalte (Letzte Buchungen)
+        self._last_badge_delegate = BadgeDelegate(self.last, color_map=self.settings.get("type_colors", {}))
+        self.last.setItemDelegateForColumn(1, self._last_badge_delegate)
+        self.last.setColumnWidth(1, 120)
         
         layout.addWidget(self._box("🏆 Top 20 Kategorien (nach Betrag)", self.rank), 1)
         layout.addWidget(self._box("💎 Größte Einzeltransaktionen", self.last), 1)
@@ -320,6 +347,19 @@ class OverviewTab(QWidget):
         month = None if (month_idx == 0) else month_idx
         typ_filter = self.typ.currentText()
         typ = None if typ_filter == "Alle" else typ_filter
+
+        # Delegates (Typ-Badges) immer mit aktuellen Farben füttern
+        type_colors = self.settings.get("type_colors", {}) if hasattr(self, "settings") else {}
+        for attr in (
+            "_compare_badge_delegate",
+            "_rank_badge_delegate",
+            "_last_badge_delegate",
+            "_forecast_badge_delegate",
+            "_yearcmp_badge_delegate",
+        ):
+            d = getattr(self, attr, None)
+            if d is not None and hasattr(d, "set_colors"):
+                d.set_colors(type_colors)
 
         # Budget und Tracking Daten holen
         if year is None:
@@ -674,7 +714,11 @@ class OverviewTab(QWidget):
         ])
         self.forecast_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.forecast_table.setAlternatingRowColors(True)
-        
+        # Badge/Pillen Darstellung für Typ-Spalte
+        self._forecast_badge_delegate = BadgeDelegate(self.forecast_table, color_map=self.settings.get("type_colors", {}))
+        self.forecast_table.setItemDelegateForColumn(0, self._forecast_badge_delegate)
+        self.forecast_table.setColumnWidth(0, 120)
+
         layout.addWidget(self._box("📊 Jahresprognose", self.forecast_table))
         
         # Monats-Trend
@@ -726,7 +770,11 @@ class OverviewTab(QWidget):
         ])
         self.comparison_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.comparison_table.setAlternatingRowColors(True)
-        
+        # Badge/Pillen Darstellung für Typ-Spalte
+        self._yearcmp_badge_delegate = BadgeDelegate(self.comparison_table, color_map=self.settings.get("type_colors", {}))
+        self.comparison_table.setItemDelegateForColumn(0, self._yearcmp_badge_delegate)
+        self.comparison_table.setColumnWidth(0, 120)
+
         layout.addWidget(self._box("📊 Jahresvergleich", self.comparison_table))
         
         # Vergleichs-Chart
@@ -1003,3 +1051,54 @@ class OverviewTab(QWidget):
         
         view.setRenderHint(QPainter.Antialiasing)
         view.setChart(chart)
+
+    # -----------------------------------------------------------------
+    # Public API: Übersicht-Subtabs ein/ausblenden (MainWindow Menü)
+    # -----------------------------------------------------------------
+    def get_subtab_specs(self):
+        """Liste von (key, title) für alle Subtabs der Übersicht."""
+        return list(self._overview_subtabs)
+
+    def apply_subtab_visibility(self, visibility: dict[str, bool]) -> None:
+        """Wendet eine Visibility-Map auf die Subtabs an."""
+        for key, _title in self._overview_subtabs:
+            if key in visibility:
+                self.set_subtab_visible(key, bool(visibility[key]), ensure_one_visible=False)
+        self._ensure_one_subtab_visible()
+
+    def set_subtab_visible(self, key: str, visible: bool, ensure_one_visible: bool = True) -> None:
+        """Blendet einen Subtab ein/aus.
+
+        Nutzt QTabBar.setTabVisible (Qt6). Falls der aktuelle Tab ausgeblendet wird,
+        springt die Auswahl auf den ersten sichtbaren Tab.
+        """
+        idx = self._overview_subtab_index.get(key)
+        if idx is None:
+            return
+        self.tabs.tabBar().setTabVisible(idx, visible)
+
+        # Wenn aktueller Tab unsichtbar wurde → auf ersten sichtbaren wechseln
+        cur = self.tabs.currentIndex()
+        if not self.tabs.tabBar().isTabVisible(cur):
+            for i in range(self.tabs.count()):
+                if self.tabs.tabBar().isTabVisible(i):
+                    self.tabs.setCurrentIndex(i)
+                    break
+
+        if ensure_one_visible:
+            self._ensure_one_subtab_visible()
+
+    def is_subtab_visible(self, key: str) -> bool:
+        idx = self._overview_subtab_index.get(key)
+        if idx is None:
+            return False
+        return bool(self.tabs.tabBar().isTabVisible(idx))
+
+    def _ensure_one_subtab_visible(self) -> None:
+        """Sicherstellt, dass mindestens ein Subtab sichtbar ist."""
+        any_visible = any(self.tabs.tabBar().isTabVisible(i) for i in range(self.tabs.count()))
+        if any_visible:
+            return
+        # Fallback: Dashboard wieder einblenden
+        self.tabs.tabBar().setTabVisible(0, True)
+        self.tabs.setCurrentIndex(0)

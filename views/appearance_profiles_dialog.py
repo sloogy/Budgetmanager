@@ -179,13 +179,15 @@ def build_stylesheet(p: Dict[str, Any]) -> str:
     }}
 
 
-    /* Optional: Panels gezielt anders färben (mehr App-Feeling) */
-    QWidget[role="sidebar_panel"] {
+    /* Optional: Panels gezielt anders färben (mehr App-Feeling)
+       WICHTIG: In f-Strings müssen "{" und "}" als "{{" und "}}" geschrieben werden,
+       sonst versucht Python den Inhalt als Ausdruck zu interpretieren. */
+    QWidget[role="sidebar_panel"] {{
         background-color: {sidebar_panel_bg};
-    }
-    QWidget[role="filter_panel"] {
+    }}
+    QWidget[role="filter_panel"] {{
         background-color: {filter_panel_bg};
-    }
+    }}
     
     /* Tooltips */
     QToolTip {{
@@ -687,9 +689,13 @@ class AppearanceProfilesDialog(QDialog):
 
         # Damit Tabellen (Tracking) neu einfärben können, legen wir Farben global ab
         self.settings.set("type_colors", {
-            "Einnahmen": self._profiles[name]["typ_einnahmen"],
+            "Einkommen": self._profiles[name]["typ_einnahmen"],
+            "Einnahmen": self._profiles[name]["typ_einnahmen"],  # Alias (Legacy)
+            "Income": self._profiles[name]["typ_einnahmen"],     # optional
             "Ausgaben": self._profiles[name]["typ_ausgaben"],
+            "Expenses": self._profiles[name]["typ_ausgaben"],    # optional
             "Ersparnisse": self._profiles[name]["typ_ersparnisse"],
+            "Savings": self._profiles[name]["typ_ersparnisse"],  # optional
         })
         self.settings.set("negative_color", self._profiles[name]["negativ_text"])
 

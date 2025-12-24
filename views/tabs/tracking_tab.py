@@ -341,9 +341,36 @@ class TrackingTab(QWidget):
             f"Saldo: {format_chf(saldo)} CHF"
         )
         self.lbl_summary.setText(summary_text)
-        # Typ- und Negativfarben anwenden (Erscheinungsprofil)
-        type_colors = self.settings.get('type_colors', {}) if hasattr(self, 'settings') else {}
-        negative_color = self.settings.get('negative_color', None) if hasattr(self, 'settings') else None
+        # Typ- und Negativfarben anwenden (vom Theme Manager holen)
+        type_colors = {}
+        negative_color = None
+        try:
+            # Hole MainWindow reference
+            main_window = self
+            while main_window.parent() is not None:
+                main_window = main_window.parent()
+            
+            # Hole Farben vom Theme Manager
+            if hasattr(main_window, 'theme_manager'):
+                type_colors = main_window.theme_manager.get_type_colors()
+                negative_color = main_window.theme_manager.get_negative_color()
+            else:
+                # Fallback auf Standard-Farben
+                type_colors = {
+                    "Einnahmen": "#2ecc71",
+                    "Ausgaben": "#e74c3c",
+                    "Ersparnisse": "#3498db",
+                }
+                negative_color = "#e74c3c"
+        except Exception as e:
+            # Fallback bei Fehler
+            type_colors = {
+                "Einnahmen": "#2ecc71",
+                "Ausgaben": "#e74c3c",
+                "Ersparnisse": "#3498db",
+            }
+            negative_color = "#e74c3c"
+        
         try:
             apply_tracking_type_colors(self.table, type_colors, negative_color)
             if hasattr(self, '_badge_delegate') and self._badge_delegate is not None:

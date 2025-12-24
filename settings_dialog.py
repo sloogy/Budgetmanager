@@ -332,7 +332,7 @@ class SettingsDialog(QDialog):
     
     def _open_profile_manager(self) -> None:
         """Öffnet den Profil-Manager Dialog."""
-        dlg = AppearanceProfilesDialog(self.settings, self)
+        dlg = AppearanceProfilesDialog(parent=self, settings=self.settings)
         if dlg.exec():
             # Profile wurden evtl. geändert, Theme Manager neu laden und Dropdown aktualisieren
             self.theme_manager._load_profiles()
