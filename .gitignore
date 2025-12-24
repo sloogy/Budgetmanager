@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+*.so
+
+# Virtualenv
+.venv/
+venv/
+env/
+
+# Builds / installer output
+build/
+dist/
+*.spec
+*.exe
+*.msi
+*.whl
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# App data (wichtig!)
+*.db
+budgetmanager_settings.json
+
+# Qt/PySide cache (falls vorhanden)
+*.qmlc
+*.qrc
