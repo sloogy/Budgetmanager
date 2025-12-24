@@ -334,14 +334,14 @@ class SettingsDialog(QDialog):
         """Öffnet den Profil-Manager Dialog."""
         dlg = AppearanceProfilesDialog(parent=self, settings=self.settings)
         if dlg.exec():
-            # Profile wurden evtl. geändert, Theme Manager neu laden und Dropdown aktualisieren
-            self.theme_manager._load_profiles()
+            # Profile wurden evtl. geändert, Dropdown aktualisieren
+            # (Theme Manager lädt Profile automatisch beim Abruf)
             self._load_design_profiles()
     
     def _preview_theme(self, text: str) -> None:
-        # Vorschau: StyleSheet auf QApplication anwenden
-        theme = "dark" if text == "Dunkel" else "light"
-        self.theme_manager.apply_base_theme(theme=theme)
+        # Vorschau: Theme anwenden
+        profile_name = "Standard Dunkel" if text == "Dunkel" else "Standard Hell"
+        self.theme_manager.apply_theme(profile_name=profile_name)
 
     def _choose_db(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
@@ -373,7 +373,10 @@ class SettingsDialog(QDialog):
         if all_profiles:
             # Sortiere Profile: Vordefiniert zuerst, dann benutzerdefiniert
             predefined = ThemeManager.get_predefined_profiles()
-            custom = self.theme_manager.get_custom_profiles()
+            all_profile_names = self.theme_manager.get_all_profiles()
+            
+            # Benutzerdefinierte Profile = alle Profile minus vordefinierte
+            custom = [p for p in all_profile_names if p not in predefined]
             
             # Vordefinierte hinzufügen
             if predefined:
@@ -396,9 +399,10 @@ class SettingsDialog(QDialog):
         self.cmb_design_profile.setEnabled(True)
         
         # Aktives Profil auswählen
-        current = self.theme_manager.current_profile
-        if current:
-            index = self.cmb_design_profile.findText(current)
+        current_profile = self.theme_manager.get_current_profile()
+        if current_profile:
+            current_name = current_profile.name
+            index = self.cmb_design_profile.findText(current_name)
             if index >= 0:
                 self.cmb_design_profile.setCurrentIndex(index)
         

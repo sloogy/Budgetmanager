@@ -435,8 +435,7 @@ class MainWindow(QMainWindow):
             # Auf Tabs anwenden
             self._apply_settings_to_tabs()
             
-            # Theme Manager Profile neu laden und Theme anwenden
-            self.theme_manager._load_profiles()
+            # Theme anwenden (Profile werden automatisch geladen)
             self._apply_theme()
             
             if theme_changed:
