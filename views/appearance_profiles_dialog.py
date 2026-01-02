@@ -253,8 +253,11 @@ class AppearanceProfilesDialog(QDialog):
         row_io = QHBoxLayout()
         self.btn_export = QPushButton("Export…")
         self.btn_import = QPushButton("Import…")
+        self.btn_reset = QPushButton("Auf Standard zurücksetzen")
+        self.btn_reset.setToolTip("Setzt ein Standard-Theme auf die Originalwerte zurück")
         row_io.addWidget(self.btn_export)
         row_io.addWidget(self.btn_import)
+        row_io.addWidget(self.btn_reset)
         left.addLayout(row_io)
 
         self.cb_auto_apply = QCheckBox("Änderungen sofort anwenden")
@@ -351,6 +354,7 @@ class AppearanceProfilesDialog(QDialog):
         self.btn_apply.clicked.connect(self._apply_profile)
         self.btn_export.clicked.connect(self._export_profile)
         self.btn_import.clicked.connect(self._import_profile)
+        self.btn_reset.clicked.connect(self._reset_to_default)
 
         self.le_profile_name.textEdited.connect(self._on_editor_changed)
         self.cmb_mode.currentTextChanged.connect(self._on_editor_changed)
@@ -579,7 +583,16 @@ class AppearanceProfilesDialog(QDialog):
             val = p.get(key, _default_profile().get(key))
             _set_color_preview(preview, val)
 
-        self.lbl_title.setText(f"Profil bearbeiten: {name}")
+        # Prüfe ob es ein Standard-Theme ist
+        from theme_manager import ThemeManager
+        is_predefined = name in ['Standard Hell', 'Standard Dunkel', 'Solarized Hell', 'Solarized Dunkel', 'Nord Dunkel', 'Dracula Dunkel']
+        
+        if is_predefined:
+            self.lbl_title.setText(f"Profil bearbeiten: {name} (Standard-Theme - Änderungen werden gespeichert)")
+            self.le_profile_name.setEnabled(False)  # Name nicht änderbar für Standard-Themes
+        else:
+            self.lbl_title.setText(f"Profil bearbeiten: {name}")
+            self.le_profile_name.setEnabled(True)
 
     def _read_editor_to_profile(self) -> Dict[str, Any]:
         name = self._current_name()
@@ -597,9 +610,15 @@ class AppearanceProfilesDialog(QDialog):
         name = self._current_name()
         if not name:
             return
-        # Profil live speichern
+        
+        # Prüfe ob Standard-Theme
+        from theme_manager import ThemeManager
+        is_predefined = name in ['Standard Hell', 'Standard Dunkel', 'Solarized Hell', 'Solarized Dunkel', 'Nord Dunkel', 'Dracula Dunkel']
+        
+        # Profil speichern (auch für Standard-Themes erlaubt - wird in JSON gespeichert)
         self._profiles[name] = self._read_editor_to_profile()
         self._save_to_settings()
+        
         if self.cb_auto_apply.isChecked():
             self._active_name = name
             self._apply_profile()
@@ -738,6 +757,54 @@ class AppearanceProfilesDialog(QDialog):
             QMessageBox.information(self, "Import", f"Profil „{name}“ wurde importiert.")
         except Exception as e:
             QMessageBox.critical(self, "Fehler", f"Import fehlgeschlagen:\n{e}")
+
+    def _reset_to_default(self) -> None:
+        """Setzt ein Standard-Theme auf die Originalwerte zurück"""
+        name = self._current_name()
+        if not name:
+            return
+        
+        # Prüfe ob es ein Standard-Theme ist
+        from theme_manager import ThemeManager
+        is_predefined = name in ['Standard Hell', 'Standard Dunkel', 'Solarized Hell', 'Solarized Dunkel', 'Nord Dunkel', 'Dracula Dunkel']
+        
+        if not is_predefined:
+            QMessageBox.information(
+                self, "Hinweis",
+                f"'{name}' ist kein Standard-Theme.\n\n"
+                "Diese Funktion ist nur für Standard-Themes verfügbar."
+            )
+            return
+        
+        # Bestätigung
+        reply = QMessageBox.question(
+            self, "Auf Standard zurücksetzen?",
+            f"Möchten Sie das Theme '{name}' wirklich auf die Standardwerte zurücksetzen?\n\n"
+            "Alle Ihre Änderungen an diesem Theme gehen verloren!",
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No
+        )
+        
+        if reply != QMessageBox.Yes:
+            return
+        
+        # Originale Werte aus PREDEFINED_PROFILES holen
+        original = self.theme_manager.get_profile(name).to_dict() if self.theme_manager.get_profile(name) else {}
+        if not original:
+            QMessageBox.warning(self, "Fehler", f"Konnte Original-Daten für '{name}' nicht finden.")
+            return
+        
+        # Profil zurücksetzen
+        self._profiles[name] = dict(original)
+        self._save_to_settings()
+        
+        # Editor aktualisieren
+        self._load_profile_to_editor(name)
+        
+        QMessageBox.information(
+            self, "Zurückgesetzt",
+            f"Theme '{name}' wurde auf die Standardwerte zurückgesetzt."
+        )
 
     # ---------------- Helpers ----------------
     def _pick_color(self, key: str) -> None:

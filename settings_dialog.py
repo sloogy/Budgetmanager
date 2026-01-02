@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from theme_manager import ThemeManager
-from views.appearance_profiles_dialog import AppearanceProfilesDialog
+from views.theme_editor_dialog import ThemeEditorDialog
 
 
 class SettingsDialog(QDialog):
@@ -312,6 +312,11 @@ class SettingsDialog(QDialog):
             self._apply()
 
     def _on_ok(self) -> None:
+        # Speichere aktuelles Profil in Settings
+        profile_name = self.cmb_design_profile.currentText()
+        if profile_name and not profile_name.startswith('---') and profile_name != '(Keine Profile vorhanden)':
+            # Speichere ausgewähltes Profil
+            self.settings.set("active_design_profile", profile_name)
         self._apply()
         self.accept()
 
@@ -331,11 +336,10 @@ class SettingsDialog(QDialog):
         self.theme_manager.apply_theme(profile_name=profile_name)
     
     def _open_profile_manager(self) -> None:
-        """Öffnet den Profil-Manager Dialog."""
-        dlg = AppearanceProfilesDialog(parent=self, settings=self.settings)
+        """Öffnet den Theme-Editor Dialog."""
+        dlg = ThemeEditorDialog(self.settings, self.theme_manager, self)
         if dlg.exec():
             # Profile wurden evtl. geändert, Dropdown aktualisieren
-            # (Theme Manager lädt Profile automatisch beim Abruf)
             self._load_design_profiles()
     
     def _preview_theme(self, text: str) -> None:
@@ -371,23 +375,48 @@ class SettingsDialog(QDialog):
         self.cmb_design_profile.clear()
         
         if all_profiles:
-            # Sortiere Profile: Vordefiniert zuerst, dann benutzerdefiniert
-            predefined = ThemeManager.get_predefined_profiles()
+            # Hole alle Profile
             all_profile_names = self.theme_manager.get_all_profiles()
             
-            # Benutzerdefinierte Profile = alle Profile minus vordefinierte
+            # Vordefinierte = Standard-Themes (erkennbar am Namen)
+            predefined = [p for p in all_profile_names if p.startswith("Standard") or 
+                         p.startswith("Solarized") or p.startswith("Nord") or 
+                         p.startswith("Dracula") or p.startswith("Gruvbox") or
+                         p.startswith("Monokai")]
+            
+            # Benutzerdefinierte = Rest
             custom = [p for p in all_profile_names if p not in predefined]
             
             # Vordefinierte hinzufügen
             if predefined:
+                # Überschrift
                 self.cmb_design_profile.addItem("--- Vordefinierte Profile ---")
+                # Letzten Index merken (Überschrift)
+                header_index = self.cmb_design_profile.count() - 1
+                # Überschrift deaktivieren (nicht auswählbar)
+                item_model = self.cmb_design_profile.model()
+                item = item_model.item(header_index)
+                if item:
+                    item.setEnabled(False)
+                    item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
+                
                 for name in predefined:
                     self.cmb_design_profile.addItem(name)
             
             # Benutzerdefinierte hinzufügen
             if custom:
                 if predefined:
+                    # Überschrift
                     self.cmb_design_profile.addItem("--- Eigene Profile ---")
+                    # Letzten Index merken (Überschrift)
+                    header_index = self.cmb_design_profile.count() - 1
+                    # Überschrift deaktivieren (nicht auswählbar)
+                    item_model = self.cmb_design_profile.model()
+                    item = item_model.item(header_index)
+                    if item:
+                        item.setEnabled(False)
+                        item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
+                
                 for name in custom:
                     self.cmb_design_profile.addItem(name)
         else:
@@ -398,12 +427,19 @@ class SettingsDialog(QDialog):
         
         self.cmb_design_profile.setEnabled(True)
         
-        # Aktives Profil auswählen
-        current_profile = self.theme_manager.get_current_profile()
-        if current_profile:
-            current_name = current_profile.name
-            index = self.cmb_design_profile.findText(current_name)
+        # Aktives Profil aus Settings laden
+        saved_profile = self.settings.get("active_design_profile")
+        if saved_profile:
+            index = self.cmb_design_profile.findText(saved_profile)
             if index >= 0:
                 self.cmb_design_profile.setCurrentIndex(index)
+        else:
+            # Fallback: aktuelles Profil aus Theme Manager
+            current_profile = self.theme_manager.get_current_profile()
+            if current_profile:
+                current_name = current_profile.name
+                index = self.cmb_design_profile.findText(current_name)
+                if index >= 0:
+                    self.cmb_design_profile.setCurrentIndex(index)
         
         self.cmb_design_profile.blockSignals(False)
