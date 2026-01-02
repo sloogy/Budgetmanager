@@ -1,4 +1,4 @@
-# Budgetmanager v0.16.0
+# Budgetmanager v0.20.02
 
 Ein umfassender Budgetmanager mit erweiterten Features zur Verwaltung von Finanzen.
 
