@@ -13,7 +13,7 @@ from model.category_model import CategoryModel
 from views.tabs.tracking_tab import TrackingTab
 from views.tabs.categories_tab import CategoriesTab
 from views.tabs.budget_tab import BudgetTab
-from views.tabs.overview_tab import OverviewTab
+from views.tabs.overview_tab import OverviewTab  # Original-Version (stabil)
 from settings import Settings
 from theme_manager import ThemeManager
 from settings_dialog import SettingsDialog
