@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (
     QCheckBox, QComboBox, QSpinBox, QPushButton, QLineEdit,
     QFileDialog, QMessageBox, QWidget, QApplication
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSignalBlocker
 from theme_manager import ThemeManager
 from views.theme_editor_dialog import ThemeEditorDialog
 
@@ -29,6 +29,13 @@ class SettingsDialog(QDialog):
         
         # Theme Manager initialisieren
         self.theme_manager = ThemeManager(settings)
+
+        # Merker: wurde bereits "Anwenden" gedrückt?
+        # Wenn ja, soll "OK" nur noch schliessen (User-Wunsch).
+        self._applied_once = False
+        self._last_mode = None  # "hell" oder "dunkel" (für Filter-Logik)
+        self._last_selected_by_mode: dict[str, str] = {}
+        self._last_mode = None  # "hell" | "dunkel"
 
         self.setWindowTitle("Einstellungen")
         self.setMinimumSize(860, 560)
@@ -72,6 +79,14 @@ class SettingsDialog(QDialog):
         self.bb = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Apply | QDialogButtonBox.Cancel
         )
+
+        # Deutsche Button-Texte (Qt übersetzt nicht immer zuverlässig)
+        try:
+            self.bb.button(QDialogButtonBox.Ok).setText("OK")
+            self.bb.button(QDialogButtonBox.Apply).setText("Anwenden")
+            self.bb.button(QDialogButtonBox.Cancel).setText("Abbrechen")
+        except Exception:
+            pass
         self.bb.accepted.connect(self._on_ok)
         self.bb.rejected.connect(self.reject)
         self.bb.clicked.connect(self._on_button_clicked)
@@ -84,9 +99,13 @@ class SettingsDialog(QDialog):
         self.cb_auto_backup.toggled.connect(self.sb_backup_days.setEnabled)
         self.sb_backup_days.setEnabled(self.cb_auto_backup.isChecked())
 
-        # Sofort-Vorschau Theme (optional, aber nice)
+        # Sofort-Vorschau Designprofil
         self.cmb_design_profile.currentTextChanged.connect(self._preview_profile)
+        self.sb_fontsize.valueChanged.connect(self._on_fontsize_changed)
         self.btn_open_profiles.clicked.connect(self._open_profile_manager)
+
+        # Hell/Dunkel = Filter für Profil-Dropdown
+        self.cmb_theme.currentTextChanged.connect(self._on_mode_changed)
 
     # ---------------------------------------------------------------------
     # Seitenbau
@@ -154,7 +173,34 @@ class SettingsDialog(QDialog):
         self.cmb_recent_days = QComboBox()
         self.cmb_recent_days.addItems(["14", "30"])
         fl.addRow("Schnellfilter „nur letzte … Tage“", self.cmb_recent_days)
+        self.sb_recurring_preferred_day = QSpinBox()
+        self.sb_recurring_preferred_day.setRange(1, 31)
+        self.sb_recurring_preferred_day.setSuffix(". Tag")
+        self.sb_recurring_preferred_day.setToolTip("Wird als Standard beim Anlegen neuer wiederkehrender Transaktionen verwendet.")
+        fl.addRow("Bevorzugter Monatstag für wiederkehrende Buchungen", self.sb_recurring_preferred_day)
         lay.addWidget(gb_tracking)
+
+        # Experten-Einstellungen
+        gb_expert = QGroupBox("Experten-Modus")
+        vb_expert = QVBoxLayout(gb_expert)
+        
+        self.cb_show_categories_tab = QCheckBox("Separaten Kategorien-Tab anzeigen")
+        self.cb_show_categories_tab.setToolTip(
+            "Aktiviert den separaten Kategorien-Tab für erweiterte Kategorie-Verwaltung.\n\n"
+            "Standard: Deaktiviert – Kategorien werden direkt im Budget-Dialog erstellt und verwaltet.\n"
+            "Der separate Tab ist nützlich für Massenbearbeitung, Filter und erweiterte Optionen.\n\n"
+            "Änderung erfordert Neustart der Anwendung."
+        )
+        vb_expert.addWidget(self.cb_show_categories_tab)
+        
+        hint = QLabel(
+            "<small><i>Hinweis: Kategorien können auch direkt im Budget-Dialog über das ⚙-Menü "
+            "erstellt und bearbeitet werden.</i></small>"
+        )
+        hint.setWordWrap(True)
+        vb_expert.addWidget(hint)
+        
+        lay.addWidget(gb_expert)
 
         lay.addStretch(1)
         return w
@@ -178,6 +224,13 @@ class SettingsDialog(QDialog):
         profile_layout.addWidget(self.cmb_design_profile, 1)
         profile_layout.addWidget(self.btn_open_profiles)
         fl.addRow("Design-Profil", profile_layout)
+
+        # Schriftgröße (pro Profil)
+        self.sb_fontsize = QSpinBox()
+        self.sb_fontsize.setRange(8, 16)
+        self.sb_fontsize.setSingleStep(1)
+        self.sb_fontsize.setValue(10)
+        fl.addRow("Schriftgröße", self.sb_fontsize)
         
         lay.addWidget(gb_theme)
 
@@ -259,13 +312,24 @@ class SettingsDialog(QDialog):
         self.cb_auto_save.setChecked(bool(self.settings.auto_save))
         self.cb_ask_due.setChecked(bool(self.settings.ask_due))
         self.cmb_recent_days.setCurrentText(str(self.settings.recent_days))
+        self.sb_recurring_preferred_day.setValue(int(self.settings.get("recurring_preferred_day", getattr(self.settings, "recurring_preferred_day", 1)) or 1))
 
         # Zusätzliche Warnungen (neue Keys)
         self.cb_warn_delete.setChecked(bool(self.settings.get("warn_delete", True)))
         self.cb_warn_budget_overrun.setChecked(bool(self.settings.get("warn_budget_overrun", True)))
 
+        # Experten-Modus
+        self.cb_show_categories_tab.setChecked(bool(self.settings.get("show_categories_tab", False)))
+
         # Darstellung
         theme = (self.settings.theme or "light").lower()
+        # Hell/Dunkel Dropdown auf Settings spiegeln
+        blocker = QSignalBlocker(self.cmb_theme)
+        self.cmb_theme.setCurrentText("Dunkel" if theme == "dark" else "Hell")
+        del blocker
+
+        # Profil-Dropdown anhand Hell/Dunkel filtern
+        self._last_mode = self._current_mode()
         self._load_design_profiles()
         self.cmb_density.setCurrentText(str(self.settings.get("table_density", "Normal")))
         self.cb_highlight_fixcosts.setChecked(bool(self.settings.get("highlight_fixcosts", True)))
@@ -288,6 +352,7 @@ class SettingsDialog(QDialog):
             "ask_due": self.cb_ask_due.isChecked(),
             "refresh_on_start": self.cb_refresh_on_start.isChecked(),
             "recent_days": int(self.cmb_recent_days.currentText()),
+            "recurring_preferred_day": int(self.sb_recurring_preferred_day.value()),
 
             # Zusätzliche neue Keys (optional später im MainWindow übernehmen):
             "show_onboarding": self.cb_show_onboarding.isChecked(),
@@ -301,6 +366,8 @@ class SettingsDialog(QDialog):
             "database_path": self.le_db_path.text().strip(),
             "auto_backup": self.cb_auto_backup.isChecked(),
             "backup_days": int(self.sb_backup_days.value()),
+            # Experten-Modus
+            "show_categories_tab": self.cb_show_categories_tab.isChecked(),
         }
 
     # ---------------------------------------------------------------------
@@ -308,32 +375,57 @@ class SettingsDialog(QDialog):
     # ---------------------------------------------------------------------
     def _on_button_clicked(self, btn) -> None:
         role = self.bb.buttonRole(btn)
-        if role.name == "ApplyRole":
+        if role == QDialogButtonBox.ApplyRole:
             self._apply()
 
     def _on_ok(self) -> None:
-        # Speichere aktuelles Profil in Settings
-        profile_name = self.cmb_design_profile.currentText()
-        if profile_name and not profile_name.startswith('---') and profile_name != '(Keine Profile vorhanden)':
-            # Speichere ausgewähltes Profil
-            self.settings.set("active_design_profile", profile_name)
-        self._apply()
+        # OK soll (wenn vorher schon "Anwenden" gedrückt wurde) nur noch schliessen.
+        # Trotzdem persistieren wir die Auswahl, damit MainWindow nach Dialogschluss korrekt lädt.
+        self._persist_design_selection()
+        try:
+            self._apply_fontsize_to_profile(self.cmb_design_profile.currentText(), int(self.sb_fontsize.value()))
+        except Exception:
+            pass
+        if not self._applied_once:
+            self._apply()
         self.accept()
 
     def _apply(self) -> None:
-        # Theme anwenden
-        profile_name = self.cmb_design_profile.currentText()
-        if profile_name and not profile_name.startswith('---') and profile_name != '(Keine Profile vorhanden)':
+        # Theme anwenden + persistieren
+        self._persist_design_selection()
+        # Schriftgröße ins Profil schreiben
+        try:
+            self._apply_fontsize_to_profile(self.cmb_design_profile.currentText(), int(self.sb_fontsize.value()))
+        except Exception:
+            pass
+        profile_name = self.cmb_design_profile.currentText().strip()
+        if profile_name and profile_name not in ('(Keine Profile vorhanden)', '(Keine passenden Profile)'):
             self.theme_manager.apply_theme(profile_name=profile_name)
+            self._applied_once = True
 
     def _preview_profile(self, profile_name: str) -> None:
         """Vorschau des ausgewählten Design-Profils."""
-        # Überschriften-Items ignorieren
-        if profile_name.startswith('---') or profile_name == '(Keine Profile vorhanden)':
+        profile_name = (profile_name or "").strip()
+        if not profile_name or profile_name in ('(Keine Profile vorhanden)', '(Keine passenden Profile)'):
             return
-        
-        # Profil anwenden
-        self.theme_manager.apply_theme(profile_name=profile_name)
+
+        # Vorschau: Stylesheet direkt setzen, OHNE Settings zu überschreiben
+        # Merke Auswahl pro Modus (damit Hell/Dunkel-Wechsel sofort "letztes" Profil nimmt)
+        try:
+            self._last_selected_by_mode[self._current_mode()] = profile_name
+        except Exception:
+            pass
+
+        app = QApplication.instance()
+        prof = self.theme_manager.get_profile(profile_name)
+        if app and prof:
+            try:
+                b = QSignalBlocker(self.sb_fontsize)
+                self.sb_fontsize.setValue(int(prof.get('schriftgroesse', 10) or 10))
+                del b
+            except Exception:
+                pass
+            app.setStyleSheet(self.theme_manager.build_stylesheet(prof))
     
     def _open_profile_manager(self) -> None:
         """Öffnet den Theme-Editor Dialog."""
@@ -363,83 +455,104 @@ class SettingsDialog(QDialog):
             "Sicherung",
             "Platzhalter: Hier kannst du später die Datenbank sichern (z. B. DB kopieren/zippen).",
         )
+
+    # -----------------------------------------------------------------
+    # Design/Theme-Logik
+    # -----------------------------------------------------------------
+    def _current_mode(self) -> str:
+        """"hell" oder "dunkel" basierend auf dem UI-Dropdown."""
+        return "dunkel" if self.cmb_theme.currentText() == "Dunkel" else "hell"
+
+    def _on_fontsize_changed(self, _val: int) -> None:
+        # Live-Vorschau: aktuelle Auswahl + Fontsize
+        self._preview_profile(self.cmb_design_profile.currentText())
+
+    def _apply_fontsize_to_profile(self, profile_name: str, font_size: int) -> None:
+        """Speichert Schriftgröße direkt im Profil-JSON (damit alle Widgets davon profitieren)."""
+        profile_name = (profile_name or "").strip()
+        if not profile_name or profile_name in ("(Keine Profile vorhanden)", "(Keine passenden Profile)"):
+            return
+        prof = self.theme_manager.get_profile(profile_name)
+        if not prof:
+            return
+        data = prof.to_dict()
+        data["schriftgroesse"] = int(font_size)
+        self.theme_manager.update_profile(profile_name, data)
+
+    def _persist_design_selection(self) -> None:
+        """Persistiert Hell/Dunkel + aktives Profil + letztes Profil pro Modus."""
+        mode = self._current_mode()
+        theme_value = "dark" if mode == "dunkel" else "light"
+
+        # 1) Theme-Key für Rückwärtskompatibilität
+        try:
+            self.settings.theme = theme_value
+        except Exception:
+            self.settings.set("theme", theme_value)
+
+        # 2) Profil
+        profile_name = (self.cmb_design_profile.currentText() or "").strip()
+        if not profile_name or profile_name in ("(Keine Profile vorhanden)", "(Keine passenden Profile)"):
+            return
+
+        self.settings.set("active_design_profile", profile_name)
+        self.settings.set(f"last_design_profile_{mode}", profile_name)
+
+    def _on_mode_changed(self, _text: str) -> None:
+        """Hell/Dunkel wurde umgestellt → Dropdown neu füllen + zuletzt genutztes Profil wählen."""
+        # Merke neuen Modus
+        self._last_mode = self._current_mode()
+        self._load_design_profiles()
+        # Live-Vorschau mit neuem Profil
+        self._preview_profile(self.cmb_design_profile.currentText())
+
     def _load_design_profiles(self) -> None:
-        """Lädt alle Designprofile aus den Settings in das Dropdown."""
-        if not hasattr(self, 'cmb_design_profile'):
+        """Lädt Design-Profile in ein *einzelnes* Dropdown und filtert per Hell/Dunkel."""
+        if not hasattr(self, "cmb_design_profile"):
             return
-        
-        # Profile vom Theme Manager holen
-        all_profiles = self.theme_manager.get_all_profiles()
-        
-        self.cmb_design_profile.blockSignals(True)
+
+        mode = self._current_mode()  # "hell" oder "dunkel"
+        all_names = self.theme_manager.get_all_profiles() or []
+
+        # Filtern nach Modus
+        filtered: list[str] = []
+        for name in all_names:
+            prof = self.theme_manager.get_profile(name)
+            if not prof:
+                continue
+            if str(prof.get("modus", "hell")).strip().lower() == mode:
+                filtered.append(name)
+
+        filtered.sort(key=lambda s: s.casefold())
+
+        blocker = QSignalBlocker(self.cmb_design_profile)
         self.cmb_design_profile.clear()
-        
-        if all_profiles:
-            # Hole alle Profile
-            all_profile_names = self.theme_manager.get_all_profiles()
-            
-            # Vordefinierte = Standard-Themes (erkennbar am Namen)
-            predefined = [p for p in all_profile_names if p.startswith("Standard") or 
-                         p.startswith("Solarized") or p.startswith("Nord") or 
-                         p.startswith("Dracula") or p.startswith("Gruvbox") or
-                         p.startswith("Monokai")]
-            
-            # Benutzerdefinierte = Rest
-            custom = [p for p in all_profile_names if p not in predefined]
-            
-            # Vordefinierte hinzufügen
-            if predefined:
-                # Überschrift
-                self.cmb_design_profile.addItem("--- Vordefinierte Profile ---")
-                # Letzten Index merken (Überschrift)
-                header_index = self.cmb_design_profile.count() - 1
-                # Überschrift deaktivieren (nicht auswählbar)
-                item_model = self.cmb_design_profile.model()
-                item = item_model.item(header_index)
-                if item:
-                    item.setEnabled(False)
-                    item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
-                
-                for name in predefined:
-                    self.cmb_design_profile.addItem(name)
-            
-            # Benutzerdefinierte hinzufügen
-            if custom:
-                if predefined:
-                    # Überschrift
-                    self.cmb_design_profile.addItem("--- Eigene Profile ---")
-                    # Letzten Index merken (Überschrift)
-                    header_index = self.cmb_design_profile.count() - 1
-                    # Überschrift deaktivieren (nicht auswählbar)
-                    item_model = self.cmb_design_profile.model()
-                    item = item_model.item(header_index)
-                    if item:
-                        item.setEnabled(False)
-                        item.setFlags(item.flags() & ~Qt.ItemIsSelectable)
-                
-                for name in custom:
-                    self.cmb_design_profile.addItem(name)
-        else:
-            self.cmb_design_profile.addItem('(Keine Profile vorhanden)')
+
+        if not filtered:
+            self.cmb_design_profile.addItem("(Keine passenden Profile)")
             self.cmb_design_profile.setEnabled(False)
-            self.cmb_design_profile.blockSignals(False)
+            del blocker
             return
-        
+
+        self.cmb_design_profile.addItems(filtered)
         self.cmb_design_profile.setEnabled(True)
-        
-        # Aktives Profil aus Settings laden
-        saved_profile = self.settings.get("active_design_profile")
-        if saved_profile:
-            index = self.cmb_design_profile.findText(saved_profile)
-            if index >= 0:
-                self.cmb_design_profile.setCurrentIndex(index)
+
+        # Auswahl: 1) aktives Profil, 2) letztes Profil pro Modus, 3) Standard
+        active = (self.settings.get("active_design_profile") or "").strip()
+        last = (self._last_selected_by_mode.get(mode) or self.settings.get(f"last_design_profile_{mode}") or "").strip()
+        fallback = "Standard Dunkel" if mode == "dunkel" else "Standard Hell"
+
+        if active in filtered:
+            pick = active
+        elif last in filtered:
+            pick = last
+        elif fallback in filtered:
+            pick = fallback
         else:
-            # Fallback: aktuelles Profil aus Theme Manager
-            current_profile = self.theme_manager.get_current_profile()
-            if current_profile:
-                current_name = current_profile.name
-                index = self.cmb_design_profile.findText(current_name)
-                if index >= 0:
-                    self.cmb_design_profile.setCurrentIndex(index)
-        
-        self.cmb_design_profile.blockSignals(False)
+            pick = filtered[0]
+
+        idx = self.cmb_design_profile.findText(pick)
+        if idx >= 0:
+            self.cmb_design_profile.setCurrentIndex(idx)
+
+        del blocker

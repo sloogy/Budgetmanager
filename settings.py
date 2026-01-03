@@ -32,14 +32,28 @@ class Settings:
             # Tracking: Schnellfilter "nur letzte X Tage".
             # Erlaubte Werte: 14 oder 30
             "recent_days": 14,
+            # Tracking: Standard-Tag im Monat für neue wiederkehrende Transaktionen
+            "recurring_preferred_day": 1,
             "window_width": 1280,
             "window_height": 800,
+            "window_x": 100,  # X-Position des Fensters
+            "window_y": 100,  # Y-Position des Fensters
+            "window_is_maximized": False,  # Fenster maximiert?
+            "window_is_fullscreen": False,  # Fenster im Fullscreen?
             "last_budget_year": None,
             "last_overview_year": None,
             "tab_order": [0, 1, 2, 3],  # Reihenfolge der Tabs (Budget, Kategorien, Tracking, Übersicht)
+            # Kategorien-Tab anzeigen (Experten-Modus)
+            # False = Kategorien werden über Budget-Dialog verwaltet
+            # True = Separater Kategorien-Tab sichtbar (Fallback/Experten)
+            "show_categories_tab": False,
             # Datenbank und Backup Pfade
             "database_path": "budgetmanager.db",  # Relativer oder absoluter Pfad
             "backup_directory": str(Path.home() / "BudgetManager_Backups"),  # Backup-Ordner
+            # Design/Theme (V2)
+            "active_design_profile": "V2 Hell – Neon Cyan",
+            "last_design_profile_hell": "V2 Hell – Neon Cyan",
+            "last_design_profile_dunkel": "V2 Dunkel – Graphite Cyan",
         }
     
     def save(self) -> None:
@@ -130,5 +144,72 @@ class Settings:
     @backup_directory.setter
     def backup_directory(self, value: str):
         self.set("backup_directory", value)
+
+    # Window State Properties
+    @property
+    def window_x(self) -> int:
+        """X-Position des Fensters"""
+        return self.get("window_x", 100)
+    
+    @window_x.setter
+    def window_x(self, value: int):
+        self.set("window_x", value)
+    
+    @property
+    def window_y(self) -> int:
+        """Y-Position des Fensters"""
+        return self.get("window_y", 100)
+    
+    @window_y.setter
+    def window_y(self, value: int):
+        self.set("window_y", value)
+    
+    @property
+    def window_is_maximized(self) -> bool:
+        """Ist das Fenster maximiert?"""
+        return self.get("window_is_maximized", False)
+    
+    @window_is_maximized.setter
+    def window_is_maximized(self, value: bool):
+        self.set("window_is_maximized", value)
+    
+    @property
+    def window_is_fullscreen(self) -> bool:
+        """Ist das Fenster im Fullscreen?"""
+        return self.get("window_is_fullscreen", False)
+    
+    @window_is_fullscreen.setter
+    def window_is_fullscreen(self, value: bool):
+        self.set("window_is_fullscreen", value)
+
+    @property
+    def recurring_preferred_day(self) -> int:
+        """Bevorzugter Monatstag (1–31) für neue wiederkehrende Tracking-Transaktionen."""
+        try:
+            v = int(self.get("recurring_preferred_day", 1) or 1)
+        except Exception:
+            v = 1
+        if v < 1: v = 1
+        if v > 31: v = 31
+        return v
+
+    @recurring_preferred_day.setter
+    def recurring_preferred_day(self, value: int):
+        try:
+            v = int(value)
+        except Exception:
+            v = 1
+        if v < 1: v = 1
+        if v > 31: v = 31
+        self.set("recurring_preferred_day", v)
+
+    @property
+    def show_categories_tab(self) -> bool:
+        """Zeigt den separaten Kategorien-Tab (Experten-Modus)"""
+        return self.get("show_categories_tab", False)
+    
+    @show_categories_tab.setter
+    def show_categories_tab(self, value: bool):
+        self.set("show_categories_tab", value)
 
     # (Duplikat entfernt)

@@ -11,15 +11,23 @@ from PySide6.QtWidgets import (
 )
 
 from model.recurring_transactions_model import RecurringTransactionsModel, RecurringTransaction
+from model.tracking_model import TrackingModel
 
 
 class RecurringTransactionsDialog(QDialog):
     """Dialog zur Verwaltung wiederkehrender Transaktionen mit Soll-Buchungsdatum"""
     
-    def __init__(self, parent, model: RecurringTransactionsModel, categories: dict):
+    def __init__(self, parent, model: RecurringTransactionsModel, categories: dict, preferred_day: int = 1):
         super().__init__(parent)
         self.model = model
         self.categories = categories
+        try:
+            d = int(preferred_day or 1)
+        except Exception:
+            d = 1
+        if d < 1: d = 1
+        if d > 31: d = 31
+        self.preferred_day = d
         
         self.setWindowTitle("Wiederkehrende Transaktionen verwalten")
         self.setModal(True)
@@ -33,8 +41,8 @@ class RecurringTransactionsDialog(QDialog):
         
         # Info-Label
         info_label = QLabel(
-            "Wiederkehrende Transaktionen werden automatisch zum festgelegten Tag gebucht. "
-            "Das System prüft täglich, ob Buchungen fällig sind."
+            "Hier verwaltest du wiederkehrende Transaktionen (z. B. Abos, Lohn, Sparrate). "
+            "Über \"Fällige Buchungen prüfen\" kannst du fällige Positionen anzeigen und mit einem Klick ins Tracking übernehmen."
         )
         info_label.setWordWrap(True)
         info_label.setStyleSheet("padding: 10px; background-color: #e3f2fd; border-radius: 5px;")
@@ -161,7 +169,7 @@ class RecurringTransactionsDialog(QDialog):
     
     def _on_add(self):
         """Öffnet Dialog zum Hinzufügen"""
-        dialog = RecurringTransactionEditDialog(self, None, self.categories)
+        dialog = RecurringTransactionEditDialog(self, None, self.categories, preferred_day=self.preferred_day)
         if dialog.exec() == QDialog.Accepted:
             data = dialog.get_data()
             self.model.create_recurring_transaction(**data)
@@ -180,7 +188,7 @@ class RecurringTransactionsDialog(QDialog):
         if not transaction:
             return
         
-        dialog = RecurringTransactionEditDialog(self, transaction, self.categories)
+        dialog = RecurringTransactionEditDialog(self, transaction, self.categories, preferred_day=self.preferred_day)
         if dialog.exec() == QDialog.Accepted:
             data = dialog.get_data()
             self.model.update_recurring_transaction(trans_id, **data)
@@ -227,7 +235,8 @@ class RecurringTransactionsDialog(QDialog):
             return
         
         # Zeige Dialog mit fälligen Buchungen
-        dialog = PendingBookingsDialog(self, pending, self.model)
+        tracking_model = TrackingModel(self.model.conn)
+        dialog = PendingBookingsDialog(self, pending, self.model, tracking_model)
         dialog.exec()
         self._load_transactions()
 
@@ -235,10 +244,17 @@ class RecurringTransactionsDialog(QDialog):
 class RecurringTransactionEditDialog(QDialog):
     """Dialog zum Erstellen/Bearbeiten einer wiederkehrenden Transaktion"""
     
-    def __init__(self, parent, transaction: Optional[RecurringTransaction], categories: dict):
+    def __init__(self, parent, transaction: Optional[RecurringTransaction], categories: dict, preferred_day: int = 1):
         super().__init__(parent)
         self.transaction = transaction
         self.categories = categories
+        try:
+            d = int(preferred_day or 1)
+        except Exception:
+            d = 1
+        if d < 1: d = 1
+        if d > 31: d = 31
+        self.preferred_day = d
         
         is_edit = transaction is not None
         self.setWindowTitle("Wiederkehrende Transaktion bearbeiten" if is_edit else "Neue wiederkehrende Transaktion")
@@ -257,7 +273,8 @@ class RecurringTransactionEditDialog(QDialog):
         
         # Typ
         self.typ_combo = QComboBox()
-        self.typ_combo.addItems(["Ausgaben", "Einnahmen"])
+        # Wichtig: muss zu den Typen im restlichen Tool passen
+        self.typ_combo.addItems(["Ausgaben", "Einkommen", "Ersparnisse"])
         form.addRow("Typ:", self.typ_combo)
         
         # Kategorie
@@ -273,6 +290,9 @@ class RecurringTransactionEditDialog(QDialog):
         self.day_spin = QSpinBox()
         self.day_spin.setRange(1, 31)
         self.day_spin.setSuffix(". des Monats")
+        # Standard nur bei "Neu" – bei Edit wird später geladen
+        if self.transaction is None:
+            self.day_spin.setValue(self.preferred_day)
         form.addRow("Buchungstag:", self.day_spin)
         
         # Details
@@ -384,10 +404,11 @@ class RecurringTransactionEditDialog(QDialog):
 class PendingBookingsDialog(QDialog):
     """Dialog zur Anzeige und Buchung fälliger Transaktionen"""
     
-    def __init__(self, parent, pending: list, model: RecurringTransactionsModel):
+    def __init__(self, parent, pending: list, model: RecurringTransactionsModel, tracking_model: TrackingModel):
         super().__init__(parent)
         self.pending = pending
         self.model = model
+        self.tracking_model = tracking_model
         
         self.setWindowTitle("Fällige wiederkehrende Buchungen")
         self.setModal(True)
@@ -443,16 +464,24 @@ class PendingBookingsDialog(QDialog):
     
     def _book_selected(self, table: QTableWidget):
         """Bucht die ausgewählten Transaktionen"""
-        # Hier würde die eigentliche Buchungslogik implementiert werden
-        # Integration mit TrackingModel nötig
-        
+        # Buchungslogik: Einträge ins Tracking schreiben und Marker setzen,
+        # damit Duplikate zuverlässig erkannt werden.
         booked_count = 0
         for row in range(table.rowCount()):
             chk = table.item(row, 5)
             if chk and chk.checkState() == Qt.Checked:
                 trans, booking_date = self.pending[row]
-                # Buchen würde hier erfolgen
-                # self.tracking_model.add_entry(...)
+
+                marker = f"Wiederkehrend (ID: {trans.id})"
+                base = (trans.details or "").strip()
+                details = base
+                if marker not in details:
+                    details = f"{base} | {marker}" if base else marker
+
+                # Betrag wird als positiver Wert gespeichert (Saldo-Berechnung erfolgt über Typ)
+                self.tracking_model.add(booking_date, trans.typ, trans.category, float(trans.amount), details)
+
+                # Zusätzlich last_booking_date aktualisieren (für UI/Statistik)
                 self.model.update_last_booking_date(trans.id, booking_date)
                 booked_count += 1
         

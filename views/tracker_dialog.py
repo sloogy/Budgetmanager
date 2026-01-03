@@ -95,16 +95,43 @@ class TrackerDialog(QDialog):
             self.cb_typ.setCurrentText(str(p["typ"]))
         self._fill_categories(self.cb_typ.currentText())
         if "category" in p and p["category"]:
-            self.cb_cat.setCurrentText(str(p["category"]))
+            self._set_combo_by_data(self.cb_cat, str(p["category"]))
         if "amount" in p and p["amount"] is not None:
             self.ed_amount.setText(str(p["amount"]))
         if "details" in p and p["details"] is not None:
             self.ed_details.setText(str(p["details"]))
 
+
+    def _set_combo_by_data(self, combo, value: str) -> None:
+        """Setzt ComboBox-Auswahl über itemData (fallback: Textvergleich)."""
+        if not value:
+            return
+        value = str(value)
+        for i in range(combo.count()):
+            data = combo.itemData(i)
+            if data == value:
+                combo.setCurrentIndex(i)
+                return
+        # Fallback: Text ohne Einrückung
+        for i in range(combo.count()):
+            if str(combo.itemText(i)).strip() == value:
+                combo.setCurrentIndex(i)
+                return
+
     def _fill_categories(self, typ: str) -> None:
         self.cb_cat.setEnabled(True)
         self.cb_cat.clear()
-        self.cb_cat.addItems(self.cats.list_names(typ))
+        pairs = []
+        if hasattr(self.cats, "list_names_tree"):
+            try:
+                pairs = self.cats.list_names_tree(typ)
+            except Exception:
+                pairs = []
+        if pairs:
+            for label, real in pairs:
+                self.cb_cat.addItem(label, real)
+        else:
+            self.cb_cat.addItems(self.cats.list_names(typ))
 
     def _validate_and_accept(self) -> None:
         if not self.cb_typ.currentText():
@@ -126,7 +153,7 @@ class TrackerDialog(QDialog):
     def get_input(self) -> TrackingInput:
         d = self.ed_date.date().toPython()
         typ = self.cb_typ.currentText()
-        cat = self.cb_cat.currentText()
+        cat = self.cb_cat.currentData() or self.cb_cat.currentText().strip()
         amt = parse_amount(self.ed_amount.text())
         details = self.ed_details.text() or ""
         return TrackingInput(d, typ, cat, float(amt), details)

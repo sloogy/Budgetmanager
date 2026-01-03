@@ -259,8 +259,19 @@ class EditGoalDialog(QDialog):
         self.category_combo = QComboBox()
         self.category_combo.addItem("(Keine)")
         for typ in ["Ersparnisse", "Einkommen", "Ausgaben"]:
-            for cat in self.cat_model.list_names(typ):
-                self.category_combo.addItem(f"{typ} / {cat}", cat)
+            pairs = []
+            if hasattr(self.cat_model, "list_names_tree"):
+                try:
+                    pairs = self.cat_model.list_names_tree(typ)
+                except Exception:
+                    pairs = []
+            if pairs:
+                for label, real in pairs:
+                    self.category_combo.addItem(f"{typ} / {label}", real)
+            else:
+                for cat in self.cat_model.list_names(typ):
+                    self.category_combo.addItem(f"{typ} / {cat}", cat)
+
         
         self.notes_edit = QTextEdit()
         

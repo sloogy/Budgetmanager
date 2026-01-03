@@ -2,38 +2,52 @@ from __future__ import annotations
 
 import sqlite3
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QComboBox,
-    QTableWidget,
-    QTableWidgetItem,
+    QTreeWidget,
+    QTreeWidgetItem,
     QPushButton,
-    QAbstractItemView,
     QMessageBox,
+    QInputDialog,
     QLabel,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QCheckBox,
+    QGridLayout,
+    QMenu,
+    QSpinBox,
+    QFormLayout,
 )
 
-from model.category_model import CategoryModel
+from model.category_model import CategoryModel, Category
 
 
 class CategoriesTab(QWidget):
-    """Kategorien-Verwaltung (Inline-Editing).
+    """Kategorien-Verwaltung als Baum.
 
-    Wunsch des Users:
-    - Häkchen direkt in der Tabelle (Fixkosten / Wiederkehrend)
-    - Werte direkt in der Tabelle editieren (Kategorie-Name / Tag)
+    Variante 2 (gewünscht):
+    - EIN Tree
+    - 3 Root-Nodes (Top Level): Einkommen / Ausgaben / Ersparnisse
+    - darunter: Hauptkategorien und Unterkategorien (parent_id)
     """
+    
+    # Signal für Schnelleingabe (wird von MainWindow abgehört)
+    quick_add_requested = Signal()
 
     COL_NAME = 0
     COL_FIX = 1
     COL_REC = 2
     COL_DAY = 3
 
-    ROLE_ID = int(Qt.UserRole)
-    ROLE_OLD_NAME = int(Qt.UserRole) + 1
+    ROLE_ID = int(Qt.UserRole) + 1
+    ROLE_TYP = int(Qt.UserRole) + 2
+    ROLE_OLD_NAME = int(Qt.UserRole) + 3
+
+    TYPES = ["Einkommen", "Ausgaben", "Ersparnisse"]
 
     def __init__(self, conn: sqlite3.Connection):
         super().__init__()
@@ -41,444 +55,643 @@ class CategoriesTab(QWidget):
         self.model = CategoryModel(conn)
         self._loading = False
 
-        self.typ_cb = QComboBox()
-        self.typ_cb.addItems(["Alle", "Ausgaben", "Einkommen", "Ersparnisse"])
+        # Buttons
+        self.btn_new = QPushButton("Neu (Hauptkategorie)")
+        self.btn_new_sub = QPushButton("Neu (Unterkategorie)")
+        self.btn_delete = QPushButton("Löschen")
+        self.btn_quick_add = QPushButton("⚡ Schnelleingabe")
+        self.btn_quick_add.setToolTip("Schnell einen neuen Tracking-Eintrag erfassen (Ctrl+N)")
+        
+        # Filter
+        self.filter_combo = QComboBox()
+        self.filter_combo.addItems(["Alle", "Nur Fixkosten", "Nur Wiederkehrend", "Keine Flags"])
 
-        self.btn_add = QPushButton("Neue Kategorie")
-        self.btn_del = QPushButton("Entfernen")
-        self.btn_bulk_edit = QPushButton("Mehrfach bearbeiten...")
-
-        self.table = QTableWidget(0, 4)
-        self.table.setHorizontalHeaderLabels(["Kategorie", "Fixkosten", "Wiederkehrend", "Tag"])
-        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.table.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)  # Mehrfachauswahl
-        self.table.setAlternatingRowColors(True)
-        self.table.setEditTriggers(
-            QAbstractItemView.EditTrigger.DoubleClicked
-            | QAbstractItemView.EditTrigger.SelectedClicked
-            | QAbstractItemView.EditTrigger.EditKeyPressed
+        # Tree
+        self.tree = QTreeWidget()
+        self.tree.setColumnCount(4)
+        self.tree.setHeaderLabels(["Kategorie", "Fixkosten", "Wiederkehrend", "Tag"])
+        self.tree.setAlternatingRowColors(True)
+        self.tree.setExpandsOnDoubleClick(True)
+        self.tree.setSelectionMode(self.tree.SelectionMode.ExtendedSelection)
+        self.tree.setEditTriggers(
+            self.tree.EditTrigger.DoubleClicked
+            | self.tree.EditTrigger.SelectedClicked
+            | self.tree.EditTrigger.EditKeyPressed
         )
+        # Rechtsklick-Kontextmenü
+        self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._show_tree_context_menu)
+
 
         top = QHBoxLayout()
-        top.addWidget(QLabel("Typ"))
-        top.addWidget(self.typ_cb)
+        top.addWidget(QLabel("Kategorien (Baum): Einkommen / Ausgaben / Ersparnisse"))
         top.addStretch(1)
-        top.addWidget(QLabel("Tipp: Doppelklick zum Bearbeiten, Klick auf Häkchen zum Umschalten"))
-        top.addStretch(1)
-        top.addWidget(self.btn_add)
-        top.addWidget(self.btn_del)
-        top.addWidget(self.btn_bulk_edit)
+        top.addWidget(QLabel("Filter:"))
+        top.addWidget(self.filter_combo)
+        top.addWidget(self.btn_quick_add)
+        top.addWidget(self.btn_new)
+        top.addWidget(self.btn_new_sub)
+        top.addWidget(self.btn_delete)
 
         root = QVBoxLayout()
         root.addLayout(top)
-        root.addWidget(self.table)
+        root.addWidget(self.tree)
         self.setLayout(root)
 
-        self.typ_cb.currentTextChanged.connect(lambda _: self.refresh(clear_selection=True))
-        self.btn_add.clicked.connect(self.add_row)
-        self.btn_del.clicked.connect(self.delete_selected)
-        self.btn_bulk_edit.clicked.connect(self.bulk_edit_dialog)
-        self.table.itemChanged.connect(self._on_item_changed)
+        self.btn_new.clicked.connect(self.add_root_category)
+        self.btn_new_sub.clicked.connect(self.add_subcategory)
+        self.btn_delete.clicked.connect(self.delete_selected)
+        self.btn_quick_add.clicked.connect(self.quick_add_requested.emit)
+        self.tree.itemChanged.connect(self._on_item_changed)
+        self.filter_combo.currentIndexChanged.connect(self._apply_filter)
 
-        self.refresh(clear_selection=True)
+        self.refresh()
 
     # -----------------
-    # UI Helpers
+    # Helpers
     # -----------------
-    def _mk_check_item(self, checked: bool, cat_id: int | None) -> QTableWidgetItem:
-        it = QTableWidgetItem("")
-        it.setFlags(
-            Qt.ItemFlag.ItemIsEnabled
-            | Qt.ItemFlag.ItemIsSelectable
-            | Qt.ItemFlag.ItemIsUserCheckable
-        )
-        it.setCheckState(Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked)
-        it.setData(self.ROLE_ID, cat_id)
-        it.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-        return it
-
-    def _mk_text_item(self, text: str, *, editable: bool, cat_id: int | None) -> QTableWidgetItem:
-        it = QTableWidgetItem(text)
-        flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-        if editable:
-            flags |= Qt.ItemFlag.ItemIsEditable
-        it.setFlags(flags)
-        it.setData(self.ROLE_ID, cat_id)
-        return it
-
     def _set_loading(self, state: bool) -> None:
         self._loading = state
 
-    def _safe_int_day(self, s: str, fallback: int = 1) -> int:
-        try:
-            v = int(str(s).strip())
-        except Exception:
-            return fallback
-        return max(1, min(31, v))
+    def _mk_root(self, typ: str) -> QTreeWidgetItem:
+        it = QTreeWidgetItem([typ, "", "", ""])
+        f = it.font(self.COL_NAME)
+        f.setBold(True)
+        it.setFont(self.COL_NAME, f)
+        it.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable)
+        it.setData(self.COL_NAME, self.ROLE_ID, None)
+        it.setData(self.COL_NAME, self.ROLE_TYP, typ)
+        it.setExpanded(True)
+        return it
 
-    def _set_day_cell_enabled(self, row: int, enabled: bool, value: int | None = None) -> None:
-        day_item = self.table.item(row, self.COL_DAY)
-        if not day_item:
-            return
-        self._set_loading(True)
-        try:
-            if enabled:
-                if value is not None:
-                    day_item.setText(str(int(value)))
-                flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEditable
-                day_item.setFlags(flags)
-            else:
-                day_item.setText("")
-                flags = Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
-                day_item.setFlags(flags)
-        finally:
-            self._set_loading(False)
+    def _mk_cat_item(self, c: Category) -> QTreeWidgetItem:
+        it = QTreeWidgetItem([c.name, "", "", ""])
 
-    def _select_by_id(self, cat_id: int) -> None:
-        for r in range(self.table.rowCount()):
-            it = self.table.item(r, self.COL_NAME)
-            if it and int(it.data(self.ROLE_ID) or 0) == int(cat_id):
-                self.table.setCurrentCell(r, self.COL_NAME)
-                return
+        # Name editierbar
+        it.setFlags(
+            Qt.ItemFlag.ItemIsEnabled
+            | Qt.ItemFlag.ItemIsSelectable
+            | Qt.ItemFlag.ItemIsEditable
+        )
+
+        # Fix/Recurring Checkboxes
+        it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        it.setCheckState(self.COL_FIX, Qt.CheckState.Checked if c.is_fix else Qt.CheckState.Unchecked)
+        it.setCheckState(self.COL_REC, Qt.CheckState.Checked if c.is_recurring else Qt.CheckState.Unchecked)
+
+        # Day
+        it.setText(self.COL_DAY, str(int(c.recurring_day)) if c.is_recurring else "")
+        # Tag-Spalte ist editierbar nur wenn recurring
+        if c.is_recurring:
+            it.setFlags(it.flags() | Qt.ItemFlag.ItemIsEditable)
+
+        it.setData(self.COL_NAME, self.ROLE_ID, int(c.id))
+        it.setData(self.COL_NAME, self.ROLE_TYP, c.typ)
+        it.setData(self.COL_NAME, self.ROLE_OLD_NAME, c.name)
+        return it
+
+    def _collect_subtree_ids(self, item: QTreeWidgetItem) -> list[int]:
+        ids: list[int] = []
+        cid = item.data(self.COL_NAME, self.ROLE_ID)
+        if cid:
+            ids.append(int(cid))
+        for i in range(item.childCount()):
+            ids.extend(self._collect_subtree_ids(item.child(i)))
+        return ids
+
+    def _is_root_node(self, item: QTreeWidgetItem | None) -> bool:
+        if not item:
+            return False
+        return item.parent() is None and item.text(self.COL_NAME) in self.TYPES
+
+    def _nearest_typ_root(self, item: QTreeWidgetItem | None) -> QTreeWidgetItem | None:
+        cur = item
+        while cur is not None:
+            if self._is_root_node(cur):
+                return cur
+            cur = cur.parent()
+        return None
 
     # -----------------
     # Public
     # -----------------
-    def refresh(self, clear_selection: bool = False) -> None:
-        typ = self.typ_cb.currentText()
-        
-        # Wenn "Alle" gewählt: alle Typen laden
-        if typ == "Alle":
-            types = ["Ausgaben", "Einkommen", "Ersparnisse"]
+    def refresh(self) -> None:
+        self._set_loading(True)
+        try:
+            self.tree.clear()
+
+            grouped = self.model.list_tree()  # typ -> list[Category]
+
+            # Roots
+            roots: dict[str, QTreeWidgetItem] = {}
+            for typ in self.TYPES:
+                root_item = self._mk_root(typ)
+                self.tree.addTopLevelItem(root_item)
+                roots[typ] = root_item
+
+            # Build tree per typ
+            for typ in self.TYPES:
+                cats = grouped.get(typ, [])
+                nodes = self.model.build_tree(cats)
+
+                def add_nodes(parent_item: QTreeWidgetItem, children: list[dict]):
+                    for n in children:
+                        c: Category = n["cat"]
+                        it = self._mk_cat_item(c)
+                        parent_item.addChild(it)
+                        add_nodes(it, n["children"])
+
+                add_nodes(roots[typ], nodes)
+
+            self.tree.expandToDepth(1)
+            self.tree.resizeColumnToContents(self.COL_NAME)
+        finally:
+            self._set_loading(False)
+
+    # -----------------
+    # Actions
+    # -----------------
+    def add_root_category(self) -> None:
+        sel = self.tree.currentItem()
+        root = self._nearest_typ_root(sel) if sel else None
+        if root is None:
+            QMessageBox.information(self, "Hinweis", "Bitte zuerst 'Einkommen', 'Ausgaben' oder 'Ersparnisse' auswählen.")
+            return
+
+        typ = root.text(self.COL_NAME)
+        name, ok = QInputDialog.getText(self, "Neue Kategorie", f"Name der neuen Kategorie ({typ}):")
+        if not ok:
+            return
+        name = (name or "").strip()
+        if not name:
+            return
+
+        try:
+            self.model.create(typ, name, is_fix=False, is_recurring=False, recurring_day=1, parent_id=None)
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Konnte Kategorie nicht anlegen:\n{e}")
+            return
+
+        self.refresh()
+
+    def add_subcategory(self) -> None:
+        sel = self.tree.currentItem()
+        if sel is None:
+            QMessageBox.information(self, "Hinweis", "Bitte zuerst eine Kategorie auswählen.")
+            return
+
+        if self._is_root_node(sel):
+            parent_id = None
         else:
-            types = [typ]
+            parent_id = sel.data(self.COL_NAME, self.ROLE_ID)
+            if not parent_id:
+                QMessageBox.information(self, "Hinweis", "Bitte eine echte Kategorie auswählen (nicht nur den Typ-Header).")
+                return
 
-        self._set_loading(True)
+        root = self._nearest_typ_root(sel)
+        if root is None:
+            return
+        typ = root.text(self.COL_NAME)
+
+        name, ok = QInputDialog.getText(self, "Neue Unterkategorie", f"Name der Unterkategorie ({typ}):")
+        if not ok:
+            return
+        name = (name or "").strip()
+        if not name:
+            return
+
         try:
-            self.table.setRowCount(0)
-            
-            for t in types:
-                rows = self.model.list(t)
-                
-                # Typ-Header einfügen wenn "Alle"
-                if typ == "Alle" and rows:
-                    r = self.table.rowCount()
-                    self.table.insertRow(r)
-                    header_item = QTableWidgetItem(f"═══ {t} ═══")
-                    header_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-                    font = header_item.font()
-                    font.setBold(True)
-                    header_item.setFont(font)
-                    self.table.setItem(r, self.COL_NAME, header_item)
-                    for col in range(1, 4):
-                        empty = QTableWidgetItem("")
-                        empty.setFlags(Qt.ItemFlag.ItemIsEnabled)
-                        self.table.setItem(r, col, empty)
-                
-                for c in rows:
-                    r = self.table.rowCount()
-                    self.table.insertRow(r)
+            self.model.create(typ, name, is_fix=False, is_recurring=False, recurring_day=1, parent_id=(int(parent_id) if parent_id else None))
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Konnte Unterkategorie nicht anlegen:\n{e}")
+            return
 
-                    it_name = self._mk_text_item(c.name if typ != "Alle" else f"  {c.name}", editable=True, cat_id=c.id)
-                    it_name.setData(self.ROLE_OLD_NAME, c.name)
-                    it_name.setData(Qt.UserRole + 10, t)  # Typ speichern
-                    self.table.setItem(r, self.COL_NAME, it_name)
-
-                    fix_item = self._mk_check_item(bool(c.is_fix), c.id)
-                    fix_item.setData(Qt.UserRole + 10, t)
-                    self.table.setItem(r, self.COL_FIX, fix_item)
-                    
-                    rec_item = self._mk_check_item(bool(c.is_recurring), c.id)
-                    rec_item.setData(Qt.UserRole + 10, t)
-                    self.table.setItem(r, self.COL_REC, rec_item)
-
-                    day_txt = str(int(c.recurring_day or 1)) if c.is_recurring else ""
-                    it_day = self._mk_text_item(day_txt, editable=bool(c.is_recurring), cat_id=c.id)
-                    it_day.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-                    it_day.setData(Qt.UserRole + 10, t)
-                    self.table.setItem(r, self.COL_DAY, it_day)
-
-            self.table.resizeColumnsToContents()
-        finally:
-            self._set_loading(False)
-
-        if clear_selection:
-            self.table.clearSelection()
-
-    def add_row(self) -> None:
-        """Fügt eine neue, leere Zeile hinzu. Speichern passiert, sobald ein Name eingegeben wird."""
-        r = self.table.rowCount()
-
-        self._set_loading(True)
-        try:
-            self.table.insertRow(r)
-
-            it_name = self._mk_text_item("", editable=True, cat_id=None)
-            it_name.setData(self.ROLE_OLD_NAME, "")
-            self.table.setItem(r, self.COL_NAME, it_name)
-
-            self.table.setItem(r, self.COL_FIX, self._mk_check_item(False, None))
-            self.table.setItem(r, self.COL_REC, self._mk_check_item(False, None))
-
-            it_day = self._mk_text_item("", editable=False, cat_id=None)
-            it_day.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            self.table.setItem(r, self.COL_DAY, it_day)
-        finally:
-            self._set_loading(False)
-
-        self.table.setCurrentCell(r, self.COL_NAME)
-        self.table.editItem(self.table.item(r, self.COL_NAME))
+        self.refresh()
 
     def delete_selected(self) -> None:
-        rows = sorted(set(item.row() for item in self.table.selectedItems()), reverse=True)
-        if not rows:
+        items = self.tree.selectedItems()
+        if not items:
             QMessageBox.information(self, "Hinweis", "Bitte zuerst Kategorien auswählen.")
             return
 
-        # Kategorien sammeln
-        to_delete = []
-        for row in rows:
-            name_item = self.table.item(row, self.COL_NAME)
-            if not name_item:
-                continue
-            cat_id = name_item.data(self.ROLE_ID)
-            if not cat_id:  # Header oder ungespeicherte Zeile
-                continue
-            name = (name_item.text() if name_item else "").strip().lstrip()
-            typ = name_item.data(Qt.UserRole + 10)
-            to_delete.append((typ, name, cat_id, row))
-
-        if not to_delete:
-            # Nur Header oder leere Zeilen ausgewählt
-            for row in rows:
-                name_item = self.table.item(row, self.COL_NAME)
-                if name_item and not name_item.data(self.ROLE_ID):
-                    self.table.removeRow(row)
+        # Root-Nodes nie löschen
+        deletable = [it for it in items if not self._is_root_node(it) and it.data(self.COL_NAME, self.ROLE_ID)]
+        if not deletable:
+            QMessageBox.information(self, "Hinweis", "Bitte nur Kategorien auswählen (nicht die Typ-Header).")
             return
 
-        msg = f"Folgende {len(to_delete)} Kategorie(n) wirklich löschen?\n\n"
-        msg += "\n".join([f"• {t} / {n}" for t, n, _, _ in to_delete[:10]])
-        if len(to_delete) > 10:
-            msg += f"\n... und {len(to_delete)-10} weitere"
+        # IDs sammeln (inkl. Unterbaum)
+        ids: list[int] = []
+        for it in deletable:
+            ids.extend(self._collect_subtree_ids(it))
+        ids = sorted(set(ids))
 
-        if QMessageBox.question(self, "Löschen", msg) != QMessageBox.Yes:
+        if len(ids) > 1:
+            txt = f"{len(ids)} Kategorie(n) inklusive Unterkategorien löschen?"
+        else:
+            txt = "Kategorie löschen?"
+
+        if QMessageBox.question(self, "Bestätigen", txt) != QMessageBox.StandardButton.Yes:
             return
 
-        for typ, name, _, _ in to_delete:
-            self.model.delete(typ, name)
+        try:
+            self.model.delete_by_ids(ids)
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Konnte nicht löschen:\n{e}")
+            return
 
-        self.refresh(clear_selection=True)
+        self.refresh()
 
     # -----------------
-    # Inline Saving
+    # Editing
     # -----------------
-    def _on_item_changed(self, item: QTableWidgetItem) -> None:
+    # -----------------
+    # Kontextmenü (Rechtsklick)
+    # -----------------
+    def _selected_editable_category_items(self) -> list[QTreeWidgetItem]:
+        items = self.tree.selectedItems()
+        return [
+            it for it in items
+            if not self._is_root_node(it) and it.data(self.COL_NAME, self.ROLE_ID)
+        ]
+
+    def _show_tree_context_menu(self, pos) -> None:
+        clicked = self.tree.itemAt(pos)
+        if clicked is not None and not clicked.isSelected():
+            # Rechtsklick soll das Item fokussieren, damit Aktionen konsistent sind
+            self.tree.clearSelection()
+            clicked.setSelected(True)
+            self.tree.setCurrentItem(clicked)
+
+        editable = self._selected_editable_category_items()
+        menu = QMenu(self)
+
+        act_new_root = menu.addAction("➕ Neu (Hauptkategorie)")
+        act_new_sub = menu.addAction("➕ Neu (Unterkategorie)")
+        menu.addSeparator()
+        act_rename = menu.addAction("✏️ Umbenennen")
+        act_delete = menu.addAction("🗑️ Löschen")
+        act_mass = menu.addAction("🧰 Massenbearbeitung…")
+        menu.addSeparator()
+        act_fix_toggle = menu.addAction("Fixkosten aktivieren")
+        act_rec_toggle = menu.addAction("Wiederkehrend aktivieren")
+        act_set_day = menu.addAction("Fälligkeitstag (Tag im Monat) setzen…")
+
+        act_new_sub.setEnabled(len(editable) == 1)
+        act_rename.setEnabled(len(editable) == 1)
+        act_delete.setEnabled(len(editable) >= 1)
+        act_mass.setEnabled(len(editable) >= 2)
+
+        has_editable = len(editable) >= 1
+        act_fix_toggle.setEnabled(has_editable)
+        act_rec_toggle.setEnabled(has_editable)
+        act_set_day.setEnabled(has_editable)
+
+        if has_editable:
+            all_fix = all(it.checkState(self.COL_FIX) == Qt.CheckState.Checked for it in editable)
+            all_rec = all(it.checkState(self.COL_REC) == Qt.CheckState.Checked for it in editable)
+            act_fix_toggle.setText("Fixkosten deaktivieren" if all_fix else "Fixkosten aktivieren")
+            act_rec_toggle.setText("Wiederkehrend deaktivieren" if all_rec else "Wiederkehrend aktivieren")
+
+        chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
+        if chosen is None:
+            return
+
+        if chosen == act_new_root:
+            self.add_root_category()
+            return
+
+        if chosen == act_new_sub:
+            self.add_subcategory()
+            return
+
+        if chosen == act_rename and len(editable) == 1:
+            self.tree.editItem(editable[0], self.COL_NAME)
+            return
+
+        if chosen == act_delete:
+            self.delete_selected()
+            return
+
+        if chosen == act_mass:
+            self.mass_edit()
+            return
+
+        if not has_editable:
+            return
+
+        if chosen == act_fix_toggle:
+            target = not all(it.checkState(self.COL_FIX) == Qt.CheckState.Checked for it in editable)
+            self._set_loading(True)
+            try:
+                for it in editable:
+                    cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
+                    self.model.update_flags(cat_id, is_fix=target)
+                    it.setCheckState(self.COL_FIX, Qt.CheckState.Checked if target else Qt.CheckState.Unchecked)
+            finally:
+                self._set_loading(False)
+            return
+
+        if chosen == act_rec_toggle:
+            target = not all(it.checkState(self.COL_REC) == Qt.CheckState.Checked for it in editable)
+            self._set_loading(True)
+            try:
+                for it in editable:
+                    cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
+                    self.model.update_flags(cat_id, is_recurring=target)
+                    it.setCheckState(self.COL_REC, Qt.CheckState.Checked if target else Qt.CheckState.Unchecked)
+                    if not target:
+                        it.setText(self.COL_DAY, "")
+                    else:
+                        # wenn leer, default 1 anzeigen
+                        if not (it.text(self.COL_DAY) or "").strip():
+                            it.setText(self.COL_DAY, "1")
+            finally:
+                self._set_loading(False)
+            return
+
+        if chosen == act_set_day:
+            cur = 1
+            t0 = (editable[0].text(self.COL_DAY) or "").strip()
+            if t0.isdigit():
+                cur = max(1, min(31, int(t0)))
+
+            day, ok = QInputDialog.getInt(
+                self,
+                "Fälligkeitstag",
+                "Tag im Monat (1–31):",
+                cur,
+                1,
+                31,
+                1,
+            )
+            if not ok:
+                return
+
+            self._set_loading(True)
+            try:
+                for it in editable:
+                    cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
+                    self.model.update_flags(cat_id, is_recurring=True, recurring_day=int(day))
+                    it.setCheckState(self.COL_REC, Qt.CheckState.Checked)
+                    it.setText(self.COL_DAY, str(int(day)))
+            finally:
+                self._set_loading(False)
+            return
+
+    def _on_item_changed(self, item: QTreeWidgetItem, column: int) -> None:
         if self._loading:
             return
 
-        row = item.row()
-        col = item.column()
-        typ = self.typ_cb.currentText()
-
-        name_item = self.table.item(row, self.COL_NAME)
-        if not name_item:
+        if self._is_root_node(item):
             return
 
-        cat_id = name_item.data(self.ROLE_ID)
+        cat_id = item.data(self.COL_NAME, self.ROLE_ID)
+        typ = item.data(self.COL_NAME, self.ROLE_TYP)
+        if not cat_id or not typ:
+            return
 
-        # ---- Name geändert / neue Zeile speichern ----
-        if col == self.COL_NAME:
-            new_name = (name_item.text() or "").strip()
-            old_name = (name_item.data(self.ROLE_OLD_NAME) or "").strip()
+        cat_id = int(cat_id)
+        typ = str(typ)
 
-            if not new_name:
-                # bestehende Kategorie darf nicht leer werden
-                if cat_id:
-                    self._set_loading(True)
-                    try:
-                        name_item.setText(old_name)
-                    finally:
-                        self._set_loading(False)
-                    QMessageBox.warning(self, "Ungültig", "Der Kategoriename darf nicht leer sein.")
+        # Name geändert
+        if column == self.COL_NAME:
+            new_name = (item.text(self.COL_NAME) or "").strip()
+            old_name = str(item.data(self.COL_NAME, self.ROLE_OLD_NAME) or "")
+            if not new_name or new_name == old_name:
                 return
-
-            # neue Kategorie anlegen
-            if not cat_id:
-                fix_state = self.table.item(row, self.COL_FIX).checkState() == Qt.CheckState.Checked
-                rec_state = self.table.item(row, self.COL_REC).checkState() == Qt.CheckState.Checked
-                day_val = self._safe_int_day(self.table.item(row, self.COL_DAY).text(), 1) if rec_state else 1
-
-                try:
-                    new_id = self.model.create(typ, new_name, fix_state, rec_state, day_val)
-                except sqlite3.IntegrityError:
-                    QMessageBox.warning(self, "Schon vorhanden", f"Die Kategorie '{new_name}' existiert bereits.")
-                    self._set_loading(True)
-                    try:
-                        name_item.setText("")
-                    finally:
-                        self._set_loading(False)
-                    return
-
-                # ID in alle Zellen dieser Zeile schreiben
+            try:
+                self.model.rename_and_cascade(cat_id, typ=typ, old_name=old_name, new_name=new_name)
+                item.setData(self.COL_NAME, self.ROLE_OLD_NAME, new_name)
+            except Exception as e:
+                QMessageBox.critical(self, "Fehler", f"Umbenennen fehlgeschlagen:\n{e}")
                 self._set_loading(True)
                 try:
-                    for c in range(4):
-                        it = self.table.item(row, c)
-                        if it:
-                            it.setData(self.ROLE_ID, int(new_id))
-                    name_item.setData(self.ROLE_OLD_NAME, new_name)
+                    item.setText(self.COL_NAME, old_name)
                 finally:
                     self._set_loading(False)
+            return
 
-                # Tag-Feld UI passend setzen
-                self._set_day_cell_enabled(row, rec_state, day_val if rec_state else None)
+        # Fixkosten / Wiederkehrend
+        if column in (self.COL_FIX, self.COL_REC):
+            is_fix = item.checkState(self.COL_FIX) == Qt.CheckState.Checked
+            is_rec = item.checkState(self.COL_REC) == Qt.CheckState.Checked
+            try:
+                self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec)
+            except Exception as e:
+                QMessageBox.critical(self, "Fehler", f"Speichern fehlgeschlagen:\n{e}")
                 return
 
-            # bestehende Kategorie umbenennen
-            if new_name != old_name:
-                try:
-                    self.model.rename_and_cascade(int(cat_id), typ=typ, old_name=old_name, new_name=new_name)
-                except sqlite3.IntegrityError:
-                    QMessageBox.warning(self, "Konflikt", f"Die Kategorie '{new_name}' existiert bereits.")
+            # Tag-Text
+            self._set_loading(True)
+            try:
+                if not is_rec:
+                    item.setText(self.COL_DAY, "")
+            finally:
+                self._set_loading(False)
+            return
+
+        # Tag geändert
+        if column == self.COL_DAY:
+            raw = (item.text(self.COL_DAY) or "").strip()
+            if not raw:
+                return
+            try:
+                day = max(1, min(31, int(raw)))
+            except Exception:
+                day = 1
+            try:
+                # Day macht nur Sinn wenn recurring
+                if item.checkState(self.COL_REC) != Qt.CheckState.Checked:
                     self._set_loading(True)
                     try:
-                        name_item.setText(old_name)
+                        item.setCheckState(self.COL_REC, Qt.CheckState.Checked)
                     finally:
                         self._set_loading(False)
-                    return
-
-                # zur Sicherheit neu laden (Sortierung/Dropdowns)
-                self.refresh(clear_selection=False)
-                self._select_by_id(int(cat_id))
-            return
-
-        # Ohne ID noch nichts in DB schreiben (wird beim Name-Speichern erledigt)
-        if not cat_id:
-            # UI bei Rec-Umschalter trotzdem anpassen
-            if col == self.COL_REC:
-                rec_state = item.checkState() == Qt.CheckState.Checked
-                self._set_day_cell_enabled(row, rec_state, 1 if rec_state else None)
-            return
-
-        # ---- Fixkosten ----
-        if col == self.COL_FIX:
-            is_fix = item.checkState() == Qt.CheckState.Checked
-            self.model.update_flags(int(cat_id), is_fix=is_fix)
-            return
-
-        # ---- Wiederkehrend ----
-        if col == self.COL_REC:
-            is_rec = item.checkState() == Qt.CheckState.Checked
-            if is_rec:
-                day_item = self.table.item(row, self.COL_DAY)
-                day_val = self._safe_int_day(day_item.text() if day_item else "", 1)
-                self._set_day_cell_enabled(row, True, day_val)
-                self.model.update_flags(int(cat_id), is_recurring=True, recurring_day=day_val)
-            else:
-                self._set_day_cell_enabled(row, False)
-                self.model.update_flags(int(cat_id), is_recurring=False)
-            return
-
-        # ---- Tag ----
-        if col == self.COL_DAY:
-            # nur wenn Wiederkehrend aktiv
-            rec_state = self.table.item(row, self.COL_REC).checkState() == Qt.CheckState.Checked
-            if not rec_state:
+                self.model.update_flags(cat_id, is_recurring=True, recurring_day=day)
+            except Exception as e:
+                QMessageBox.critical(self, "Fehler", f"Speichern fehlgeschlagen:\n{e}")
                 return
-            day_val = self._safe_int_day(item.text(), 1)
-            # clamp sichtbar machen
-            if (item.text() or "").strip() != str(day_val):
-                self._set_loading(True)
-                try:
-                    item.setText(str(day_val))
-                finally:
-                    self._set_loading(False)
-            self.model.update_flags(int(cat_id), recurring_day=day_val)
+
+            self._set_loading(True)
+            try:
+                item.setText(self.COL_DAY, str(day))
+            finally:
+                self._set_loading(False)
+
+    # -----------------
+    # Filter
+    # -----------------
+    def _apply_filter(self) -> None:
+        """Filtert die Tree-Ansicht basierend auf Filterauswahl.
+
+        Erwartetes Verhalten (UX):
+        - 'Alle' / 'Keine Flags': zeigt nur passende Knoten, behält aber Eltern zur Orientierung.
+        - 'Nur Fixkosten' / 'Nur Wiederkehrend': zeigt passende Knoten **inkl. ganzer Unterbäume**
+          (also auch untergeordnete Kategorien, selbst wenn diese nicht geflaggt sind).
+        """
+        filter_mode = self.filter_combo.currentText()
+
+        def matches(item: QTreeWidgetItem) -> bool:
+            if self._is_root_node(item):
+                return True
+
+            is_fix = item.checkState(self.COL_FIX) == Qt.CheckState.Checked
+            is_rec = item.checkState(self.COL_REC) == Qt.CheckState.Checked
+
+            if filter_mode == "Alle":
+                return True
+            if filter_mode == "Nur Fixkosten":
+                return is_fix
+            if filter_mode == "Nur Wiederkehrend":
+                return is_rec
+            if filter_mode == "Keine Flags":
+                return (not is_fix) and (not is_rec)
+            return True
+
+        # Nur bei Fix/Wiederkehrend sollen Unterbäume komplett sichtbar bleiben
+        subtree_mode = filter_mode in ("Nur Fixkosten", "Nur Wiederkehrend")
+
+        def show_subtree(item: QTreeWidgetItem) -> None:
+            item.setHidden(False)
+            for i in range(item.childCount()):
+                show_subtree(item.child(i))
+
+        def filter_tree(item: QTreeWidgetItem, force_show: bool = False) -> bool:
+            """Rekursiv filtern. Gibt True zurück wenn Item (oder Nachkommen) sichtbar sind."""
+            if self._is_root_node(item):
+                item.setHidden(False)
+                any_visible = False
+                for i in range(item.childCount()):
+                    if filter_tree(item.child(i), False):
+                        any_visible = True
+                return any_visible
+
+            this_match = matches(item)
+
+            # Wenn Subtree-Mode und dieser Knoten passt: alles darunter sichtbar lassen
+            if subtree_mode and (this_match or force_show):
+                show_subtree(item)
+                return True
+
+            any_visible = False
+            for i in range(item.childCount()):
+                if filter_tree(item.child(i), False):
+                    any_visible = True
+
+            show = this_match or any_visible
+            item.setHidden(not show)
+            return show
+
+        for i in range(self.tree.topLevelItemCount()):
+            root = self.tree.topLevelItem(i)
+            filter_tree(root)
+
+    # -----------------
+    # Massenbearbeitung
+    # -----------------
+    def mass_edit(self) -> None:
+        """Öffnet Dialog zur Massenbearbeitung ausgewählter Kategorien"""
+        editable = self._selected_editable_category_items()
+
+        if not editable:
+            QMessageBox.information(self, "Hinweis", "Bitte zuerst Kategorien auswählen (nicht die Typ-Header).")
             return
 
-    def bulk_edit_dialog(self) -> None:
-        """Dialog zum Bearbeiten mehrerer Kategorien gleichzeitig"""
-        from PySide6.QtWidgets import QDialog, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, QSpinBox, QDialogButtonBox
-        
-        rows = sorted(set(item.row() for item in self.table.selectedItems()))
-        if not rows:
-            QMessageBox.information(self, "Hinweis", "Bitte zuerst Kategorien auswählen.")
-            return
-
-        # Kategorien sammeln
-        categories = []
-        for row in rows:
-            name_item = self.table.item(row, self.COL_NAME)
-            if not name_item:
-                continue
-            cat_id = name_item.data(self.ROLE_ID)
-            if not cat_id:  # Header oder ungespeicherte Zeile
-                continue
-            typ = name_item.data(Qt.UserRole + 10)
-            name = name_item.text().strip().lstrip()
-            categories.append((cat_id, typ, name))
-
-        if not categories:
-            QMessageBox.information(self, "Hinweis", "Keine gültigen Kategorien ausgewählt.")
-            return
-
-        # Dialog erstellen
         dlg = QDialog(self)
-        dlg.setWindowTitle(f"Mehrfachbearbeitung ({len(categories)} Kategorien)")
-        dlg.setModal(True)
+        dlg.setWindowTitle(f"Massenbearbeitung ({len(editable)} Kategorien)")
+        dlg.setMinimumWidth(420)
 
-        layout = QVBoxLayout()
-        
-        # Info
-        info_label = QLabel(f"Änderungen werden auf {len(categories)} Kategorie(n) angewendet:")
-        layout.addWidget(info_label)
-        
-        # Liste der Kategorien
-        cat_list = QLabel("\n".join([f"• {t} / {n}" for _, t, n in categories[:10]]))
-        if len(categories) > 10:
-            cat_list.setText(cat_list.text() + f"\n... und {len(categories)-10} weitere")
-        layout.addWidget(cat_list)
-        
-        layout.addSpacing(20)
-        
-        # Optionen
-        chk_set_fix = QCheckBox("Fixkosten setzen")
-        layout.addWidget(chk_set_fix)
-        
-        chk_set_rec = QCheckBox("Wiederkehrend setzen")
-        layout.addWidget(chk_set_rec)
-        
-        day_layout = QHBoxLayout()
-        day_layout.addWidget(QLabel("Tag:"))
-        day_spin = QSpinBox()
-        day_spin.setRange(1, 31)
-        day_spin.setValue(1)
-        day_spin.setEnabled(False)
-        day_layout.addWidget(day_spin)
-        day_layout.addStretch()
-        layout.addLayout(day_layout)
-        
-        chk_set_rec.toggled.connect(lambda checked: day_spin.setEnabled(checked))
-        
-        layout.addSpacing(20)
-        
-        # Buttons
-        btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
-        btn_box.accepted.connect(dlg.accept)
-        btn_box.rejected.connect(dlg.reject)
-        layout.addWidget(btn_box)
-        
-        dlg.setLayout(layout)
-        
+        layout = QVBoxLayout(dlg)
+        info = QLabel(f"Änderungen auf <b>{len(editable)}</b> ausgewählte Kategorie(n) anwenden:")
+        info.setWordWrap(True)
+        layout.addWidget(info)
+
+        form = QFormLayout()
+
+        self._mass_fix = QComboBox()
+        self._mass_fix.addItems(["Nicht ändern", "Setzen: Ja", "Setzen: Nein"])
+        form.addRow("Fixkosten:", self._mass_fix)
+
+        self._mass_rec = QComboBox()
+        self._mass_rec.addItems(["Nicht ändern", "Setzen: Ja", "Setzen: Nein"])
+        form.addRow("Wiederkehrend:", self._mass_rec)
+
+        day_row = QHBoxLayout()
+        self._mass_day_mode = QComboBox()
+        self._mass_day_mode.addItems(["Nicht ändern", "Tag setzen…"])
+        self._mass_day = QSpinBox()
+        self._mass_day.setRange(1, 31)
+        self._mass_day.setValue(1)
+        self._mass_day.setEnabled(False)
+        self._mass_day_mode.currentIndexChanged.connect(lambda i: self._mass_day.setEnabled(i == 1))
+        day_row.addWidget(self._mass_day_mode, 1)
+        day_row.addWidget(self._mass_day, 0)
+        form.addRow("Fälligkeitstag:", day_row)
+
+        layout.addLayout(form)
+
+        hint = QLabel("Hinweis: Wenn du einen Tag setzt, wird <b>Wiederkehrend</b> automatisch aktiviert.")
+        hint.setWordWrap(True)
+        hint.setStyleSheet("color: #666;")
+        layout.addWidget(hint)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons.accepted.connect(dlg.accept)
+        buttons.rejected.connect(dlg.reject)
+        layout.addWidget(buttons)
+
         if dlg.exec() != QDialog.Accepted:
             return
-        
-        # Änderungen anwenden
-        for cat_id, typ, name in categories:
-            if chk_set_fix.isChecked():
-                self.model.update_flags(int(cat_id), is_fix=True)
-            if chk_set_rec.isChecked():
-                self.model.update_flags(int(cat_id), is_recurring=True, recurring_day=day_spin.value())
-        
-        self.refresh(clear_selection=False)
-        QMessageBox.information(self, "Erfolg", f"{len(categories)} Kategorien wurden aktualisiert.")
+
+        changed = 0
+        fix_choice = self._mass_fix.currentIndex()
+        rec_choice = self._mass_rec.currentIndex()
+        set_day = self._mass_day_mode.currentIndex() == 1
+        day_val = int(self._mass_day.value())
+
+        self._set_loading(True)
+        try:
+            for item in editable:
+                cat_id = int(item.data(self.COL_NAME, self.ROLE_ID))
+
+                kwargs = {}
+                if fix_choice == 1:
+                    kwargs["is_fix"] = True
+                elif fix_choice == 2:
+                    kwargs["is_fix"] = False
+
+                if rec_choice == 1:
+                    kwargs["is_recurring"] = True
+                elif rec_choice == 2:
+                    kwargs["is_recurring"] = False
+
+                if set_day:
+                    kwargs["is_recurring"] = True
+                    kwargs["recurring_day"] = day_val
+
+                if not kwargs:
+                    continue
+
+                try:
+                    self.model.update_flags(cat_id, **kwargs)
+                    changed += 1
+
+                    if "is_fix" in kwargs:
+                        item.setCheckState(self.COL_FIX, Qt.CheckState.Checked if kwargs["is_fix"] else Qt.CheckState.Unchecked)
+
+                    if "is_recurring" in kwargs:
+                        item.setCheckState(self.COL_REC, Qt.CheckState.Checked if kwargs["is_recurring"] else Qt.CheckState.Unchecked)
+                        if not kwargs["is_recurring"]:
+                            item.setText(self.COL_DAY, "")
+
+                    if "recurring_day" in kwargs:
+                        item.setText(self.COL_DAY, str(kwargs["recurring_day"]))
+                except Exception:
+                    pass
+        finally:
+            self._set_loading(False)
+
+        if changed > 0:
+            QMessageBox.information(self, "OK", f"{changed} Kategorie(n) aktualisiert.")
+            self.refresh()

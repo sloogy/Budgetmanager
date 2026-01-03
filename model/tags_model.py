@@ -26,6 +26,50 @@ class TagsModel:
         """Liste alle Tags"""
         cur = self.conn.execute("SELECT id, name, color FROM tags ORDER BY name")
         return [Tag(id=row[0], name=row[1], color=row[2]) for row in cur.fetchall()]
+    
+    def get_all_tags(self) -> list[dict]:
+        """
+        Gibt alle Tags als Dictionary-Liste zurück.
+        Für Kompatibilität mit overview_tab.
+        """
+        tags = self.list_all()
+        return [
+            {
+                "id": tag.id,
+                "name": tag.name,
+                "color": tag.color
+            }
+            for tag in tags
+        ]
+    def get_tags_for_entry(self, entry_id: int) -> list[dict]:
+        """
+        Gibt alle Tags für einen Tracking-Eintrag zurück.
+
+        Wichtig: Bei älteren DBs kann die Tabelle entry_tags fehlen. Dann liefern wir
+        einfach eine leere Liste, statt die Übersicht zu crashen.
+        """
+        try:
+            cur = self.conn.execute(
+                """
+                SELECT t.id, t.name, t.color
+                FROM tags t
+                JOIN entry_tags et ON t.id = et.tag_id
+                WHERE et.entry_id = ?
+                ORDER BY t.name
+                """,
+                (entry_id,)
+            )
+        except sqlite3.OperationalError:
+            return []
+
+        return [
+            {
+                "id": row[0],
+                "name": row[1],
+                "color": row[2],
+            }
+            for row in cur.fetchall()
+        ]
 
     def update(self, tag_id: int, name: str | None = None, color: str | None = None) -> None:
         """Aktualisiert einen Tag"""

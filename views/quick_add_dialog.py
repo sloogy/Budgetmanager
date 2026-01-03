@@ -101,18 +101,31 @@ class QuickAddDialog(QDialog):
         self.amount_spin.setFocus()
     
     def _update_categories(self):
-        """Aktualisiert die Kategorien basierend auf dem Typ"""
+        """Aktualisiert die Kategorien basierend auf dem Typ (Tree-fähig)"""
         typ = self.typ_combo.currentText()
-        cats = self.cats.list_names(typ)
-        
-        current = self.cat_combo.currentText()
+
+        current_data = self.cat_combo.currentData() or self.cat_combo.currentText().strip()
         self.cat_combo.clear()
-        self.cat_combo.addItems(cats)
-        
-        # Versuche vorherige Auswahl wiederherzustellen
-        idx = self.cat_combo.findText(current)
-        if idx >= 0:
-            self.cat_combo.setCurrentIndex(idx)
+
+        pairs = []
+        if hasattr(self.cats, "list_names_tree"):
+            try:
+                pairs = self.cats.list_names_tree(typ)
+            except Exception:
+                pairs = []
+
+        if pairs:
+            for label, real in pairs:
+                self.cat_combo.addItem(label, real)
+        else:
+            self.cat_combo.addItems(self.cats.list_names(typ))
+
+        # Vorherige Auswahl wiederherstellen
+        if current_data:
+            for i in range(self.cat_combo.count()):
+                if self.cat_combo.itemData(i) == current_data or self.cat_combo.itemText(i).strip() == current_data:
+                    self.cat_combo.setCurrentIndex(i)
+                    break
     
     def _validate(self) -> bool:
         """Prüft ob alle Pflichtfelder ausgefüllt sind"""
@@ -133,7 +146,7 @@ class QuickAddDialog(QDialog):
         
         d = self.date_edit.date().toPython()
         typ = self.typ_combo.currentText()
-        category = self.cat_combo.currentText().strip()
+        category = (self.cat_combo.currentData() or self.cat_combo.currentText()).strip()
         amount = self.amount_spin.value()
         details = self.details_edit.text().strip()
         

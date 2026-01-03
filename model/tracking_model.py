@@ -11,6 +11,17 @@ class TrackingRow:
     category: str
     amount: float
     details: str
+    
+    # Aliases für Kompatibilität mit verschiedenen Code-Teilen
+    @property
+    def date(self) -> date:
+        """Alias für d - für Kompatibilität"""
+        return self.d
+    
+    @property
+    def description(self) -> str:
+        """Alias für details - für Kompatibilität"""
+        return self.details
 
 def _to_date_iso(d: date | str) -> str:
     if isinstance(d, date):
@@ -137,6 +148,7 @@ class TrackingModel:
         self,
         typ: str | None = None,
         category: str | None = None,
+        categories: list[str] | None = None,
         date_from: date | str | None = None,
         date_to: date | str | None = None,
         min_amount: float | None = None,
@@ -164,9 +176,19 @@ class TrackingModel:
             where_parts.append("typ = ?")
             params.append(typ)
 
+        # Mehrfach-Kategorien-Filter (z. B. für Tags).
+        if categories is not None and not category:
+            categories = [str(c).strip() for c in categories if str(c).strip()]
+            if not categories:
+                return []
+
         if category:
             where_parts.append("category = ?")
             params.append(category)
+        elif categories:
+            placeholders = ','.join(['?'] * len(categories))
+            where_parts.append(f"category IN ({placeholders})")
+            params.extend(categories)
 
         if date_from:
             where_parts.append("date >= ?")
@@ -294,6 +316,23 @@ class TrackingModel:
             "SELECT DISTINCT CAST(substr(date,1,4) AS INTEGER) AS y FROM tracking ORDER BY y"
         )
         return [int(r["y"]) for r in cur.fetchall()]
+    
+    def get_available_years(self) -> list[int]:
+        """Alias für years() - für Kompatibilität mit overview_tab"""
+        return self.years()
+    
+    def get_entries_in_range(self, date_from: date, date_to: date) -> list[TrackingRow]:
+        """
+        Gibt alle Einträge in einem Datumsbereich zurück.
+        
+        Args:
+            date_from: Start-Datum (inklusiv)
+            date_to: End-Datum (inklusiv)
+            
+        Returns:
+            Liste von TrackingRow Objekten
+        """
+        return self.list_filtered(date_from=date_from, date_to=date_to)
 
     def sum_by_month_all(self, typ: str | None = None) -> dict[int, float]:
         where = []

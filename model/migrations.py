@@ -5,8 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Aktuelle Schema-Version
-CURRENT_VERSION = 5
-
+CURRENT_VERSION = 7
 def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
     """Gibt alle Spaltennamen einer Tabelle zurück"""
     try:
@@ -116,6 +115,15 @@ def migrate_all(conn: sqlite3.Connection, db_path: str = None, backup_dir: str =
         _migrate_v4_to_v5(conn)
         migrations_applied.append("v4→v5: Wiederkehrende Transaktionen mit Soll-Datum")
     
+    # Version 5 → 6: Entry Tags (Tags ↔ Tracking)
+    if old_version < 6:
+        _migrate_v5_to_v6(conn)
+        migrations_applied.append("v5→v6: entry_tags (Tags ↔ Transaktionen)")
+    if old_version < 7:
+        _migrate_v6_to_v7(conn)
+        migrations_applied.append("v6→v7: Kategorien-Baum (parent_id) + Funding + sort_order")
+
+
     # Version setzen
     if migrations_applied:
         _set_db_version(conn, CURRENT_VERSION)
@@ -350,7 +358,7 @@ def get_migration_info(conn: sqlite3.Connection) -> dict:
     # Liste aller erwarteten Tabellen
     expected_tables = [
         'categories', 'budget', 'tracking', 'system_flags',
-        'tags', 'category_tags', 'budget_warnings', 'favorites',
+        'tags', 'category_tags', 'entry_tags', 'budget_warnings', 'favorites',
         'savings_goals', 'undo_stack', 'theme_profiles', 'recurring_transactions'
     ]
     
@@ -365,3 +373,50 @@ def get_migration_info(conn: sqlite3.Connection) -> dict:
         'needs_migration': current < CURRENT_VERSION or bool(missing_tables),
         'missing_tables': missing_tables
     }
+
+
+
+def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
+    """Migration v5 → v6: entry_tags Tabelle (Tags ↔ Tracking-Einträge)"""
+
+    conn.execute(
+        '''
+        CREATE TABLE IF NOT EXISTS entry_tags(
+            entry_id INTEGER NOT NULL,
+            tag_id INTEGER NOT NULL,
+            PRIMARY KEY (entry_id, tag_id),
+            FOREIGN KEY (entry_id) REFERENCES tracking(id) ON DELETE CASCADE,
+            FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+        );
+        '''
+    )
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_entry_tags_entry ON entry_tags(entry_id);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_entry_tags_tag ON entry_tags(tag_id);")
+
+    conn.commit()
+
+
+def _migrate_v6_to_v7(conn: sqlite3.Connection) -> None:
+    """Migration v6 → v7: Kategorien-Baum/Unterkategorien + Funding + Sortierung.
+
+    v6 in 0.18.3 hat entry_tags eingeführt.
+    Ab v7 erweitern wir categories um parent_id / funded_by_category_id / sort_order
+    und Indizes, damit Tree-UI & spätere Funding-Zuordnung funktionieren.
+    """
+    cols = _cols(conn, "categories")
+
+    if "parent_id" not in cols:
+        conn.execute("ALTER TABLE categories ADD COLUMN parent_id INTEGER;")
+
+    if "funded_by_category_id" not in cols:
+        conn.execute("ALTER TABLE categories ADD COLUMN funded_by_category_id INTEGER;")
+
+    if "sort_order" not in cols:
+        conn.execute("ALTER TABLE categories ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0;")
+
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_funded_by ON categories(funded_by_category_id);")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_sort ON categories(typ, sort_order, name);")
+
+    conn.commit()

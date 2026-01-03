@@ -611,11 +611,7 @@ class AppearanceProfilesDialog(QDialog):
         if not name:
             return
         
-        # Prüfe ob Standard-Theme
-        from theme_manager import ThemeManager
-        is_predefined = name in ['Standard Hell', 'Standard Dunkel', 'Solarized Hell', 'Solarized Dunkel', 'Nord Dunkel', 'Dracula Dunkel']
-        
-        # Profil speichern (auch für Standard-Themes erlaubt - wird in JSON gespeichert)
+        # Profil speichern (erlaubt für alle Themes)
         self._profiles[name] = self._read_editor_to_profile()
         self._save_to_settings()
         
@@ -764,11 +760,156 @@ class AppearanceProfilesDialog(QDialog):
         if not name:
             return
         
-        # Prüfe ob es ein Standard-Theme ist
-        from theme_manager import ThemeManager
-        is_predefined = name in ['Standard Hell', 'Standard Dunkel', 'Solarized Hell', 'Solarized Dunkel', 'Nord Dunkel', 'Dracula Dunkel']
+        # Standard-Themes mit ihren Original-Werten
+        PREDEFINED_THEMES = {
+            'Standard Hell': {
+                "modus": "hell",
+                "hintergrund_app": "#ffffff",
+                "hintergrund_panel": "#f6f7f9",
+                "hintergrund_seitenleiste": "#f0f2f5",
+                "sidebar_panel_bg": "#eef2f7",
+                "filter_panel_bg": "#f6f7f9",
+                "hintergrund_sidebarpanel": "#eef2f7",
+                "hintergrund_filterpanel": "#eef2f7",
+                "text": "#111111",
+                "text_gedimmt": "#444444",
+                "akzent": "#2f80ed",
+                "tabelle_hintergrund": "#ffffff",
+                "tabelle_alt": "#f7f9fc",
+                "tabelle_header": "#eef2f7",
+                "tabelle_gitter": "#d6dbe3",
+                "auswahl_hintergrund": "#2f80ed",
+                "auswahl_text": "#ffffff",
+                "negativ_text": "#e74c3c",
+                "typ_einnahmen": "#2ecc71",
+                "typ_ausgaben": "#e74c3c",
+                "typ_ersparnisse": "#3498db",
+                "schriftgroesse": 10,
+            },
+            'Standard Dunkel': {
+                "modus": "dunkel",
+                "hintergrund_app": "#1e1e1e",
+                "hintergrund_panel": "#2d2d30",
+                "hintergrund_seitenleiste": "#252526",
+                "sidebar_panel_bg": "#2d2d30",
+                "filter_panel_bg": "#2d2d30",
+                "hintergrund_sidebarpanel": "#2d2d30",
+                "hintergrund_filterpanel": "#2d2d30",
+                "text": "#cccccc",
+                "text_gedimmt": "#808080",
+                "akzent": "#007acc",
+                "tabelle_hintergrund": "#1e1e1e",
+                "tabelle_alt": "#252526",
+                "tabelle_header": "#2d2d30",
+                "tabelle_gitter": "#3e3e42",
+                "auswahl_hintergrund": "#007acc",
+                "auswahl_text": "#ffffff",
+                "negativ_text": "#f48771",
+                "typ_einnahmen": "#4ec9b0",
+                "typ_ausgaben": "#f48771",
+                "typ_ersparnisse": "#569cd6",
+                "schriftgroesse": 10,
+            },
+            'Solarized Hell': {
+                "modus": "hell",
+                "hintergrund_app": "#fdf6e3",
+                "hintergrund_panel": "#eee8d5",
+                "hintergrund_seitenleiste": "#eee8d5",
+                "sidebar_panel_bg": "#eee8d5",
+                "filter_panel_bg": "#eee8d5",
+                "hintergrund_sidebarpanel": "#eee8d5",
+                "hintergrund_filterpanel": "#eee8d5",
+                "text": "#657b83",
+                "text_gedimmt": "#93a1a1",
+                "akzent": "#268bd2",
+                "tabelle_hintergrund": "#fdf6e3",
+                "tabelle_alt": "#eee8d5",
+                "tabelle_header": "#eee8d5",
+                "tabelle_gitter": "#93a1a1",
+                "auswahl_hintergrund": "#268bd2",
+                "auswahl_text": "#fdf6e3",
+                "negativ_text": "#dc322f",
+                "typ_einnahmen": "#859900",
+                "typ_ausgaben": "#dc322f",
+                "typ_ersparnisse": "#268bd2",
+                "schriftgroesse": 10,
+            },
+            'Solarized Dunkel': {
+                "modus": "dunkel",
+                "hintergrund_app": "#002b36",
+                "hintergrund_panel": "#073642",
+                "hintergrund_seitenleiste": "#073642",
+                "sidebar_panel_bg": "#073642",
+                "filter_panel_bg": "#073642",
+                "hintergrund_sidebarpanel": "#073642",
+                "hintergrund_filterpanel": "#073642",
+                "text": "#839496",
+                "text_gedimmt": "#586e75",
+                "akzent": "#268bd2",
+                "tabelle_hintergrund": "#002b36",
+                "tabelle_alt": "#073642",
+                "tabelle_header": "#073642",
+                "tabelle_gitter": "#586e75",
+                "auswahl_hintergrund": "#268bd2",
+                "auswahl_text": "#fdf6e3",
+                "negativ_text": "#dc322f",
+                "typ_einnahmen": "#859900",
+                "typ_ausgaben": "#dc322f",
+                "typ_ersparnisse": "#268bd2",
+                "schriftgroesse": 10,
+            },
+            'Nord Dunkel': {
+                "modus": "dunkel",
+                "hintergrund_app": "#2e3440",
+                "hintergrund_panel": "#3b4252",
+                "hintergrund_seitenleiste": "#3b4252",
+                "sidebar_panel_bg": "#3b4252",
+                "filter_panel_bg": "#3b4252",
+                "hintergrund_sidebarpanel": "#3b4252",
+                "hintergrund_filterpanel": "#3b4252",
+                "text": "#eceff4",
+                "text_gedimmt": "#d8dee9",
+                "akzent": "#88c0d0",
+                "tabelle_hintergrund": "#2e3440",
+                "tabelle_alt": "#3b4252",
+                "tabelle_header": "#434c5e",
+                "tabelle_gitter": "#4c566a",
+                "auswahl_hintergrund": "#88c0d0",
+                "auswahl_text": "#2e3440",
+                "negativ_text": "#bf616a",
+                "typ_einnahmen": "#a3be8c",
+                "typ_ausgaben": "#bf616a",
+                "typ_ersparnisse": "#5e81ac",
+                "schriftgroesse": 10,
+            },
+            'Dracula Dunkel': {
+                "modus": "dunkel",
+                "hintergrund_app": "#282a36",
+                "hintergrund_panel": "#44475a",
+                "hintergrund_seitenleiste": "#44475a",
+                "sidebar_panel_bg": "#44475a",
+                "filter_panel_bg": "#44475a",
+                "hintergrund_sidebarpanel": "#44475a",
+                "hintergrund_filterpanel": "#44475a",
+                "text": "#f8f8f2",
+                "text_gedimmt": "#6272a4",
+                "akzent": "#bd93f9",
+                "tabelle_hintergrund": "#282a36",
+                "tabelle_alt": "#44475a",
+                "tabelle_header": "#44475a",
+                "tabelle_gitter": "#6272a4",
+                "auswahl_hintergrund": "#bd93f9",
+                "auswahl_text": "#282a36",
+                "negativ_text": "#ff5555",
+                "typ_einnahmen": "#50fa7b",
+                "typ_ausgaben": "#ff5555",
+                "typ_ersparnisse": "#8be9fd",
+                "schriftgroesse": 10,
+            }
+        }
         
-        if not is_predefined:
+        # Prüfe ob es ein Standard-Theme ist
+        if name not in PREDEFINED_THEMES:
             QMessageBox.information(
                 self, "Hinweis",
                 f"'{name}' ist kein Standard-Theme.\n\n"
@@ -788,14 +929,8 @@ class AppearanceProfilesDialog(QDialog):
         if reply != QMessageBox.Yes:
             return
         
-        # Originale Werte aus PREDEFINED_PROFILES holen
-        original = self.theme_manager.get_profile(name).to_dict() if self.theme_manager.get_profile(name) else {}
-        if not original:
-            QMessageBox.warning(self, "Fehler", f"Konnte Original-Daten für '{name}' nicht finden.")
-            return
-        
         # Profil zurücksetzen
-        self._profiles[name] = dict(original)
+        self._profiles[name] = dict(PREDEFINED_THEMES[name])
         self._save_to_settings()
         
         # Editor aktualisieren

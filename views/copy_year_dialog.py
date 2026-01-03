@@ -34,6 +34,10 @@ class CopyYearDialog(QDialog):
 
         self.btn_ok = QPushButton("Kopieren")
         self.btn_cancel = QPushButton("Abbrechen")
+        
+        # Stelle sicher, dass der OK-Button als Standard-Button funktioniert
+        self.btn_ok.setDefault(True)
+        self.btn_cancel.setDefault(False)
 
         form = QFormLayout()
         form.addRow("Quelljahr", self.src)

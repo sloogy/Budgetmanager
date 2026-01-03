@@ -7,9 +7,12 @@ class Category:
     id: int
     typ: str
     name: str
+    parent_id: int | None
     is_fix: bool
     is_recurring: bool
     recurring_day: int
+    funded_by_category_id: int | None
+    sort_order: int
 
 class CategoryModel:
     def __init__(self, conn: sqlite3.Connection):
@@ -35,13 +38,22 @@ class CategoryModel:
             ],
             "Ersparnisse": [("Ferien", 0, 0), ("Rücklagen", 0, 0), ("Sonderanschaffungen", 0, 0), ("3. Säule", 0, 1)],
         }
+        cols = self._cols("categories")
         cur=self.conn.cursor()
         for typ, items in defaults.items():
             for name, is_fix, is_rec in items:
-                cur.execute(
-                    "INSERT OR IGNORE INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
-                    (typ, name, int(is_fix), int(is_rec), 1),
-                )
+                # v6+: parent_id/funded_by/sort_order existieren, bleiben aber NULL/0
+                if "parent_id" in cols and "sort_order" in cols and "funded_by_category_id" in cols:
+                    cur.execute(
+                        "INSERT OR IGNORE INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
+                        "VALUES(?,?,?,?,?,?,?,?)",
+                        (typ, name, None, int(is_fix), int(is_rec), 1, None, 0),
+                    )
+                else:
+                    cur.execute(
+                        "INSERT OR IGNORE INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
+                        (typ, name, int(is_fix), int(is_rec), 1),
+                    )
         
         # Markiere als geladen
         cur.execute(
@@ -51,9 +63,9 @@ class CategoryModel:
 
     def list(self, typ: str | None = None) -> list[Category]:
         if typ:
-            cur=self.conn.execute("SELECT * FROM categories WHERE typ=? ORDER BY name COLLATE NOCASE",(typ,))
+            cur=self.conn.execute("SELECT * FROM categories WHERE typ=? ORDER BY sort_order, name COLLATE NOCASE",(typ,))
         else:
-            cur=self.conn.execute("SELECT * FROM categories ORDER BY typ, name COLLATE NOCASE")
+            cur=self.conn.execute("SELECT * FROM categories ORDER BY typ, sort_order, name COLLATE NOCASE")
         out=[]
         for r in cur.fetchall():
             out.append(
@@ -61,20 +73,154 @@ class CategoryModel:
                     int(r["id"]),
                     r["typ"],
                     r["name"],
+                    int(r["parent_id"]) if "parent_id" in r.keys() and r["parent_id"] is not None else None,
                     bool(r["is_fix"]),
                     bool(r["is_recurring"]),
                     int(r["recurring_day"] or 1),
+                    int(r["funded_by_category_id"]) if "funded_by_category_id" in r.keys() and r["funded_by_category_id"] is not None else None,
+                    int(r["sort_order"]) if "sort_order" in r.keys() and r["sort_order"] is not None else 0,
                 )
             )
         return out
+
+    # ---------------------------------------------------------------------
+    # Kompatibilitätsschicht (für Views aus dem 0.18.x-Branch)
+    # ---------------------------------------------------------------------
+    def get_all_categories(self) -> list[dict]:
+        """Gibt alle Kategorien als Dict-Liste zurück.
+
+        Einige Views/Dialogs (z.B. Übersicht / Fixkosten-Check) erwarten ein
+        Dict-Format mit Keys wie 'id'/'name'/'type'. Intern arbeitet der
+        Budgetmanager weiterhin mit 'typ' (Einkommen/Ausgaben/Ersparnisse).
+        """
+
+        cols = self._cols("categories")
+        select = [
+            "id",
+            "typ",
+            "name",
+            "parent_id" if "parent_id" in cols else "NULL as parent_id",
+            "is_fix" if "is_fix" in cols else "0 as is_fix",
+            "is_recurring" if "is_recurring" in cols else "0 as is_recurring",
+            "recurring_day" if "recurring_day" in cols else "1 as recurring_day",
+            "funded_by_category_id" if "funded_by_category_id" in cols else "NULL as funded_by_category_id",
+            "sort_order" if "sort_order" in cols else "0 as sort_order",
+        ]
+        # optional (einige Dialoge nutzen diesen Wert)
+        if "expected_monthly_bookings" in cols:
+            select.append("expected_monthly_bookings")
+        else:
+            select.append("1 as expected_monthly_bookings")
+
+        cur = self.conn.execute(
+            f"SELECT {', '.join(select)} FROM categories ORDER BY typ, sort_order, name COLLATE NOCASE"
+        )
+
+        def _map_type(typ: str) -> str:
+            t = (typ or "").strip().lower()
+            if t in ("einkommen", "einnahmen", "income"):
+                return "income"
+            if t in ("ausgaben", "expense", "expenses"):
+                return "expense"
+            if t in ("ersparnisse", "sparen", "savings"):
+                return "savings"
+            # Fallback: wie Ausgaben behandeln
+            return "expense"
+
+        out: list[dict] = []
+        for r in cur.fetchall():
+            out.append(
+                {
+                    "id": int(r["id"]),
+                    "name": r["name"],
+                    "typ": r["typ"],
+                    "type": _map_type(r["typ"]),
+                    "parent_id": int(r["parent_id"]) if r["parent_id"] is not None else None,
+                    # Legacy-Key für Fixkosten-Dialoge
+                    "is_fixcost": bool(r["is_fix"]),
+                    "is_fix": bool(r["is_fix"]),
+                    "is_recurring": bool(r["is_recurring"]),
+                    "recurring_day": int(r["recurring_day"] or 1),
+                    "funded_by_category_id": int(r["funded_by_category_id"]) if r["funded_by_category_id"] is not None else None,
+                    "sort_order": int(r["sort_order"] or 0),
+                    "expected_monthly_bookings": int(r["expected_monthly_bookings"] or 1),
+                }
+            )
+        return out
+
+    def list_tree(self) -> dict[str, list[Category]]:
+        """Liefert alle Kategorien gruppiert nach typ (Einnahmen/Ausgaben/Ersparnisse)."""
+        data: dict[str, list[Category]] = {"Einkommen": [], "Ausgaben": [], "Ersparnisse": []}
+        for c in self.list(None):
+            data.setdefault(c.typ, []).append(c)
+        return data
+
+    def build_tree(self, items: list[Category]) -> list[dict]:
+        """Baut aus flacher Liste eine Baumstruktur.
+
+        Returns: Liste von Nodes {cat: Category, children: [...]}
+        """
+        by_id: dict[int, dict] = {}
+        roots: list[dict] = []
+        for c in items:
+            by_id[c.id] = {"cat": c, "children": []}
+        for c in items:
+            node = by_id[c.id]
+            if c.parent_id and c.parent_id in by_id:
+                by_id[c.parent_id]["children"].append(node)
+            else:
+                roots.append(node)
+        return roots
+
+    def _cols(self, table: str) -> set[str]:
+        try:
+            cur = self.conn.execute(f"PRAGMA table_info({table});")
+            return {row[1] for row in cur.fetchall()}
+        except Exception:
+            return set()
 
     def list_names(self, typ: str) -> list[str]:
         cur=self.conn.execute("SELECT name FROM categories WHERE typ=? ORDER BY name COLLATE NOCASE",(typ,))
         return [r["name"] for r in cur.fetchall()]
 
+    def list_names_tree(self, typ: str) -> list[tuple[str, str]]:
+        """Hierarchische Namensliste für Dropdowns.
+
+        Returns: [(anzeige_text, echter_name), ...]
+        """
+        items = self.list(typ)
+        nodes = self.build_tree(items)
+
+        out: list[tuple[str, str]] = []
+
+        def walk(children: list[dict], depth: int) -> None:
+            for n in children:
+                c: Category = n["cat"]
+                prefix = "  " * depth
+                out.append((f"{prefix}{c.name}", c.name))
+                walk(n["children"], depth + 1)
+
+        walk(nodes, 0)
+        return out
+
     def list_fix_names(self, typ: str) -> list[str]:
         cur=self.conn.execute("SELECT name FROM categories WHERE typ=? AND is_fix=1 ORDER BY name COLLATE NOCASE",(typ,))
         return [r["name"] for r in cur.fetchall()]
+
+    def list_fix_names_tree(self, typ: str) -> list[tuple[str, str]]:
+        items = [c for c in self.list(typ) if c.is_fix]
+        nodes = self.build_tree(items)
+        out: list[tuple[str, str]] = []
+
+        def walk(children: list[dict], depth: int) -> None:
+            for n in children:
+                c: Category = n["cat"]
+                prefix = "  " * depth
+                out.append((f"{prefix}{c.name}", c.name))
+                walk(n["children"], depth + 1)
+
+        walk(nodes, 0)
+        return out
 
     def get_flags(self, typ: str, name: str) -> tuple[bool, bool, int]:
         """returns (is_fix, is_recurring, recurring_day). if missing -> (False, False, 1)"""
@@ -86,20 +232,46 @@ class CategoryModel:
             return (False, False, 1)
         return (bool(cur["is_fix"]), bool(cur["is_recurring"]), int(cur["recurring_day"] or 1))
 
-    def upsert(self, typ: str, name: str, is_fix: bool, is_recurring: bool, recurring_day: int = 1) -> None:
+    def upsert(
+        self,
+        typ: str,
+        name: str,
+        is_fix: bool,
+        is_recurring: bool,
+        recurring_day: int = 1,
+        *,
+        parent_id: int | None = None,
+        funded_by_category_id: int | None = None,
+        sort_order: int = 0,
+    ) -> None:
         day = int(recurring_day) if recurring_day else 1
         if day < 1:
             day = 1
         if day > 31:
             day = 31
-        self.conn.execute(
-            "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?) "
-            "ON CONFLICT(typ,name) DO UPDATE SET "
-            "  is_fix=excluded.is_fix, "
-            "  is_recurring=excluded.is_recurring, "
-            "  recurring_day=excluded.recurring_day",
-            (typ, name, int(is_fix), int(is_recurring), day),
-        )
+        cols = self._cols("categories")
+        if "parent_id" in cols and "funded_by_category_id" in cols and "sort_order" in cols:
+            self.conn.execute(
+                "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
+                "VALUES(?,?,?,?,?,?,?,?) "
+                "ON CONFLICT(typ,name) DO UPDATE SET "
+                "  parent_id=excluded.parent_id, "
+                "  is_fix=excluded.is_fix, "
+                "  is_recurring=excluded.is_recurring, "
+                "  recurring_day=excluded.recurring_day, "
+                "  funded_by_category_id=excluded.funded_by_category_id, "
+                "  sort_order=excluded.sort_order",
+                (typ, name, parent_id, int(is_fix), int(is_recurring), day, funded_by_category_id, int(sort_order)),
+            )
+        else:
+            self.conn.execute(
+                "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?) "
+                "ON CONFLICT(typ,name) DO UPDATE SET "
+                "  is_fix=excluded.is_fix, "
+                "  is_recurring=excluded.is_recurring, "
+                "  recurring_day=excluded.recurring_day",
+                (typ, name, int(is_fix), int(is_recurring), day),
+            )
         self.conn.commit()
 
     def create(
@@ -109,14 +281,26 @@ class CategoryModel:
         is_fix: bool = False,
         is_recurring: bool = False,
         recurring_day: int = 1,
+        *,
+        parent_id: int | None = None,
+        funded_by_category_id: int | None = None,
+        sort_order: int = 0,
     ) -> int:
         """Legt eine neue Kategorie an und liefert die ID zurück."""
         day = int(recurring_day) if recurring_day else 1
         day = max(1, min(31, day))
-        cur = self.conn.execute(
-            "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
-            (typ, name, int(is_fix), int(is_recurring), day),
-        )
+        cols = self._cols("categories")
+        if "parent_id" in cols and "funded_by_category_id" in cols and "sort_order" in cols:
+            cur = self.conn.execute(
+                "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
+                "VALUES(?,?,?,?,?,?,?,?)",
+                (typ, name, parent_id, int(is_fix), int(is_recurring), day, funded_by_category_id, int(sort_order)),
+            )
+        else:
+            cur = self.conn.execute(
+                "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
+                (typ, name, int(is_fix), int(is_recurring), day),
+            )
         self.conn.commit()
         return int(cur.lastrowid)
 
@@ -156,6 +340,20 @@ class CategoryModel:
 
     def delete(self, typ: str, name: str) -> None:
         self.conn.execute("DELETE FROM categories WHERE typ=? AND name=?",(typ,name))
+        self.conn.commit()
+
+    def delete_by_ids(self, ids: list[int]) -> None:
+        if not ids:
+            return
+        q = ",".join(["?"] * len(ids))
+        self.conn.execute(f"DELETE FROM categories WHERE id IN ({q})", [int(i) for i in ids])
+        self.conn.commit()
+
+    def update_parent(self, cat_id: int, new_parent_id: int | None) -> None:
+        cols = self._cols("categories")
+        if "parent_id" not in cols:
+            return
+        self.conn.execute("UPDATE categories SET parent_id=? WHERE id=?", (new_parent_id, int(cat_id)))
         self.conn.commit()
 
     def reset_defaults_flag(self) -> None:
