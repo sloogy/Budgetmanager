@@ -83,9 +83,63 @@
   - Accounts Tabelle
   - Tree sauber (parent_id / optional closure table)
   - Migration/Upgrade-Strategie + Backup + Fallback
-  - Siehe: `docs/DB_TARGET_SCHEMA_V8.md`
 
 ---
+
+### V8 DB-Ziel: ID-Struktur (Details, damit der Umbau „richtig“ wird)
+
+**Ziel:** Budget und Buchungen referenzieren Kategorien **nicht mehr über Namen/Strings**, sondern über **IDs** (`category_id`).  
+Damit werden **Umbenennen**, **Baum-Refactor**, **Merge/Split** und **Exporte** robust.
+
+#### Minimal-Schema (V8 — Vorschlag)
+- `categories`:
+  - `id` (PK, int)
+  - `name` (text)
+  - `parent_id` (FK → categories.id, NULL möglich)
+  - `account_id` (FK → accounts.id) *(optional, wenn Kategorien je Konto getrennt sind)*
+  - Flags: `is_fixed_cost` (bool), `is_recurring` (bool), `recurring_day` (int 1–31, NULL), `tag` (text, NULL)
+  - Indexe: `(parent_id)`, ggf. `(account_id)`
+
+- `accounts`:
+  - `id` (PK)
+  - `name` (z.B. Einnahmen/Ausgaben/Ersparnisse)
+  - `color` (text, z.B. HEX)
+  - `is_active` (bool)
+
+- `budgets`:
+  - `id` (PK)
+  - `year` (int)
+  - `month` (int 1–12 oder 0/NULL für „Gesamt“)
+  - `category_id` (FK → categories.id)
+  - `amount` (numeric)
+  - Unique: `(year, month, category_id)`
+
+- `transactions` (Tracking/Buchungen):
+  - `id` (PK)
+  - `date` (date)
+  - `amount` (numeric)
+  - `account_id` (FK → accounts.id)
+  - `category_id` (FK → categories.id)
+  - `note` (text, NULL)
+  - Flags: `is_fixed_cost` (bool) *(optional redundant)*, `is_recurring_instance` (bool)
+  - Indexe: `(date)`, `(category_id)`, `(account_id)`
+
+#### Migrations-Plan (V7 → V8)
+- [ ] **Backup erzwingen** vor Migration (automatisch + Hinweis im UI)
+- [ ] Neue Tabellen/Spalten erstellen (`accounts`, `category_id` in budgets/transactions, etc.)
+- [ ] **Mapping**: alte Kategorie-Strings → neue `categories.id`
+  - Strategie: eindeutiger „Pfad-Key“ (z.B. `Gesundheit›Krankenkasse›Prämie`) als temporärer Matcher
+- [ ] Daten umziehen (UPDATE budgets/transactions setzen `category_id`)
+- [ ] Validieren: keine NULL `category_id` (außer „Unkategorisiert“ Fallback)
+- [ ] Alte String-Spalten entfernen oder als Legacy behalten (nur falls unbedingt nötig)
+- [ ] Foreign Keys aktivieren + Indizes setzen
+
+#### Akzeptanzkriterien (damit 0.3.0.0 wirklich „Generation 2“ ist)
+- [ ] Kategorie umbenennen → **Budget + Buchungen bleiben korrekt verknüpft**
+- [ ] Kategorie verschieben im Tree → **Pfad ändert sich**, Relation bleibt korrekt
+- [ ] Copy-Year funktioniert weiterhin (über IDs)
+- [ ] Exporte enthalten weiterhin **Kategoriepfad** (aus Tree berechnet)
+- [ ] Migration ist reproduzierbar (Test-DBs) + Fallback/Restore klappt
 
 ## Release-Kandidat-Definition
 
