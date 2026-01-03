@@ -1,147 +1,114 @@
-# Budgetmanager (Pre-Release) — 0.2.2.1
+# Budgetmanager (Pre-Release) — v0.2.2.1
 
-> **Hinweis zur Versionierung:** Im Code/Ordnernamen steht teils noch `v2.x` (historisch).  
-> Für Releases verwenden wir ab jetzt **`0.x.x.x`**, solange das Produkt noch im Aufbau ist.
+Ein **Desktop-Budgettool** (Python + PySide6, SQLite), um dein **Jahresbudget** zu planen und deine **Buchungen** (Einnahmen/Ausgaben/Ersparnisse) zu tracken – inklusive Kategorien-Baum, Fixkosten/Wiederkehrend, Tags, Sparzielen und Dashboard.
 
-## Was ist das?
-
-**Budgetmanager** ist ein Desktop-Tool (Python + **PySide6** + **SQLite**) zum:
-
-- **Budget planen** (jährlich, mit 12-Monats-Sicht)
-- **Buchungen/Tracking erfassen** (Einnahmen, Ausgaben, Ersparnisse)
-- **Kategorien als Baum** (Parent/Child, Pfad-Anzeige)
-- **Dashboard/Übersicht** (KPIs, Charts, Ranking, Verlauf)
-- **Themes/Designprofile** (JSON, hell/dunkel) + Settings-Persistenz
+> **Status:** Pre-Release (**0.x.x.x**). Die App ist nutzbar, aber UI/Logik wird noch konsolidiert und das Datenmodell wird voraussichtlich nochmals „groß“ umgebaut (siehe **0.3.0.0 / DB-Ziel V8**).
 
 ---
 
-## Die „beste“ Basis für 0.2.2.x
+## Was ist in v0.2.2.1 neu?
 
-**Master-Basis:** `0.2.2.0-fix2` (Codebase: „v2.2.0 … fix2“)  
-**+ empfohlenes Mini-Patch:** `0.2.2.1` (nur 1 Datei) → bringt die gewünschte **Tabellarisch-Ansicht** im Dashboard.
-
-### ✅ 0.2.2.1 Patch (empfohlen)
-Du übernimmst **nur** diese Datei aus `v2.2.1_tree_overview`:
-
-- `views/tabs/overview_tab.py`
-
-**Wichtig:** **Nicht** den Budget-Tab aus `v2.2.1_tree_overview` übernehmen – der wirft dir **Badges/Path-Mode** wieder raus.
-
-**Patch anwenden (Beispiel):**
-```bash
-# im Repo-Root
-cp -v path/zur/v2.2.1_tree_overview/Budgetmanager_v2.2.0/views/tabs/overview_tab.py \
-      views/tabs/overview_tab.py
-```
-
-Danach:
-```bash
-python main.py
-```
+- **Dashboard / Übersicht → Subtab „Tabellarisch“**: Budget / Gebucht / Rest über mehrere Monate
+  - Auswahl: *nur aktueller Monat*, *aktueller + nächster*, *letzte 2 + aktueller*, *letzte 3 + aktueller*
+- Diese Funktion kommt als **gezielter Patch** aus `v2.2.1_tree_overview`:
+  - übernommen wurde **nur** `views/tabs/overview_tab.py`
+  - **nicht** übernommen wurde der Budget-Tab aus dieser Quelle (Regression: Badges/Path-Mode)
 
 ---
 
-## Quickstart (Fedora / Linux)
+## Funktionen (Stand v0.2.2.1)
 
-### 1) Virtuelle Umgebung (empfohlen)
+### 1) Budget-Tab (Planung)
+- **Budget erfassen / bearbeiten** (Jahr/Monat)
+- **Kategorien als Baumstruktur** (Haupt-/Unterkategorien)
+- **Copy-Year**: Budget-Kategorien und (optional) Beträge von Jahr A → Jahr B kopieren
+- **Rechtsklick-Kontextmenü** für Kategorien/Budgetzeilen (z. B. Eigenschaften, Fix/Wiederkehrend, Tag setzen)
+- **Kategoriepfad anzeigen** (z. B. `Gesundheit › Krankenkasse › Prämie`) – hilft enorm gegen „DAU-Fragezeichen“
+
+### 2) Kategorien-Tab (optional / Expertenmodus)
+- Kategorien verwalten: **Hinzufügen / Entfernen / Bearbeiten**
+- **Mehrfachauswahl** + **Bulk-Edit** (Fixkosten / Wiederkehrend / Tag)
+- Tab kann per Einstellung ausgeblendet werden (wenn man nur im Budget-Dialog arbeiten will)
+
+### 3) Buchungen-Tab (Tracking)
+- Buchung erfassen/bearbeiten/löschen mit:
+  - Datum, Betrag, Typ/Konto (Einnahmen/Ausgaben/Ersparnisse), Kategorie, Bemerkung
+- **Quick Add** (schnell viele Buchungen erfassen)
+- **Fixkosten / Monatsanfang**: kann wiederkehrende „Start-of-month“ Buchungen erleichtern
+- **Filter** (Datum/Monat/Jahr, Typ/Konto, Kategorie, Bemerkung, etc.)
+- Dialoge/Tools rund ums Wiederholen:
+  - **Wiederkehrende Buchungen verwalten**
+  - **Fixkosten-Check** / fehlende Buchungen prüfen (je nach Nutzung)
+
+### 4) Dashboard / Übersicht
+- Gegenüberstellung **Budget vs. Gebucht vs. Rest**
+- Grafiken/KPIs (je nach Datenbestand)
+- **NEU:** Subtab **„Tabellarisch“** (Monatsvergleich, siehe oben)
+
+### 5) Extras (je nach Menü/Build aktiv)
+- **Sparziele** (mit Tracking-Anbindung)
+- **Favoriten** (Schnellzugriff)
+- **Tags/Labels** (für Kategorien)
+- **Budgetwarnungen** (Schwellwerte)
+- **Undo/Redo** (Stack für Datenbank-Operationen)
+- **Backup & Wiederherstellung**
+- **Export** (CSV/Excel je nach Dialog)
+
+---
+
+## Installation & Start
+
+### Voraussetzungen
+- Python **3.10+** (Fedora / Windows)
+- PySide6 + Abhängigkeiten aus `requirements.txt` (falls vorhanden)
+
+### Start (Linux / Fedora)
 ```bash
-python3 -m venv .venv
+python -m venv .venv
 source .venv/bin/activate
-pip install -U pip
-```
-
-### 2) Abhängigkeiten installieren
-Minimal:
-```bash
 pip install -r requirements.txt
-```
-
-Wenn du auch Update-Tool / Charts nutzt:
-```bash
-pip install -r requirements_updated.txt
-```
-
-### 3) Starten
-```bash
 python main.py
 ```
 
----
-
-## Tabs im Programm
-
-### 1) Budget
-- Jahresbudget (Jan–Dez + Total)
-- **Tree-Kategorien** (Parent/Child)
-- Parent-Kategorien können **Puffer/Eigenbetrag** haben (siehe `docs/CHANGES_TREE_BUDGET.md`)
-- **Copy-Year** (Budget von Jahr A → Jahr B)
-
-### 2) Kategorien (Experten-Tab, optional)
-Standard: Kategorien werden über Budget-Dialog verwaltet.  
-Optional: separater Tab für Massenpflege.
-
-Aktivieren:
-- Menü **Ansicht** → „Kategorien-Tab anzeigen (Experten)“
-- oder **Einstellungen → Verhalten → show_categories_tab**
-
-### 3) Tracking (Buchungen)
-- Erfassen nach Datum, Betrag, Konto/Typ, Kategorie, Bemerkung
-- Filter nach Typ/Kategorie/Text/Datum/Monat/Jahr
-- Fixkosten-/Wiederkehrend-Logik über Kategorie-Flags
-
-### 4) Übersicht / Dashboard
-- KPIs, Charts (Kreisdiagramme), Rankings
-- **Neu in 0.2.2.1:** Subtab **„Tabellarisch“**
-  - zeigt **Budgetiert / Gebucht / Rest** für mehrere Monate
-  - Auswahl: aktueller Monat, aktueller+nächster, letzte 2/3 + aktuell
+### Start (Windows)
+- Analog mit venv (oder portable Build).  
+- Hinweis: Windows-Paketierung/Updater ist **noch nicht final** (siehe Open Tasks).
 
 ---
 
-## Daten & Speicherorte
+## Datenbank (SQLite) & Migrationen
 
-- **Datenbank:** standardmäßig `budgetmanager.db` (Pfad in Settings konfigurierbar)
-- **Einstellungen:** `budgetmanager_settings.json`
-- **Migration-Backups:** Standard `~/BudgetManager_Backups/`
-  - Beim Start werden DB-Migrations ausgeführt und bei Bedarf ein Backup erstellt.
-
----
-
-## Tastenkürzel (Stand fix2)
-
-| Taste | Funktion |
-|---|---|
-| F1 | Hilfe / Shortcuts |
-| F5 | Aktualisieren |
-| Strg+N | Schnelleingabe |
-| Strg+F | Globale Suche |
-| Strg+S | Speichern |
-| Strg+, | Einstellungen |
-| Strg+1–4 | Tab wechseln |
+- Die App nutzt eine **SQLite**-Datenbank (Datei).
+- Migrationen passieren beim Start automatisch (falls im Code vorgesehen).
+- **Wichtig für die Zukunft:** Aktuell sind einige Beziehungen noch string-basiert (Kategorie-Strings).  
+  Das ist praktisch, aber anfällig bei Umbenennungen.
 
 ---
 
-## Datenbank-Version (aktuell)
+## Versionierung (Wichtig)
 
-- Aktuelles Schema: **V7** (siehe `model/migrations.py`)
-- Nächster „echter“ Major-Kandidat: **0.3.0.0**, wenn du das **V8 DB-Ziel** umsetzt  
-  (ID-basierte Budget/Tracking-Relations → Breaking Change, fühlt sich an wie „neue Generation“).
+- **Alle Releases bleiben bei 0.x.x.x**, solange „noch nicht fertig“.
+- Historisch existieren Ordner-/Code-Labels wie `v2.2.0`.  
+  Inhaltlich entspricht das der **0.2.x** Linie.
 
-Siehe Plan: `docs/DB_TARGET_SCHEMA_V8.md`
+### Nächster „echter“ Major-Kandidat: 0.3.0.0 (Breaking)
+> Der nächste „echte“ Major-Kandidat wäre **0.3.0.0**, wenn du das **V8 DB-Ziel** (ID-basierte Budget/Tracking-Relations) umsetzt – das ist eine **Breaking-Änderung**, die sich wie „neue Generation“ anfühlt.
 
 ---
 
-## Entwicklung & Release-Flow (empfohlen)
+## Bekannte Baustellen (ehrlich, ohne Drama)
+- UI/Flows (Budget ↔ Kategorie-Management) sind teilweise historisch gewachsen → wird weiter vereinheitlicht.
+- DB-Modell V7 ist „praktisch“, aber Umbenennen/Tree/Relations werden erst mit V8 wirklich robust.
+- Wiederkehrende Buchungen/Fixkosten-Checks sind funktional, aber UX kann noch klarer werden.
 
-- Entwicklung auf `dev`
-- Release auf `main`
-- Release-Check: nur releasen, wenn `dev` **ahead of** `main`
+---
 
-(Release-Skripte/Automatisierung sind als Open Tasks geführt.)
+## Mitmachen / Dev-Workflow (empfohlen)
+- Entwicklung auf `dev`, Releases auf `main`.
+- Kleine, klare Commits (z. B. `fix: ...`, `feat: ...`).
+- Vor Release: Changelog pflegen, Version in `app_info.py` bumpen (ein Ort).
 
 ---
 
 ## Lizenz
-
-Aktuell „Personal use“ (siehe `LICENSE.txt` / Build-Skript).  
-Wenn du irgendwann veröffentlichen willst: Lizenz sauber entscheiden (MIT/GPL/…).
-
+Derzeit: intern/privat (anpassen, sobald du es public/OSS machst).
