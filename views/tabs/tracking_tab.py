@@ -42,7 +42,8 @@ class TrackingTab(QWidget):
 
         # Buttons
         self.btn_add=QPushButton("Hinzufügen…")
-        self.btn_fix=QPushButton("Fixkosten / Wiederkehrende…")
+        # Quick action: erzeugt Buchungen aus Fixkosten-/Wiederkehrend-Markierungen der Kategorien
+        self.btn_fix=QPushButton("Fix/Wiederkehrend buchen…")
         self.btn_edit=QPushButton("Bearbeiten…")
         self.btn_del=QPushButton("Löschen")
         self.btn_clear_filters=QPushButton("Filter zurücksetzen")
@@ -116,14 +117,15 @@ class TrackingTab(QWidget):
 
         # === LAYOUTS ===
         
-        # Button-Leiste
+        # Button-Leiste (kompakt - nur Hinzufügen und Löschen)
         top=QHBoxLayout()
         top.addWidget(self.btn_add)
         top.addWidget(self.btn_fix)
-        top.addWidget(self.btn_edit)
         top.addWidget(self.btn_del)
         top.addStretch(1)
         top.addWidget(self.chk_recent)
+        # btn_edit ist im Menü "Bearbeiten" verfügbar
+        self.btn_edit.setVisible(False)
 
         # Filter-GroupBox
         filter_group = QGroupBox("Filter")
@@ -198,23 +200,37 @@ class TrackingTab(QWidget):
         self.refresh()
 
     def _reload_categories(self):
-        """Lädt alle Kategorien in den Filter"""
-        current = self.filter_category.currentText()
+        """Lädt alle Kategorien in den Filter (Tree-fähig)"""
+        current_data = self.filter_category.currentData() or self.filter_category.currentText().strip()
         self.filter_category.clear()
-        self.filter_category.addItem("Alle Kategorien")
-        
-        all_cats = set()
+        self.filter_category.addItem("Alle Kategorien", None)
+
+        # In 'Alle' zeigen wir Typ-Prefix zur besseren Unterscheidung
+        rows = []
         for typ in ["Ausgaben", "Einkommen", "Ersparnisse"]:
-            cats = self.cats.list_names(typ)
-            all_cats.update(cats)
-        
-        for cat in sorted(all_cats):
-            self.filter_category.addItem(cat)
-        
-        # Wiederherstellen der vorherigen Auswahl
-        idx = self.filter_category.findText(current)
-        if idx >= 0:
-            self.filter_category.setCurrentIndex(idx)
+            pairs = []
+            if hasattr(self.cats, "list_names_tree"):
+                try:
+                    pairs = self.cats.list_names_tree(typ)
+                except Exception:
+                    pairs = []
+            if pairs:
+                for label, real in pairs:
+                    rows.append((f"{typ} / {label}", real))
+            else:
+                for cat in self.cats.list_names(typ):
+                    rows.append((f"{typ} / {cat}", cat))
+
+        # sort by display text
+        for disp, real in sorted(rows, key=lambda x: str(x[0]).lower()):
+            self.filter_category.addItem(disp, real)
+
+        # Auswahl wiederherstellen
+        if current_data:
+            for i in range(self.filter_category.count()):
+                if self.filter_category.itemData(i) == current_data or self.filter_category.itemText(i).strip().endswith(str(current_data)):
+                    self.filter_category.setCurrentIndex(i)
+                    break
 
     def _on_typ_changed(self):
         """Wenn Typ geändert wird, Kategorien-Filter anpassen"""
@@ -222,16 +238,29 @@ class TrackingTab(QWidget):
         if typ == "Alle":
             self._reload_categories()
         else:
-            current = self.filter_category.currentText()
+            current_data = self.filter_category.currentData() or self.filter_category.currentText().strip()
             self.filter_category.clear()
-            self.filter_category.addItem("Alle Kategorien")
-            cats = self.cats.list_names(typ)
-            for cat in cats:
-                self.filter_category.addItem(cat)
-            
-            idx = self.filter_category.findText(current)
-            if idx >= 0:
-                self.filter_category.setCurrentIndex(idx)
+            self.filter_category.addItem("Alle Kategorien", None)
+
+            pairs = []
+            if hasattr(self.cats, "list_names_tree"):
+                try:
+                    pairs = self.cats.list_names_tree(typ)
+                except Exception:
+                    pairs = []
+
+            if pairs:
+                for label, real in pairs:
+                    self.filter_category.addItem(label, real)
+            else:
+                for cat in self.cats.list_names(typ):
+                    self.filter_category.addItem(cat, cat)
+
+            if current_data:
+                for i in range(self.filter_category.count()):
+                    if self.filter_category.itemData(i) == current_data or self.filter_category.itemText(i).strip() == str(current_data):
+                        self.filter_category.setCurrentIndex(i)
+                        break
         
         self.refresh()
 
@@ -277,7 +306,7 @@ class TrackingTab(QWidget):
         else:
             # Erweiterte Filter verwenden
             typ = self.filter_typ.currentText() if self.filter_typ.currentText() != "Alle" else None
-            category = self.filter_category.currentText() if self.filter_category.currentText() != "Alle Kategorien" else None
+            category = self.filter_category.currentData()
             
             date_from = None
             date_to = None

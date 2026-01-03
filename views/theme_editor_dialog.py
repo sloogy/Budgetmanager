@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QComboBox, QColorDialog, QMessageBox, QGroupBox, QInputDialog,
     QFileDialog
 )
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtGui import QColor
 import json
 from pathlib import Path
@@ -24,6 +24,7 @@ class ThemeEditorDialog(QDialog):
         self.current_theme = None
         self.color_buttons = {}
         
+        self._loading = False
         self.setWindowTitle("Theme-Editor - Alle Themes editierbar")
         self.resize(1000, 700)
         
@@ -196,23 +197,33 @@ class ThemeEditorDialog(QDialog):
         """Theme wurde ausgewählt"""
         if not theme_name:
             return
-        
+
         self.current_theme = theme_name
         profile = self.theme_manager.get_profile(theme_name)
-        
         if not profile:
             return
-        
-        # Lade Daten in Editor
-        self.name_edit.setText(theme_name)
-        self.modus_combo.setCurrentText(profile.get("modus", "hell"))
-        self.font_size_combo.setCurrentText(str(profile.get("schriftgroesse", 10)))
-        
-        # Lade alle Farben
-        for key, btn in self.color_buttons.items():
-            color = profile.get(key, "#ffffff")
-            self._set_button_color(btn, color)
-    
+
+        # Beim Laden KEIN Auto-Save auslösen
+        self._loading = True
+        try:
+            b1 = QSignalBlocker(self.modus_combo)
+            b2 = QSignalBlocker(self.font_size_combo)
+
+            # Lade Daten in Editor
+            self.name_edit.setText(profile.name)
+            self.modus_combo.setCurrentText(profile.get("modus", "hell"))
+            self.font_size_combo.setCurrentText(str(profile.get("schriftgroesse", 10)))
+
+            del b1
+            del b2
+
+            # Lade alle Farben
+            for key, btn in self.color_buttons.items():
+                color = profile.get(key, "#ffffff")
+                self._set_button_color(btn, color)
+        finally:
+            self._loading = False
+
     def _set_button_color(self, button, color_hex):
         """Setze Button-Farbe"""
         button.setStyleSheet(f"background-color: {color_hex}; border: 2px solid #ccc;")
@@ -237,6 +248,8 @@ class ThemeEditorDialog(QDialog):
     def _on_changed(self):
         """Daten wurden geändert"""
         if not self.current_theme:
+            return
+        if getattr(self, "_loading", False):
             return
         
         # Sammle alle Daten
@@ -293,59 +306,56 @@ class ThemeEditorDialog(QDialog):
         """Theme löschen"""
         if not self.current_theme:
             return
-        
-        # Verhindere Löschen von Standard-Themes
-        standard_themes = ["Standard Hell", "Standard Dunkel", "Solarized Hell", 
-                          "Solarized Dunkel", "Nord Dunkel", "Dracula Dunkel"]
-        
-        if self.current_theme in standard_themes:
+
+        # Mitgelieferte Themes können nicht gelöscht werden – nur Overrides via 'Zurücksetzen' entfernen.
+        if self.theme_manager.is_bundled(self.current_theme) and not self.theme_manager.has_override(self.current_theme):
             QMessageBox.warning(
-                self, "Fehler",
-                "Standard-Themes können nicht gelöscht werden.\n"
-                "Verwenden Sie 'Zurücksetzen' um Änderungen rückgängig zu machen."
+                self,
+                "Fehler",
+                "Mitgelieferte Themes können nicht gelöscht werden.\n\n"
+                "Verwenden Sie 'Zurücksetzen', um lokale Änderungen (Overrides) zu entfernen.",
             )
             return
-        
+
         reply = QMessageBox.question(
-            self, "Theme löschen",
-            f"Möchten Sie '{self.current_theme}' wirklich löschen?",
-            QMessageBox.Yes | QMessageBox.No
+            self,
+            "Theme löschen",
+            f"Möchten Sie '{self.current_theme}' wirklich löschen?\n\n"
+            "(Hinweis: Bei mitgelieferten Themes wird nur das Override entfernt.)",
+            QMessageBox.Yes | QMessageBox.No,
         )
-        
+
         if reply == QMessageBox.Yes:
             self.theme_manager.delete_profile(self.current_theme)
             self._load_themes()
-    
+
     def _reset_theme(self):
-        """Theme auf Standard zurücksetzen"""
+        """Theme zurücksetzen = Override entfernen (falls vorhanden)."""
         if not self.current_theme:
             return
-        
-        # Prüfe ob Standard-Theme
-        from theme_manager import get_default_themes
-        defaults = get_default_themes()
-        
-        if self.current_theme not in defaults:
+
+        if not self.theme_manager.is_bundled(self.current_theme) and not self.theme_manager.has_override(self.current_theme):
             QMessageBox.information(
-                self, "Hinweis",
-                "Nur Standard-Themes können zurückgesetzt werden.\n"
-                "Eigene Themes können gelöscht und neu erstellt werden."
+                self,
+                "Hinweis",
+                "Dieses Theme hat kein mitgeliefertes Standard-Profil zum Zurücksetzen.\n"
+                "(Tipp: Eigene Themes können gelöscht werden.)",
             )
             return
-        
+
         reply = QMessageBox.question(
-            self, "Zurücksetzen",
-            f"Möchten Sie '{self.current_theme}' auf die Standardwerte zurücksetzen?\n\n"
-            "Alle Änderungen gehen verloren!",
-            QMessageBox.Yes | QMessageBox.No
+            self,
+            "Zurücksetzen",
+            f"Möchten Sie '{self.current_theme}' wirklich zurücksetzen?\n\n"
+            "Alle lokalen Änderungen (Overrides) gehen verloren!",
+            QMessageBox.Yes | QMessageBox.No,
         )
-        
+
         if reply == QMessageBox.Yes:
-            default_data = defaults[self.current_theme]
-            self.theme_manager.update_profile(self.current_theme, default_data)
+            self.theme_manager.reset_profile(self.current_theme)
             self._on_theme_selected(self.current_theme)  # Neu laden
             QMessageBox.information(self, "Erfolg", "Theme wurde zurückgesetzt!")
-    
+
     def _import_theme(self):
         """Theme importieren"""
         file, _ = QFileDialog.getOpenFileName(

@@ -7,7 +7,8 @@ from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication
 )
 from PySide6.QtGui import QAction, QKeySequence, QIcon, QShortcut
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QTimer, QRect
+from PySide6.QtGui import QScreen
 
 from model.category_model import CategoryModel
 from views.tabs.tracking_tab import TrackingTab
@@ -24,18 +25,19 @@ from views.global_search_dialog import GlobalSearchDialog
 from views.savings_goals_dialog import SavingsGoalsDialog
 from views.backup_restore_dialog import BackupRestoreDialog
 from views.appearance_profiles_dialog import AppearanceProfilesDialog
+from views.category_manager_dialog import CategoryManagerDialog
 
 class AboutDialog(QDialog):
     """Über-Dialog"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Über Budgetmanager")
+        self.setWindowTitle("Über Budgetmanager V2.2")
         
         layout = QVBoxLayout()
         
         info = QLabel(
             "<h2>Budgetmanager</h2>"
-            "<p><b>Version:</b> 0.17.2 (Dezember 2024)</p>"
+            "<p><b>Version:</b> 2.2.0 (2. Januar 2026)</p>"
             "<p><b>Entwickelt mit:</b> PySide6 (Qt für Python)</p>"
             "<p><b>Datenbank:</b> SQLite</p>"
             "<br>"
@@ -48,14 +50,11 @@ class AboutDialog(QDialog):
             "<li>Tags und Budgetwarnungen</li>"
             "</ul>"
             "<br>"
-            "<p><b>Neue Features v0.17.2:</b></p>"
-            "<ul>"
-            "<li>Vollständig integrierter Theme Manager</li>"
-            "<li>6 professionelle vordefinierte Profile</li>"
-            "<li>Unbegrenzt eigene Themes erstellen</li>"
-            "<li>Import/Export von Profilen</li>"
-            "<li>Live-Vorschau in Einstellungen</li>"
-            "<li>Fixkosten-Check und -Verwaltung</li>"
+            "<p><b>Highlights v2.2.0:</b></p><ul>"
+            "<li>🆕 Integrierte Kategorie-Verwaltung im Budget-Dialog</li>"
+            "<li>Kategorien direkt erstellen beim Budget erfassen</li>"
+            "<li>⚙️ Management-Button mit allen Kategorie-Funktionen</li>"
+            "<li>Kategorien-Tab als optionaler Experten-Modus</li>"
             "</ul>"
         )
         info.setTextFormat(Qt.RichText)
@@ -73,13 +72,18 @@ class MainWindow(QMainWindow):
     def __init__(self, conn: sqlite3.Connection):
         super().__init__()
         self.conn = conn
-        self.setWindowTitle("Budgetmanager v0.17.2")
+        self.setWindowTitle("Budgetmanager V2.2.0")
 
         # Einstellungen laden
         self.settings = Settings()
         
         # Theme Manager initialisieren
         self.theme_manager = ThemeManager(self.settings)
+        
+        # Resize-Timer für Debouncing (verhindert zu häufiges Speichern)
+        self.resize_timer = QTimer()
+        self.resize_timer.timeout.connect(self._save_window_geometry)
+        self.resize_timer.setSingleShot(True)
         
         # Defaults once
         CategoryModel(conn).ensure_defaults()
@@ -88,12 +92,18 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
         self.tabs.setMovable(True)  # Tabs per Drag & Drop verschiebbar
         self.tabs.setDocumentMode(True)  # Moderneres Aussehen
+        self.tabs.setTabPosition(QTabWidget.South)  # V2-Layout: Tabs unten
         
         # Tab-Widgets erstellen
         self.budget_tab = BudgetTab(conn)
         self.categories_tab = CategoriesTab(conn)
         self.tracking_tab = TrackingTab(conn, settings=self.settings)
         self.overview_tab = OverviewTab(conn)
+        
+        # Schnelleingabe-Signals von Tabs verbinden
+        self.budget_tab.quick_add_requested.connect(self._show_quick_add)
+        self.categories_tab.quick_add_requested.connect(self._show_quick_add)
+        self.overview_tab.quick_add_requested.connect(self._show_quick_add)
         
         # Tab-Definitionen (Index -> Widget, Name)
         self._tab_definitions = {
@@ -108,10 +118,11 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.tabs)
         
-        # Fenstergröße aus Einstellungen
-        width = self.settings.get("window_width", 1280)
-        height = self.settings.get("window_height", 800)
-        self.resize(width, height)
+        # Tab-Wechsel Signal verbinden (für dynamisches Bearbeiten-Menü)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
+        
+        # Fenster-Geometrie und -Status wiederherstellen
+        self._restore_window_state()
         
         # Menü erstellen
         self._create_menu()
@@ -134,6 +145,63 @@ class MainWindow(QMainWindow):
         # Bei Bedarf beim Start alle Tabs aktualisieren
         if self.settings.refresh_on_start:
             self._refresh_all_tabs()
+    
+    def _restore_window_state(self):
+        """Stellt Fenster-Größe, -Position und -Status wieder her"""
+        # Position und Größe laden
+        width = self.settings.get("window_width", 1280)
+        height = self.settings.get("window_height", 800)
+        x = self.settings.get("window_x", 100)
+        y = self.settings.get("window_y", 100)
+        
+        # Validiere Position (verhindert Off-Screen-Fenster)
+        screen = QApplication.primaryScreen()
+        if screen:
+            screen_rect = screen.availableGeometry()
+            # Falls Fenster komplett außerhalb des Screens wäre, reset auf Defaults
+            if x + width < 0 or x > screen_rect.width() or \
+               y + height < 0 or y > screen_rect.height():
+                x, y = 100, 100
+        
+        # Position und Größe setzen
+        self.setGeometry(x, y, width, height)
+        
+        # Maximiert/Fullscreen-Status
+        is_maximized = self.settings.get("window_is_maximized", False)
+        is_fullscreen = self.settings.get("window_is_fullscreen", False)
+        
+        if is_fullscreen:
+            self.showFullScreen()
+        elif is_maximized:
+            self.showMaximized()
+        else:
+            self.show()
+    
+    def _save_window_geometry(self):
+        """Speichert Fenster-Geometrie in Settings"""
+        # Window-State nicht speichern wenn fullscreen/maximized
+        # (das wird separat gespeichert)
+        if self.isFullScreen() or self.isMaximized():
+            return
+        
+        self.settings.set("window_x", self.x())
+        self.settings.set("window_y", self.y())
+        self.settings.set("window_width", self.width())
+        self.settings.set("window_height", self.height())
+    
+    def resizeEvent(self, event):
+        """Wird aufgerufen wenn Fenster resized wird"""
+        super().resizeEvent(event)
+        # Starte Timer um Geometrie nach Delay zu speichern (Debouncing)
+        self.resize_timer.stop()
+        self.resize_timer.start(500)  # 500ms Verzögerung
+    
+    def moveEvent(self, event):
+        """Wird aufgerufen wenn Fenster verschoben wird"""
+        super().moveEvent(event)
+        # Auch hier Debouncing
+        self.resize_timer.stop()
+        self.resize_timer.start(500)
     
     def _setup_shortcuts(self):
         """Richtet globale Tastenkürzel ein"""
@@ -192,8 +260,14 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
         
+        # === BEARBEITEN-MENÜ (dynamisch je nach Tab) ===
+        self.edit_menu = menubar.addMenu("&Bearbeiten")
+        self._edit_menu_actions = {}  # Speichere Actions für spätere Aktualisierung
+        self._setup_edit_menu()
+        
         # === ANSICHT-MENÜ ===
         view_menu = menubar.addMenu("&Ansicht")
+        
         # Anzeigen-Untermenü (Tabs/Module ein- & ausblenden)
         anzeigen_menu = view_menu.addMenu("&Anzeigen")
 
@@ -231,10 +305,13 @@ class MainWindow(QMainWindow):
         goto_budget.triggered.connect(lambda: self._goto_tab(self.budget_tab))
         view_menu.addAction(goto_budget)
         
-        goto_categories = QAction("📁 &Kategorien", self)
-        goto_categories.setShortcut("Ctrl+2")
-        goto_categories.triggered.connect(lambda: self._goto_tab(self.categories_tab))
-        view_menu.addAction(goto_categories)
+        # Kategorien-Tab (nur anzeigen wenn aktiviert)
+        self.goto_categories_action = QAction("📁 &Kategorien", self)
+        self.goto_categories_action.setShortcut("Ctrl+2")
+        self.goto_categories_action.triggered.connect(lambda: self._goto_tab(self.categories_tab))
+        view_menu.addAction(self.goto_categories_action)
+        # Sichtbarkeit basierend auf Einstellung
+        self._update_categories_menu_visibility()
         
         goto_tracking = QAction("📊 &Tracking", self)
         goto_tracking.setShortcut("Ctrl+3")
@@ -245,6 +322,19 @@ class MainWindow(QMainWindow):
         goto_overview.setShortcut("Ctrl+4")
         goto_overview.triggered.connect(lambda: self._goto_tab(self.overview_tab))
         view_menu.addAction(goto_overview)
+        
+        view_menu.addSeparator()
+        
+        # Toggle für Kategorien-Tab
+        self.toggle_categories_action = QAction("🛠️ Kategorien-Tab anzeigen (Experten)", self)
+        self.toggle_categories_action.setCheckable(True)
+        self.toggle_categories_action.setChecked(self.settings.show_categories_tab)
+        self.toggle_categories_action.setToolTip(
+            "Zeigt den separaten Kategorien-Tab für erweiterte Verwaltung.\n"
+            "Kategorien können auch direkt im Budget-Tab verwaltet werden."
+        )
+        self.toggle_categories_action.toggled.connect(self._toggle_categories_tab)
+        view_menu.addAction(self.toggle_categories_action)
         
         view_menu.addSeparator()
         
@@ -271,6 +361,15 @@ class MainWindow(QMainWindow):
         search_action.setStatusTip("Durchsucht alle Daten (Strg+F)")
         search_action.triggered.connect(self._show_global_search)
         extras_menu.addAction(search_action)
+        
+        extras_menu.addSeparator()
+        
+        # === KATEGORIEN-MANAGER (NEU v2.2.0) ===
+        category_manager_action = QAction("📁 &Kategorien-Manager...", self)
+        category_manager_action.setShortcut("Ctrl+K")
+        category_manager_action.setStatusTip("Alle Kategorien verwalten (Strg+K)")
+        category_manager_action.triggered.connect(self._show_category_manager)
+        extras_menu.addAction(category_manager_action)
         
         extras_menu.addSeparator()
         
@@ -344,13 +443,23 @@ class MainWindow(QMainWindow):
         """Lädt Tabs in der gespeicherten Reihenfolge"""
         saved_order = self.settings.tab_order
         
+        # Kategorien-Tab (ID 1) nur anzeigen wenn aktiviert
+        show_categories = self.settings.show_categories_tab
+        
         # Validierung: Stelle sicher, dass alle Indizes vorhanden sind
-        if not saved_order or set(saved_order) != {0, 1, 2, 3}:
+        all_ids = {0, 1, 2, 3}
+        if not saved_order or not all_ids.issubset(set(saved_order) | {1}):  # 1 kann fehlen
             saved_order = [0, 1, 2, 3]
         
         # Tabs in gespeicherter Reihenfolge hinzufügen
         for tab_id in saved_order:
+            # Kategorien-Tab überspringen wenn nicht aktiviert
+            if tab_id == 1 and not show_categories:
+                continue
             widget, name = self._tab_definitions[tab_id]
+            # Kategorien-Tab umbenennen wenn sichtbar (Experten-Modus markieren)
+            if tab_id == 1 and show_categories:
+                name = "🛠️ Kategorien (Experten)"
             self.tabs.addTab(widget, name)
     
     def _save_tab_order(self):
@@ -373,6 +482,53 @@ class MainWindow(QMainWindow):
         if index >= 0:
             self.tabs.setCurrentIndex(index)
     
+    def _update_categories_menu_visibility(self) -> None:
+        """Aktualisiert die Sichtbarkeit des Kategorien-Menüpunkts."""
+        show = self.settings.show_categories_tab
+        if hasattr(self, 'goto_categories_action'):
+            self.goto_categories_action.setVisible(show)
+    
+    def _toggle_categories_tab(self, checked: bool) -> None:
+        """Schaltet den Kategorien-Tab ein/aus."""
+        # Einstellung speichern
+        self.settings.show_categories_tab = checked
+        
+        # Tab hinzufügen oder entfernen
+        cat_index = self.tabs.indexOf(self.categories_tab)
+        
+        if checked:
+            # Tab hinzufügen wenn nicht vorhanden
+            if cat_index < 0:
+                # Tab hinzufügen (nach Budget, vor Tracking)
+                budget_index = self.tabs.indexOf(self.budget_tab)
+                tracking_index = self.tabs.indexOf(self.tracking_tab)
+                
+                # Beste Position finden
+                if budget_index >= 0:
+                    insert_at = budget_index + 1
+                elif tracking_index >= 0:
+                    insert_at = tracking_index
+                else:
+                    insert_at = 1
+                
+                self.tabs.insertTab(insert_at, self.categories_tab, "🛠️ Kategorien (Experten)")
+                self.statusBar().showMessage("Kategorien-Tab aktiviert", 2000)
+        else:
+            # Tab entfernen wenn vorhanden
+            if cat_index >= 0:
+                self.tabs.removeTab(cat_index)
+                self.statusBar().showMessage("Kategorien-Tab ausgeblendet", 2000)
+        
+        # Menüpunkte aktualisieren
+        self._update_categories_menu_visibility()
+        
+        # Toggle-Action synchronisieren (falls von extern aufgerufen)
+        if hasattr(self, 'toggle_categories_action'):
+            # Blockiere Signale um Rekursion zu vermeiden
+            self.toggle_categories_action.blockSignals(True)
+            self.toggle_categories_action.setChecked(checked)
+            self.toggle_categories_action.blockSignals(False)
+    
     def _reset_tab_order(self):
         """Setzt die Tab-Reihenfolge auf Standard zurück"""
         # Merke aktuellen Tab
@@ -382,10 +538,19 @@ class MainWindow(QMainWindow):
         while self.tabs.count() > 0:
             self.tabs.removeTab(0)
         
+        # Kategorien-Tab nur anzeigen wenn aktiviert
+        show_categories = self.settings.show_categories_tab
+        
         # Tabs in Standardreihenfolge hinzufügen
         default_order = [0, 1, 2, 3]
         for tab_id in default_order:
+            # Kategorien-Tab überspringen wenn nicht aktiviert
+            if tab_id == 1 and not show_categories:
+                continue
             widget, name = self._tab_definitions[tab_id]
+            # Kategorien-Tab umbenennen wenn sichtbar
+            if tab_id == 1 and show_categories:
+                name = "🛠️ Kategorien (Experten)"
             self.tabs.addTab(widget, name)
         
         # Vorherigen Tab wiederherstellen
@@ -416,6 +581,12 @@ class MainWindow(QMainWindow):
             # Tracking
             if "recent_days" in new_settings:
                 self.settings.recent_days = int(new_settings["recent_days"] or 14)
+            # Tracking: Standard-Tag im Monat für neue wiederkehrende Transaktionen
+            if "recurring_preferred_day" in new_settings:
+                try:
+                    self.settings.set("recurring_preferred_day", int(new_settings.get("recurring_preferred_day") or 1))
+                except Exception:
+                    self.settings.set("recurring_preferred_day", 1)
             # Zusätzliche (neue) Einstellungen speichern
             # (Diese Keys sind rückwärtskompatibel – Tabs können sie später nutzen.)
             self.settings.set("show_onboarding", new_settings.get("show_onboarding", True))
@@ -431,6 +602,18 @@ class MainWindow(QMainWindow):
             # Datenbankpfad optional übernehmen
             if new_settings.get("database_path"):
                 self.settings.database_path = new_settings["database_path"]
+            
+            # Kategorien-Tab Einstellung
+            old_show_cat = self.settings.show_categories_tab
+            new_show_cat = new_settings.get("show_categories_tab", False)
+            self.settings.show_categories_tab = new_show_cat
+            
+            # Kategorien-Tab Toggle aktualisieren wenn geändert
+            if old_show_cat != new_show_cat:
+                if hasattr(self, 'toggle_categories_action'):
+                    self.toggle_categories_action.setChecked(new_show_cat)
+                # Tab direkt ein/ausblenden
+                self._toggle_categories_tab(new_show_cat)
             
             # Auf Tabs anwenden
             self._apply_settings_to_tabs()
@@ -471,10 +654,294 @@ class MainWindow(QMainWindow):
         try:
             if hasattr(self, "tracking_tab") and hasattr(self.tracking_tab, "refresh"):
                 self.tracking_tab.refresh()
-            if hasattr(self, "overview_tab") and hasattr(self.overview_tab, "refresh"):
-                self.overview_tab.refresh()
+            if hasattr(self, "overview_tab"):
+                if hasattr(self.overview_tab, "refresh_data"):
+                    self.overview_tab.refresh_data()
+                elif hasattr(self.overview_tab, "refresh"):
+                    self.overview_tab.refresh()
         except Exception:
             pass
+
+    # ------------------------------------------------------------
+    # Bearbeiten-Menü (dynamisch je nach aktivem Tab)
+    # ------------------------------------------------------------
+    def _setup_edit_menu(self):
+        """Erstellt das Bearbeiten-Menü mit allen möglichen Actions"""
+        self.edit_menu.clear()
+        
+        # === ALLGEMEINE AKTIONEN (immer sichtbar) ===
+        self._edit_actions_general = []
+        
+        # Neu hinzufügen
+        add_action = QAction("➕ &Neu hinzufügen...", self)
+        add_action.setShortcut("Ctrl+N")
+        add_action.triggered.connect(self._edit_add)
+        self.edit_menu.addAction(add_action)
+        self._edit_actions_general.append(add_action)
+        
+        # Bearbeiten
+        edit_action = QAction("✏️ &Bearbeiten...", self)
+        edit_action.setShortcut("Ctrl+E")
+        edit_action.triggered.connect(self._edit_edit)
+        self.edit_menu.addAction(edit_action)
+        self._edit_actions_general.append(edit_action)
+        
+        # Löschen
+        delete_action = QAction("🗑️ &Löschen", self)
+        delete_action.setShortcut("Delete")
+        delete_action.triggered.connect(self._edit_delete)
+        self.edit_menu.addAction(delete_action)
+        self._edit_actions_general.append(delete_action)
+        
+        self.edit_menu.addSeparator()
+        
+        # === BUDGET-TAB AKTIONEN ===
+        self._edit_actions_budget = []
+        
+        budget_entry_action = QAction("📝 Budget &erfassen...", self)
+        budget_entry_action.triggered.connect(self._budget_entry)
+        self.edit_menu.addAction(budget_entry_action)
+        self._edit_actions_budget.append(budget_entry_action)
+        
+        budget_edit_action = QAction("✏️ Budget &bearbeiten...", self)
+        budget_edit_action.triggered.connect(self._budget_edit)
+        self.edit_menu.addAction(budget_edit_action)
+        self._edit_actions_budget.append(budget_edit_action)
+        
+        self.edit_menu.addSeparator()
+        
+        budget_seed_action = QAction("🌱 Zeilen aus &Kategorien erzeugen", self)
+        budget_seed_action.triggered.connect(self._budget_seed)
+        self.edit_menu.addAction(budget_seed_action)
+        self._edit_actions_budget.append(budget_seed_action)
+        
+        budget_copy_action = QAction("📋 Jahr &kopieren...", self)
+        budget_copy_action.triggered.connect(self._budget_copy_year)
+        self.edit_menu.addAction(budget_copy_action)
+        self._edit_actions_budget.append(budget_copy_action)
+        
+        self.edit_menu.addSeparator()
+        
+        budget_remove_row_action = QAction("🗑️ Budget-&Zeile entfernen", self)
+        budget_remove_row_action.triggered.connect(self._budget_remove_row)
+        self.edit_menu.addAction(budget_remove_row_action)
+        self._edit_actions_budget.append(budget_remove_row_action)
+        
+        budget_remove_cat_action = QAction("⚠️ Kategorie &löschen (global)", self)
+        budget_remove_cat_action.triggered.connect(self._budget_remove_category)
+        self.edit_menu.addAction(budget_remove_cat_action)
+        self._edit_actions_budget.append(budget_remove_cat_action)
+        
+        # === KATEGORIEN-TAB AKTIONEN ===
+        self._edit_actions_categories = []
+        
+        cat_new_main_action = QAction("📁 Neue &Hauptkategorie...", self)
+        cat_new_main_action.triggered.connect(self._categories_new_main)
+        self.edit_menu.addAction(cat_new_main_action)
+        self._edit_actions_categories.append(cat_new_main_action)
+        
+        cat_new_sub_action = QAction("📂 Neue &Unterkategorie...", self)
+        cat_new_sub_action.triggered.connect(self._categories_new_sub)
+        self.edit_menu.addAction(cat_new_sub_action)
+        self._edit_actions_categories.append(cat_new_sub_action)
+        
+        cat_delete_action = QAction("🗑️ Auswahl &löschen", self)
+        cat_delete_action.triggered.connect(self._categories_delete)
+        self.edit_menu.addAction(cat_delete_action)
+        self._edit_actions_categories.append(cat_delete_action)
+        
+        self.edit_menu.addSeparator()
+        
+        cat_mass_edit_action = QAction("✏️ &Massenbearbeitung...", self)
+        cat_mass_edit_action.setStatusTip("Flags für mehrere Kategorien gleichzeitig ändern")
+        cat_mass_edit_action.triggered.connect(self._categories_mass_edit)
+        self.edit_menu.addAction(cat_mass_edit_action)
+        self._edit_actions_categories.append(cat_mass_edit_action)
+        
+        # === TRACKING-TAB AKTIONEN ===
+        self._edit_actions_tracking = []
+        
+        self.edit_menu.addSeparator()
+        
+        fix_action = QAction("📅 &Fixkosten buchen...", self)
+        fix_action.setShortcut("Ctrl+Shift+F")
+        fix_action.triggered.connect(self._tracking_add_fixcosts)
+        self.edit_menu.addAction(fix_action)
+        self._edit_actions_tracking.append(fix_action)
+        
+        recurring_action = QAction("🔄 &Wiederkehrende verwalten...", self)
+        recurring_action.triggered.connect(self._tracking_manage_recurring)
+        self.edit_menu.addAction(recurring_action)
+        self._edit_actions_tracking.append(recurring_action)
+        
+        # === ÜBERSICHT-TAB AKTIONEN ===
+        self._edit_actions_overview = []
+        
+        refresh_overview_action = QAction("🔄 Daten &aktualisieren", self)
+        refresh_overview_action.setShortcut("F5")
+        refresh_overview_action.triggered.connect(self._overview_refresh)
+        self.edit_menu.addAction(refresh_overview_action)
+        self._edit_actions_overview.append(refresh_overview_action)
+        
+        # Initial aktualisieren
+        self._update_edit_menu()
+    
+    def _on_tab_changed(self, index: int):
+        """Wird aufgerufen wenn Tab gewechselt wird"""
+        self._update_edit_menu()
+    
+    def _update_edit_menu(self):
+        """Aktualisiert die Sichtbarkeit der Bearbeiten-Menü-Einträge"""
+        current_widget = self.tabs.currentWidget()
+        
+        # Alle Tab-spezifischen Actions verstecken
+        for action in self._edit_actions_budget:
+            action.setVisible(False)
+        for action in self._edit_actions_categories:
+            action.setVisible(False)
+        for action in self._edit_actions_tracking:
+            action.setVisible(False)
+        for action in self._edit_actions_overview:
+            action.setVisible(False)
+        
+        # Je nach Tab die entsprechenden Actions anzeigen
+        if current_widget == self.budget_tab:
+            for action in self._edit_actions_budget:
+                action.setVisible(True)
+        elif current_widget == self.categories_tab:
+            for action in self._edit_actions_categories:
+                action.setVisible(True)
+        elif current_widget == self.tracking_tab:
+            for action in self._edit_actions_tracking:
+                action.setVisible(True)
+        elif current_widget == self.overview_tab:
+            for action in self._edit_actions_overview:
+                action.setVisible(True)
+            # Allgemeine Aktionen in Übersicht deaktivieren
+            for action in self._edit_actions_general:
+                action.setEnabled(False)
+            return
+        
+        # Allgemeine Aktionen aktivieren für andere Tabs
+        for action in self._edit_actions_general:
+            action.setEnabled(True)
+    
+    # --- Bearbeiten-Menü Handler ---
+    def _edit_add(self):
+        """Neu hinzufügen - delegiert an aktuellen Tab"""
+        current = self.tabs.currentWidget()
+        if hasattr(current, 'add'):
+            current.add()
+        elif hasattr(current, 'on_add'):
+            current.on_add()
+    
+    def _edit_edit(self):
+        """Bearbeiten - delegiert an aktuellen Tab"""
+        current = self.tabs.currentWidget()
+        if hasattr(current, 'edit'):
+            current.edit()
+        elif hasattr(current, 'on_edit'):
+            current.on_edit()
+    
+    def _edit_delete(self):
+        """Löschen - delegiert an aktuellen Tab"""
+        current = self.tabs.currentWidget()
+        if hasattr(current, 'delete'):
+            current.delete()
+        elif hasattr(current, 'on_delete'):
+            current.on_delete()
+    
+    def _budget_copy_year(self):
+        """Budget: Jahr kopieren"""
+        if hasattr(self.budget_tab, 'copy_year_dialog'):
+            self.budget_tab.copy_year_dialog()
+    
+    def _budget_entry(self):
+        """Budget: Erfassen Dialog"""
+        if hasattr(self.budget_tab, 'open_entry_dialog'):
+            self.budget_tab.open_entry_dialog()
+    
+    def _budget_edit(self):
+        """Budget: Bearbeiten Dialog"""
+        if hasattr(self.budget_tab, 'open_edit_dialog'):
+            self.budget_tab.open_edit_dialog()
+    
+    def _budget_seed(self):
+        """Budget: Zeilen aus Kategorien erzeugen"""
+        if hasattr(self.budget_tab, 'seed_from_categories'):
+            self.budget_tab.seed_from_categories()
+    
+    def _budget_remove_row(self):
+        """Budget: Zeile entfernen"""
+        if hasattr(self.budget_tab, 'remove_budget_row'):
+            self.budget_tab.remove_budget_row()
+    
+    def _budget_remove_category(self):
+        """Budget: Kategorie global löschen"""
+        if hasattr(self.budget_tab, 'delete_category_global'):
+            self.budget_tab.delete_category_global()
+    
+    def _budget_adjust(self):
+        """Budget: Anpassen Dialog"""
+        if hasattr(self.budget_tab, 'adjust_budget'):
+            self.budget_tab.adjust_budget()
+    
+    def _categories_new_main(self):
+        """Kategorien: Neue Hauptkategorie"""
+        if hasattr(self.categories_tab, 'add_root_category'):
+            self.categories_tab.add_root_category()
+    
+    def _categories_new_sub(self):
+        """Kategorien: Neue Unterkategorie"""
+        if hasattr(self.categories_tab, 'add_subcategory'):
+            self.categories_tab.add_subcategory()
+    
+    def _categories_delete(self):
+        """Kategorien: Auswahl löschen"""
+        if hasattr(self.categories_tab, 'delete_selected'):
+            self.categories_tab.delete_selected()
+    
+    def _categories_mass_edit(self):
+        """Kategorien: Massenbearbeitung"""
+        if hasattr(self.categories_tab, 'mass_edit'):
+            self.categories_tab.mass_edit()
+    
+    def _categories_sort(self):
+        """Kategorien: Sortierung ändern"""
+        if hasattr(self.categories_tab, 'change_sort'):
+            self.categories_tab.change_sort()
+    
+    def _tracking_add_fixcosts(self):
+        """Tracking: Fixkosten buchen"""
+        if hasattr(self.tracking_tab, 'add_fixcosts'):
+            self.tracking_tab.add_fixcosts()
+    
+    def _tracking_manage_recurring(self):
+        """Tracking: Wiederkehrende verwalten"""
+        from views.recurring_transactions_dialog_extended import RecurringTransactionsDialog
+        from model.recurring_transactions_model import RecurringTransactionsModel
+        from model.category_model import CategoryModel
+        
+        # Model und Kategorien vorbereiten
+        rec_model = RecurringTransactionsModel(self.conn)
+        cat_model = CategoryModel(self.conn)
+        
+        # Kategorien als Dict aufbereiten (Typ -> Liste von Namen)
+        categories = {}
+        for typ in ["Ausgaben", "Einkommen", "Ersparnisse"]:
+            cats = cat_model.list(typ)
+            categories[typ] = [c.name for c in cats]
+        
+        dialog = RecurringTransactionsDialog(self, rec_model, categories, preferred_day=int(self.settings.get("recurring_preferred_day", 1) or 1))
+        dialog.exec()
+        self.tracking_tab.refresh()
+    
+    def _overview_refresh(self):
+        """Übersicht: Daten aktualisieren"""
+        if hasattr(self.overview_tab, 'refresh_data'):
+            self.overview_tab.refresh_data()
+        elif hasattr(self.overview_tab, 'refresh'):
+            self.overview_tab.refresh()
 
     # ------------------------------------------------------------
     # Ansicht → Anzeigen → Übersicht: Subtabs ein/ausblenden
@@ -717,6 +1184,28 @@ class MainWindow(QMainWindow):
                 "Bitte starten Sie die Anwendung neu, um die Änderungen zu übernehmen."
             )
     
+    def _show_category_manager(self):
+        """Zeigt den Kategorien-Manager-Dialog (NEU v2.2.0)"""
+        dialog = CategoryManagerDialog(self, conn=self.conn)
+        dialog.categories_changed.connect(self._refresh_current_tab)
+        dialog.exec()
+        # Nach Schließen: Alle Tabs aktualisieren
+        self._refresh_all_tabs()
+    
+    def _refresh_all_tabs(self):
+        """Aktualisiert alle Tabs nach Kategorien-Änderungen."""
+        try:
+            if hasattr(self.budget_tab, 'load'):
+                self.budget_tab.load()
+            if hasattr(self.tracking_tab, 'load'):
+                self.tracking_tab.load()
+            if hasattr(self.categories_tab, 'load'):
+                self.categories_tab.load()
+            if hasattr(self.overview_tab, 'load'):
+                self.overview_tab.load()
+        except Exception:
+            pass  # Fehler ignorieren
+    
     def _show_theme_profiles(self):
         """Zeigt Erscheinungsprofile Dialog"""
         dialog = AppearanceProfilesDialog(self, self.settings)
@@ -724,12 +1213,60 @@ class MainWindow(QMainWindow):
         # Nach Dialog: aktives Profil erneut anwenden
         self._apply_theme()
 
+    def _toggle_fullscreen(self, checked):
+        """Toggle Vollbildmodus (F11)"""
+        if checked:
+            self.showFullScreen()
+            self.statusBar().showMessage("Vollbildmodus aktiviert", 2000)
+        else:
+            # Zurück zu Normal oder Maximiert
+            if self.isMaximized():
+                self.showMaximized()
+            else:
+                self.showNormal()
+            self.statusBar().showMessage("Vollbildmodus deaktiviert", 2000)
+        
+        self.settings.set("window_is_fullscreen", checked)
+    
+    def _toggle_maximize(self, checked):
+        """Toggle Maximiert-Modus (F10)"""
+        if self.isFullScreen():
+            # Wenn fullscreen, erst aus fullscreen
+            self.showNormal()
+            self.settings.set("window_is_fullscreen", False)
+        
+        if checked:
+            self.showMaximized()
+            self.statusBar().showMessage("Fenster maximiert", 2000)
+        else:
+            self.showNormal()
+            self.statusBar().showMessage("Fenster normalisiert", 2000)
+        
+        self.settings.set("window_is_maximized", checked)
+
+    def changeEvent(self, event):
+        """Wird aufgerufen wenn Fenster-State sich ändert (minimize, maximize, etc)"""
+        from PySide6.QtGui import QWindowStateChangeEvent
+        if isinstance(event, QWindowStateChangeEvent):
+            # Update maximize status (nur wenn settings schon initialisiert)
+            if hasattr(self, 'settings'):
+                is_max = self.isMaximized()
+                self.settings.set("window_is_maximized", is_max)
+        super().changeEvent(event)
 
     def closeEvent(self, event):
         """Wird beim Schließen des Fensters aufgerufen"""
-        # Fenstergröße speichern
-        self.settings.set("window_width", self.width())
-        self.settings.set("window_height", self.height())
+        # Speichere Fenster-State BEVOR wir fragen (nur wenn settings existiert)
+        if hasattr(self, 'settings'):
+            self.settings.set("window_is_fullscreen", self.isFullScreen())
+            self.settings.set("window_is_maximized", self.isMaximized())
+            
+            # Fenstergröße speichern (nur wenn nicht fullscreen/maximized)
+            if not self.isFullScreen() and not self.isMaximized():
+                self.settings.set("window_width", self.width())
+                self.settings.set("window_height", self.height())
+                self.settings.set("window_x", self.x())
+                self.settings.set("window_y", self.y())
         
         # Tab-Reihenfolge speichern
         self._save_tab_order()
@@ -745,7 +1282,7 @@ class MainWindow(QMainWindow):
         
         if reply == QMessageBox.Yes:
             # Speichern falls nötig
-            if not self.settings.auto_save:
+            if hasattr(self, 'settings') and not self.settings.auto_save:
                 reply2 = QMessageBox.question(
                     self,
                     "Speichern",

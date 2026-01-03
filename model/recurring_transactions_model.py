@@ -9,7 +9,9 @@ from typing import Optional
 class RecurringTransaction:
     """Wiederkehrende Transaktion mit Soll-Buchungsdatum"""
     id: Optional[int]
-    typ: str  # 'Einnahmen' oder 'Ausgaben'
+    # Typ muss zu den restlichen Modulen passen (Tracking/Budget):
+    # "Ausgaben", "Einkommen", "Ersparnisse"
+    typ: str
     category: str
     amount: float
     details: str
@@ -26,6 +28,14 @@ class RecurringTransactionsModel:
     
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
+
+    @staticmethod
+    def _normalize_typ(typ: str) -> str:
+        """Normalisiert ältere/abweichende Typ-Bezeichnungen."""
+        t = (typ or "").strip()
+        if t == "Einnahmen":
+            return "Einkommen"
+        return t
     
     def create_recurring_transaction(
         self,
@@ -39,6 +49,7 @@ class RecurringTransactionsModel:
         is_active: bool = True
     ) -> int:
         """Erstellt eine neue wiederkehrende Transaktion"""
+        typ = self._normalize_typ(typ)
         cur = self.conn.execute(
             """
             INSERT INTO recurring_transactions 
@@ -110,6 +121,7 @@ class RecurringTransactionsModel:
         year = target_month.year
         month = target_month.month
         
+        typ = self._normalize_typ(trans.typ)
         rows = self.conn.execute(
             """
             SELECT COUNT(*) FROM tracking 
@@ -120,7 +132,7 @@ class RecurringTransactionsModel:
               AND details LIKE ?
             """,
             (
-                trans.typ,
+                typ,
                 trans.category,
                 str(year),
                 f"{month:02d}",
@@ -179,6 +191,7 @@ class RecurringTransactionsModel:
         end_date: Optional[date] = None
     ) -> None:
         """Aktualisiert eine wiederkehrende Transaktion"""
+        typ = self._normalize_typ(typ)
         self.conn.execute(
             """
             UPDATE recurring_transactions 
@@ -224,7 +237,7 @@ class RecurringTransactionsModel:
         """Konvertiert eine Datenbank-Zeile in ein RecurringTransaction-Objekt"""
         return RecurringTransaction(
             id=row["id"],
-            typ=row["typ"],
+            typ=self._normalize_typ(row["typ"]),
             category=row["category"],
             amount=float(row["amount"]),
             details=row["details"],
