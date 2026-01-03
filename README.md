@@ -110,5 +110,16 @@ python main.py
 
 ---
 
-## Lizenz
-Derzeit: intern/privat (anpassen, sobald du es public/OSS machst).
+## Lizenz (Open Source, kommerziell nutzbar)
+
+**Empfehlung:** MIT License (permissiv)
+
+- Du darfst das Projekt **frei nutzen, ändern und weitergeben**.
+- Du darfst es **kommerziell anbieten** (z.B. fertige Builds/Portable-Apps verkaufen, Support/Setup anbieten, Paid Features als Add-ons entwickeln).
+- Andere dürften es prinzipiell auch kommerziell nutzen — dafür ist MIT einfach, kompatibel und „Business‑friendly“.
+
+**Wichtig (Best Practice):**
+- Lege die Lizenz als Datei `LICENSE` ins Repo (ist im Paket enthalten).
+- Wenn du deinen Projektnamen schützen willst: Name/Logo als **Trademark** behandeln (Lizenz deckt Marken nicht ab).
+- Wenn du später stärker monetarisieren willst (z.B. „Commercial Exception“ / Dual‑License), kann man auf ein Dual‑Licensing Modell wechseln.  
+  (Hinweis: keine Rechtsberatung – wenn du das groß/public machst, lohnt sich kurz ein juristischer Check.)
