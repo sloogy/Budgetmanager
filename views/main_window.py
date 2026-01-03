@@ -26,43 +26,47 @@ from views.savings_goals_dialog import SavingsGoalsDialog
 from views.backup_restore_dialog import BackupRestoreDialog
 from views.appearance_profiles_dialog import AppearanceProfilesDialog
 from views.category_manager_dialog import CategoryManagerDialog
+from app_info import APP_NAME, APP_VERSION, app_window_title, app_about_title, app_version_label
 
 class AboutDialog(QDialog):
     """Über-Dialog"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Über Budgetmanager V2.2")
-        
+        self.setWindowTitle(app_about_title())
+
         layout = QVBoxLayout()
-        
-        info = QLabel(
-            "<h2>Budgetmanager</h2>"
-            "<p><b>Version:</b> 2.2.0 (2. Januar 2026)</p>"
-            "<p><b>Entwickelt mit:</b> PySide6 (Qt für Python)</p>"
-            "<p><b>Datenbank:</b> SQLite</p>"
-            "<br>"
-            "<p>Ein einfacher Budgetmanager zur Verwaltung von:</p>"
-            "<ul>"
-            "<li>Budget-Planung nach Kategorien</li>"
-            "<li>Tracking von Einnahmen und Ausgaben</li>"
-            "<li>Visualisierung und Auswertung</li>"
-            "<li>Sparziele und Favoriten</li>"
-            "<li>Tags und Budgetwarnungen</li>"
-            "</ul>"
-            "<br>"
-            "<p><b>Highlights v2.2.0:</b></p><ul>"
-            "<li>🆕 Integrierte Kategorie-Verwaltung im Budget-Dialog</li>"
-            "<li>Kategorien direkt erstellen beim Budget erfassen</li>"
-            "<li>⚙️ Management-Button mit allen Kategorie-Funktionen</li>"
-            "<li>Kategorien-Tab als optionaler Experten-Modus</li>"
-            "</ul>"
-        )
+
+        html = f"""
+<h2>{APP_NAME}</h2>
+<p><b>Version:</b> {app_version_label()}</p>
+<p><b>Entwickelt mit:</b> PySide6 (Qt für Python)</p>
+<p><b>Datenbank:</b> SQLite</p>
+<br>
+<p>Ein einfacher Budgetmanager zur Verwaltung von:</p>
+<ul>
+  <li>Budget-Planung nach Kategorien</li>
+  <li>Tracking von Einnahmen und Ausgaben</li>
+  <li>Visualisierung und Auswertung</li>
+  <li>Sparziele und Favoriten</li>
+  <li>Tags und Budgetwarnungen</li>
+</ul>
+<br>
+<p><b>Highlights {APP_VERSION}:</b></p>
+<ul>
+  <li>Integrierte Kategorie-Verwaltung im Budget-Dialog</li>
+  <li>Management-Button mit allen Kategorie-Funktionen</li>
+  <li>Kategorien-Tab als optionaler Experten-Modus</li>
+  <li>Dashboard: Tabellarische Ansicht (Budget / Gebucht / Rest)</li>
+</ul>
+"""
+
+        info = QLabel(html)
         info.setTextFormat(Qt.RichText)
         info.setWordWrap(True)
-        
+
         buttons = QDialogButtonBox(QDialogButtonBox.Ok)
         buttons.accepted.connect(self.accept)
-        
+
         layout.addWidget(info)
         layout.addWidget(buttons)
         self.setLayout(layout)
@@ -72,7 +76,7 @@ class MainWindow(QMainWindow):
     def __init__(self, conn: sqlite3.Connection):
         super().__init__()
         self.conn = conn
-        self.setWindowTitle("Budgetmanager V2.2.0")
+        self.setWindowTitle(app_window_title())
 
         # Einstellungen laden
         self.settings = Settings()
