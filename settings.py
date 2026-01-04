@@ -54,6 +54,9 @@ class Settings:
             "active_design_profile": "V2 Hell – Neon Cyan",
             "last_design_profile_hell": "V2 Hell – Neon Cyan",
             "last_design_profile_dunkel": "V2 Dunkel – Graphite Cyan",
+            # Setup-Assistent / Onboarding
+            "show_onboarding": True,  # Einführung beim Start anzeigen
+            "setup_completed": False,  # Setup-Assistent abgeschlossen?
         }
     
     def save(self) -> None:

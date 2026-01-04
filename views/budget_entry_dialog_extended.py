@@ -206,6 +206,8 @@ class CategoryManagementWidget(QWidget):
         self.category_combo.setEditable(True)
         self.category_combo.setMinimumWidth(200)
         self.category_combo.setPlaceholderText("Kategorie eingeben oder auswählen...")
+        # Autofilter/Completer deaktivieren - nur manuelle Auswahl
+        self.category_combo.setCompleter(None)
         layout.addWidget(self.category_combo, 1)
         
         # Management-Button mit Menü

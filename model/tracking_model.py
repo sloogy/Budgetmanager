@@ -3,6 +3,9 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import date, timedelta, datetime
 
+# Undo/Redo (global)
+from model.undo_redo_model import UndoRedoModel
+
 @dataclass(frozen=True)
 class TrackingRow:
     id: int
@@ -43,57 +46,93 @@ def _from_iso(s: str) -> date:
 class TrackingModel:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
+        self.undo = UndoRedoModel(conn)
 
     def add(self, d: date | str, typ: str, category: str, amount: float, details: str = "") -> None:
-        self.conn.execute(
+        cur = self.conn.execute(
             "INSERT INTO tracking(date, typ, category, amount, details) VALUES(?,?,?,?,?)",
             (_to_date_iso(d), typ, category, float(amount), details or ""),
         )
         self.conn.commit()
-        
+
+        # Undo/Redo: INSERT
+        try:
+            rid = int(cur.lastrowid)
+            row = self.conn.execute(
+                "SELECT * FROM tracking WHERE id=?",
+                (rid,),
+            ).fetchone()
+            if row:
+                self.undo.record_operation("tracking", "INSERT", None, dict(row))
+        except Exception:
+            pass
+
         # Sparziel-Synchronisation: Bei Ersparnisse in verknüpfte Kategorie
         if typ == "Ersparnisse":
             self._sync_savings_goals_add(category, amount)
 
     def update(self, row_id: int, d: date | str, typ: str, category: str, amount: float, details: str = "") -> None:
-        # Alte Werte abrufen für Sparziel-Korrektur
-        old = self.conn.execute(
-            "SELECT typ, category, amount FROM tracking WHERE id=?", 
+        # Alte Werte abrufen für Undo/Redo + Sparziel-Korrektur
+        old_full = self.conn.execute(
+            "SELECT * FROM tracking WHERE id=?",
             (int(row_id),)
         ).fetchone()
-        
+
         self.conn.execute(
             "UPDATE tracking SET date=?, typ=?, category=?, amount=?, details=? WHERE id=?",
             (_to_date_iso(d), typ, category, float(amount), details or "", int(row_id)),
         )
         self.conn.commit()
-        
+
+        # Undo/Redo: UPDATE
+        try:
+            new_full = self.conn.execute(
+                "SELECT * FROM tracking WHERE id=?",
+                (int(row_id),)
+            ).fetchone()
+            if old_full and new_full:
+                self.undo.record_operation("tracking", "UPDATE", dict(old_full), dict(new_full))
+        except Exception:
+            pass
+
         # Sparziel-Synchronisation
-        if old:
-            old_typ, old_cat, old_amt = old[0], old[1], float(old[2])
-            
+        if old_full:
+            old_typ = str(old_full["typ"]) if isinstance(old_full, sqlite3.Row) else old_full[0]
+            old_cat = str(old_full["category"]) if isinstance(old_full, sqlite3.Row) else old_full[1]
+            old_amt = float(old_full["amount"]) if isinstance(old_full, sqlite3.Row) else float(old_full[2])
+
             # Alte Buchung rückgängig machen
             if old_typ == "Ersparnisse":
                 self._sync_savings_goals_remove(old_cat, old_amt)
-            
+
             # Neue Buchung hinzufügen
             if typ == "Ersparnisse":
                 self._sync_savings_goals_add(category, amount)
 
     def delete(self, row_id: int) -> None:
-        # Alte Werte abrufen für Sparziel-Korrektur
-        old = self.conn.execute(
-            "SELECT typ, category, amount FROM tracking WHERE id=?", 
+        # Alte Werte abrufen für Undo/Redo + Sparziel-Korrektur
+        old_full = self.conn.execute(
+            "SELECT * FROM tracking WHERE id=?",
             (int(row_id),)
         ).fetchone()
-        
+
         self.conn.execute("DELETE FROM tracking WHERE id=?", (int(row_id),))
         self.conn.commit()
-        
+
+        # Undo/Redo: DELETE
+        try:
+            if old_full:
+                self.undo.record_operation("tracking", "DELETE", dict(old_full), None)
+        except Exception:
+            pass
+
         # Sparziel-Synchronisation: Betrag abziehen
-        if old and old[0] == "Ersparnisse":
-            old_cat, old_amt = old[1], float(old[2])
-            self._sync_savings_goals_remove(old_cat, old_amt)
+        if old_full:
+            old_typ = str(old_full["typ"]) if isinstance(old_full, sqlite3.Row) else old_full[0]
+            if old_typ == "Ersparnisse":
+                old_cat = str(old_full["category"]) if isinstance(old_full, sqlite3.Row) else old_full[1]
+                old_amt = float(old_full["amount"]) if isinstance(old_full, sqlite3.Row) else float(old_full[2])
+                self._sync_savings_goals_remove(old_cat, old_amt)
 
     def exists_in_month(self, *, year: int, month: int, typ: str, category: str) -> bool:
         """True, wenn im gegebenen Monat bereits mindestens 1 Eintrag für typ+category existiert."""

@@ -1,166 +1,87 @@
-# CHANGELOG — Budgetmanager (Pre-Release)
+# Changelog - Budgetmanager
 
-> Versionierung: **0.x.x.x** (solange das Projekt noch nicht „fertig“ ist)  
-> Hinweis: Historisch existieren Ordner-/Code-Labels wie `v2.2.0`. Diese entsprechen **inhaltlich** der 0.2.x Linie.
+Alle wichtigen Änderungen an diesem Projekt werden hier dokumentiert.
 
----
-
-## 0.2.2.1 — 03.01.2026
-
-### Added
-- **Dashboard → Subtab „Tabellarisch“** (Budget / Gebucht / Rest über mehrere Monate)
-  - Auswahl: aktueller Monat, aktueller+nächster, letzte 2/3 + aktueller Monat
-  - Quelle: Patch aus `v2.2.1_tree_overview` (**nur** `views/tabs/overview_tab.py`)
-
-### Fixed / Changed
-- Versionsanzeige vereinheitlicht auf **0.x.x.x** (GUI/About)
-
-### Notes
-- **Wichtig:** Budget-Tab **nicht** aus `v2.2.1_tree_overview` übernehmen (Regression: Badges/Path-Mode).
+Das Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ---
 
-## 0.2.2.0-fix2 — 02.01.2026
+## [0.2.3.0.0] - 2026-01-04
 
-### Added
-- **Integrierte Kategorie-Verwaltung im Budget-Dialog**
-  - Kategorien direkt beim Budget-Erfassen anlegen
-  - Management-Menü (Neu/Unterkategorie/Umbenennen/Löschen/Fix/Wiederkehrend/Tag)
-  - Auto-Dialog bei unbekannter Kategorie
+### ✨ Neu: Einführungsassistent (Setup-Wizard)
 
-- **Kategorien-Manager-Dialog** (Extras → Kategorien-Manager, Strg+K)
-  - Mehrfachauswahl + Bulk-Edit für Fixkosten/Wiederkehrend/Tag
-  - Filter (Alle/Fix/Wiederkehrend/Typ)
-  - Farbkodierung (Fix rot, Wiederkehrend grün, beides orange)
+Neuer Benutzer? Kein Problem! Der **Einführungsassistent** führt dich Schritt für Schritt durch die wichtigsten Funktionen:
 
-- **Rechtsklick-Kontextmenü im Budget-Tab**
-  - Eigenschaften/Umbenennen/Fix/Wiederkehrend/Tag
-  - Neue Kategorie/Unterkategorie
-  - Budget-Zeile entfernen (nur dieses Jahr) / Kategorie löschen (global)
+1. **Startmodus wählen** – Geführtes Setup oder direkt loslegen
+2. **Datenbank-Check** – Überprüfung der SQLite-Datenbank
+3. **Kategorien anlegen** – Wahlweise über:
+   - 📁 Kategorien-Manager (im Programm)
+   - 📊 Excel-Vorlage (exportieren → ausfüllen → importieren)
+4. **Budget ausfüllen** – Eigenes Budget-Fenster zum direkten Eintragen
+5. **Budget-Tab erklärt** – Wie funktioniert was?
+6. **Erste Buchung** – Test im Tracking-Tab
+7. **Fixkosten/Wiederkehrend** – Automatische Buchungen verstehen
 
-- **Kategorien-Tab-Toggle (Expertenmodus)**
-  - Ansicht-Menü + Settings: `show_categories_tab`
-  - Tab kann ohne Neustart ein-/ausgeblendet werden
+#### Zugriff
+- **Automatisch**: Beim ersten Start (wenn noch nicht abgeschlossen)
+- **Manuell**: Menü → Hilfe → 🧭 Erste Schritte...
 
-### Changed
-- Tab-Handling stabilisiert (Einfügen an richtiger Position)
-- Kategorie-Logik besser gekapselt (eigene Widgets/Dialogs)
+#### Einstellungen
+- "Einführung beim Start anzeigen" – In Einstellungen → Allgemein verknüpft
+- Nach Abschluss wird der Haken automatisch entfernt
 
-### Technical
-- DB-Schema bleibt **V7** (Strings für Budget/Tracking, Tree via `parent_id` in `categories`)
+### 📊 Neu: Excel-Import/Export für Kategorien
 
----
+- **Export**: Kategorien-Vorlage als `.xlsx` exportieren
+- **Import**: Ausgefüllte Excel-Datei importieren
+- Unterstützt hierarchische Pfade (z.B. `Wohnen › Miete › Nebenkosten`)
+- Flags für Fixkosten, Wiederkehrend und Tag werden übernommen
 
-## 0.2.1.0 — 01.01.2026
+### 💰 Neu: Budget-Ausfüll-Dialog
 
-### Added / Merged
-- Theme-Manager (Profile) + User-Overrides
-- Fenster-State-Persistenz (Position/Größe/Max/Fullscreen)
-- Budget-Tab Tree-Ansicht + Puffer-System (Parent/Child)
+- Separates Fenster zum fokussierten Budget-Eintragen
+- Wird im Setup-Assistenten automatisch geöffnet
+- Auch unabhängig nutzbar
 
----
+### 🐛 Fehlerbehebungen
 
-## 0.2.0.3 — 12.2025
-- Theme-Manager + vordefinierte Profile
-- Fenster-State-Persistenz
+- **Undo/Redo Fix**: `ts` Spalte wird jetzt korrekt in undo_stack hinzugefügt
+  - Behebt: `sqlite3.OperationalError: table undo_stack has no column named ts`
+  - Migration v7→v8 erweitert für Kompatibilität mit alten DBs
+- **Migration robuster**: `.get()` statt direkter Dict-Zugriff
 
-## 0.2.0.0 — 12.2025
-- Tree-Kategorien (Haupt-/Unterkategorien)
-- Budget-Tab hierarchisch + Puffer-System
+### 🔧 Verbesserungen
 
----
-
-## 0.18.3 — 24.12.2025 (Weihnachts-Update)
-
-### Fixed
-- Appearance-Manager Crash behoben (Theme-Reset wieder stabil)
-
-### Changed
-- Übersichts-Tab (Dashboard) kompakter/übersichtlicher (KPI-Karten kleiner, Tabs/Layouts)
-
-### Improved
-- UI-Abstände/Margins vereinheitlicht, bessere Platznutzung
-- Code-Struktur im Overview-Bereich bereinigt
+- Path-Handling verbessert (expanduser für relative Pfade)
+- Über-Dialog mit neuen Feature-Highlights
 
 ---
 
-## 0.18.0 — 2025 (Großer Feature-Sprung)
+## [0.2.2.1.10] - 2026-01-04
 
-### Added
-- Wiederkehrende Transaktionen (automatische Buchung)
-- Fixkosten-Check / Monatsprüfung
-- Budget-Warnungen
-- Tags/Labels, Favoriten
-- Sparziele (mit Tracking)
-- Undo/Redo
-- Backup/Wiederherstellung, Datenbank-Management
-- Erscheinungsprofile/Theme-Profile
+### Basis-Version mit folgenden Features:
 
-### Also
-- Globale Suche
-- Export (CSV/Excel je nach Dialog)
-- Copy-Year / Jahres-Kopie
-- Budget-Anpassungsvorschläge (Basis)
-
----
-
-## 0.17.0 — 2025
-
-### Added
-- Kategorie-Filter im Buchungen-Tab
-- Verbesserte Budget-Eingabe
-- Erweiterter Export
-
-### Fixed
-- Diverse UI-Verbesserungen
-- Performance-Optimierungen
-
----
-
-## 0.16.0 — Dezember 2024
-
-### Added
-- Typ-Filter „Alle“ (Budget & Kategorien)
-- Mehrfachauswahl + Bulk-Edit im Kategorien-Tab
-- Tags/Labels (Basis + Farbcodes)
-- Budgetwarnungen (Schwellwert je Kategorie)
-- Favoriten-System
-- Sparziele (inkl. Synchronisation mit Tracking)
-- Undo/Redo System (Stack)
+- Undo/Redo-Unterstützung (Strg+Z / Strg+Y)
+- Integrierte Kategorie-Verwaltung im Budget-Dialog
+- Kategorien-Manager (Strg+K)
+- Kategorien-Tab als optionaler Experten-Modus
+- Theme-Profile und Erscheinungsmanager
 - Backup & Wiederherstellung
-- Datenbank-Reset (mit Sicherheits-Backup)
-- Erscheinungsprofile (Theme Manager)
+- Sparziele-Dialog
+- Globale Suche (Strg+F)
+- Schnelleingabe (Strg+N)
+- Export-Funktionen (CSV)
+- Budgetwarnungen und Tags
+- Fixkosten-Check
+- Wiederkehrende Transaktionen
+- Dashboard mit Budget/Gebucht/Rest-Ansicht
 
 ---
 
-## 0.15.2 — November 2024
+## Legende
 
-### Added
-- Fixkosten und wiederkehrende Buchungen
-- Kategorien-Verwaltung mit Inline-Editing
-- Tag-Feld für wiederkehrende Buchungen (1–31)
-
-### Known issues
-- Keine Mehrfachauswahl für Kategorien
-- Kein „Alle“-Filter
-
----
-
-## 0.15.0 — November 2024
-
-### Added
-- Budget-Planung
-- Buchungen/Tracking
-- Kategorien-Verwaltung
-- Übersicht/Dashboard (Basis)
-- Themes (Hell/Dunkel)
-- Export (Basis)
-
----
-
-## Nächster großer Meilenstein (Breaking)
-
-### 0.3.0.0 (Kandidat)
-- **DB Ziel V8**: ID-basierte Beziehungen für Budget/Tracking (Breaking Change)
-- Macht Umbenennen/Tree/Filter/Copy-Year deutlich robuster
-- Fühlt sich wie „neue Generation“ an
+- ✨ Neu: Neue Features
+- 🔧 Verbesserung: Optimierungen bestehender Features
+- 🐛 Bugfix: Fehlerbehebungen
+- ⚠️ Breaking: Inkompatible Änderungen
+- 🗑️ Entfernt: Gelöschte Features
