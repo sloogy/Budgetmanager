@@ -343,7 +343,7 @@ class TrackingTab(QWidget):
             self.table.insertRow(i)
             self.table.setItem(i,0,QTableWidgetItem(r.d.strftime("%d.%m.%Y")))
             self.table.setItem(i,1,QTableWidgetItem(str(r.typ)))
-            self.table.setItem(i,2,QTableWidgetItem(str(r.category)))
+            self.table.setItem(i,2,QTableWidgetItem(self.cats.display_with_parent(str(r.typ), str(r.category))))
             a=QTableWidgetItem(format_chf(float(r.amount)))
             a.setTextAlignment(Qt.AlignRight|Qt.AlignVCenter)
             self.table.setItem(i,3,a)

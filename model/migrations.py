@@ -5,7 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Aktuelle Schema-Version
-CURRENT_VERSION = 7
+CURRENT_VERSION = 8
 def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
     """Gibt alle Spaltennamen einer Tabelle zurück"""
     try:
@@ -122,6 +122,10 @@ def migrate_all(conn: sqlite3.Connection, db_path: str = None, backup_dir: str =
     if old_version < 7:
         _migrate_v6_to_v7(conn)
         migrations_applied.append("v6→v7: Kategorien-Baum (parent_id) + Funding + sort_order")
+
+    if old_version < 8:
+        _migrate_v7_to_v8(conn)
+        migrations_applied.append("v7→v8: Undo/Redo Redo-Stack + Grouping")
 
 
     # Version setzen
@@ -418,5 +422,57 @@ def _migrate_v6_to_v7(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_parent_id ON categories(parent_id);")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_funded_by ON categories(funded_by_category_id);")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_categories_sort ON categories(typ, sort_order, name);")
+
+    conn.commit()
+
+
+def _migrate_v7_to_v8(conn: sqlite3.Connection) -> None:
+    """Migration v7 → v8: Redo-Stack + Grouping für Undo/Redo."""
+    # undo_stack erweitern
+    if _table_exists(conn, "undo_stack"):
+        cols = _cols(conn, "undo_stack")
+        
+        # group_id Spalte hinzufügen
+        if "group_id" not in cols:
+            try:
+                conn.execute("ALTER TABLE undo_stack ADD COLUMN group_id TEXT")
+            except sqlite3.OperationalError:
+                pass
+        
+        # ts Spalte hinzufügen (für neue undo_redo_model.py)
+        # Falls alte 'timestamp' Spalte existiert, kopieren wir die Daten
+        if "ts" not in cols:
+            try:
+                conn.execute("ALTER TABLE undo_stack ADD COLUMN ts TEXT")
+                # Daten aus timestamp kopieren falls vorhanden
+                if "timestamp" in cols:
+                    conn.execute("UPDATE undo_stack SET ts = timestamp WHERE ts IS NULL")
+            except sqlite3.OperationalError:
+                pass
+
+    # redo_stack Tabelle
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS redo_stack(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ts TEXT NOT NULL,
+            group_id TEXT,
+            table_name TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            old_data TEXT,
+            new_data TEXT
+        );
+        """
+    )
+
+    # Indizes (optional)
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_undo_group ON undo_stack(group_id, id)")
+    except Exception:
+        pass
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_redo_group ON redo_stack(group_id, id)")
+    except Exception:
+        pass
 
     conn.commit()

@@ -2,6 +2,8 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
+from model.undo_redo_model import UndoRedoModel
+
 @dataclass(frozen=True)
 class Category:
     id: int
@@ -17,6 +19,8 @@ class Category:
 class CategoryModel:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
+        # Undo/Redo (global)
+        self.undo = UndoRedoModel(conn)
 
     def ensure_defaults(self) -> None:
         # Prüfe ob Defaults bereits geladen wurden
@@ -186,6 +190,9 @@ class CategoryModel:
     def list_names_tree(self, typ: str) -> list[tuple[str, str]]:
         """Hierarchische Namensliste für Dropdowns.
 
+        Anzeige: Einrückung bleibt, aber ab Unterkategorie wird zusätzlich der direkte Parent angezeigt:
+        z.B. "  Krankenkasse › Selbstbehalt".
+
         Returns: [(anzeige_text, echter_name), ...]
         """
         items = self.list(typ)
@@ -193,14 +200,15 @@ class CategoryModel:
 
         out: list[tuple[str, str]] = []
 
-        def walk(children: list[dict], depth: int) -> None:
+        def walk(children: list[dict], depth: int, parent_name: str | None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 prefix = "  " * depth
-                out.append((f"{prefix}{c.name}", c.name))
-                walk(n["children"], depth + 1)
+                label = c.name if depth == 0 or not parent_name else f"{parent_name} › {c.name}"
+                out.append((f"{prefix}{label}", c.name))
+                walk(n["children"], depth + 1, c.name)
 
-        walk(nodes, 0)
+        walk(nodes, 0, None)
         return out
 
     def list_fix_names(self, typ: str) -> list[str]:
@@ -212,15 +220,35 @@ class CategoryModel:
         nodes = self.build_tree(items)
         out: list[tuple[str, str]] = []
 
-        def walk(children: list[dict], depth: int) -> None:
+        def walk(children: list[dict], depth: int, parent_name: str | None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 prefix = "  " * depth
-                out.append((f"{prefix}{c.name}", c.name))
-                walk(n["children"], depth + 1)
+                label = c.name if depth == 0 or not parent_name else f"{parent_name} › {c.name}"
+                out.append((f"{prefix}{label}", c.name))
+                walk(n["children"], depth + 1, c.name)
 
-        walk(nodes, 0)
+        walk(nodes, 0, None)
         return out
+
+    def display_with_parent(self, typ: str, name: str) -> str:
+        """Gibt "Parent › Child" zurück, aber nur wenn die Kategorie einen Parent hat."""
+        parent = self.get_parent_name(typ, name)
+        return f"{parent} › {name}" if parent else name
+
+    def get_parent_name(self, typ: str, name: str) -> str | None:
+        """Gibt den direkten Parent-Namen zurück (oder None wenn Root)."""
+        cols = self._cols("categories")
+        if "parent_id" not in cols:
+            return None
+        row = self.conn.execute(
+            "SELECT parent_id FROM categories WHERE typ=? AND name=?",
+            (typ, name),
+        ).fetchone()
+        if not row or row["parent_id"] is None:
+            return None
+        prow = self.conn.execute("SELECT name FROM categories WHERE id=?", (int(row["parent_id"]),)).fetchone()
+        return str(prow["name"]) if prow else None
 
     def get_flags(self, typ: str, name: str) -> tuple[bool, bool, int]:
         """returns (is_fix, is_recurring, recurring_day). if missing -> (False, False, 1)"""
@@ -302,10 +330,16 @@ class CategoryModel:
                 (typ, name, int(is_fix), int(is_recurring), day),
             )
         self.conn.commit()
-        return int(cur.lastrowid)
+        new_id = int(cur.lastrowid)
+        row = self.conn.execute("SELECT * FROM categories WHERE id=?", (new_id,)).fetchone()
+        self.undo.record_operation("categories", "INSERT", None, dict(row) if row else None)
+        return new_id
 
     def update_flags(self, cat_id: int, *, is_fix: bool | None = None, is_recurring: bool | None = None, recurring_day: int | None = None) -> None:
-        """Aktualisiert Flags (und optional den Tag) per ID."""
+        """Aktualisiert Flags (und optional den Tag) per ID + Undo/Redo."""
+        old = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        old_d = dict(old) if old else None
+
         fields: list[str] = []
         params: list[object] = []
         if is_fix is not None:
@@ -324,10 +358,24 @@ class CategoryModel:
         self.conn.execute(f"UPDATE categories SET {', '.join(fields)} WHERE id=?", params)
         self.conn.commit()
 
+        new = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        new_d = dict(new) if new else None
+        if old_d != new_d:
+            self.undo.record_operation("categories", "UPDATE", old_d, new_d)
+
     def rename_and_cascade(self, cat_id: int, *, typ: str, old_name: str, new_name: str) -> None:
-        """Benennt eine Kategorie um und aktualisiert Budget/Tracking (Kategorie-Textspalte)."""
+        """Benennt eine Kategorie um und aktualisiert Budget/Tracking (Kategorie-Textspalte).
+
+        Wichtig: Budget/Tracking referenzieren Kategorie per Name (Legacy). Deshalb wird der Cascade als
+        eigener Undo/Redo-Operationstyp gespeichert.
+        """
+        old_name = (old_name or "").strip()
+        new_name = (new_name or "").strip()
+        if not old_name or not new_name or old_name == new_name:
+            return
+
+        # ausführen
         self.conn.execute("UPDATE categories SET name=? WHERE id=?", (new_name, int(cat_id)))
-        # Cascade: budget/tracking referenzieren Kategorie per Name
         self.conn.execute(
             "UPDATE budget SET category=? WHERE typ=? AND category=?",
             (new_name, typ, old_name),
@@ -338,23 +386,49 @@ class CategoryModel:
         )
         self.conn.commit()
 
+        self.undo.record_operation(
+            "categories",
+            "RENAME_CASCADE",
+            {"cat_id": int(cat_id), "typ": typ, "old_name": old_name},
+            {"cat_id": int(cat_id), "typ": typ, "new_name": new_name},
+        )
+
     def delete(self, typ: str, name: str) -> None:
-        self.conn.execute("DELETE FROM categories WHERE typ=? AND name=?",(typ,name))
+        old = self.conn.execute("SELECT * FROM categories WHERE typ=? AND name=?", (typ, name)).fetchone()
+        old_d = dict(old) if old else None
+        self.conn.execute("DELETE FROM categories WHERE typ=? AND name=?", (typ, name))
         self.conn.commit()
+        if old_d:
+            self.undo.record_operation("categories", "DELETE", old_d, None)
 
     def delete_by_ids(self, ids: list[int]) -> None:
         if not ids:
             return
         q = ",".join(["?"] * len(ids))
+        rows = self.conn.execute(f"SELECT * FROM categories WHERE id IN ({q})", [int(i) for i in ids]).fetchall()
+        old_rows = [dict(r) for r in rows]
+
+        group = self.undo.new_group()
         self.conn.execute(f"DELETE FROM categories WHERE id IN ({q})", [int(i) for i in ids])
         self.conn.commit()
+
+        for r in old_rows:
+            self.undo.record_operation("categories", "DELETE", r, None, group_id=group)
 
     def update_parent(self, cat_id: int, new_parent_id: int | None) -> None:
         cols = self._cols("categories")
         if "parent_id" not in cols:
             return
+        old = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        old_d = dict(old) if old else None
+
         self.conn.execute("UPDATE categories SET parent_id=? WHERE id=?", (new_parent_id, int(cat_id)))
         self.conn.commit()
+
+        new = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        new_d = dict(new) if new else None
+        if old_d != new_d:
+            self.undo.record_operation("categories", "UPDATE", old_d, new_d)
 
     def reset_defaults_flag(self) -> None:
         """

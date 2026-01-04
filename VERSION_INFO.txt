@@ -1,0 +1,36 @@
+Budgetmanager Version 0.2.3.0.0
+===============================
+
+Datum: 2026-01-04
+
+NEU:
+----
+- Setup-Assistent / Einführungsassistent (🧭 Erste Schritte im Hilfe-Menü)
+- Excel-Import/Export für Kategorien
+- Budget-Ausfüll-Dialog
+
+GEÄNDERT:
+---------
+- Sortierung Budget-Tab: Budget-Saldo → Einkommen → Ausgaben → Ersparnisse
+- Budget-Saldo wird jetzt IMMER angezeigt (auch bei gefilterten Typen)
+- Auto-Save Checkbox wird jetzt korrekt mit Settings synchronisiert
+- closeEvent vereinfacht: Nur noch eine Frage beim Schließen
+- Störende "Gespeichert"-MessageBox entfernt (stilles Speichern)
+- Autofilter/Completer im Budget-Eingabedialog deaktiviert (nur manuelle Auswahl)
+- Einstellungen "Einführung beim Start anzeigen" mit Setup-Assistent verknüpft
+
+FIXES:
+------
+- Undo/Redo: Dynamische Spaltenprüfung für alte Datenbanken (ts/timestamp Kompatibilität)
+- Sparziele-Undo: Korrigierte Betragsanpassung (nicht mehr pauschal neu berechnen)
+- Migration v7→v8: ts Spalte wird korrekt hinzugefügt
+
+BASIS:
+------
+- Basiert auf v0.2.2.1.10
+
+HINWEIS:
+--------
+Undo/Redo ist global verfügbar über:
+- Menü: Bearbeiten → Undo / Redo
+- Shortcuts: Strg+Z (Undo), Strg+Y bzw. Strg+Shift+Z (Redo)
