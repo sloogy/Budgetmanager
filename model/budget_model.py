@@ -2,6 +2,8 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
+from model.undo_redo_model import UndoRedoModel
+
 @dataclass(frozen=True)
 class BudgetRow:
     year: int
@@ -12,15 +14,34 @@ class BudgetRow:
 
 class BudgetModel:
     def __init__(self, conn: sqlite3.Connection):
-        self.conn=conn
+        self.conn = conn
+        self.undo = UndoRedoModel(conn)
 
     def set_amount(self, year:int, month:int, typ:str, category:str, amount:float) -> None:
+        old = self.conn.execute(
+            "SELECT * FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
+            (int(year), int(month), typ, category),
+        ).fetchone()
+
         self.conn.execute(
             "INSERT INTO budget(year,month,typ,category,amount) VALUES(?,?,?,?,?) "
             "ON CONFLICT(year,month,typ,category) DO UPDATE SET amount=excluded.amount",
             (int(year), int(month), typ, category, float(amount)),
         )
         self.conn.commit()
+
+        new = self.conn.execute(
+            "SELECT * FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
+            (int(year), int(month), typ, category),
+        ).fetchone()
+
+        op = "INSERT" if old is None else "UPDATE"
+        self.undo.record_operation(
+            "budget",
+            op,
+            dict(old) if old else None,
+            dict(new) if new else None,
+        )
 
     def get_matrix(self, year:int, typ:str) -> dict[str, dict[int,float]]:
         cur=self.conn.execute(
@@ -47,18 +68,36 @@ class BudgetModel:
         self.conn.commit()
 
     def delete_category_for_year(self, year:int, typ:str, category:str) -> None:
+        rows = self.conn.execute(
+            "SELECT * FROM budget WHERE year=? AND typ=? AND category=?",
+            (int(year), typ, category),
+        ).fetchall()
+        group = self.undo.new_group() if rows else None
+
         self.conn.execute(
             "DELETE FROM budget WHERE year=? AND typ=? AND category=?",
             (int(year), typ, category),
         )
         self.conn.commit()
 
+        for r in rows:
+            self.undo.record_operation("budget", "DELETE", dict(r), None, group_id=group)
+
     def delete_category_all_years(self, typ:str, category:str) -> None:
+        rows = self.conn.execute(
+            "SELECT * FROM budget WHERE typ=? AND category=?",
+            (typ, category),
+        ).fetchall()
+        group = self.undo.new_group() if rows else None
+
         self.conn.execute(
             "DELETE FROM budget WHERE typ=? AND category=?",
             (typ, category),
         )
         self.conn.commit()
+
+        for r in rows:
+            self.undo.record_operation("budget", "DELETE", dict(r), None, group_id=group)
 
 
     def get_amount(self, year:int, month:int, typ:str, category:str) -> float:

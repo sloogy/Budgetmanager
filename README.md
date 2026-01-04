@@ -1,125 +1,170 @@
-# Budgetmanager (Pre-Release) — v0.2.2.1
+# 💰 Budgetmanager v0.2.3.0.0
 
-Ein **Desktop-Budgettool** (Python + PySide6, SQLite), um dein **Jahresbudget** zu planen und deine **Buchungen** (Einnahmen/Ausgaben/Ersparnisse) zu tracken – inklusive Kategorien-Baum, Fixkosten/Wiederkehrend, Tags, Sparzielen und Dashboard.
+Ein umfassender, persönlicher Budgetmanager für Windows/Linux/macOS – entwickelt mit Python und PySide6.
 
-> **Status:** Pre-Release (**0.x.x.x**). Die App ist nutzbar, aber UI/Logik wird noch konsolidiert und das Datenmodell wird voraussichtlich nochmals „groß“ umgebaut (siehe **0.3.0.0 / DB-Ziel V8**).
-
----
-
-## Was ist in v0.2.2.1 neu?
-
-- **Dashboard / Übersicht → Subtab „Tabellarisch“**: Budget / Gebucht / Rest über mehrere Monate
-  - Auswahl: *nur aktueller Monat*, *aktueller + nächster*, *letzte 2 + aktueller*, *letzte 3 + aktueller*
-- Diese Funktion kommt als **gezielter Patch** aus `v2.2.1_tree_overview`:
-  - übernommen wurde **nur** `views/tabs/overview_tab.py`
-  - **nicht** übernommen wurde der Budget-Tab aus dieser Quelle (Regression: Badges/Path-Mode)
+![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
+![PySide6](https://img.shields.io/badge/PySide6-6.6+-green.svg)
+![SQLite](https://img.shields.io/badge/SQLite-3-lightgrey.svg)
+![License](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 ---
 
-## Funktionen (Stand v0.2.2.1)
+## 🌟 Features
 
-### 1) Budget-Tab (Planung)
-- **Budget erfassen / bearbeiten** (Jahr/Monat)
-- **Kategorien als Baumstruktur** (Haupt-/Unterkategorien)
-- **Copy-Year**: Budget-Kategorien und (optional) Beträge von Jahr A → Jahr B kopieren
-- **Rechtsklick-Kontextmenü** für Kategorien/Budgetzeilen (z. B. Eigenschaften, Fix/Wiederkehrend, Tag setzen)
-- **Kategoriepfad anzeigen** (z. B. `Gesundheit › Krankenkasse › Prämie`) – hilft enorm gegen „DAU-Fragezeichen“
+### Kernfunktionen
 
-### 2) Kategorien-Tab (optional / Expertenmodus)
-- Kategorien verwalten: **Hinzufügen / Entfernen / Bearbeiten**
-- **Mehrfachauswahl** + **Bulk-Edit** (Fixkosten / Wiederkehrend / Tag)
-- Tab kann per Einstellung ausgeblendet werden (wenn man nur im Budget-Dialog arbeiten will)
+- **📊 Budget-Planung** – Monatsbudgets nach Kategorien verwalten
+- **📈 Tracking** – Einnahmen und Ausgaben erfassen
+- **📁 Hierarchische Kategorien** – Baumstruktur (z.B. Gesundheit › Krankenkasse › Prämie)
+- **🎯 Sparziele** – Ziele setzen und Fortschritt tracken
+- **📉 Dashboard** – Budget vs. Gebucht Übersicht
 
-### 3) Buchungen-Tab (Tracking)
-- Buchung erfassen/bearbeiten/löschen mit:
-  - Datum, Betrag, Typ/Konto (Einnahmen/Ausgaben/Ersparnisse), Kategorie, Bemerkung
-- **Quick Add** (schnell viele Buchungen erfassen)
-- **Fixkosten / Monatsanfang**: kann wiederkehrende „Start-of-month“ Buchungen erleichtern
-- **Filter** (Datum/Monat/Jahr, Typ/Konto, Kategorie, Bemerkung, etc.)
-- Dialoge/Tools rund ums Wiederholen:
-  - **Wiederkehrende Buchungen verwalten**
-  - **Fixkosten-Check** / fehlende Buchungen prüfen (je nach Nutzung)
+### NEU in v0.2.3.0.0
 
-### 4) Dashboard / Übersicht
-- Gegenüberstellung **Budget vs. Gebucht vs. Rest**
-- Grafiken/KPIs (je nach Datenbestand)
-- **NEU:** Subtab **„Tabellarisch“** (Monatsvergleich, siehe oben)
+- **🧭 Einführungsassistent** – Schritt-für-Schritt Setup für neue Benutzer
+- **📊 Excel-Import/Export** – Kategorien via Excel-Vorlage verwalten
+- **💰 Budget-Ausfüll-Dialog** – Fokussiertes Budget-Eintragen
+- **🐛 Undo/Redo Fix** – Datenbank-Kompatibilitätsprobleme behoben
 
-### 5) Extras (je nach Menü/Build aktiv)
-- **Sparziele** (mit Tracking-Anbindung)
-- **Favoriten** (Schnellzugriff)
-- **Tags/Labels** (für Kategorien)
-- **Budgetwarnungen** (Schwellwerte)
-- **Undo/Redo** (Stack für Datenbank-Operationen)
-- **Backup & Wiederherstellung**
-- **Export** (CSV/Excel je nach Dialog)
+### Weitere Features
+
+- ⭐ **Fixkosten** markieren und automatisch buchen
+- ∞ **Wiederkehrende Transaktionen** mit Soll-Buchungsdatum
+- 🏷️ **Tags** für zusätzliche Kategorisierung
+- ⚠️ **Budgetwarnungen** bei Überschreitung
+- ↩️ **Undo/Redo** für alle Aktionen (Strg+Z / Strg+Y)
+- 🔍 **Globale Suche** (Strg+F)
+- ⚡ **Schnelleingabe** (Strg+N)
+- 💾 **Backup & Wiederherstellung**
+- 🎨 **Theme-Profile** (Hell/Dunkel + viele Varianten)
 
 ---
 
-## Installation & Start
+## 🚀 Schnellstart
 
 ### Voraussetzungen
-- Python **3.10+** (Fedora / Windows)
-- PySide6 + Abhängigkeiten aus `requirements.txt` (falls vorhanden)
 
-### Start (Linux / Fedora)
+- Python 3.10 oder höher
+- pip (Python Package Manager)
+
+### Installation
+
 ```bash
-python -m venv .venv
-source .venv/bin/activate
+# Repository klonen oder ZIP entpacken
+cd Budgetmanager_v0_2_3_0_0
+
+# Abhängigkeiten installieren
 pip install -r requirements.txt
+
+# Starten
 python main.py
 ```
 
-### Start (Windows)
-- Analog mit venv (oder portable Build).  
-- Hinweis: Windows-Paketierung/Updater ist **noch nicht final** (siehe Open Tasks).
+### Erster Start
+
+Beim ersten Start öffnet sich automatisch der **Einführungsassistent**, der dich durch das Setup führt:
+
+1. Kategorien anlegen (Manager oder Excel-Import)
+2. Budget ausfüllen
+3. Erste Buchung erstellen
+4. Fixkosten verstehen
+
+Der Assistent kann jederzeit über **Hilfe → 🧭 Erste Schritte...** erneut gestartet werden.
 
 ---
 
-## Datenbank (SQLite) & Migrationen
+## ⌨️ Tastenkürzel
 
-- Die App nutzt eine **SQLite**-Datenbank (Datei).
-- Migrationen passieren beim Start automatisch (falls im Code vorgesehen).
-- **Wichtig für die Zukunft:** Aktuell sind einige Beziehungen noch string-basiert (Kategorie-Strings).  
-  Das ist praktisch, aber anfällig bei Umbenennungen.
-
----
-
-## Versionierung (Wichtig)
-
-- **Alle Releases bleiben bei 0.x.x.x**, solange „noch nicht fertig“.
-- Historisch existieren Ordner-/Code-Labels wie `v2.2.0`.  
-  Inhaltlich entspricht das der **0.2.x** Linie.
-
-### Nächster „echter“ Major-Kandidat: 0.3.0.0 (Breaking)
-> Der nächste „echte“ Major-Kandidat wäre **0.3.0.0**, wenn du das **V8 DB-Ziel** (ID-basierte Budget/Tracking-Relations) umsetzt – das ist eine **Breaking-Änderung**, die sich wie „neue Generation“ anfühlt.
-
----
-
-## Bekannte Baustellen (ehrlich, ohne Drama)
-- UI/Flows (Budget ↔ Kategorie-Management) sind teilweise historisch gewachsen → wird weiter vereinheitlicht.
-- DB-Modell V7 ist „praktisch“, aber Umbenennen/Tree/Relations werden erst mit V8 wirklich robust.
-- Wiederkehrende Buchungen/Fixkosten-Checks sind funktional, aber UX kann noch klarer werden.
+| Kürzel | Funktion |
+|--------|----------|
+| `Strg+S` | Speichern |
+| `Strg+N` | Schnelleingabe |
+| `Strg+F` | Globale Suche |
+| `Strg+K` | Kategorien-Manager |
+| `Strg+E` | Export |
+| `Strg+Z` | Rückgängig (Undo) |
+| `Strg+Y` | Wiederholen (Redo) |
+| `Strg+1-4` | Zu Tab wechseln |
+| `F1` | Tastenkürzel-Hilfe |
+| `F5` | Aktualisieren |
+| `F10` | Maximieren |
+| `F11` | Vollbild |
 
 ---
 
-## Mitmachen / Dev-Workflow (empfohlen)
-- Entwicklung auf `dev`, Releases auf `main`.
-- Kleine, klare Commits (z. B. `fix: ...`, `feat: ...`).
-- Vor Release: Changelog pflegen, Version in `app_info.py` bumpen (ein Ort).
+## 🎨 Themes
+
+Der Budgetmanager bietet zahlreiche Theme-Profile:
+
+### Hell
+- Standard Hell
+- V2 Hell – Neon Cyan
+- V2 Hell – Pastel Mint
+- V2 Hell – Warm Sand
+- Gruvbox Hell
+- Solarized Hell
+- Pastell Sanft
+
+### Dunkel
+- Standard Dunkel
+- V2 Dunkel – Graphite Cyan
+- V2 Dunkel – Purple Night
+- Dracula, Nord, Monokai, Ocean
+- Gruvbox Dunkel, OLED Kontrastarm
+
+Zugriff: **Datei → Einstellungen → Darstellung**
 
 ---
 
-## Lizenz (Open Source, kommerziell nutzbar)
+## 📊 Excel-Import für Kategorien
 
-**Empfehlung:** MIT License (permissiv)
+### Vorlage ausfüllen
 
-- Du darfst das Projekt **frei nutzen, ändern und weitergeben**.
-- Du darfst es **kommerziell anbieten** (z.B. fertige Builds/Portable-Apps verkaufen, Support/Setup anbieten, Paid Features als Add-ons entwickeln).
-- Andere dürften es prinzipiell auch kommerziell nutzen — dafür ist MIT einfach, kompatibel und „Business‑friendly“.
+| Typ | Pfad | Fix (0/1) | Wiederkehrend (0/1) | Tag (1-31) |
+|-----|------|-----------|---------------------|------------|
+| Ausgaben | Wohnen › Miete | 1 | 1 | 1 |
+| Ausgaben | Gesundheit › Krankenkasse › Prämie | 1 | 1 | 1 |
+| Einkommen | Lohn | 0 | 1 | 25 |
+| Ersparnisse | Notgroschen | 0 | 1 | 1 |
 
-**Wichtig (Best Practice):**
-- Lege die Lizenz als Datei `LICENSE` ins Repo (ist im Paket enthalten).
-- Wenn du deinen Projektnamen schützen willst: Name/Logo als **Trademark** behandeln (Lizenz deckt Marken nicht ab).
-- Wenn du später stärker monetarisieren willst (z.B. „Commercial Exception“ / Dual‑License), kann man auf ein Dual‑Licensing Modell wechseln.  
-  (Hinweis: keine Rechtsberatung – wenn du das groß/public machst, lohnt sich kurz ein juristischer Check.)
+### Pfad-Syntax
+
+- Trennzeichen: `›`, `»`, `>`, `/`, `\`
+- Beispiel: `Gesundheit › Krankenkasse › Prämie`
+- Eltern-Kategorien werden automatisch erstellt
+
+---
+
+## 🔧 Konfiguration
+
+### Settings-Datei
+
+`budgetmanager_settings.json` im Programmverzeichnis.
+
+### Wichtige Einstellungen
+
+| Einstellung | Beschreibung | Standard |
+|-------------|--------------|----------|
+| `show_onboarding` | Einführung beim Start | `true` |
+| `setup_completed` | Setup abgeschlossen | `false` |
+| `auto_save` | Automatisches Speichern | `false` |
+| `show_categories_tab` | Kategorien-Tab (Experten) | `false` |
+
+---
+
+## 🗄️ Datenbank
+
+- **Format**: SQLite 3
+- **Datei**: `budgetmanager.db`
+- **Schema-Version**: 8
+- **Backup**: Automatisch vor Migrationen
+
+---
+
+## 📜 Lizenz
+
+MIT License
+
+---
+
+*Entwickelt mit ❤️ und ☕ in der Schweiz*

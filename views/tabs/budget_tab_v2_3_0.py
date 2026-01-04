@@ -88,9 +88,6 @@ class BudgetTab(QWidget):
         # Baum-Ansicht: 'tree' (Einrueckung/Marker) oder 'path' (Pfadtext)
         self._tree_view_mode = 'tree'
 
-        # Typ-Farben (aus Theme-Profil, fallback Default)
-        self._type_colors = self._get_type_color_map()
-
 
         self.btn_load = QPushButton("Laden")
         self.btn_save = QPushButton("Speichern")
@@ -121,7 +118,7 @@ class BudgetTab(QWidget):
 
         # Bezeichnung + Fix + Wiederh. + Tag + 12 Monate + Total
         self.table = QTableWidget(0, 17)
-        self.table.setHorizontalHeaderLabels(["Bezeichnung", "Fix", "∞", "Tag"] + MONTHS + ["Total"])
+        self.table.setHorizontalHeaderLabels(["Bezeichnung", "⭐", "∞", "Tag"] + MONTHS + ["Total"])
         
         # Spaltenbreiten optimieren
         self.table.setColumnWidth(0, 280)  # Bezeichnung
@@ -209,19 +206,17 @@ class BudgetTab(QWidget):
                 c = self.table.currentColumn()
                 if r < 0 or c < 0:
                     return False
-                # Spalten: 0=Bezeichnung, 1=Fix, 2=∞, 3=Tag, 4-15=Monate, 16=Total
-                if c < 4:
-                    # Von Bezeichnung/Fix/∞/Tag -> erste Monatsspalte
-                    self.table.setCurrentCell(r, 4)
+                if c == 0:
+                    self.table.setCurrentCell(r, 1)
                 else:
                     next_c = c + 1
                     next_r = r
-                    if next_c > 16:  # nach Total -> nächste Zeile
-                        next_c = 4  # Zurück zur ersten Monatsspalte
+                    if next_c >= 14:  # after Total -> next row
+                        next_c = 1
                         next_r = r + 1
                     if next_r >= self.table.rowCount():
                         next_r = self.table.rowCount() - 1
-                    self.table.setCurrentCell(next_r, next_c)
+                    self.table.setCurrentCell(next_r, next_c if next_c != 13 else 13)
                 return True
         return super().eventFilter(obj, event)
 
@@ -254,37 +249,6 @@ class BudgetTab(QWidget):
         # fallback
         cur = self.typ_cb.currentText()
         return "Ausgaben" if cur == "Alle" else cur
-
-
-    def _get_type_color_map(self) -> dict[str, QColor]:
-        """Lädt Farben für Einnahmen/Ausgaben/Ersparnisse aus dem aktuellen Theme-Profil.
-        Fallback: grün/rot/blau.
-        """
-        defaults = {
-            "Einnahmen": "#2ecc71",
-            "Einkommen": "#2ecc71",
-            "Ausgaben": "#e74c3c",
-            "Ersparnisse": "#3498db",
-        }
-        try:
-            # Theme/Settings sind optional – wenn etwas schiefgeht, nutzen wir Defaults.
-            from settings import Settings  # type: ignore
-            from theme_manager import ThemeManager  # type: ignore
-            tm = ThemeManager(Settings())
-            m = tm.get_type_colors()
-            return {k: QColor(v) for k, v in (m or defaults).items()}
-        except Exception:
-            return {k: QColor(v) for k, v in defaults.items()}
-
-    def _typ_color(self, typ: str) -> QColor:
-        """Gibt eine Farbe für den jeweiligen Typ zurück."""
-        m = getattr(self, "_type_colors", None) or {}
-        if typ in m:
-            return m[typ]
-        # Fallback auf 'Einkommen' für 'Einnahmen'
-        if typ == "Einnahmen" and "Einkommen" in m:
-            return m["Einkommen"]
-        return QColor("#95a5a6")
 
     def _row_cat_real(self, r: int) -> str | None:
         it0 = self.table.item(r, 0)
@@ -415,11 +379,15 @@ class BudgetTab(QWidget):
         
         new_fix = not bool(cat_obj.is_fix)
         
-        self.cats.update_flags(cat_obj.id, is_fix=new_fix, is_recurring=bool(cat_obj.is_recurring), recurring_day=int(cat_obj.recurring_day or 1))
+        self.conn.execute(
+            "UPDATE categories SET is_fix = ? WHERE id = ?",
+            (int(new_fix), cat_obj.id)
+        )
+        self.conn.commit()
         
         it = self.table.item(row, 1)
         if it:
-            it.setText("★" if new_fix else "")
+            it.setText("⭐" if new_fix else "")
     
     def _toggle_recurring(self, row: int, typ: str, cat_name: str) -> None:
         """Schaltet Wiederkehrend-Status einer Kategorie um."""
@@ -434,7 +402,11 @@ class BudgetTab(QWidget):
         
         new_rec = not bool(cat_obj.is_recurring)
         
-        self.cats.update_flags(cat_obj.id, is_fix=bool(cat_obj.is_fix), is_recurring=new_rec, recurring_day=int(cat_obj.recurring_day or 1))
+        self.conn.execute(
+            "UPDATE categories SET is_recurring = ? WHERE id = ?",
+            (int(new_rec), cat_obj.id)
+        )
+        self.conn.commit()
         
         it_rec = self.table.item(row, 2)
         it_day = self.table.item(row, 3)
@@ -474,24 +446,11 @@ class BudgetTab(QWidget):
             self.table.setItem(0, c, it)
     
     def _update_total_row(self) -> None:
-        """Aktualisiert Total-Zeile: Einnahmen - Ausgaben - Ersparnisse.
-        
-        Zeigt Budget-Saldo IMMER an, auch wenn nur ein Typ gefiltert ist.
-        Berechnet Saldo aus allen drei Typen (aus DB, nicht aus Tabelle).
-        """
-        if self.table.rowCount() == 0:
+        """Aktualisiert Total-Zeile: Einnahmen - Ausgaben - Ersparnisse."""
+        if self.table.rowCount() == 0 or self.typ_cb.currentText() != "Alle":
             return
         
-        # Immer alle Typen aus DB holen für korrekten Saldo
-        year = int(self.year_spin.value())
-        totals = {}
-        for t in ["Einkommen", "Ausgaben", "Ersparnisse"]:
-            matrix = self.budget.get_matrix(year, t)
-            typ_totals = {}
-            for month_idx in range(1, 13):
-                typ_totals[month_idx] = sum(matrix.get(cat, {}).get(month_idx, 0.0) for cat in matrix)
-            typ_totals[13] = sum(typ_totals.values())  # Jahrestotal
-            totals[t] = typ_totals
+        totals = self._compute_totals_by_typ()
         
         einkommen = totals.get("Einkommen", {})
         ausgaben = totals.get("Ausgaben", {})
@@ -555,7 +514,7 @@ class BudgetTab(QWidget):
         year = int(self.year_spin.value())
         typ = self.typ_cb.currentText()
         if typ == "Alle":
-            types = ["Einkommen", "Ausgaben", "Ersparnisse"]
+            types = ["Ausgaben", "Einkommen", "Ersparnisse"]
         else:
             types = [typ]
 
@@ -571,7 +530,7 @@ class BudgetTab(QWidget):
         typ = self.typ_cb.currentText()
 
         if typ == "Alle":
-            types = ["Einkommen", "Ausgaben", "Ersparnisse"]
+            types = ["Ausgaben", "Einkommen", "Ersparnisse"]
         else:
             types = [typ]
 
@@ -581,8 +540,9 @@ class BudgetTab(QWidget):
         try:
             self.table.setRowCount(0)
 
-            # Budget-Saldo IMMER anzeigen (auch bei einzelnem Typ)
-            self._insert_total_row()
+            # Total-Zeile einfügen (bei "Alle")
+            if typ == "Alle":
+                self._insert_total_row()
             
             for t in types:
                 matrix = self.budget.get_matrix(year, t)
@@ -601,10 +561,6 @@ class BudgetTab(QWidget):
                     font = header_item.font()
                     font.setBold(True)
                     header_item.setFont(font)
-                    try:
-                        header_item.setForeground(QBrush(self._typ_color(t)))
-                    except Exception:
-                        pass
                     header_item.setData(ROLE_TYP, t)
                     self.table.setItem(r, 0, header_item)
                     # Leere Zellen für alle restlichen Spalten (1-16)
@@ -623,12 +579,7 @@ class BudgetTab(QWidget):
                     self.table.insertRow(r)
 
                     collapsed = False
-                    if getattr(self, "_tree_view_mode", "tree") == "path":
-                        display_name = path
-                    else:
-                        # Im Baum-Modus: nur den Kategorienamen anzeigen – Einrückung macht die Struktur sichtbar.
-                        display_name = name
-                    label = self._format_cat_label(display_name, depth, has_children, collapsed)
+                    label = self._format_cat_label(name, depth, has_children, collapsed)
                     cat_item = QTableWidgetItem(label)
                     cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsEditable)
                     cat_item.setData(ROLE_TYP, t)
@@ -640,9 +591,9 @@ class BudgetTab(QWidget):
                     cat_item.setToolTip(path)
                     self.table.setItem(r, 0, cat_item)
 
-                    # Spalte 1: Fix (Fix)
+                    # Spalte 1: Fix (⭐)
                     is_fix = row.get("is_fix", False)
-                    it_fix = QTableWidgetItem("★" if is_fix else "")
+                    it_fix = QTableWidgetItem("⭐" if is_fix else "")
                     it_fix.setTextAlignment(Qt.AlignCenter)
                     it_fix.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
                     it_fix.setData(ROLE_TYP, t)
@@ -672,16 +623,6 @@ class BudgetTab(QWidget):
                     it_day.setData(ROLE_CAT_REAL, name)
                     self.table.setItem(r, 3, it_day)
 
-                    # Typ-Farbe auf Label/Badges anwenden (nur Spalten 0-3, damit Zahlen gut lesbar bleiben)
-                    try:
-                        col = self._typ_color(t)
-                        brush = QBrush(col)
-                        for cc in range(0, 4):
-                            itx = self.table.item(r, cc)
-                            if itx:
-                                itx.setForeground(brush)
-                    except Exception:
-                        pass
 
                     row_total = 0.0
                     for m in range(1, 13):  # m = logischer Monat (1-12)
@@ -723,8 +664,9 @@ class BudgetTab(QWidget):
                         )
                     self.table.setItem(r, 16, tot)  # Korrigiert: Spalte 16 statt 13!
 
-            # Budget-Saldo immer aktualisieren
-            self._update_total_row()
+            # Total-Zeile aktualisieren (wenn vorhanden)
+            if typ == "Alle":
+                self._update_total_row()
                 
             self._reapply_tree_visibility()
             self._apply_table_styles()
@@ -761,12 +703,7 @@ class BudgetTab(QWidget):
         return total
 
     def _update_parent_chain(self, start_row: int, month_col: int):
-        """Rechnet für diesen Monat alle Parent-Zeilen nach oben neu.
-        
-        Args:
-            start_row: Ausgangszeile
-            month_col: Spaltenindex (4-15 für Jan-Dez)
-        """
+        """Rechnet für diesen Monat alle Parent-Zeilen nach oben neu."""
         data_rows = self._row_count_data()
         if start_row >= data_rows:
             return
@@ -775,9 +712,6 @@ class BudgetTab(QWidget):
         cur_depth = self._row_depth(cur_row)
         if cur_depth <= 0:
             return
-        
-        # Logischer Monat für Buffer-Cache (1-12)
-        logical_month = month_col - 3
 
         # Suche Parents über die Depth-Hierarchie
         while cur_depth > 0:
@@ -801,7 +735,7 @@ class BudgetTab(QWidget):
             if not cat:
                 return
 
-            buf = float(self._buffer_cache.get((typ, cat), {}).get(logical_month, 0.0))
+            buf = float(self._buffer_cache.get((typ, cat), {}).get(month_col, 0.0))
             children_sum = self._sum_immediate_children_month(parent_row, month_col)
             new_total = buf + children_sum
 
@@ -868,34 +802,25 @@ class BudgetTab(QWidget):
                     # Parent: nur Puffer zählen (keine Doppelzählung)
                     col_sum += float(self._buffer_cache.get((typ, cat), {}).get(m, 0.0))
                 else:
-                    # Spalten: 0=Bezeichnung, 1=Fix, 2=∞, 3=Tag, 4-15=Monate, 16=Total
-                    # Monat m (1-12) entspricht Spalte m+3 (4-15)
-                    it = self.table.item(r, m + 3)
+                    it = self.table.item(r, m)
                     col_sum += parse_amount(it.text() if it else "")
 
             grand += col_sum
             cell = QTableWidgetItem(fmt_amount(col_sum))
             cell.setFlags(cell.flags() & ~Qt.ItemIsEditable)
             cell.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            # Footer-Zellen auch auf Spalte m+3 setzen
-            self.table.setItem(footer, m + 3, cell)
+            self.table.setItem(footer, m, cell)
 
         gcell = QTableWidgetItem(fmt_amount(grand))
         gcell.setFlags(gcell.flags() & ~Qt.ItemIsEditable)
         gcell.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.table.setItem(footer, 16, gcell)  # Total ist Spalte 16
+        self.table.setItem(footer, 13, gcell)
 
         # Styling + Übersicht aktualisieren (damit TOTAL/Parent/Headers sauber bleiben)
         self._apply_table_styles()
         self._update_overview_bar()
 
     def _persist_single_cell(self, r: int, month_col: int):
-        """Speichert eine einzelne Monatszelle.
-        
-        Args:
-            r: Zeilenindex
-            month_col: Spaltenindex (4-15 für Jan-Dez)
-        """
         year = int(self.year_spin.value())
         typ = self._row_typ(r)
         cat = self._row_cat_real(r)
@@ -912,10 +837,7 @@ class BudgetTab(QWidget):
 
         if typ == "Ausgaben" and amt < 0:
             amt = abs(amt)
-        
-        # Spalte 4-15 -> Logischer Monat 1-12
-        logical_month = month_col - 3
-        self.budget.set_amount(year, logical_month, typ, cat, amt)
+        self.budget.set_amount(year, month_col, typ, cat, amt)
 
     def _get_db_value(self, typ: str, cat: str, month: int) -> float:
         year = int(self.year_spin.value())
@@ -980,8 +902,12 @@ class BudgetTab(QWidget):
                 QMessageBox.warning(self, "Fehler", "Bitte einen gültigen Tag (1-31) eingeben.")
                 return
             
-            # In DB speichern (mit Undo)
-            self.cats.update_flags(cat_obj.id, is_fix=bool(cat_obj.is_fix), is_recurring=True, recurring_day=new_day)
+            # In DB speichern
+            self.conn.execute(
+                "UPDATE categories SET recurring_day = ? WHERE id = ?",
+                (new_day, cat_obj.id)
+            )
+            self.conn.commit()
             return
 
         typ = self._row_typ(r)
@@ -1050,9 +976,8 @@ class BudgetTab(QWidget):
                     self._persist_single_cell(r, m)
             return
 
-        # month cell edit: c in 4..15 (Monatsspalten)
-        if 4 <= c <= 15:
-            month = c - 3  # Logischer Monat (1-12)
+        # month cell edit: c in 1..12
+        if 1 <= c <= 12:
             # Parent: edit interpretiert als Puffer
             if has_children:
                 try:
@@ -1065,8 +990,8 @@ class BudgetTab(QWidget):
 
                 # Persist buffer sofort
                 year = int(self.year_spin.value())
-                self.budget.set_amount(year, month, typ, cat, typed)
-                self._buffer_cache.setdefault((typ, cat), {})[month] = float(typed)
+                self.budget.set_amount(year, c, typ, cat, typed)
+                self._buffer_cache.setdefault((typ, cat), {})[c] = float(typed)
 
                 # Display = buffer + children sum
                 children_sum = self._sum_immediate_children_month(r, c)
@@ -1099,7 +1024,7 @@ class BudgetTab(QWidget):
                     typed = abs(typed)
 
                 # revert to previous db value first (so cancel doesn't keep typed value)
-                prev = self._get_db_value(typ, cat, month)
+                prev = self._get_db_value(typ, cat, c)
                 self._internal_change = True
                 try:
                     item.setText(fmt_amount(prev))
@@ -1114,7 +1039,7 @@ class BudgetTab(QWidget):
                     default_year=int(self.year_spin.value()),
                     default_typ=typ,
                     categories=(self.cats.list_names_tree(typ) if hasattr(self.cats, "list_names_tree") else self.cats.list_names(typ)),
-                    preset={"category": cat, "amount": typed, "month": month, "mode": default_mode, "only_if_empty": False},
+                    preset={"category": cat, "amount": typed, "month": c, "mode": default_mode, "only_if_empty": False},
                 )
                 if dlg.exec() == QDialog.Accepted:
                     self._apply_request(dlg.get_request())
@@ -1138,11 +1063,11 @@ class BudgetTab(QWidget):
             self._internal_change = False
 
         self._recalc_row_total(r)
-        if 4 <= c <= 15:
+        if 1 <= c <= 12:
             self._update_parent_chain(r, c)
         self._recalc_footer()
 
-        if self.chk_autosave.isChecked() and (4 <= c <= 15):
+        if self.chk_autosave.isChecked() and (1 <= c <= 12):
             self._persist_single_cell(r, c)
 
     def _recalc_row_total(self, r: int):
@@ -1204,7 +1129,7 @@ class BudgetTab(QWidget):
         if self.typ_cb.currentText() == "Alle":
             self._update_total_row()
         
-        # Keine störende MessageBox mehr - Speichern erfolgt still
+        QMessageBox.information(self, "OK", "Budget gespeichert. (Tipp: Strg+S funktioniert auch)")
 
     def _apply_request(self, req: BudgetEntryRequest):
         # Kategorie wird jetzt automatisch im Dialog erstellt
@@ -1754,30 +1679,6 @@ class BudgetTab(QWidget):
         except Exception:
             return name
 
-    
-    def _parent_path_label(self, full_path: str, name: str, depth: int) -> str:
-        """Kompakter Label: bei Unterkategorien nur ab Parent anzeigen.
-
-        Beispiel: "Gesundheit › Krankenkasse › Selbstbehalt" -> "Krankenkasse › Selbstbehalt"
-        Der volle Pfad bleibt im Tooltip (ROLE_PATH).
-        """
-        try:
-            parts = [p.strip() for p in str(full_path).split("›") if p.strip()]
-        except Exception:
-            parts = []
-
-        if not parts:
-            return name
-
-        # Hauptkategorien: nur eigener Name
-        if depth <= 1 or len(parts) == 1:
-            return parts[-1]
-
-        # Unterkategorien: Parent + Leaf
-        return " › ".join(parts[-2:])
-
-
-
     def _update_tree_labels_all(self) -> None:
         """Refreshes category label column for all data rows."""
         n = self._row_count_data()
@@ -1803,7 +1704,7 @@ class BudgetTab(QWidget):
             return name
         
         # Tree-mode: Einrückung + Marker
-        indent = "  " * max(0, int(depth))  # sichtbarer Einzug (Em-Spaces)
+        indent = "  " * max(0, int(depth))
         if has_children:
             marker = "▸" if collapsed else "▾"
         else:
@@ -1842,16 +1743,13 @@ class BudgetTab(QWidget):
         # Real category name stored in model (needed for flag lookup)
         real_name = self._row_cat_real(row) or it0.text()
         typ = self._row_typ(row)
-        depth = self._row_depth(row)
 
         # Display name depends on view mode
-        full_path = it0.data(ROLE_PATH) or self._cat_path(typ, real_name)
+        display_name = real_name
         if getattr(self, "_tree_view_mode", "tree") == "path":
-            display_name = str(full_path)
-        else:
-            # Im Baum-Modus reicht der reine Name – Einrückung/Marker zeigen die Hierarchie.
-            display_name = str(real_name)
+            display_name = self._cat_path(typ, real_name)
 
+        depth = self._row_depth(row)
         has_children = self._row_has_children(row)
         collapsed = bool(it0.data(ROLE_COLLAPSED))
 
@@ -1866,7 +1764,7 @@ class BudgetTab(QWidget):
                 day = int(c.recurring_day or 1)
                 break
 
-        it0.setText(self._format_cat_label(display_name, depth, has_children, collapsed))
+        it0.setText(self._format_cat_label(display_name, depth, has_children, collapsed, is_fix, is_rec, day))
 
 
     def _show_tree_menu(self) -> None:
@@ -2011,19 +1909,6 @@ class BudgetTab(QWidget):
                             f.setBold(True)
                             it.setFont(f)
 
-
-            # Hauptkategorien (Depth 0) immer fett – auch wenn keine Kinder vorhanden
-            if r < data_rows and (not self._is_header_row(r)) and (not self._is_footer_row(r)):
-                try:
-                    if self._row_depth(r) == 0:
-                        it0 = self.table.item(r, 0)
-                        if it0:
-                            f = it0.font()
-                            f.setBold(True)
-                            it0.setFont(f)
-                except Exception:
-                    pass
-
     def _compute_totals_by_typ(self) -> dict[str, dict[int, float]]:
         """Berechnet Monats- und Jahres-Totals je Typ (nutzt Parent-Puffer zur Vermeidung von Doppelzählung)."""
         selected = self.typ_cb.currentText()
@@ -2047,9 +1932,7 @@ class BudgetTab(QWidget):
                 if has_children:
                     totals[t][m] += float(self._buffer_cache.get((t, cat), {}).get(m, 0.0))
                 else:
-                    # Spalten: 0=Bezeichnung, 1=Fix, 2=∞, 3=Tag, 4-15=Monate, 16=Total
-                    # Monat m (1-12) entspricht Spalte m+3 (4-15)
-                    it = self.table.item(r, m + 3)
+                    it = self.table.item(r, m)
                     totals[t][m] += parse_amount(it.text() if it else "")
 
         for t in types:
