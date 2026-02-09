@@ -3,7 +3,10 @@ import sqlite3
 import sys
 from datetime import date
 from pathlib import Path
+<<<<<<< Updated upstream
 from model.app_paths import resolve_in_app
+=======
+>>>>>>> Stashed changes
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QMenuBar, QMenu, QMessageBox,
     QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication, QPushButton
@@ -917,6 +920,7 @@ class MainWindow(QMainWindow):
         self._update_edit_menu()
         self._update_undo_redo_actions()
 
+<<<<<<< Updated upstream
         # WICHTIG: Daten/Ansicht immer frisch halten.
         # Hintergrund: z.B. Budgetwarnungen/Übersicht wurden sonst erst nach
         # Neustart oder manuellem Refresh aktualisiert.
@@ -948,6 +952,8 @@ class MainWindow(QMainWindow):
             return
 
 
+=======
+>>>>>>> Stashed changes
 
     
     def _update_edit_menu(self):
@@ -1208,6 +1214,24 @@ class MainWindow(QMainWindow):
             self._refresh_all_tabs()
         self._update_undo_redo_actions()
 
+
+    def _update_undo_redo_actions(self) -> None:
+        """Aktiviert/Deaktiviert Undo/Redo je nach Stack."""
+        if hasattr(self, "undo_action"):
+            self.undo_action.setEnabled(self.undo_redo.can_undo())
+        if hasattr(self, "redo_action"):
+            self.redo_action.setEnabled(self.undo_redo.can_redo())
+
+    def _undo_global(self) -> None:
+        if self.undo_redo.undo():
+            self._refresh_all_tabs()
+        self._update_undo_redo_actions()
+
+    def _redo_global(self) -> None:
+        if self.undo_redo.redo():
+            self._refresh_all_tabs()
+        self._update_undo_redo_actions()
+
     def _set_current_year(self):
         """Setzt in allen Tabs das aktuelle Jahr"""
         current_year = date.today().year
@@ -1375,6 +1399,7 @@ class MainWindow(QMainWindow):
         dialog.exec()
         # Nach Schließen: Alle Tabs aktualisieren
         self._refresh_all_tabs()
+<<<<<<< Updated upstream
 
     def _show_tags_manager(self):
         """Öffnet den Tags-Manager (v2.4.0)"""
@@ -1438,6 +1463,22 @@ class MainWindow(QMainWindow):
             for tab in [self.budget_tab, self.categories_tab, self.tracking_tab, self.overview_tab]:
                 self._refresh_tab_widget(tab)
         except Exception:
+=======
+    
+    def _refresh_all_tabs(self):
+        """Aktualisiert alle Tabs nach Änderungen.
+
+        Wichtig: Tabs implementieren nicht einheitlich `load()`.
+        Für Stabilität bevorzugen wir `refresh()` und fallen auf `load()` zurück.
+        """
+        try:
+            for tab in [self.budget_tab, self.categories_tab, self.tracking_tab, self.overview_tab]:
+                if hasattr(tab, 'refresh'):
+                    tab.refresh()
+                elif hasattr(tab, 'load'):
+                    tab.load()
+        except Exception:
+>>>>>>> Stashed changes
             # Refresh darf nie die UI killen, aber wir wollen wenigstens eine Spur im Terminal.
             import traceback
             traceback.print_exc()

@@ -1,9 +1,14 @@
 # 💰 Budgetmanager v2.3.0.1
 
+<<<<<<< Updated upstream
 **Portable-Modus:** Datenbank, Settings, Backups und Exporte liegen standardmäßig im Unterordner `./data/` neben dem Programm (Windows & Linux).
 
 Eine umfassende Personal-Finance-Anwendung zur Verwaltung von Budget, Buchungen und Sparzielen.
 
+=======
+Eine umfassende Personal-Finance-Anwendung zur Verwaltung von Budget, Buchungen und Sparzielen.
+
+>>>>>>> Stashed changes
 ![Version](https://img.shields.io/badge/version-2.3.0.1-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
@@ -218,20 +223,35 @@ python main.py
 
 ### Datenbank-Speicherort
 ```
+<<<<<<< Updated upstream
 Windows: .\data\budgetmanager.db
 Linux:   ./data/budgetmanager.db
+=======
+Windows: %USERPROFILE%\.budgetmanager\budgetmanager.db
+Linux:   ~/.budgetmanager/budgetmanager.db
+>>>>>>> Stashed changes
 ```
 
 ### Settings
 ```
+<<<<<<< Updated upstream
 Windows: .\data\budgetmanager_settings.json
 Linux:   ./data/budgetmanager_settings.json
+=======
+Windows: %USERPROFILE%\.budgetmanager\budgetmanager_settings.json
+Linux:   ~/.budgetmanager/budgetmanager_settings.json
+>>>>>>> Stashed changes
 ```
 
 ### Theme-Profile
 ```
+<<<<<<< Updated upstream
 Windows: .\data\profiles\
 Linux:   ./data/profiles/
+=======
+Windows: %USERPROFILE%\.budgetmanager\profiles\
+Linux:   ~/.budgetmanager/profiles/
+>>>>>>> Stashed changes
 ```
 
 ---
@@ -325,4 +345,8 @@ MIT License - siehe LICENSE Datei
 
 **Version**: 2.3.0.1  
 **Datum**: 08.02.2026  
+<<<<<<< Updated upstream
 **Status**: Stable ✅
+=======
+**Status**: Stable ✅
+>>>>>>> Stashed changes

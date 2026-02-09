@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 # Changelog
 
 ## 0.3.0.0 - 2026-02-09
@@ -6,6 +7,10 @@
 
 # Changelog - Budgetmanager
 
+=======
+# Changelog - Budgetmanager
+
+>>>>>>> Stashed changes
 ## Version 2.3.0.1 (08.02.2026) 🎉
 
 ### 🐛 Kritische Bugfixes

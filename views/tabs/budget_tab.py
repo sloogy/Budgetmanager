@@ -632,11 +632,14 @@ class BudgetTab(QWidget):
                     else:
                         # Im Baum-Modus: nur den Kategorienamen anzeigen – Einrückung macht die Struktur sichtbar.
                         display_name = name
+<<<<<<< Updated upstream
                     
                     # Favoriten-Stern hinzufügen
                     if self.favorites.is_favorite(t, name):
                         display_name = f"⭐ {display_name}"
                     
+=======
+>>>>>>> Stashed changes
                     label = self._format_cat_label(display_name, depth, has_children, collapsed)
                     cat_item = QTableWidgetItem(label)
                     cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsEditable)
@@ -1217,9 +1220,12 @@ class BudgetTab(QWidget):
         if self.typ_cb.currentText() == "Alle":
             self._update_total_row()
         
+<<<<<<< Updated upstream
         # Automatische Budgetwarnungen erstellen (90% Schwelle)
         self._create_auto_warnings(year)
         
+=======
+>>>>>>> Stashed changes
         # Keine störende MessageBox mehr - Speichern erfolgt still
 
     def _apply_request(self, req: BudgetEntryRequest):
