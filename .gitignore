@@ -31,3 +31,6 @@ budgetmanager_settings.json
 # Qt/PySide cache (falls vorhanden)
 *.qmlc
 *.qrc
+
+# local work folder
+bm_work/
