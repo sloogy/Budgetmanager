@@ -332,21 +332,6 @@ class TrackingModel:
         )
         return {str(r["typ"]): float(r["s"] or 0.0) for r in cur.fetchall()}
 
-    def get_month_total(self, year: int, month: int, typ: str, category: str) -> float:
-        """Gibt die Summe aller Buchungen für eine Kategorie in einem Monat zurück."""
-        start_date = f"{year:04d}-{month:02d}-01"
-        if month == 12:
-            end_date = f"{year + 1:04d}-01-01"
-        else:
-            end_date = f"{year:04d}-{month + 1:02d}-01"
-        cur = self.conn.execute(
-            "SELECT COALESCE(SUM(amount), 0) AS total FROM tracking "
-            "WHERE date >= ? AND date < ? AND typ = ? AND category = ?",
-            (start_date, end_date, typ, category)
-        )
-        row = cur.fetchone()
-        return float(row["total"] if row else 0.0)
-
     def sum_by_category(self, typ: str, year: int | None = None, month: int | None = None) -> dict[str, float]:
         where = ["typ=?"]
         args = [typ]
