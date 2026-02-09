@@ -6,6 +6,7 @@ from openpyxl import load_workbook
 from openpyxl.utils import range_boundaries
 
 from model.database import open_db
+from model.app_paths import db_path as portable_db_path
 from model.migrations import migrate_all
 from model.category_model import CategoryModel
 from model.budget_model import BudgetModel
@@ -37,7 +38,10 @@ def main() -> int:
         print("File not found:", xlsm)
         return 2
 
-    conn = open_db("budgetmanager.db")
+    # Portable: nutze immer ./data/budgetmanager.db
+    dbp = portable_db_path()
+    dbp.parent.mkdir(parents=True, exist_ok=True)
+    conn = open_db(str(dbp))
     migrate_all(conn)
     cats = CategoryModel(conn)
     budget = BudgetModel(conn)

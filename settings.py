@@ -6,8 +6,10 @@ from typing import Any
 class Settings:
     """Verwaltet persistente Anwendungseinstellungen"""
     
-    def __init__(self, settings_file: str = "budgetmanager_settings.json"):
-        self.settings_file = Path(settings_file)
+    def __init__(self, settings_file: str | None = None):
+        from model.app_paths import settings_path
+        # Portable: Settings liegen im ./data/ Ordner neben dem Programm
+        self.settings_file = Path(settings_file) if settings_file else settings_path()
         self.settings = self._load()
     
     def _load(self) -> dict[str, Any]:
@@ -28,6 +30,8 @@ class Settings:
             "theme": "light",  # "light" oder "dark"
             "auto_save": False,
             "ask_due": True,
+            "warn_delete": True,
+            "warn_budget_overrun": True,
             "refresh_on_start": True,  # Beim Start automatisch aktualisieren
             # Tracking: Schnellfilter "nur letzte X Tage".
             # Erlaubte Werte: 14 oder 30
@@ -48,8 +52,8 @@ class Settings:
             # True = Separater Kategorien-Tab sichtbar (Fallback/Experten)
             "show_categories_tab": False,
             # Datenbank und Backup Pfade
-            "database_path": "budgetmanager.db",  # Relativer oder absoluter Pfad
-            "backup_directory": str(Path.home() / "BudgetManager_Backups"),  # Backup-Ordner
+            "database_path": "data/budgetmanager.db",  # Portable Default (relativ zum Programmordner)
+            "backup_directory": "data/backups",  # Portable Default (relativ zum Programmordner)
             # Design/Theme (V2)
             "active_design_profile": "V2 Hell – Neon Cyan",
             "last_design_profile_hell": "V2 Hell – Neon Cyan",
@@ -62,6 +66,7 @@ class Settings:
     def save(self) -> None:
         """Speichert Einstellungen in Datei"""
         try:
+            self.settings_file.parent.mkdir(parents=True, exist_ok=True)
             with open(self.settings_file, 'w', encoding='utf-8') as f:
                 json.dump(self.settings, f, indent=2, ensure_ascii=False)
         except Exception as e:

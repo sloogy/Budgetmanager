@@ -124,3 +124,97 @@ class TagsModel:
             (tag_id,)
         )
         return [row[0] for row in cur.fetchall()]
+
+    # ── Kompatibilitäts-Aliases (für TagsManagerDialog) ──────────
+
+    def create_tag(self, name: str, color: str | None = None) -> int | None:
+        """Erstellt Tag – gibt ID zurück oder None bei Fehler."""
+        try:
+            return self.create(name, color or '#3498db')
+        except Exception:
+            return None
+
+    def update_tag(self, tag_id: int, new_name: str) -> bool:
+        """Benennt Tag um – gibt Erfolg zurück."""
+        try:
+            self.update(tag_id, name=new_name)
+            return True
+        except Exception:
+            return False
+
+    def update_tag_color(self, tag_id: int, color: str) -> bool:
+        """Aktualisiert Tag-Farbe – gibt Erfolg zurück."""
+        try:
+            self.update(tag_id, color=color)
+            return True
+        except Exception:
+            return False
+
+    def delete_tag(self, tag_id: int) -> bool:
+        """Löscht Tag – gibt Erfolg zurück."""
+        try:
+            self.delete(tag_id)
+            return True
+        except Exception:
+            return False
+
+    def merge_tags(self, source_ids: List[int], target_id: int) -> bool:
+        """Führt Quell-Tags in ein Ziel-Tag zusammen.
+
+        Alle entry_tags- und category_tags-Verknüpfungen werden auf
+        target_id umgehängt. Duplikate werden ignoriert, Quell-Tags gelöscht.
+        """
+        try:
+            for src_id in source_ids:
+                if src_id == target_id:
+                    continue
+                # entry_tags umhängen (Duplikate ignorieren)
+                self.conn.execute(
+                    """
+                    UPDATE OR IGNORE entry_tags SET tag_id = ?
+                    WHERE tag_id = ?
+                    """,
+                    (target_id, src_id),
+                )
+                self.conn.execute(
+                    "DELETE FROM entry_tags WHERE tag_id = ?", (src_id,)
+                )
+                # category_tags umhängen
+                self.conn.execute(
+                    """
+                    UPDATE OR IGNORE category_tags SET tag_id = ?
+                    WHERE tag_id = ?
+                    """,
+                    (target_id, src_id),
+                )
+                self.conn.execute(
+                    "DELETE FROM category_tags WHERE tag_id = ?", (src_id,)
+                )
+                # Quell-Tag löschen
+                self.conn.execute("DELETE FROM tags WHERE id = ?", (src_id,))
+            self.conn.commit()
+            return True
+        except Exception:
+            return False
+
+    def get_tag_stats(self) -> list[tuple]:
+        """Statistiken: (tag_name, anzahl_buchungen, gesamtbetrag).
+
+        Basiert auf entry_tags ↔ tracking.
+        """
+        try:
+            cur = self.conn.execute(
+                """
+                SELECT t.name,
+                       COUNT(DISTINCT et.entry_id),
+                       COALESCE(SUM(tr.amount), 0)
+                FROM tags t
+                LEFT JOIN entry_tags et ON t.id = et.tag_id
+                LEFT JOIN tracking tr   ON et.entry_id = tr.id
+                GROUP BY t.id
+                ORDER BY COUNT(DISTINCT et.entry_id) DESC
+                """
+            )
+            return [(row[0], row[1], row[2]) for row in cur.fetchall()]
+        except Exception:
+            return []

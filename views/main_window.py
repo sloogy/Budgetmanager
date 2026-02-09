@@ -3,9 +3,13 @@ import sqlite3
 import sys
 from datetime import date
 from pathlib import Path
+<<<<<<< Updated upstream
+from model.app_paths import resolve_in_app
+=======
+>>>>>>> Stashed changes
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QMenuBar, QMenu, QMessageBox,
-    QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication
+    QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication, QPushButton
 )
 from PySide6.QtGui import QAction, QKeySequence, QIcon, QShortcut
 from PySide6.QtCore import Qt, QTimer, QRect
@@ -28,6 +32,11 @@ from views.savings_goals_dialog import SavingsGoalsDialog
 from views.backup_restore_dialog import BackupRestoreDialog
 from views.appearance_profiles_dialog import AppearanceProfilesDialog
 from views.category_manager_dialog import CategoryManagerDialog
+from views.tags_manager_dialog import TagsManagerDialog
+from views.favorites_dashboard_dialog import FavoritesDashboardDialog
+from views.budget_adjustment_dialog import BudgetAdjustmentDialog
+from views.update_dialog import UpdateDialog
+from model.budget_warnings_model_extended import BudgetWarningsModelExtended
 from app_info import APP_NAME, APP_VERSION, app_window_title, app_about_title, app_version_label
 
 class AboutDialog(QDialog):
@@ -69,10 +78,22 @@ class AboutDialog(QDialog):
         buttons = QDialogButtonBox(QDialogButtonBox.Ok)
         buttons.accepted.connect(self.accept)
 
+        # Update-Button direkt im Info/Über-Dialog
+        btn_updates = buttons.addButton("Updates...", QDialogButtonBox.ActionRole)
+        btn_updates.clicked.connect(self._open_updates)
+
         layout.addWidget(info)
         layout.addWidget(buttons)
         self.setLayout(layout)
         self.setMinimumWidth(450)
+
+    def _open_updates(self):
+        """Öffnet den Update-Dialog (portable/EXE kompatibel)."""
+        try:
+            dlg = UpdateDialog(self.parent() or self)
+            dlg.exec()
+        except Exception as e:
+            QMessageBox.warning(self, "Update", f"Update-Dialog konnte nicht geöffnet werden: {e}")
 
 class MainWindow(QMainWindow):
     def __init__(self, conn: sqlite3.Connection):
@@ -107,7 +128,7 @@ class MainWindow(QMainWindow):
         self.budget_tab = BudgetTab(conn)
         self.categories_tab = CategoriesTab(conn)
         self.tracking_tab = TrackingTab(conn, settings=self.settings)
-        self.overview_tab = OverviewTab(conn)
+        self.overview_tab = OverviewTab(conn, settings=self.settings)
         
         # Schnelleingabe-Signals von Tabs verbinden
         self.budget_tab.quick_add_requested.connect(self._show_quick_add)
@@ -360,6 +381,28 @@ class MainWindow(QMainWindow):
         refresh_action.triggered.connect(self._refresh_current_tab)
         view_menu.addAction(refresh_action)
         
+        view_menu.addSeparator()
+        
+        # Erscheinungsmanager (Farbprofile)
+        appearance_action = QAction("🎨 &Erscheinungsmanager...", self)
+        appearance_action.setStatusTip("Farbprofile erstellen, bearbeiten und anwenden")
+        appearance_action.triggered.connect(self._show_theme_profiles)
+        view_menu.addAction(appearance_action)
+        
+        # Vollbild
+        fullscreen_action = QAction("🖥️ &Vollbild", self)
+        fullscreen_action.setShortcut("F11")
+        fullscreen_action.setCheckable(True)
+        fullscreen_action.setChecked(self.settings.get("window_is_fullscreen", False))
+        fullscreen_action.toggled.connect(self._toggle_fullscreen)
+        view_menu.addAction(fullscreen_action)
+        
+        maximize_action = QAction("🔲 &Maximiert", self)
+        maximize_action.setShortcut("F10")
+        maximize_action.setCheckable(True)
+        maximize_action.toggled.connect(self._toggle_maximize)
+        view_menu.addAction(maximize_action)
+        
         # === EXTRAS-MENÜ ===
         extras_menu = menubar.addMenu("E&xtras")
         
@@ -386,6 +429,36 @@ class MainWindow(QMainWindow):
         category_manager_action.triggered.connect(self._show_category_manager)
         extras_menu.addAction(category_manager_action)
         
+        # Tags-Manager (v2.4.0)
+        tags_manager_action = QAction("🏷️ &Tags verwalten...", self)
+        tags_manager_action.setShortcut("Ctrl+T")
+        tags_manager_action.setStatusTip("Tags erstellen, bearbeiten und zusammenführen (Strg+T)")
+        tags_manager_action.triggered.connect(self._show_tags_manager)
+        extras_menu.addAction(tags_manager_action)
+        
+        # Favoriten-Dashboard (v2.4.0)
+        favorites_action = QAction("⭐ &Favoriten-Dashboard...", self)
+        favorites_action.setShortcut("F12")
+        favorites_action.setStatusTip("Favoriten-Übersicht öffnen (F12)")
+        favorites_action.triggered.connect(self._show_favorites_dashboard)
+        extras_menu.addAction(favorites_action)
+        
+        # Budgetwarnungen (v2.4.0)
+        budget_warnings_action = QAction("🚨 &Budgetwarnungen prüfen...", self)
+        budget_warnings_action.setShortcut("Ctrl+W")
+        budget_warnings_action.setStatusTip("Überschreitungen prüfen und Anpassungen vorschlagen (Strg+W)")
+        budget_warnings_action.triggered.connect(self._check_budget_warnings)
+        extras_menu.addAction(budget_warnings_action)
+        
+        extras_menu.addSeparator()
+        
+        # Updates (Portable)
+        updates_action = QAction("⬆️ &Updates...", self)
+        updates_action.setShortcut("Ctrl+U")
+        updates_action.setStatusTip("Update prüfen/herunterladen (Ctrl+U)")
+        updates_action.triggered.connect(self._show_update_dialog)
+        extras_menu.addAction(updates_action)
+        
         extras_menu.addSeparator()
         
         # Export (NEU)
@@ -408,6 +481,12 @@ class MainWindow(QMainWindow):
         backup_action.setStatusTip("Datenbank sichern und wiederherstellen")
         backup_action.triggered.connect(self._show_backup_restore)
         extras_menu.addAction(backup_action)
+        
+        # Datenbank-Verwaltung (Reset, Bereinigung, Statistiken)
+        db_manage_action = QAction("🗄️ &Datenbank-Verwaltung...", self)
+        db_manage_action.setStatusTip("Statistiken, Bereinigung, Reset und Integritätsprüfung")
+        db_manage_action.triggered.connect(self._show_database_management)
+        extras_menu.addAction(db_manage_action)
         
         extras_menu.addSeparator()
         
@@ -646,6 +725,10 @@ class MainWindow(QMainWindow):
             
             # Auf Tabs anwenden
             self._apply_settings_to_tabs()
+
+            # Nach dem Speichern: Views neu laden, damit Änderungen (z.B.
+            # Warnhinweise, Tab-Sichtbarkeit, Dichte, etc.) sofort wirken.
+            self._refresh_all_tabs()
             
             # Theme anwenden (Profile werden automatisch geladen)
             self._apply_theme()
@@ -837,6 +920,40 @@ class MainWindow(QMainWindow):
         self._update_edit_menu()
         self._update_undo_redo_actions()
 
+<<<<<<< Updated upstream
+        # WICHTIG: Daten/Ansicht immer frisch halten.
+        # Hintergrund: z.B. Budgetwarnungen/Übersicht wurden sonst erst nach
+        # Neustart oder manuellem Refresh aktualisiert.
+        self._refresh_current_tab_safe()
+
+    def _refresh_current_tab_safe(self) -> None:
+        """Aktualisiert den aktuell sichtbaren Tab (robust, ohne UI-Crash)."""
+        try:
+            tab = self.tabs.currentWidget()
+            self._refresh_tab_widget(tab)
+        except Exception:
+            import traceback
+            traceback.print_exc()
+
+    def _refresh_tab_widget(self, tab) -> None:
+        """Versucht verschiedene Refresh-Methoden (Abwärtskompatibel)."""
+        if tab is None:
+            return
+
+        # Reihenfolge: refresh() -> refresh_data() -> load()
+        if hasattr(tab, 'refresh') and callable(getattr(tab, 'refresh')):
+            tab.refresh()
+            return
+        if hasattr(tab, 'refresh_data') and callable(getattr(tab, 'refresh_data')):
+            tab.refresh_data()
+            return
+        if hasattr(tab, 'load') and callable(getattr(tab, 'load')):
+            tab.load()
+            return
+
+
+=======
+>>>>>>> Stashed changes
 
     
     def _update_edit_menu(self):
@@ -1079,14 +1196,23 @@ class MainWindow(QMainWindow):
             current_widget.load()
             self.statusBar().showMessage("Ansicht aktualisiert", 2000)
     
-    def _refresh_all_tabs(self):
-        """Aktualisiert alle Tabs"""
-        for tab in [self.budget_tab, self.categories_tab, self.tracking_tab, self.overview_tab]:
-            if hasattr(tab, 'refresh'):
-                tab.refresh()
-            elif hasattr(tab, 'load'):
-                tab.load()
-        self.statusBar().showMessage("Alle Tabs aktualisiert", 2000)
+
+    def _update_undo_redo_actions(self) -> None:
+        """Aktiviert/Deaktiviert Undo/Redo je nach Stack."""
+        if hasattr(self, "undo_action"):
+            self.undo_action.setEnabled(self.undo_redo.can_undo())
+        if hasattr(self, "redo_action"):
+            self.redo_action.setEnabled(self.undo_redo.can_redo())
+
+    def _undo_global(self) -> None:
+        if self.undo_redo.undo():
+            self._refresh_all_tabs()
+        self._update_undo_redo_actions()
+
+    def _redo_global(self) -> None:
+        if self.undo_redo.redo():
+            self._refresh_all_tabs()
+        self._update_undo_redo_actions()
 
 
     def _update_undo_redo_actions(self) -> None:
@@ -1253,6 +1379,19 @@ class MainWindow(QMainWindow):
                 "Bitte starten Sie die Anwendung neu, um die Änderungen zu übernehmen."
             )
     
+    def _show_database_management(self):
+        """Zeigt den Datenbank-Verwaltungsdialog (Statistiken, Reset, Bereinigung)"""
+        from views.database_management_dialog import DatabaseManagementDialog
+        
+        db_path = str(resolve_in_app(self.settings.database_path))
+        dialog = DatabaseManagementDialog(db_path, parent=self)
+        result = dialog.exec()
+        
+        # Nach Änderungen: Tabs neu laden
+        if result == QDialog.Accepted or getattr(dialog, "data_changed", False):
+            self._refresh_all_tabs()
+            self.statusBar().showMessage("Datenbank-Änderungen übernommen", 3000)
+    
     def _show_category_manager(self):
         """Zeigt den Kategorien-Manager-Dialog (NEU v2.2.0)"""
         dialog = CategoryManagerDialog(self, conn=self.conn)
@@ -1260,6 +1399,71 @@ class MainWindow(QMainWindow):
         dialog.exec()
         # Nach Schließen: Alle Tabs aktualisieren
         self._refresh_all_tabs()
+<<<<<<< Updated upstream
+
+    def _show_tags_manager(self):
+        """Öffnet den Tags-Manager (v2.4.0)"""
+        dialog = TagsManagerDialog(self.conn, self)
+        dialog.exec()
+
+    def _show_favorites_dashboard(self):
+        """Öffnet das Favoriten-Dashboard (v2.4.0)"""
+        # Jahr/Monat aus Budget-Tab wenn vorhanden, sonst heute
+        try:
+            year = int(self.budget_tab.year_spin.value()) if hasattr(self.budget_tab, "year_spin") else None
+        except Exception:
+            year = None
+        from datetime import date as _date
+        if year is None:
+            year = _date.today().year
+        month = _date.today().month
+        dialog = FavoritesDashboardDialog(self.conn, current_year=year, current_month=month, parent=self)
+        dialog.exec()
+
+    def _check_budget_warnings(self):
+        """Prüft Budgetwarnungen und zeigt Anpassungsdialog (v2.4.0)"""
+        from datetime import date
+        from PySide6.QtWidgets import QMessageBox
+        try:
+            year = int(self.budget_tab.year_spin.value()) if hasattr(self.budget_tab, "year_spin") else date.today().year
+        except Exception:
+            year = date.today().year
+        month = date.today().month
+
+        warnings_model = BudgetWarningsModelExtended(self.conn)
+        exceedances = warnings_model.check_warnings_extended(year, month)
+        if not exceedances:
+            QMessageBox.information(self, "Budgetwarnungen", "✓ Keine Budgetüberschreitungen gefunden.")
+            return
+
+        # BudgetModel für Vorschläge (Fallback, falls Tab kein Modell exposed)
+        budget_model = getattr(self.budget_tab, "model", None)
+        if budget_model is None:
+            try:
+                from model.budget_model import BudgetModel
+                budget_model = BudgetModel(self.conn)
+            except Exception:
+                budget_model = None
+
+        dlg = BudgetAdjustmentDialog(self, warnings_model, budget_model, year, month)
+        dlg.exec()
+
+    def _show_update_dialog(self):
+        """Öffnet den Portable-Updater Dialog (still)"""
+        dialog = UpdateDialog(self)
+        dialog.exec()
+
+    def _refresh_all_tabs(self):
+        """Aktualisiert alle Tabs nach Änderungen.
+
+        Wichtig: Tabs implementieren nicht einheitlich `load()`.
+        Für Stabilität bevorzugen wir `refresh()` und fallen auf `load()` zurück.
+        """
+        try:
+            for tab in [self.budget_tab, self.categories_tab, self.tracking_tab, self.overview_tab]:
+                self._refresh_tab_widget(tab)
+        except Exception:
+=======
     
     def _refresh_all_tabs(self):
         """Aktualisiert alle Tabs nach Änderungen.
@@ -1274,6 +1478,10 @@ class MainWindow(QMainWindow):
                 elif hasattr(tab, 'load'):
                     tab.load()
         except Exception:
+<<<<<<< HEAD
+>>>>>>> Stashed changes
+=======
+>>>>>>> origin/main
             # Refresh darf nie die UI killen, aber wir wollen wenigstens eine Spur im Terminal.
             import traceback
             traceback.print_exc()

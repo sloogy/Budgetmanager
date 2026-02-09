@@ -11,6 +11,8 @@ from PySide6.QtWidgets import (
 
 from model.category_model import CategoryModel, Category
 from model.budget_model import BudgetModel
+from model.favorites_model import FavoritesModel
+from model.budget_warnings_model_extended import BudgetWarningsModelExtended
 from views.copy_year_dialog import CopyYearDialog
 from views.budget_entry_dialog import BudgetEntryDialog, BudgetEntryRequest
 # Erweiterter Dialog mit integrierter Kategorie-Verwaltung
@@ -68,6 +70,8 @@ class BudgetTab(QWidget):
         self.conn = conn
         self.cats = CategoryModel(conn)
         self.budget = BudgetModel(conn)
+        self.favorites = FavoritesModel(conn)
+        self.warnings = BudgetWarningsModelExtended(conn)
 
         self._internal_change = False
 
@@ -628,6 +632,14 @@ class BudgetTab(QWidget):
                     else:
                         # Im Baum-Modus: nur den Kategorienamen anzeigen – Einrückung macht die Struktur sichtbar.
                         display_name = name
+<<<<<<< Updated upstream
+                    
+                    # Favoriten-Stern hinzufügen
+                    if self.favorites.is_favorite(t, name):
+                        display_name = f"⭐ {display_name}"
+                    
+=======
+>>>>>>> Stashed changes
                     label = self._format_cat_label(display_name, depth, has_children, collapsed)
                     cat_item = QTableWidgetItem(label)
                     cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsEditable)
@@ -732,6 +744,10 @@ class BudgetTab(QWidget):
             self._update_overview_bar()
         finally:
             self._internal_change = False
+
+    # Einheitliches API: MainWindow kann beim Tab-Wechsel `refresh()` nutzen.
+    def refresh(self) -> None:
+        self.load()
 
     # -----------------------------
     # Parent recalculation helpers
@@ -1204,6 +1220,12 @@ class BudgetTab(QWidget):
         if self.typ_cb.currentText() == "Alle":
             self._update_total_row()
         
+<<<<<<< Updated upstream
+        # Automatische Budgetwarnungen erstellen (90% Schwelle)
+        self._create_auto_warnings(year)
+        
+=======
+>>>>>>> Stashed changes
         # Keine störende MessageBox mehr - Speichern erfolgt still
 
     def _apply_request(self, req: BudgetEntryRequest):
@@ -1475,6 +1497,17 @@ class BudgetTab(QWidget):
         
         menu.addSeparator()
         
+        # === Favoriten ===
+        menu.addSection("⭐ Favoriten")
+        
+        is_favorite = self.favorites.is_favorite(typ, cat)
+        if is_favorite:
+            act_unfavorite = menu.addAction("☆ Von Favoriten entfernen")
+        else:
+            act_favorite = menu.addAction("⭐ Als Favorit markieren")
+        
+        menu.addSeparator()
+        
         # === Budget-Aktionen ===
         menu.addSection("💰 Budget")
         
@@ -1485,6 +1518,15 @@ class BudgetTab(QWidget):
         action = menu.exec(self.table.viewport().mapToGlobal(pos))
         
         if action is None:
+            return
+        
+        # Favoriten-Aktionen
+        is_favorite = self.favorites.is_favorite(typ, cat)
+        if is_favorite and action.text() == "☆ Von Favoriten entfernen":
+            self._remove_favorite(typ, cat)
+            return
+        elif not is_favorite and action.text() == "⭐ Als Favorit markieren":
+            self._add_favorite(typ, cat)
             return
         
         if action == act_props:
@@ -1726,6 +1768,44 @@ class BudgetTab(QWidget):
             self, "OK",
             f"Wert {first_val:.2f} in alle 12 Monate übernommen."
         )
+    
+    def _add_favorite(self, typ: str, category: str) -> None:
+        """Fügt eine Kategorie zu Favoriten hinzu"""
+        self.favorites.add(typ, category)
+        self.load()  # Tabelle neu laden um Stern-Symbol anzuzeigen
+        QMessageBox.information(
+            self, "Favorit",
+            f"⭐ '{category}' wurde zu Favoriten hinzugefügt."
+        )
+    
+    def _remove_favorite(self, typ: str, category: str) -> None:
+        """Entfernt eine Kategorie aus Favoriten"""
+        self.favorites.remove(typ, category)
+        self.load()  # Tabelle neu laden um Stern-Symbol zu entfernen
+        QMessageBox.information(
+            self, "Favorit",
+            f"☆ '{category}' wurde aus Favoriten entfernt."
+        )
+    
+    def _create_auto_warnings(self, year: int) -> None:
+        """Erstellt automatisch Budgetwarnungen nur bei tatsächlicher Überschreitung (>100%)"""
+        try:
+            from model.tracking_model import TrackingModel
+            tracking = TrackingModel(self.conn)
+            
+            for month in range(1, 13):
+                for typ in ["Ausgaben", "Einkommen", "Ersparnisse"]:
+                    matrix = self.budget.get_matrix(year, typ)
+                    spent_map = tracking.sum_by_category(typ, year=year, month=month)
+                    
+                    for category, amounts in matrix.items():
+                        budget_val = amounts.get(month, 0.0)
+                        if budget_val > 0:
+                            spent = abs(spent_map.get(category, 0.0))
+                            if spent > budget_val:
+                                self.warnings.create(year, month, typ, category, threshold_percent=100)
+        except Exception:
+            pass
 
 
 

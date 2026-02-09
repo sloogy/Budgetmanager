@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from model.app_paths import resolve_in_app
 import sqlite3
 
 from PySide6.QtCore import Qt

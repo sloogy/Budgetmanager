@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from model.app_paths import resolve_in_app
 from PySide6.QtWidgets import (
     QDialog, QListWidget, QStackedWidget, QDialogButtonBox,
     QVBoxLayout, QHBoxLayout, QGroupBox, QFormLayout, QLabel,

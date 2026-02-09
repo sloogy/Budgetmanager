@@ -16,7 +16,8 @@ from PySide6.QtWidgets import (
     QFrame, QScrollArea, QGroupBox, QGridLayout, QProgressBar,
     QPushButton, QLineEdit, QCheckBox, QSizePolicy,
     QTableWidget, QTableWidgetItem, QHeaderView, QDateEdit, QSpinBox, 
-    QAbstractItemView, QSplitter, QTabWidget
+    QAbstractItemView, QSplitter, QTabWidget,
+    QTreeWidget, QTreeWidgetItem, QMessageBox
 )
 from PySide6.QtCharts import QChart, QChartView, QPieSeries, QPieSlice
 
@@ -24,6 +25,7 @@ from model.budget_model import BudgetModel
 from model.tracking_model import TrackingModel, TrackingRow
 from model.category_model import CategoryModel
 from model.tags_model import TagsModel
+from model.savings_goals_model import SavingsGoalsModel
 from settings import Settings
 
 MONTHS = ["Gesamtes Jahr", "Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"]
@@ -175,6 +177,8 @@ class CompactProgressBar(QWidget):
 
 class CompactChart(QChartView):
     """Kompaktes Diagramm"""
+    # Emitiert den Namen eines Slice (z.B. Kategorie/Typ), damit der Overview-Tab darauf filtern kann.
+    slice_clicked = Signal(str)
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setRenderHint(QPainter.Antialiasing)
@@ -208,10 +212,18 @@ class CompactChart(QChartView):
             if v <= 0:
                 continue
             s = series.append(f"{label}: {format_chf(v)}", v)
+            # Roh-Label speichern, damit wir es beim Klick sauber zurückgeben können.
+            s.setProperty("raw_label", label)
             s.setLabelVisible(True)
             s.setLabelPosition(QPieSlice.LabelPosition.LabelOutside)
             if i < len(colors):
                 s.setColor(colors[i])
+
+        # Interaktiv: Klick auf Slice -> raw_label emittieren
+        try:
+            series.clicked.connect(lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or "")))
+        except Exception:
+            pass
 
         self._chart.addSeries(series)
         self._chart.setTitle(title)
@@ -224,14 +236,16 @@ class OverviewTab(QWidget):
     # Signal für Schnelleingabe (wird von MainWindow abgehört)
     quick_add_requested = Signal()
     
-    def __init__(self, conn: sqlite3.Connection):
+    def __init__(self, conn: sqlite3.Connection, settings: Settings | None = None):
         super().__init__()
         self.conn = conn
-        self.settings = Settings()
+        self.settings = settings or Settings()
+        self._last_budget_overruns: list[dict] = []
         self.budget = BudgetModel(conn)
         self.track = TrackingModel(conn)
         self.categories = CategoryModel(conn)
         self.tags = TagsModel(conn)
+        self.savings = SavingsGoalsModel(conn)
 
         self._tag_name_to_id: dict[str, int] = {}
         self._refresh_timer = QTimer(self)
@@ -253,9 +267,11 @@ class OverviewTab(QWidget):
         return [
             ("kpi", "📊 KPI-Karten"),
             ("budget", "📈 Budget-Status"),
+            ("maincats", "📂 Hauptkategorien"),
             ("charts", "📉 Diagramme"),
             ("filters", "🔍 Filter"),
             ("transactions", "📋 Transaktionen"),
+            ("savings", "💰 Sparziele"),
         ]
     
     def apply_subtab_visibility(self, visibility: dict[str, bool]) -> None:
@@ -267,6 +283,10 @@ class OverviewTab(QWidget):
         # Budget Status
         if hasattr(self, 'budget_group'):
             self.budget_group.setVisible(visibility.get("budget", True))
+
+        # Hauptkategorien
+        if hasattr(self, 'maincat_group'):
+            self.maincat_group.setVisible(visibility.get("maincats", True))
         
         # Charts
         if hasattr(self, 'chart_tabs'):
@@ -274,14 +294,17 @@ class OverviewTab(QWidget):
         
         # Filter Tab (im rechten Panel)
         if hasattr(self, 'right_tabs'):
-            # Filter ist Tab 0, Transaktionen ist Tab 1
+            # Filter ist Tab 0, Transaktionen ist Tab 1, Sparziele ist Tab 2
             filter_visible = visibility.get("filters", True)
             trans_visible = visibility.get("transactions", True)
+            savings_visible = visibility.get("savings", True)
             
             # Tabs können nicht einzeln versteckt werden, 
             # aber wir können sie deaktivieren
             self.right_tabs.setTabVisible(0, filter_visible)
             self.right_tabs.setTabVisible(1, trans_visible)
+            if self.right_tabs.count() > 2:
+                self.right_tabs.setTabVisible(2, savings_visible)
     
     def set_subtab_visible(self, key: str, visible: bool) -> None:
         """Setzt Sichtbarkeit eines einzelnen Subtabs."""
@@ -427,36 +450,54 @@ class OverviewTab(QWidget):
         p_layout.addWidget(self.pb_savings)
         self.budget_tabs.addTab(progress_widget, "Kurz")
 
-        # --- Tabellarisch (mehrere Monate)
+        # --- Tabellarisch (nur Hauptkategorien)
         table_widget = QWidget()
         t_layout = QVBoxLayout(table_widget)
         t_layout.setContentsMargins(0, 0, 0, 0)
         t_layout.setSpacing(6)
 
-        ctrl = QHBoxLayout()
-        ctrl.setContentsMargins(0, 0, 0, 0)
-        ctrl.setSpacing(8)
-        ctrl.addWidget(QLabel("Monate:"))
-        self.month_window_combo = QComboBox()
-        self.month_window_combo.addItems([
-            "Auswahl (1 Monat)",
-            "Aktueller + nächster",
-            "Letzte 2 + aktueller",
-            "Letzte 3 + aktueller",
-        ])
-        self.month_window_combo.setCurrentIndex(2)
-        ctrl.addWidget(self.month_window_combo)
-        ctrl.addStretch()
-        t_layout.addLayout(ctrl)
+        # Hauptkategorien (Budget vs. Ist) – Tabellarisch
+        self.maincat_group = QGroupBox("📂 Hauptkategorien – Budget vs. Ist")
+        mc_layout = QVBoxLayout(self.maincat_group)
+        mc_layout.setSpacing(6)
 
-        self.tbl_budget_table = QTableWidget()
-        self.tbl_budget_table.setColumnCount(0)
-        self.tbl_budget_table.setRowCount(0)
-        self.tbl_budget_table.setAlternatingRowColors(True)
-        self.tbl_budget_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        self.tbl_budget_table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.tbl_budget_table.verticalHeader().setVisible(False)
-        t_layout.addWidget(self.tbl_budget_table)
+
+        # Warnhinweis (Budget ausserhalb Plan)
+        self.lbl_overrun_banner = QLabel()
+        self.lbl_overrun_banner.setWordWrap(True)
+        self.lbl_overrun_banner.setVisible(False)
+        self.lbl_overrun_banner.setTextFormat(Qt.RichText)
+        self.lbl_overrun_banner.setTextInteractionFlags(Qt.TextBrowserInteraction)
+        self.lbl_overrun_banner.setOpenExternalLinks(False)
+        self.lbl_overrun_banner.linkActivated.connect(self._on_overrun_banner_link)
+        self.lbl_overrun_banner.setStyleSheet(
+            "padding: 8px; background-color: #fff3cd; border-left: 4px solid #ffc107; "
+            "border-radius: 4px; color: #856404;"
+        )
+        mc_layout.addWidget(self.lbl_overrun_banner)
+
+        # Tree-Table mit Drilldown (Hauptkategorie -> Unterkategorien)
+        self.tree_maincats = QTreeWidget()
+        self.tree_maincats.setColumnCount(6)
+        self.tree_maincats.setHeaderLabels(["Typ", "Kategorie", "Budget", "Gebucht", "Rest", "%"])
+        self.tree_maincats.setAlternatingRowColors(True)
+        self.tree_maincats.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tree_maincats.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.tree_maincats.setRootIsDecorated(True)
+        self.tree_maincats.setIndentation(18)
+        self.tree_maincats.setAnimated(True)
+        self.tree_maincats.setSortingEnabled(False)
+
+        hdr = self.tree_maincats.header()
+        hdr.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        hdr.setSectionResizeMode(1, QHeaderView.Stretch)
+        for col in (2, 3, 4, 5):
+            hdr.setSectionResizeMode(col, QHeaderView.ResizeToContents)
+
+        self.tree_maincats.itemClicked.connect(self._on_maincat_item_clicked)
+
+        mc_layout.addWidget(self.tree_maincats)
+        t_layout.addWidget(self.maincat_group)
 
         self.budget_tabs.addTab(table_widget, "Tabellarisch")
 
@@ -486,6 +527,18 @@ class OverviewTab(QWidget):
         
         return widget
 
+    def _on_maincat_item_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+        """Klick auf eine (Haupt-)Kategorie klappt deren Unterkategorien ein/aus."""
+        try:
+            if item is None:
+                return
+            if item.childCount() <= 0:
+                return
+            # Toggle expand/collapse
+            item.setExpanded(not item.isExpanded())
+        except Exception:
+            pass
+
     def _create_right_panel(self) -> QWidget:
         """Rechtes Panel: Filter & Transaktionen"""
         widget = QWidget()
@@ -500,6 +553,9 @@ class OverviewTab(QWidget):
         
         trans_widget = self._create_transactions_panel()
         self.right_tabs.addTab(trans_widget, "📋 Transaktionen")
+        
+        savings_widget = self._create_savings_panel()
+        self.right_tabs.addTab(savings_widget, "💰 Sparziele")
         
         layout.addWidget(self.right_tabs)
         return widget
@@ -625,9 +681,84 @@ class OverviewTab(QWidget):
         layout.addWidget(self.tbl_transactions)
         return widget
 
+    def _create_savings_panel(self) -> QWidget:
+        """Sparziele-Panel mit Tabelle und Fortschrittsbalken"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(6)
+
+        # Header
+        header_layout = QHBoxLayout()
+        self.lbl_savings_count = QLabel("0 Sparziele")
+        self.lbl_savings_count.setStyleSheet("font-weight: bold; padding: 4px;")
+        header_layout.addWidget(self.lbl_savings_count)
+
+        header_layout.addStretch()
+
+        btn_open_goals = QPushButton("⚙️ Verwalten...")
+        btn_open_goals.setToolTip("Sparziele-Dialog öffnen")
+        btn_open_goals.clicked.connect(self._open_savings_dialog)
+        header_layout.addWidget(btn_open_goals)
+
+        layout.addLayout(header_layout)
+
+        # Tabelle
+        self.tbl_savings = QTableWidget()
+        self.tbl_savings.setColumnCount(5)
+        self.tbl_savings.setHorizontalHeaderLabels([
+            "Sparziel", "Ziel", "Aktuell", "Rest", "Fortschritt"
+        ])
+
+        header = self.tbl_savings.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.Fixed)
+        header.setSectionResizeMode(2, QHeaderView.Fixed)
+        header.setSectionResizeMode(3, QHeaderView.Fixed)
+        header.setSectionResizeMode(4, QHeaderView.Fixed)
+
+        self.tbl_savings.setColumnWidth(1, 95)
+        self.tbl_savings.setColumnWidth(2, 95)
+        self.tbl_savings.setColumnWidth(3, 95)
+        self.tbl_savings.setColumnWidth(4, 130)
+
+        self.tbl_savings.setAlternatingRowColors(True)
+        self.tbl_savings.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tbl_savings.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.tbl_savings.verticalHeader().setVisible(False)
+
+        # Doppelklick → Sparziele-Dialog öffnen
+        self.tbl_savings.doubleClicked.connect(self._on_savings_double_click)
+
+        layout.addWidget(self.tbl_savings)
+
+        # Gesamt-Zusammenfassung
+        self.lbl_savings_summary = QLabel()
+        self.lbl_savings_summary.setTextFormat(Qt.RichText)
+        self.lbl_savings_summary.setStyleSheet("padding: 4px; font-size: 12px;")
+        layout.addWidget(self.lbl_savings_summary)
+
+        return widget
+
     # ========== Signals ==========
     def _connect_signals(self):
         self.btn_refresh.clicked.connect(self.refresh_data)
+
+        # Sub-Tab-Wechsel (Kurz/Tabellarisch, Charts, Rechts-Panels)
+        # => immer neu laden, damit Warnhinweise & Tabellen ohne Neustart
+        # sofort den aktuellen DB-Stand zeigen.
+        try:
+            self.budget_tabs.currentChanged.connect(self._delayed_refresh)
+        except Exception:
+            pass
+        try:
+            self.chart_tabs.currentChanged.connect(self._delayed_refresh)
+        except Exception:
+            pass
+        try:
+            self.right_tabs.currentChanged.connect(self._delayed_refresh)
+        except Exception:
+            pass
         self.btn_reset_filters.clicked.connect(self._reset_filters)
         
         self.range_combo.currentIndexChanged.connect(self._on_range_changed)
@@ -655,6 +786,30 @@ class OverviewTab(QWidget):
         self.card_savings.clicked.connect(lambda: self._filter_by_typ("Ersparnisse"))
         self.card_balance.clicked.connect(lambda: self._filter_by_typ("Alle"))
 
+        # Interaktivität: Diagramm-Slices klicken -> Filter setzen
+        try:
+            self.chart_categories.slice_clicked.connect(self._on_chart_category_clicked)
+        except Exception:
+            pass
+        try:
+            self.chart_types.slice_clicked.connect(self._on_chart_type_clicked)
+        except Exception:
+            pass
+
+        # Interaktivität: Budget-Tabelle doppelklicken -> auf Monat/Typ filtern
+        try:
+            self.tbl_budget_table.cellDoubleClicked.connect(self._on_budget_cell_double_clicked)
+        except Exception:
+            pass
+
+        # Interaktivität: Kategorie-Tree doppelklicken -> auf Kategorie/Typ filtern
+        try:
+            self.tree_maincats.itemDoubleClicked.connect(self._on_maincat_item_double_clicked)
+        except Exception:
+            pass
+
+        # (keine Auto-Actions beim Start; alles nur über Klicks)
+
     def _filter_by_typ(self, typ: str):
         """Filtert nach Typ wenn auf KPI geklickt wird"""
         idx = self.typ_combo.findText(typ)
@@ -662,6 +817,99 @@ class OverviewTab(QWidget):
             self.typ_combo.setCurrentIndex(idx)
         # Wechsle zu Transaktionen-Tab
         self.right_tabs.setCurrentIndex(1)
+
+    def _on_chart_category_clicked(self, category_name: str) -> None:
+        """Klick auf Kategorie-Slice (Ausgaben) -> Kategorie-Filter setzen."""
+        if not category_name:
+            return
+        # Kategorien-Chart zeigt Ausgaben; wir setzen Typ=Ausgaben und Kategorie.
+        with QSignalBlocker(self.typ_combo):
+            idx_t = self.typ_combo.findText("Ausgaben")
+            if idx_t >= 0:
+                self.typ_combo.setCurrentIndex(idx_t)
+        idx_c = self.category_combo.findText(category_name)
+        if idx_c >= 0:
+            self.category_combo.setCurrentIndex(idx_c)
+        self.right_tabs.setCurrentIndex(1)
+        self.refresh_data()
+
+    def _on_chart_type_clicked(self, typ_name: str) -> None:
+        """Klick auf Typ-Slice -> Typ-Filter setzen."""
+        if not typ_name:
+            return
+        self._filter_by_typ(typ_name)
+        self.refresh_data()
+
+    def _on_maincat_item_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+        """Doppelklick auf Kategorie-Tree: setzt Typ + Kategorie-Filter und springt zu Transaktionen."""
+        try:
+            if not item:
+                return
+            cid = item.data(0, Qt.UserRole)
+            if cid is None:
+                return
+            typ, name = getattr(self, "_cat_id_to_name_typ", {}).get(int(cid), ("", ""))
+            if not name:
+                return
+
+            # Typ setzen (wenn bekannt)
+            if typ:
+                idx_t = self.typ_combo.findText(typ)
+                if idx_t >= 0:
+                    self.typ_combo.setCurrentIndex(idx_t)
+            # Kategorie setzen
+            idx_c = self.category_combo.findText(name)
+            if idx_c >= 0:
+                self.category_combo.setCurrentIndex(idx_c)
+
+            self.right_tabs.setCurrentIndex(1)
+            self.refresh_data()
+        except Exception:
+            pass
+
+    def _on_budget_cell_double_clicked(self, row: int, col: int) -> None:
+        """Doppelklick in Budget-Übersicht: setzt Zeitraum auf den Monat der Zelle und Typ auf die Zeile."""
+        try:
+            # Monate wie in _load_budget_table bestimmen (vereinfachte Rekonstruktion über Header)
+            # Wir speichern beim Laden die Monate-Liste auf self, damit es eindeutig ist.
+            months = getattr(self, "_budget_table_months", None)
+            if not months or col < 0 or col >= len(months):
+                return
+            y, m = months[col]
+
+            row_labels = ["Einkommen", "Ausgaben", "Ersparnisse"]
+            if row < 0 or row >= len(row_labels):
+                return
+            typ = row_labels[row]
+
+            # Range auf Jahr/Monat
+            with QSignalBlocker(self.range_combo):
+                self.range_combo.setCurrentIndex(0)
+
+            # Jahr setzen
+            y_txt = str(int(y))
+            y_idx = self.year_combo.findText(y_txt)
+            if y_idx < 0:
+                self.year_combo.addItem(y_txt)
+                y_idx = self.year_combo.findText(y_txt)
+            self.year_combo.setCurrentIndex(y_idx)
+
+            # Monat setzen (Index 1..12)
+            if 1 <= int(m) <= 12:
+                self.month_combo.setCurrentIndex(int(m))
+            # Monatsfenster: Auswahl
+            if hasattr(self, "month_window_combo"):
+                self.month_window_combo.setCurrentIndex(0)
+
+            # Typ setzen
+            t_idx = self.typ_combo.findText(typ)
+            if t_idx >= 0:
+                self.typ_combo.setCurrentIndex(t_idx)
+
+            self.right_tabs.setCurrentIndex(1)
+            self.refresh_data()
+        except Exception:
+            pass
 
     # ========== Data Loading ==========
     def _reload_years(self):
@@ -734,8 +982,15 @@ class OverviewTab(QWidget):
         self._load_kpis(date_from, date_to)
         self._load_budget_progress(date_from, date_to)
         self._load_budget_table(date_from, date_to)
+        self._load_main_categories(date_from, date_to)
         self._load_charts(date_from, date_to)
         self._load_transactions(date_from, date_to)
+        self._load_savings_goals()
+
+
+    # Kompatibilität: MainWindow ruft beim Tab-Wechsel bevorzugt `refresh()`.
+    def refresh(self) -> None:
+        self.refresh_data()
 
     def _get_date_range(self) -> tuple[date, date]:
         idx = self.range_combo.currentIndex()
@@ -756,6 +1011,391 @@ class OverviewTab(QWidget):
         return (date(d_from.year(), d_from.month(), d_from.day()),
                 date(d_to.year(), d_to.month(), d_to.day()))
 
+
+    # --------- Warnhinweis: Budget ausserhalb Plan ---------
+    def _on_overrun_banner_link(self, link: str) -> None:
+        if str(link) == 'details':
+            self._show_overrun_details()
+
+    def _update_overrun_banner(self, overruns: list[dict], date_from=None, date_to=None) -> None:
+        """Zeigt/Versteckt den Warnhinweis-Banner über der Hauptkategorien-Tabelle."""
+        if not hasattr(self, 'lbl_overrun_banner'):
+            return
+
+        enabled = bool(self.settings.get('warn_budget_overrun', True))
+        self._last_budget_overruns = list(overruns or [])
+
+        if (not enabled) or (not overruns):
+            self.lbl_overrun_banner.setVisible(False)
+            return
+
+        overruns_sorted = sorted(overruns, key=lambda o: float(o.get('rest', 0.0) or 0.0))
+
+        def _pct_txt(p):
+            return '—' if p is None else f"{float(p):.0f}%"
+
+        preview = []
+        for o in overruns_sorted[:3]:
+            preview.append(
+                f"{o.get('category')} ({format_chf(float(o.get('rest', 0.0) or 0.0))}, {_pct_txt(o.get('pct'))})"
+            )
+        more = max(0, len(overruns_sorted) - 3)
+        extra = f" +{more} weitere" if more else ""
+
+        # Zeitraumtext
+        period = ''
+        try:
+            if hasattr(self, 'range_combo') and self.range_combo.currentIndex() == 0:
+                y = str(self.year_combo.currentText())
+                m_idx = int(self.month_combo.currentIndex())
+                if m_idx == 0:
+                    period = f"im Jahr {y}"
+                else:
+                    period = f"im {m_idx:02d}/{y}"
+            elif date_from is not None and date_to is not None:
+                period = f"({date_from:%d.%m.%Y} – {date_to:%d.%m.%Y})"
+        except Exception:
+            period = ''
+
+        self.lbl_overrun_banner.setText(
+            f"⚠ Budget-Warnhinweis {period}: "
+            + ', '.join(preview)
+            + extra
+            + " – <a href='details'>Details anzeigen</a>"
+        )
+        self.lbl_overrun_banner.setVisible(True)
+
+    def _show_overrun_details(self) -> None:
+        overruns = list(getattr(self, '_last_budget_overruns', []) or [])
+        if not overruns:
+            return
+
+        overruns_sorted = sorted(overruns, key=lambda o: float(o.get('rest', 0.0) or 0.0))
+
+        lines = []
+        for o in overruns_sorted[:40]:
+            typ = str(o.get('typ', ''))
+            name = str(o.get('category', ''))
+            b = float(o.get('budget', 0.0) or 0.0)
+            a = float(o.get('actual', 0.0) or 0.0)
+            rest = float(o.get('rest', 0.0) or 0.0)
+            pct = o.get('pct')
+            pct_txt = '—' if pct is None else f"{float(pct):.0f}%"
+
+            status = 'Budget überschritten'
+            if typ == 'Einkommen':
+                status = 'Ziel nicht erreicht'
+
+            lines.append(
+                f"• {typ} / {name}: Budget {format_chf(b)} | Gebucht {format_chf(a)} | Rest {format_chf(rest)} | {pct_txt} – {status}"
+            )
+
+        if len(overruns_sorted) > 40:
+            lines.append(f"… +{len(overruns_sorted) - 40} weitere")
+
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle('Budget-Warnhinweis')
+        msg.setText('Es gibt Kategorien ausserhalb des Plans.')
+        msg.setInformativeText(
+            'Tipp: Für historische Auswertung und Budgetvorschläge: Extras → Budgetwarnungen prüfen.'
+        )
+        msg.setDetailedText('\n'.join(lines))
+        msg.exec()
+
+    # --------- Budget/Tracking Aggregationen für Übersicht ---------
+    def _months_between(self, d1: date, d2: date) -> list[tuple[int, int]]:
+        """Gibt alle (year, month) zwischen d1 und d2 (inkl.) zurück."""
+        if d2 < d1:
+            d1, d2 = d2, d1
+        cur = date(d1.year, d1.month, 1)
+        end = date(d2.year, d2.month, 1)
+        out: list[tuple[int, int]] = []
+        while cur <= end:
+            out.append((cur.year, cur.month))
+            if cur.month == 12:
+                cur = date(cur.year + 1, 1, 1)
+            else:
+                cur = date(cur.year, cur.month + 1, 1)
+        return out
+
+    def _budget_sums_by_typ_for_range(self, date_from: date, date_to: date) -> dict[str, float]:
+        """Summiert Budget nach Typ über den Zeitraum (monatsweise)."""
+        months = self._months_between(date_from, date_to)
+        by_year: dict[int, list[int]] = {}
+        for y, m in months:
+            by_year.setdefault(y, []).append(m)
+
+        out: dict[str, float] = {"Einkommen": 0.0, "Ausgaben": 0.0, "Ersparnisse": 0.0}
+        for y, mlist in by_year.items():
+            if not mlist:
+                continue
+            placeholders = ",".join(["?"] * len(mlist))
+            sql = (
+                f"SELECT typ, SUM(amount) AS s "
+                f"FROM budget WHERE year=? AND month IN ({placeholders}) GROUP BY typ"
+            )
+            cur = self.conn.execute(sql, [int(y), *[int(mm) for mm in mlist]])
+            for r in cur.fetchall():
+                t = _norm_typ(r["typ"])
+                out[t] = out.get(t, 0.0) + float(r["s"] or 0.0)
+        return out
+
+    def _root_name_for(self, typ: str, category_name: str) -> str:
+        """Mappt eine Kategorie auf ihre Root-/Hauptkategorie (Tree)."""
+        key = (typ, category_name)
+        cid = getattr(self, "_cat_name_to_id", {}).get(key)
+        if cid is None:
+            return category_name
+        # hochlaufen bis root
+        parent = getattr(self, "_cat_parent", {}).get(cid)
+        root_id = cid
+        safety = 0
+        while parent is not None and safety < 50:
+            root_id = int(parent)
+            parent = getattr(self, "_cat_parent", {}).get(root_id)
+            safety += 1
+        return getattr(self, "_cat_id_to_name_typ", {}).get(root_id, (typ, category_name))[1]
+
+    def _load_main_categories(self, date_from: date, date_to: date) -> None:
+        """Tabellarisch: Hauptkategorien (Root) mit Drilldown in Unterkategorien."""
+        if not hasattr(self, "tree_maincats"):
+            return
+
+        # Zeitraum -> Monate
+        months = self._months_between(date_from, date_to)
+        by_year: dict[int, list[int]] = {}
+        for y, m in months:
+            by_year.setdefault(y, []).append(m)
+
+        # Budget pro (typ, category)
+        budget_raw: dict[tuple[str, str], float] = {}
+        for y, mlist in by_year.items():
+            if not mlist:
+                continue
+            placeholders = ",".join(["?"] * len(mlist))
+            sql = (
+                f"SELECT typ, category, SUM(amount) AS s "
+                f"FROM budget WHERE year=? AND month IN ({placeholders}) "
+                f"GROUP BY typ, category"
+            )
+            cur = self.conn.execute(sql, [int(y), *[int(mm) for mm in mlist]])
+            for r in cur.fetchall():
+                t = _norm_typ(r["typ"])
+                c = str(r["category"])
+                budget_raw[(t, c)] = budget_raw.get((t, c), 0.0) + float(r["s"] or 0.0)
+
+        # Ist pro (typ, category)
+        actual_raw: dict[tuple[str, str], float] = {}
+        rows = self.track.get_entries_in_range(date_from, date_to)
+        for r in rows:
+            t = _norm_typ(r.typ)
+            c = str(r.category)
+            amt = float(r.amount)
+            if t == "Ausgaben":
+                amt = abs(amt)
+            actual_raw[(t, c)] = actual_raw.get((t, c), 0.0) + amt
+
+        # Typ-Filter aus rechter Filterleiste berücksichtigen
+        typ_filter = getattr(self, "typ_combo", None)
+        typ_txt = typ_filter.currentText() if typ_filter else "Alle"
+        if typ_txt and typ_txt != "Alle":
+            wanted = typ_txt
+        else:
+            wanted = None
+
+        # --- Tree bauen (Root -> Unterkategorien) ---
+        order = {"Einkommen": 0, "Ausgaben": 1, "Ersparnisse": 2}
+        eps = 1e-9
+
+        # Totals pro Category-ID (eigener Wert + alle Descendants)
+        memo_totals: dict[int, tuple[float, float]] = {}
+
+        def _totals_for_cid(cid: int) -> tuple[float, float]:
+            if cid in memo_totals:
+                return memo_totals[cid]
+            typ, name = getattr(self, "_cat_id_to_name_typ", {}).get(cid, ("", ""))
+            b = float(budget_raw.get((typ, name), 0.0))
+            a = float(actual_raw.get((typ, name), 0.0))
+            for ch in getattr(self, "_cat_children", {}).get(cid, []):
+                cb, ca = _totals_for_cid(int(ch))
+                b += cb
+                a += ca
+            memo_totals[cid] = (b, a)
+            return memo_totals[cid]
+
+        def _rest_pct(typ: str, b: float, a: float) -> tuple[float, float | None, str]:
+            if typ == "Einkommen":
+                rest = a - b
+            else:
+                rest = b - a
+            if b > 0:
+                pct = (a / b) * 100.0
+                pct_txt = f"{pct:.0f}%"
+            else:
+                pct = None
+                pct_txt = "—"
+            return rest, pct, pct_txt
+
+        def _should_show_value(b: float, a: float) -> bool:
+            return (abs(b) > eps) or (abs(a) > eps)
+
+        def _add_node(parent: QTreeWidgetItem | None, cid: int, is_root: bool = False) -> QTreeWidgetItem | None:
+            typ, name = getattr(self, "_cat_id_to_name_typ", {}).get(cid, ("", ""))
+            if wanted and typ != wanted:
+                return None
+
+            b, a = _totals_for_cid(cid)
+            if not _should_show_value(b, a):
+                return None
+
+            rest, pct, pct_txt = _rest_pct(typ, b, a)
+
+            cols = [
+                typ if is_root else "",
+                name,
+                format_chf(b),
+                format_chf(a),
+                format_chf(rest),
+                pct_txt,
+            ]
+            item = QTreeWidgetItem(cols)
+            item.setData(0, Qt.UserRole, int(cid))
+            for col in (2, 3, 4, 5):
+                item.setTextAlignment(col, Qt.AlignRight | Qt.AlignVCenter)
+
+            # Root optisch hervorheben
+            if is_root:
+                f = QFont()
+                f.setBold(True)
+                for col in range(6):
+                    item.setFont(col, f)
+
+            # Farblogik: "bad" = ausserhalb Plan
+            if typ == "Einkommen":
+                bad = rest < 0  # Einkommen unter Plan
+            else:
+                bad = (rest < 0) or (pct is not None and pct > 100)
+            if bad:
+                item.setForeground(4, QColor("#e74c3c"))
+                item.setForeground(5, QColor("#e74c3c"))
+
+            # Tooltip
+            status = '✓ OK'
+            if bad:
+                status = '⚠ Ziel nicht erreicht' if typ == 'Einkommen' else '⚠ Budget überschritten'
+            tip = (
+                f"{typ} – {name}\n"
+                f"Budget: {format_chf(b)}\n"
+                f"Gebucht: {format_chf(a)}\n"
+                f"Rest: {format_chf(rest)}\n"
+                f"Status: {status}"
+            )
+            for col in range(6):
+                item.setToolTip(col, tip)
+
+            # Einfügen
+            if parent is None:
+                self.tree_maincats.addTopLevelItem(item)
+            else:
+                parent.addChild(item)
+
+            # Kinder (rekursiv)
+            children = list(getattr(self, "_cat_children", {}).get(cid, []))
+
+            def _child_sort_key(ch_id: int):
+                ctyp, cname = getattr(self, "_cat_id_to_name_typ", {}).get(int(ch_id), ("", ""))
+                cb, ca = _totals_for_cid(int(ch_id))
+                return (order.get(ctyp, 9), -(ca or 0.0), cname.lower())
+
+            children.sort(key=_child_sort_key)
+            for ch in children:
+                _add_node(item, int(ch), is_root=False)
+
+            return item
+
+        # Tree leeren
+        self.tree_maincats.clear()
+
+        # Roots bestimmen (parent_id is None)
+        roots: list[int] = []
+        for cid, parent_id in getattr(self, "_cat_parent", {}).items():
+            if parent_id is None:
+                roots.append(int(cid))
+
+        def _root_sort_key(cid: int):
+            typ, name = getattr(self, "_cat_id_to_name_typ", {}).get(int(cid), ("", ""))
+            b, a = _totals_for_cid(int(cid))
+            return (order.get(typ, 9), -(a or 0.0), name.lower())
+
+        roots.sort(key=_root_sort_key)
+
+        for cid in roots:
+            it = _add_node(None, int(cid), is_root=True)
+            if it is not None:
+                it.setExpanded(False)
+
+        # Unbekannte Kategorien (Budget/Tracking existiert, aber nicht in categories-Tabelle)
+        known_keys = set(getattr(self, "_cat_name_to_id", {}).keys())
+        unknown = (set(budget_raw.keys()) | set(actual_raw.keys())) - known_keys
+        unknown_rows = []
+        if unknown:
+            unknown_rows = []
+            for (t, name) in unknown:
+                if wanted and t != wanted:
+                    continue
+                b = float(budget_raw.get((t, name), 0.0))
+                a = float(actual_raw.get((t, name), 0.0))
+                if not _should_show_value(b, a):
+                    continue
+                rest, pct, pct_txt = _rest_pct(t, b, a)
+                unknown_rows.append((t, name, b, a, rest, pct, pct_txt))
+
+            unknown_rows.sort(key=lambda x: (order.get(x[0], 9), -(x[3] or 0.0), x[1].lower()))
+            for (t, name, b, a, rest, pct, pct_txt) in unknown_rows:
+                cols = [t, f"⚠ {name}", format_chf(b), format_chf(a), format_chf(rest), pct_txt]
+                item = QTreeWidgetItem(cols)
+                for col in (2, 3, 4, 5):
+                    item.setTextAlignment(col, Qt.AlignRight | Qt.AlignVCenter)
+                bad_u = (rest < 0) if t == "Einkommen" else (rest < 0 or (pct is not None and pct > 100))
+                if bad_u:
+                    item.setForeground(4, QColor("#e74c3c"))
+                    item.setForeground(5, QColor("#e74c3c"))
+                self.tree_maincats.addTopLevelItem(item)
+
+        # Warnhinweis-Banner aktualisieren (nur im Modus "Jahr/Monat")
+        try:
+            if hasattr(self, "range_combo") and self.range_combo.currentIndex() == 0:
+                overruns = []
+                for cid in roots:
+                    typ, name = getattr(self, "_cat_id_to_name_typ", {}).get(int(cid), ("", ""))
+                    b, a = _totals_for_cid(int(cid))
+                    if not _should_show_value(b, a):
+                        continue
+                    rest, pct, _ = _rest_pct(typ, b, a)
+                    if typ == "Einkommen":
+                        bad_here = rest < 0
+                    else:
+                        bad_here = (rest < 0) or (pct is not None and pct > 100)
+                    if bad_here:
+                        overruns.append({"typ": typ, "category": name, "budget": b, "actual": a, "rest": rest, "pct": pct})
+
+                for (t, name, b, a, rest, pct, _pct_txt) in (unknown_rows or []):
+                    if t == "Einkommen":
+                        bad_here = rest < 0
+                    else:
+                        bad_here = (rest < 0) or (pct is not None and pct > 100)
+                    if bad_here:
+                        overruns.append({"typ": t, "category": name, "budget": b, "actual": a, "rest": rest, "pct": pct})
+
+                self._update_overrun_banner(overruns, date_from=date_from, date_to=date_to)
+            else:
+                self._update_overrun_banner([], date_from=date_from, date_to=date_to)
+        except Exception:
+            # Warnhinweis darf nie die Übersicht killen
+            self._update_overrun_banner([])
+
+
     def _load_categories(self):
         current = self.category_combo.currentText()
         blocker = QSignalBlocker(self.category_combo)
@@ -768,6 +1408,7 @@ class OverviewTab(QWidget):
         self._cat_name_to_id = {}
         self._cat_children = {}
         self._cat_id_to_name_typ = {}
+        self._cat_parent = {}
 
         for c in cats:
             cid = int(c["id"])
@@ -775,6 +1416,8 @@ class OverviewTab(QWidget):
             name = str(c.get("name") or "")
             parent_id = c.get("parent_id")
             parent_id = int(parent_id) if parent_id is not None else None
+
+            self._cat_parent[cid] = parent_id
 
             self._cat_name_to_id[(typ, name)] = cid
             self._cat_id_to_name_typ[cid] = (typ, name)
@@ -826,29 +1469,18 @@ class OverviewTab(QWidget):
         self.card_balance.update_value(format_chf(balance), balance_color)
 
     def _load_budget_progress(self, date_from: date, date_to: date):
-        """Lädt Budget vs. Ist-Vergleich"""
-        try:
-            year = date_from.year
-            month = date_from.month if date_from.month == date_to.month else None
-            
-            # Budget-Summen holen (korrigierte Methode!)
-            budget_sums = self.budget.sum_by_typ(year, month)
-            
-            budget_income = budget_sums.get("Einkommen", 0)
-            budget_expenses = budget_sums.get("Ausgaben", 0)
-            budget_savings = budget_sums.get("Ersparnisse", 0)
-            
-        except Exception as e:
-            budget_income = 0
-            budget_expenses = 0
-            budget_savings = 0
-        
+        """Lädt Budget vs. Ist-Vergleich (robust für Monats- und Zeiträume)."""
+        budget_sums = self._budget_sums_by_typ_for_range(date_from, date_to)
+        budget_income = float(budget_sums.get("Einkommen", 0.0))
+        budget_expenses = float(budget_sums.get("Ausgaben", 0.0))
+        budget_savings = float(budget_sums.get("Ersparnisse", 0.0))
+
         # Ist-Werte
         rows = self.track.get_entries_in_range(date_from, date_to)
         actual_income = sum(r.amount for r in rows if _norm_typ(r.typ) == "Einkommen")
         actual_expenses = sum(abs(r.amount) for r in rows if _norm_typ(r.typ) == "Ausgaben")
         actual_savings = sum(r.amount for r in rows if _norm_typ(r.typ) == "Ersparnisse")
-        
+
         self.pb_income.set_values(actual_income, budget_income)
         self.pb_expenses.set_values(actual_expenses, budget_expenses)
         self.pb_savings.set_values(actual_savings, budget_savings)
@@ -900,6 +1532,9 @@ class OverviewTab(QWidget):
 
         if not months:
             months = [(date_from.year, date_from.month)]
+
+        # Für Interaktivität (Doppelklick) merken
+        self._budget_table_months = list(months)
 
         years_in_months = {y for y, _ in months}
         same_year = len(years_in_months) == 1
@@ -1090,3 +1725,129 @@ class OverviewTab(QWidget):
             except:
                 tag_names = ""
             self.tbl_transactions.setItem(i, 5, QTableWidgetItem(tag_names))
+
+    # ========== Sparziele ==========
+    def _load_savings_goals(self):
+        """Lädt alle Sparziele in die Sparziele-Tabelle"""
+        try:
+            goals = self.savings.list_all()
+        except Exception:
+            goals = []
+
+        self.tbl_savings.setRowCount(0)
+        self.lbl_savings_count.setText(f"{len(goals)} Sparziel{'e' if len(goals) != 1 else ''}")
+
+        if not goals:
+            self.lbl_savings_summary.setText(
+                "<i>Noch keine Sparziele angelegt. "
+                "Klicke auf ‹Verwalten›, um loszulegen.</i>"
+            )
+            return
+
+        total_target = 0.0
+        total_current = 0.0
+
+        for goal in goals:
+            row = self.tbl_savings.rowCount()
+            self.tbl_savings.insertRow(row)
+
+            total_target += goal.target_amount
+            total_current += goal.current_amount
+
+            # Name (+ Deadline-Info als Tooltip)
+            name_item = QTableWidgetItem(goal.name)
+            name_item.setData(Qt.UserRole, goal.id)
+            tooltip_parts = []
+            if goal.category:
+                tooltip_parts.append(f"Kategorie: {goal.category}")
+            if goal.deadline:
+                tooltip_parts.append(f"Frist: {goal.deadline}")
+            if goal.notes:
+                tooltip_parts.append(f"Notiz: {goal.notes}")
+            if tooltip_parts:
+                name_item.setToolTip("\n".join(tooltip_parts))
+            self.tbl_savings.setItem(row, 0, name_item)
+
+            # Ziel
+            target_item = QTableWidgetItem(format_chf(goal.target_amount))
+            target_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.tbl_savings.setItem(row, 1, target_item)
+
+            # Aktuell
+            current_item = QTableWidgetItem(format_chf(goal.current_amount))
+            current_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.tbl_savings.setItem(row, 2, current_item)
+
+            # Rest
+            remaining = goal.remaining_amount
+            rest_item = QTableWidgetItem(format_chf(remaining))
+            rest_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            if remaining <= 0:
+                rest_item.setForeground(QColor("#27ae60"))
+            self.tbl_savings.setItem(row, 3, rest_item)
+
+            # Fortschrittsbalken
+            progress = int(goal.progress_percent)
+            progress_widget = QWidget()
+            progress_layout = QHBoxLayout(progress_widget)
+            progress_layout.setContentsMargins(4, 4, 4, 4)
+
+            bar = QProgressBar()
+            bar.setMinimum(0)
+            bar.setMaximum(100)
+            bar.setValue(min(progress, 100))
+            bar.setFormat(f"{progress}%")
+            bar.setFixedHeight(20)
+
+            if progress >= 100:
+                color = "#27ae60"  # Grün — Ziel erreicht
+            elif progress >= 75:
+                color = "#2196F3"  # Blau — fast geschafft
+            elif progress >= 40:
+                color = "#f39c12"  # Orange
+            else:
+                color = "#e74c3c"  # Rot — noch weit entfernt
+
+            bar.setStyleSheet(f"""
+                QProgressBar {{
+                    border: 1px solid #ccc;
+                    border-radius: 4px;
+                    text-align: center;
+                    background: #f0f0f0;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {color};
+                    border-radius: 3px;
+                }}
+            """)
+
+            progress_layout.addWidget(bar)
+            self.tbl_savings.setCellWidget(row, 4, progress_widget)
+
+        # Zusammenfassung
+        total_remaining = total_target - total_current
+        overall_pct = (total_current / total_target * 100) if total_target > 0 else 0
+        summary = (
+            f"Gesamt: <b>{format_chf(total_current)}</b> von "
+            f"<b>{format_chf(total_target)}</b> "
+            f"({overall_pct:.0f}%) — "
+        )
+        if total_remaining <= 0:
+            summary += "<b style='color:#27ae60;'>Alle Ziele erreicht! 🎉</b>"
+        else:
+            summary += f"<b>{format_chf(total_remaining)}</b> verbleibend"
+        self.lbl_savings_summary.setText(summary)
+
+    def _on_savings_double_click(self, index):
+        """Doppelklick auf Sparziel → Sparziele-Dialog öffnen"""
+        self._open_savings_dialog()
+
+    def _open_savings_dialog(self):
+        """Öffnet den Sparziele-Verwaltungsdialog"""
+        from views.savings_goals_dialog import SavingsGoalsDialog
+
+        parent = self.window()
+        dialog = SavingsGoalsDialog(parent, self.conn)
+        dialog.exec()
+        # Nach Schließen: Sparziele-Tabelle aktualisieren
+        self._load_savings_goals()

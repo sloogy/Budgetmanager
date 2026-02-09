@@ -153,10 +153,11 @@ class BudgetWarningsModelExtended:
             )
             spent = float(cur.fetchone()[0])
             
-            # Prüfen ob Schwellenwert überschritten
+            # Prüfen ob tatsächlich überschritten (>100%)
+            # WICHTIG: Wir ignorieren threshold_percent und prüfen immer nur >100%
             if budget > 0:
                 percent_used = (spent / budget) * 100
-                if percent_used >= warn.threshold_percent:
+                if percent_used > 100.0:
                     # Überschreitungshistorie und Vorschlag berechnen
                     exceed_count = self._get_exceed_count(
                         warn.typ, warn.category, year, month, lookback_months
@@ -291,16 +292,39 @@ class BudgetWarningsModelExtended:
         return date(year, month, 1)
 
     def apply_budget_suggestion(self, typ: str, category: str, year: int, month: int, 
-                                new_budget: float) -> None:
-        """Wendet den Budget-Vorschlag an"""
-        self.conn.execute(
-            """
-            INSERT OR REPLACE INTO budget (year, month, typ, category, amount)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (year, month, typ, category, new_budget)
-        )
-        self.conn.commit()
+                                new_budget: float, remaining_months: bool = False) -> int:
+        """Wendet den Budget-Vorschlag an.
+        
+        Args:
+            remaining_months: Wenn True, wird das Budget für alle restlichen Monate
+                            des Jahres (ab month) angewendet. Sonst nur für month.
+        
+        Returns:
+            Anzahl der angepassten Monate
+        """
+        if remaining_months:
+            count = 0
+            for m in range(month, 13):
+                self.conn.execute(
+                    """
+                    INSERT OR REPLACE INTO budget (year, month, typ, category, amount)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (year, m, typ, category, new_budget)
+                )
+                count += 1
+            self.conn.commit()
+            return count
+        else:
+            self.conn.execute(
+                """
+                INSERT OR REPLACE INTO budget (year, month, typ, category, amount)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (year, month, typ, category, new_budget)
+            )
+            self.conn.commit()
+            return 1
 
     def get_exceed_statistics(self, typ: str, category: str, months: int = 6) -> Dict:
         """

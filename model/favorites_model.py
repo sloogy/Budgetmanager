@@ -50,6 +50,10 @@ class FavoritesModel:
         )
         return [(row[0], row[1]) for row in cur.fetchall()]
 
+    def get_all_favorites(self) -> List[Tuple[str, str]]:
+        """Alias für list_all() – Kompatibilität mit FavoritesDashboardDialog."""
+        return self.list_all()
+
     def move_up(self, typ: str, category: str) -> None:
         """Bewegt einen Favoriten nach oben"""
         favs = self.list_favorites(typ)

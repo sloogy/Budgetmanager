@@ -35,8 +35,7 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('budgetmanager_settings.json', '.'),
-        ('README.md', '.'),
+                ('README.md', '.'),
         ('CHANGELOG.md', '.'),
     ],
     hiddenimports=[
@@ -126,8 +125,7 @@ def copy_additional_files():
         'README.md',
         'CHANGELOG.md',
         'LICENSE.txt',
-        'budgetmanager_settings.json'
-    ]
+            ]
     
     dist_dir = Path('dist')
     for file in files_to_copy:
@@ -218,7 +216,7 @@ def create_portable_zip():
         zipf.write(f"dist/{APP_NAME}.exe", f"{APP_NAME}/{APP_NAME}.exe")
         
         # Füge zusätzliche Dateien hinzu
-        for file in ['README.md', 'CHANGELOG.md', 'LICENSE.txt', 'budgetmanager_settings.json']:
+        for file in ['README.md', 'CHANGELOG.md', 'LICENSE.txt']:
             if os.path.exists(f"dist/{file}"):
                 zipf.write(f"dist/{file}", f"{APP_NAME}/{file}")
     

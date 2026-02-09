@@ -4,6 +4,7 @@ import shutil
 import os
 from datetime import datetime
 from pathlib import Path
+from model.app_paths import resolve_in_app
 
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QLabel,
@@ -24,7 +25,7 @@ class BackupRestoreDialog(QDialog):
         
         # Backup-Ordner aus Einstellungen oder Standard
         if settings and hasattr(settings, 'backup_directory'):
-            self.backup_dir = Path(settings.backup_directory)
+            self.backup_dir = resolve_in_app(settings.backup_directory)
         else:
             self.backup_dir = Path.home() / "BudgetManager_Backups"
         

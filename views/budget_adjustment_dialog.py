@@ -274,43 +274,88 @@ class BudgetAdjustmentDialog(QDialog):
     
     def _on_apply_adjustments(self):
         """Wendet die ausgewählten Budget-Anpassungen an"""
-        applied_count = 0
-        total_increase = 0
-        
+        # Zähle ausgewählte Einträge
+        selected_rows = []
         for row in range(self.table.rowCount()):
             chk = self.table.item(row, 8)
             if chk and chk.checkState() == Qt.Checked:
-                typ = self.table.item(row, 0).text()
-                category = self.table.item(row, 1).text()
-                new_budget_str = self.table.item(row, 7).text().replace("'", "")
-                new_budget = float(new_budget_str)
-                
-                old_budget_str = self.table.item(row, 2).text().replace("'", "")
-                old_budget = float(old_budget_str)
-                
-                # Budget anwenden
-                self.warnings_model.apply_budget_suggestion(
-                    typ, category, self.year, self.month, new_budget
-                )
-                
-                applied_count += 1
-                total_increase += (new_budget - old_budget)
+                selected_rows.append(row)
         
-        if applied_count > 0:
-            QMessageBox.information(
-                self,
-                "Budgets angepasst",
-                f"✓ {applied_count} Budget(s) wurden erfolgreich angepasst.\n\n"
-                f"Gesamt-Erhöhung: +{total_increase:,.2f} CHF".replace(",", "'") + "\n\n"
-                "Die neuen Budgets gelten ab diesem Monat."
-            )
-            self.accept()
-        else:
+        if not selected_rows:
             QMessageBox.information(
                 self,
                 "Keine Auswahl",
                 "Bitte wählen Sie mindestens ein Budget zur Anpassung aus."
             )
+            return
+        
+        # Frage: Nur diesen Monat oder restliche Monate?
+        remaining_months_count = 12 - self.month + 1
+        
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Question)
+        msg.setWindowTitle("Anpassung anwenden")
+        msg.setText(
+            f"Für welchen Zeitraum soll die Anpassung gelten?\n\n"
+            f"• Nur {self.month:02d}/{self.year}: Anpassung gilt nur für diesen Monat\n"
+            f"• Restliche Monate: Anpassung gilt für {self.month:02d}–12/{self.year} "
+            f"({remaining_months_count} Monate)"
+        )
+        
+        btn_this_month = msg.addButton(
+            f"Nur {self.month:02d}/{self.year}", QMessageBox.AcceptRole
+        )
+        btn_remaining = msg.addButton(
+            f"Restliche Monate ({remaining_months_count})", QMessageBox.AcceptRole
+        )
+        btn_cancel = msg.addButton("Abbrechen", QMessageBox.RejectRole)
+        
+        msg.setDefaultButton(btn_this_month)
+        msg.exec()
+        
+        clicked = msg.clickedButton()
+        if clicked == btn_cancel:
+            return
+        
+        apply_remaining = (clicked == btn_remaining)
+        
+        applied_count = 0
+        total_increase = 0
+        total_months_affected = 0
+        
+        for row in selected_rows:
+            typ = self.table.item(row, 0).text()
+            category = self.table.item(row, 1).text()
+            new_budget_str = self.table.item(row, 7).text().replace("'", "")
+            new_budget = float(new_budget_str)
+            
+            old_budget_str = self.table.item(row, 2).text().replace("'", "")
+            old_budget = float(old_budget_str)
+            
+            # Budget anwenden
+            months_affected = self.warnings_model.apply_budget_suggestion(
+                typ, category, self.year, self.month, new_budget,
+                remaining_months=apply_remaining
+            )
+            
+            applied_count += 1
+            total_increase += (new_budget - old_budget)
+            total_months_affected += months_affected
+        
+        if applied_count > 0:
+            scope_text = (
+                f"für {self.month:02d}–12/{self.year} ({total_months_affected} Monatswerte)"
+                if apply_remaining
+                else f"für {self.month:02d}/{self.year}"
+            )
+            QMessageBox.information(
+                self,
+                "Budgets angepasst",
+                f"✓ {applied_count} Budget(s) wurden erfolgreich angepasst {scope_text}.\n\n"
+                f"Erhöhung pro Monat: +{total_increase:,.2f} CHF".replace(",", "'") + "\n\n"
+                f"Die neuen Budgets sind sofort wirksam."
+            )
+            self.accept()
     
     @staticmethod
     def check_and_show_if_needed(parent, warnings_model: BudgetWarningsModelExtended,
