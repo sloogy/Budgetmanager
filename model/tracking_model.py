@@ -97,6 +97,14 @@ class TrackingModel:
 
         # Sparziel-Synchronisation
         if old_full:
+<<<<<<< HEAD
+=======
+<<<<<<< Updated upstream
+            old_typ = str(old_full["typ"]) if isinstance(old_full, sqlite3.Row) else old_full[0]
+            old_cat = str(old_full["category"]) if isinstance(old_full, sqlite3.Row) else old_full[1]
+            old_amt = float(old_full["amount"]) if isinstance(old_full, sqlite3.Row) else float(old_full[2])
+=======
+>>>>>>> origin/main
             # row_factory ist normalerweise sqlite3.Row. Falls nicht, ist die Spaltenreihenfolge:
             # (id, date, typ, category, amount, details)
             if isinstance(old_full, sqlite3.Row):
@@ -107,6 +115,10 @@ class TrackingModel:
                 old_typ = str(old_full[2])
                 old_cat = str(old_full[3])
                 old_amt = float(old_full[4])
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
+>>>>>>> origin/main
 
             # Alte Buchung rückgängig machen
             if old_typ == "Ersparnisse":
@@ -135,6 +147,7 @@ class TrackingModel:
 
         # Sparziel-Synchronisation: Betrag abziehen
         if old_full:
+<<<<<<< HEAD
             # row_factory ist normalerweise sqlite3.Row. Falls nicht, ist die Spaltenreihenfolge:
             # (id, date, typ, category, amount, details)
             if isinstance(old_full, sqlite3.Row):
@@ -142,12 +155,31 @@ class TrackingModel:
             else:
                 old_typ = str(old_full[2])
             if old_typ == "Ersparnisse":
+=======
+<<<<<<< Updated upstream
+            old_typ = str(old_full["typ"]) if isinstance(old_full, sqlite3.Row) else old_full[0]
+            if old_typ == "Ersparnisse":
+                old_cat = str(old_full["category"]) if isinstance(old_full, sqlite3.Row) else old_full[1]
+                old_amt = float(old_full["amount"]) if isinstance(old_full, sqlite3.Row) else float(old_full[2])
+=======
+            # row_factory ist normalerweise sqlite3.Row. Falls nicht, ist die Spaltenreihenfolge:
+            # (id, date, typ, category, amount, details)
+            if isinstance(old_full, sqlite3.Row):
+                old_typ = str(old_full["typ"])
+            else:
+                old_typ = str(old_full[2])
+            if old_typ == "Ersparnisse":
+>>>>>>> origin/main
                 if isinstance(old_full, sqlite3.Row):
                     old_cat = str(old_full["category"])
                     old_amt = float(old_full["amount"])
                 else:
                     old_cat = str(old_full[3])
                     old_amt = float(old_full[4])
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
+>>>>>>> origin/main
                 self._sync_savings_goals_remove(old_cat, old_amt)
 
     def exists_in_month(self, *, year: int, month: int, typ: str, category: str) -> bool:

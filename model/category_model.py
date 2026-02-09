@@ -408,8 +408,17 @@ class CategoryModel:
         rows = self.conn.execute(f"SELECT * FROM categories WHERE id IN ({q})", [int(i) for i in ids]).fetchall()
         old_rows = [dict(r) for r in rows]
 
+<<<<<<< HEAD
         # Undo/Redo: Delete von mehreren Kategorien als eine Gruppe
         group = self.undo.new_group_id()
+=======
+<<<<<<< Updated upstream
+        group = self.undo.new_group()
+=======
+        # Undo/Redo: Delete von mehreren Kategorien als eine Gruppe
+        group = self.undo.new_group_id()
+>>>>>>> Stashed changes
+>>>>>>> origin/main
         self.conn.execute(f"DELETE FROM categories WHERE id IN ({q})", [int(i) for i in ids])
         self.conn.commit()
 

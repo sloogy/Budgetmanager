@@ -1478,7 +1478,10 @@ class MainWindow(QMainWindow):
                 elif hasattr(tab, 'load'):
                     tab.load()
         except Exception:
+<<<<<<< HEAD
 >>>>>>> Stashed changes
+=======
+>>>>>>> origin/main
             # Refresh darf nie die UI killen, aber wir wollen wenigstens eine Spur im Terminal.
             import traceback
             traceback.print_exc()

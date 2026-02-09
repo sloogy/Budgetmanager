@@ -4,6 +4,11 @@ from dataclasses import dataclass
 
 from model.undo_redo_model import UndoRedoModel
 
+<<<<<<< HEAD
+=======
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/main
 # Reservierte Namen die nicht als Kategorie verwendet werden dürfen
 RESERVED_CATEGORY_NAMES = [
     "BUDGET-SALDO",
@@ -14,6 +19,10 @@ RESERVED_CATEGORY_NAMES = [
     "__SALDO__"
 ]
 
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
+>>>>>>> origin/main
 @dataclass(frozen=True)
 class BudgetRow:
     year: int
@@ -26,6 +35,7 @@ class BudgetModel:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
         self.undo = UndoRedoModel(conn)
+<<<<<<< HEAD
         # Bereinige fehlerhafte Einträge beim Start
         self._cleanup_reserved_categories()
 
@@ -53,11 +63,48 @@ class BudgetModel:
             pass  # Fehler beim Cleanup ignorieren (z.B. wenn Tabelle nicht existiert)
 
     def set_amount(self, year:int, month:int, typ:str, category:str, amount:float) -> None:
+=======
+<<<<<<< Updated upstream
+
+    def set_amount(self, year:int, month:int, typ:str, category:str, amount:float) -> None:
+=======
+        # Bereinige fehlerhafte Einträge beim Start
+        self._cleanup_reserved_categories()
+
+    def _is_reserved_category(self, category: str) -> bool:
+        """Prüft ob ein Kategoriename reserviert ist."""
+        if not category:
+            return False
+        cat_upper = str(category).upper().strip()
+        for reserved in RESERVED_CATEGORY_NAMES:
+            if reserved.upper() in cat_upper or cat_upper in reserved.upper():
+                return True
+        # Auch Emoji-Versionen prüfen
+        if "📊" in category or "SALDO" in cat_upper:
+            return True
+        return False
+
+    def _cleanup_reserved_categories(self):
+        """Entfernt fehlerhafte reservierte Kategorien aus der Datenbank (einmalig beim Start)."""
+        try:
+            for reserved_name in RESERVED_CATEGORY_NAMES:
+                self.conn.execute("DELETE FROM budget WHERE category = ? OR category LIKE ?",
+                           (reserved_name, f"%{reserved_name}%"))
+            self.conn.commit()
+        except Exception:
+            pass  # Fehler beim Cleanup ignorieren (z.B. wenn Tabelle nicht existiert)
+
+    def set_amount(self, year:int, month:int, typ:str, category:str, amount:float) -> None:
+>>>>>>> origin/main
         # SCHUTZ: Reservierte Kategorien blockieren
         if self._is_reserved_category(category):
             # Stiller Fehler - keine Exception werfen um UI nicht zu crashen
             return
         
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
+>>>>>>> origin/main
         old = self.conn.execute(
             "SELECT * FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
             (int(year), int(month), typ, category),
@@ -83,6 +130,11 @@ class BudgetModel:
             dict(new) if new else None,
         )
 
+<<<<<<< HEAD
+=======
+<<<<<<< Updated upstream
+=======
+>>>>>>> origin/main
     def get_amount(
         self,
         year: int,
@@ -113,6 +165,10 @@ class BudgetModel:
         except Exception:
             return float(default)
 
+<<<<<<< HEAD
+=======
+>>>>>>> Stashed changes
+>>>>>>> origin/main
     def get_matrix(self, year:int, typ:str) -> dict[str, dict[int,float]]:
         cur=self.conn.execute(
             "SELECT month, category, amount FROM budget WHERE year=? AND typ=?",
@@ -149,8 +205,17 @@ class BudgetModel:
             "SELECT * FROM budget WHERE year=? AND typ=? AND category=?",
             (int(year), typ, category),
         ).fetchall()
+<<<<<<< HEAD
         # Undo/Redo: mehrere DELETEs als eine Gruppe behandeln
         group = self.undo.new_group_id() if rows else None
+=======
+<<<<<<< Updated upstream
+        group = self.undo.new_group() if rows else None
+=======
+        # Undo/Redo: mehrere DELETEs als eine Gruppe behandeln
+        group = self.undo.new_group_id() if rows else None
+>>>>>>> Stashed changes
+>>>>>>> origin/main
 
         self.conn.execute(
             "DELETE FROM budget WHERE year=? AND typ=? AND category=?",
@@ -166,8 +231,17 @@ class BudgetModel:
             "SELECT * FROM budget WHERE typ=? AND category=?",
             (typ, category),
         ).fetchall()
+<<<<<<< HEAD
         # Undo/Redo: mehrere DELETEs als eine Gruppe behandeln
         group = self.undo.new_group_id() if rows else None
+=======
+<<<<<<< Updated upstream
+        group = self.undo.new_group() if rows else None
+=======
+        # Undo/Redo: mehrere DELETEs als eine Gruppe behandeln
+        group = self.undo.new_group_id() if rows else None
+>>>>>>> Stashed changes
+>>>>>>> origin/main
 
         self.conn.execute(
             "DELETE FROM budget WHERE typ=? AND category=?",
@@ -177,6 +251,30 @@ class BudgetModel:
 
         for r in rows:
             self.undo.record_operation("budget", "DELETE", dict(r), None, group_id=group)
+<<<<<<< Updated upstream
+
+<<<<<<< HEAD
+    def rename_category(self, typ:str, old_name:str, new_name:str) -> None:
+        # SCHUTZ: Neue Kategorie darf nicht reserviert sein
+        if self._is_reserved_category(new_name):
+            return
+        
+        rows = self.conn.execute(
+            "SELECT * FROM budget WHERE typ=? AND category=?",
+            (typ, old_name),
+        ).fetchall()
+        # Undo/Redo: mehrere UPDATEs als eine Gruppe behandeln
+        group = self.undo.new_group_id() if rows else None
+
+        self.conn.execute(
+            "UPDATE budget SET category=? WHERE typ=? AND category=?",
+            (new_name, typ, old_name),
+        )
+        self.conn.commit()
+
+=======
+=======
+>>>>>>> Stashed changes
 
     def rename_category(self, typ:str, old_name:str, new_name:str) -> None:
         # SCHUTZ: Neue Kategorie darf nicht reserviert sein
@@ -196,6 +294,7 @@ class BudgetModel:
         )
         self.conn.commit()
 
+>>>>>>> origin/main
         for r in rows:
             old_dict = dict(r)
             new_dict = dict(r)
