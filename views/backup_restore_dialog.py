@@ -17,6 +17,10 @@ class BackupRestoreDialog(QDialog):
         self.conn = conn
         self.db_path = db_path
         self.settings = settings
+
+        # Wird auf True gesetzt, wenn die aktive DB ersetzt / zurückgesetzt wurde.
+        # MainWindow kann dann (optional) einen Neustart verlangen.
+        self.db_changed = False
         
         # Backup-Ordner aus Einstellungen oder Standard
         if settings and hasattr(settings, 'backup_directory'):
@@ -76,13 +80,33 @@ class BackupRestoreDialog(QDialog):
         self.btn_import.clicked.connect(self.import_backup)
         self.btn_delete.clicked.connect(self.delete_backup)
         self.btn_reset_db.clicked.connect(self.reset_database)
-        self.btn_close.clicked.connect(self.accept)
+        # Schließen bedeutet: keine Änderungen an der aktiven DB → reject()
+        self.btn_close.clicked.connect(self.reject)
         
         self.refresh_backup_list()
     
     def refresh_backup_list(self):
         self.backup_list.clear()
-        backups = sorted(self.backup_dir.glob("budgetmanager_backup_*.db"), reverse=True)
+
+        # Alle sinnvollen Backup-Typen anzeigen (nicht nur "budgetmanager_backup_*"),
+        # sonst sind z.B. "before_restore"/"pre_migration"/importierte DBs Dead-Ends.
+        patterns = [
+            "budgetmanager_backup_*.db",
+            "budgetmanager_backup_imported_*.db",
+            "budgetmanager_before_restore_*.db",
+            "budgetmanager_before_reset_*.db",
+            "budgetmanager_pre_migration_*.db",
+        ]
+        seen = set()
+        backups = []
+        for pat in patterns:
+            for p in self.backup_dir.glob(pat):
+                if p not in seen:
+                    seen.add(p)
+                    backups.append(p)
+
+        # Neueste zuerst (mtime)
+        backups.sort(key=lambda p: p.stat().st_mtime, reverse=True)
         
         for backup in backups:
             size = backup.stat().st_size / 1024  # KB
@@ -147,6 +171,8 @@ class BackupRestoreDialog(QDialog):
             
             # Restore durchführen
             shutil.copy2(backup_path, self.db_path)
+
+            self.db_changed = True
             
             QMessageBox.information(
                 self,
@@ -199,7 +225,9 @@ class BackupRestoreDialog(QDialog):
         
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            import_name = f"budgetmanager_imported_{timestamp}.db"
+            # Wichtig: Name muss im Backup-Listing auftauchen.
+            # Wenn das Prefix nicht passt, ist die importierte DB ein Dead-End (nicht auswählbar).
+            import_name = f"budgetmanager_backup_imported_{timestamp}.db"
             import_path = self.backup_dir / import_name
             
             shutil.copy2(file_path, import_path)
@@ -210,8 +238,49 @@ class BackupRestoreDialog(QDialog):
                 f"Backup importiert als:\n{import_name}"
             )
             self.refresh_backup_list()
+
+            # Importiertes Backup direkt markieren
+            for i in range(self.backup_list.count()):
+                it = self.backup_list.item(i)
+                if it and it.data(Qt.UserRole) == str(import_path):
+                    self.backup_list.setCurrentRow(i)
+                    break
+
+            # Optional: gleich wiederherstellen
+            if QMessageBox.question(
+                self,
+                "Sofort wiederherstellen?",
+                "Möchten Sie das importierte Backup jetzt als aktive Datenbank wiederherstellen?\n\n"
+                "(Die Anwendung muss danach neu gestartet werden.)",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
+            ) == QMessageBox.Yes:
+                # reuse restore flow, aber ohne zweite Auswahl
+                self._restore_from_path(str(import_path))
         except Exception as e:
             QMessageBox.critical(self, "Fehler", f"Import fehlgeschlagen:\n{e}")
+
+    def _restore_from_path(self, backup_path: str):
+        """Interner Helper: Restore von einem beliebigen Pfad (aus Liste oder import)."""
+        try:
+            # Aktuelles Backup vor Restore
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            auto_backup = self.backup_dir / f"budgetmanager_before_restore_{timestamp}.db"
+            shutil.copy2(self.db_path, auto_backup)
+
+            # Restore durchführen
+            shutil.copy2(backup_path, self.db_path)
+            self.db_changed = True
+
+            QMessageBox.information(
+                self,
+                "Erfolg",
+                "Datenbank wurde wiederhergestellt.\n\n"
+                "Bitte starten Sie die Anwendung neu."
+            )
+            self.accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Wiederherstellung fehlgeschlagen:\n{e}")
     
     def delete_backup(self):
         item = self.backup_list.currentItem()
@@ -282,6 +351,8 @@ class BackupRestoreDialog(QDialog):
                     pass
             
             self.conn.commit()
+
+            self.db_changed = True
             
             QMessageBox.information(
                 self,

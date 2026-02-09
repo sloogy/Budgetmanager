@@ -1,333 +1,397 @@
-from __future__ import annotations
+"""
+Database Management Model - Erweitert mit Reset-Funktionalität
+Version 2.3.0.1
+
+Neue Features:
+- Datenbank auf Standard zurücksetzen
+- Optionale Backup-Erstellung vor Reset
+- Standard-Kategorien vordefiniert
+"""
+
 import sqlite3
+import os
 import shutil
-from pathlib import Path
 from datetime import datetime
-from typing import Optional, Dict, List
+from typing import Optional, Tuple, List
 
 
 class DatabaseManagementModel:
-    """Model für Datenbank-Verwaltung: Reset, Backup, Statistiken"""
+    """Verwaltung von Datenbank-Operationen inkl. Reset."""
     
-    def __init__(self, conn: sqlite3.Connection, db_path: str):
-        self.conn = conn
+    # Standard-Kategorien die beim Reset erstellt werden
+    DEFAULT_CATEGORIES = {
+        "Einkommen": [
+            "Lohn (Netto)",
+            "Nebenverdienst",
+            "Bonuszahlungen",
+            "Sonstige Einnahmen"
+        ],
+        "Ausgaben": [
+            # Wohnen
+            "Miete/Hypothek",
+            "Nebenkosten",
+            "Hausrat/Reparaturen",
+            "Strom & Gas",
+            
+            # Versicherungen
+            "Krankenversicherung",
+            "Haftpflicht",
+            "Hausrat",
+            "Auto/Motorrad",
+            
+            # Lebensunterhalt
+            "Lebensmittel",
+            "Drogerie/Apotheke",
+            "Kleidung",
+            
+            # Transport
+            "ÖV/Benzin",
+            "Auto-Unterhalt",
+            "Parkgebühren",
+            
+            # Kommunikation
+            "Telefon/Internet",
+            "Streaming-Dienste",
+            
+            # Freizeit
+            "Restaurant/Café",
+            "Hobbys",
+            "Urlaub/Reisen",
+            "Sport/Fitness",
+            
+            # Sonstiges
+            "Geschenke",
+            "Haustiere",
+            "Sonstiges"
+        ],
+        "Ersparnisse": [
+            "Notgroschen",
+            "Altersvorsorge",
+            "Sparziele",
+            "Investitionen"
+        ]
+    }
+    
+    def __init__(self, db_path: str):
         self.db_path = db_path
-    
-    def create_backup(self, backup_dir: Optional[str] = None, 
-                      custom_name: Optional[str] = None) -> str:
+        self.backup_dir = os.path.join(os.path.dirname(db_path), "backups")
+        
+    def create_backup(self, prefix: str = "manual") -> Tuple[bool, str]:
         """
-        Erstellt ein Backup der Datenbank
+        Erstellt ein Backup der Datenbank.
         
         Args:
-            backup_dir: Zielverzeichnis (None = Standard)
-            custom_name: Eigener Dateiname (None = Zeitstempel)
+            prefix: Präfix für Backup-Dateiname
             
         Returns:
-            Pfad zum erstellten Backup
+            (success, backup_path_or_error_message)
         """
-        if backup_dir is None:
-            backup_dir = str(Path.home() / "BudgetManager_Backups")
-        
-        backup_path_obj = Path(backup_dir)
-        backup_path_obj.mkdir(parents=True, exist_ok=True)
-        
-        if custom_name:
-            backup_name = custom_name if custom_name.endswith('.db') else f"{custom_name}.db"
-        else:
+        try:
+            os.makedirs(self.backup_dir, exist_ok=True)
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            backup_name = f"budgetmanager_backup_{timestamp}.db"
-        
-        backup_path = backup_path_obj / backup_name
-        
-        # Backup erstellen
-        shutil.copy2(self.db_path, backup_path)
-        
-        return str(backup_path)
-    
-    def restore_from_backup(self, backup_path: str) -> bool:
-        """
-        Stellt die Datenbank aus einem Backup wieder her
-        
-        Args:
-            backup_path: Pfad zum Backup
+            backup_filename = f"{prefix}_backup_{timestamp}.db"
+            backup_path = os.path.join(self.backup_dir, backup_filename)
             
-        Returns:
-            True bei Erfolg
-        """
-        backup_file = Path(backup_path)
-        if not backup_file.exists():
-            raise FileNotFoundError(f"Backup nicht gefunden: {backup_path}")
-        
-        # Aktuelles DB schließen
-        self.conn.close()
-        
-        # Sicherheitskopie der aktuellen DB
-        current_backup = f"{self.db_path}.before_restore"
-        shutil.copy2(self.db_path, current_backup)
-        
-        try:
-            # Backup kopieren
-            shutil.copy2(backup_path, self.db_path)
+            shutil.copy2(self.db_path, backup_path)
             
-            # Neue Verbindung öffnen
-            from model.database import open_db
-            self.conn = open_db(self.db_path)
-            
-            return True
+            return True, backup_path
         except Exception as e:
-            # Bei Fehler: Alte DB wiederherstellen
-            shutil.copy2(current_backup, self.db_path)
-            from model.database import open_db
-            self.conn = open_db(self.db_path)
-            raise e
-        finally:
-            # Temp-Backup löschen
-            Path(current_backup).unlink(missing_ok=True)
+            return False, f"Fehler beim Backup: {str(e)}"
     
-    def reset_to_defaults(self, keep_categories: bool = True, 
-                         keep_budgets: bool = False,
-                         create_backup: bool = True) -> str:
+    def get_available_backups(self) -> List[dict]:
         """
-        Setzt die Datenbank auf Standardwerte zurück
-        
-        Args:
-            keep_categories: Kategorien beibehalten
-            keep_budgets: Budgets beibehalten
-            create_backup: Backup vor Reset erstellen
-            
-        Returns:
-            Pfad zum erstellten Backup (oder leerer String)
-        """
-        backup_path = ""
-        
-        # Backup erstellen
-        if create_backup:
-            backup_path = self.create_backup(custom_name="pre_reset")
-        
-        # Alle Transaktionen löschen
-        self.conn.execute("DELETE FROM tracking")
-        
-        # Optional: Budgets löschen
-        if not keep_budgets:
-            self.conn.execute("DELETE FROM budget")
-        
-        # Optional: Kategorien löschen
-        if not keep_categories:
-            self.conn.execute("DELETE FROM categories")
-        
-        # Weitere Tabellen zurücksetzen
-        self.conn.execute("DELETE FROM tags")
-        self.conn.execute("DELETE FROM category_tags")
-        self.conn.execute("DELETE FROM budget_warnings")
-        self.conn.execute("DELETE FROM favorites")
-        self.conn.execute("DELETE FROM savings_goals")
-        self.conn.execute("DELETE FROM undo_stack")
-        
-        # Wiederkehrende Transaktionen zurücksetzen
-        try:
-            self.conn.execute("DELETE FROM recurring_transactions")
-        except sqlite3.OperationalError:
-            pass  # Tabelle existiert noch nicht
-        
-        self.conn.commit()
-        
-        # Standard-Kategorien anlegen wenn Kategorien gelöscht wurden
-        if not keep_categories:
-            self._create_default_categories()
-        
-        return backup_path
-    
-    def _create_default_categories(self):
-        """Erstellt Standard-Kategorien"""
-        default_categories = [
-            ("Einnahmen", "Gehalt"),
-            ("Einnahmen", "Bonus"),
-            ("Einnahmen", "Sonstiges"),
-            ("Ausgaben", "Miete"),
-            ("Ausgaben", "Lebensmittel"),
-            ("Ausgaben", "Transport"),
-            ("Ausgaben", "Versicherungen"),
-            ("Ausgaben", "Freizeit"),
-            ("Ausgaben", "Sonstiges"),
-        ]
-        
-        for typ, name in default_categories:
-            try:
-                self.conn.execute(
-                    "INSERT OR IGNORE INTO categories (typ, name) VALUES (?, ?)",
-                    (typ, name)
-                )
-            except sqlite3.IntegrityError:
-                pass
-        
-        self.conn.commit()
-    
-    def get_database_statistics(self) -> Dict:
-        """
-        Gibt Statistiken über die Datenbank zurück
+        Gibt Liste verfügbarer Backups zurück.
         
         Returns:
-            Dictionary mit verschiedenen Statistiken
+            Liste mit Backup-Informationen
         """
-        stats = {}
-        
-        # Datenbankgröße
-        db_file = Path(self.db_path)
-        stats['file_size_mb'] = db_file.stat().st_size / (1024 * 1024) if db_file.exists() else 0
-        
-        # Anzahl Einträge pro Tabelle
-        tables = [
-            'categories', 'budget', 'tracking', 'tags', 'category_tags',
-            'budget_warnings', 'favorites', 'savings_goals', 'undo_stack',
-            'theme_profiles'
-        ]
-        
-        for table in tables:
-            try:
-                cur = self.conn.execute(f"SELECT COUNT(*) FROM {table}")
-                stats[f'{table}_count'] = cur.fetchone()[0]
-            except sqlite3.OperationalError:
-                stats[f'{table}_count'] = 0
-        
-        # Wiederkehrende Transaktionen
-        try:
-            cur = self.conn.execute("SELECT COUNT(*) FROM recurring_transactions")
-            stats['recurring_transactions_count'] = cur.fetchone()[0]
-        except sqlite3.OperationalError:
-            stats['recurring_transactions_count'] = 0
-        
-        # Zeitraum der Transaktionen
-        cur = self.conn.execute(
-            "SELECT MIN(date), MAX(date) FROM tracking WHERE date IS NOT NULL"
-        )
-        row = cur.fetchone()
-        stats['first_transaction'] = row[0] if row[0] else None
-        stats['last_transaction'] = row[1] if row[1] else None
-        
-        # Summen
-        cur = self.conn.execute(
-            "SELECT typ, SUM(amount) FROM tracking GROUP BY typ"
-        )
-        for typ, total in cur.fetchall():
-            stats[f'total_{typ.lower()}'] = float(total)
-        
-        # Anzahl Jahre/Monate mit Daten
-        cur = self.conn.execute(
-            """
-            SELECT COUNT(DISTINCT strftime('%Y', date)), 
-                   COUNT(DISTINCT strftime('%Y-%m', date))
-            FROM tracking WHERE date IS NOT NULL
-            """
-        )
-        row = cur.fetchone()
-        stats['years_with_data'] = row[0] if row else 0
-        stats['months_with_data'] = row[1] if row else 0
-        
-        return stats
-    
-    def vacuum_database(self):
-        """
-        Optimiert die Datenbank (VACUUM)
-        Gibt Speicherplatz frei und defragmentiert
-        """
-        self.conn.execute("VACUUM")
-        self.conn.commit()
-    
-    def list_backups(self, backup_dir: Optional[str] = None) -> List[Dict]:
-        """
-        Listet alle verfügbaren Backups auf
-        
-        Returns:
-            Liste von Dicts mit Backup-Informationen
-        """
-        if backup_dir is None:
-            backup_dir = str(Path.home() / "BudgetManager_Backups")
-        
-        backup_path = Path(backup_dir)
-        if not backup_path.exists():
+        if not os.path.exists(self.backup_dir):
             return []
         
         backups = []
-        for backup_file in backup_path.glob("*.db"):
-            stat = backup_file.stat()
-            backups.append({
-                'name': backup_file.name,
-                'path': str(backup_file),
-                'size_mb': stat.st_size / (1024 * 1024),
-                'created': datetime.fromtimestamp(stat.st_ctime),
-                'modified': datetime.fromtimestamp(stat.st_mtime)
-            })
+        for filename in os.listdir(self.backup_dir):
+            if filename.endswith('.db'):
+                filepath = os.path.join(self.backup_dir, filename)
+                stat = os.stat(filepath)
+                backups.append({
+                    'filename': filename,
+                    'path': filepath,
+                    'size': stat.st_size,
+                    'created': datetime.fromtimestamp(stat.st_mtime),
+                    'size_mb': round(stat.st_size / (1024 * 1024), 2)
+                })
         
-        # Sortiere nach Änderungsdatum (neueste zuerst)
-        backups.sort(key=lambda x: x['modified'], reverse=True)
-        
-        return backups
+        return sorted(backups, key=lambda x: x['created'], reverse=True)
     
-    def delete_backup(self, backup_path: str) -> bool:
-        """Löscht ein Backup"""
-        backup_file = Path(backup_path)
-        if backup_file.exists():
-            backup_file.unlink()
-            return True
-        return False
-    
-    def export_data_json(self, output_path: str, include_tracking: bool = True,
-                        include_budgets: bool = True, include_categories: bool = True) -> None:
+    def restore_backup(self, backup_path: str) -> Tuple[bool, str]:
         """
-        Exportiert Daten als JSON
+        Stellt Datenbank aus Backup wieder her.
         
         Args:
-            output_path: Zieldatei
-            include_tracking: Transaktionen exportieren
-            include_budgets: Budgets exportieren
-            include_categories: Kategorien exportieren
+            backup_path: Pfad zur Backup-Datei
+            
+        Returns:
+            (success, message)
         """
-        import json
+        try:
+            if not os.path.exists(backup_path):
+                return False, "Backup-Datei nicht gefunden"
+            
+            # Aktuelles DB als Sicherheit kopieren
+            temp_backup = self.db_path + ".before_restore"
+            shutil.copy2(self.db_path, temp_backup)
+            
+            try:
+                # Restore durchführen
+                shutil.copy2(backup_path, self.db_path)
+                return True, "Wiederherstellung erfolgreich"
+            except Exception as e:
+                # Bei Fehler: Original wiederherstellen
+                shutil.copy2(temp_backup, self.db_path)
+                return False, f"Fehler bei Wiederherstellung: {str(e)}"
+            finally:
+                # Temp-Backup löschen
+                if os.path.exists(temp_backup):
+                    os.remove(temp_backup)
+                    
+        except Exception as e:
+            return False, f"Unerwarteter Fehler: {str(e)}"
+    
+    def reset_database(self, create_backup: bool = True, 
+                       keep_user_data: bool = False) -> Tuple[bool, str]:
+        """
+        Setzt Datenbank auf Standard zurück.
         
-        data = {
-            'export_date': datetime.now().isoformat(),
-            'version': '0.17.0'
-        }
+        Args:
+            create_backup: Backup vor Reset erstellen
+            keep_user_data: Wenn True, behält Tracking-Daten (nur Budget/Kategorien zurücksetzen)
+            
+        Returns:
+            (success, message)
+        """
+        try:
+            # Backup erstellen
+            if create_backup:
+                success, backup_info = self.create_backup("before_reset")
+                if not success:
+                    return False, f"Backup fehlgeschlagen: {backup_info}"
+            
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            if keep_user_data:
+                # Nur Budget und Kategorien zurücksetzen
+                cursor.execute("DELETE FROM budget")
+                cursor.execute("DELETE FROM categories")
+                message = "Budget und Kategorien zurückgesetzt (Tracking-Daten behalten)"
+            else:
+                # Kompletter Reset - alle Tabellen leeren
+                tables = [
+                    'budget', 'categories', 'tracking', 'savings_goals',
+                    'tags', 'entry_tags', 'recurring_transactions',
+                    'fixcost_tracking', 'favorites', 'undo_stack', 'redo_stack'
+                ]
+                
+                for table in tables:
+                    try:
+                        cursor.execute(f"DELETE FROM {table}")
+                    except sqlite3.OperationalError:
+                        # Tabelle existiert nicht - ignorieren
+                        pass
+                
+                message = "Datenbank komplett zurückgesetzt"
+            
+            # Standard-Kategorien erstellen
+            self._create_default_categories(conn)
+            
+            conn.commit()
+            conn.close()
+            
+            return True, message
+            
+        except Exception as e:
+            return False, f"Fehler beim Reset: {str(e)}"
+    
+    def _create_default_categories(self, conn: sqlite3.Connection):
+        """Erstellt Standard-Kategorien."""
+        cursor = conn.cursor()
         
-        if include_categories:
-            cur = self.conn.execute("SELECT id, typ, name, is_fix, is_recurring, recurring_day FROM categories")
-            data['categories'] = [
-                {
-                    'id': row[0],
-                    'typ': row[1],
-                    'name': row[2],
-                    'is_fix': bool(row[3]),
-                    'is_recurring': bool(row[4]),
-                    'recurring_day': row[5]
-                }
-                for row in cur.fetchall()
+        # Prüfe ob categories Tabelle existiert
+        cursor.execute("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name='categories'
+        """)
+        if not cursor.fetchone():
+            # Tabelle existiert nicht - erstellen
+            cursor.execute("""
+                CREATE TABLE categories (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    typ TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    parent_id INTEGER DEFAULT NULL,
+                    is_fix INTEGER DEFAULT 0,
+                    is_recurring INTEGER DEFAULT 0,
+                    recurring_day INTEGER DEFAULT 1,
+                    is_favorite INTEGER DEFAULT 0,
+                    UNIQUE(typ, name),
+                    FOREIGN KEY (parent_id) REFERENCES categories(id)
+                )
+            """)
+        
+        for typ, categories in self.DEFAULT_CATEGORIES.items():
+            for cat_name in categories:
+                try:
+                    cursor.execute("""
+                        INSERT INTO categories (typ, name) 
+                        VALUES (?, ?)
+                    """, (typ, cat_name))
+                except sqlite3.IntegrityError:
+                    # Kategorie existiert bereits
+                    pass
+    
+    def cleanup_database(self) -> Tuple[bool, str, dict]:
+        """
+        Bereinigt Datenbank (löscht verwaiste Einträge, optimiert).
+        
+        Returns:
+            (success, message, statistics)
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            stats = {
+                'deleted_orphaned_budgets': 0,
+                'deleted_orphaned_tags': 0,
+                'deleted_invalid_dates': 0,
+                'deleted_reserved_categories': 0
+            }
+            
+            # 1. Lösche Budget-Einträge für nicht existierende Kategorien
+            cursor.execute("""
+                DELETE FROM budget 
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM categories 
+                    WHERE categories.typ = budget.typ 
+                    AND categories.name = budget.category
+                )
+            """)
+            stats['deleted_orphaned_budgets'] = cursor.rowcount
+            
+            # 2. Lösche reservierte Kategorien
+            reserved_patterns = [
+                '%BUDGET-SALDO%', '%TOTAL%', '%SUMME%', '%📊%'
             ]
+            for pattern in reserved_patterns:
+                cursor.execute("DELETE FROM budget WHERE category LIKE ?", (pattern,))
+                stats['deleted_reserved_categories'] += cursor.rowcount
+            
+            # 3. Lösche verwaiste Tags
+            cursor.execute("""
+                DELETE FROM entry_tags 
+                WHERE entry_id NOT IN (SELECT id FROM tracking)
+            """)
+            stats['deleted_orphaned_tags'] = cursor.rowcount
+            
+            # 4. Lösche Tracking-Einträge mit ungültigen Daten
+            cursor.execute("""
+                DELETE FROM tracking 
+                WHERE date IS NULL 
+                OR date NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+            """)
+            stats['deleted_invalid_dates'] = cursor.rowcount
+            
+            # 5. VACUUM für Datenbank-Optimierung
+            cursor.execute("VACUUM")
+            
+            conn.commit()
+            conn.close()
+            
+            total_deleted = sum(stats.values())
+            message = f"Bereinigung abgeschlossen: {total_deleted} Einträge gelöscht"
+            
+            return True, message, stats
+            
+        except Exception as e:
+            return False, f"Fehler bei Bereinigung: {str(e)}", {}
+    
+    def get_database_statistics(self) -> dict:
+        """
+        Gibt Statistiken über die Datenbank zurück.
         
-        if include_budgets:
-            cur = self.conn.execute("SELECT year, month, typ, category, amount FROM budget")
-            data['budgets'] = [
-                {
-                    'year': row[0],
-                    'month': row[1],
-                    'typ': row[2],
-                    'category': row[3],
-                    'amount': float(row[4])
-                }
-                for row in cur.fetchall()
-            ]
+        Returns:
+            Dictionary mit Statistiken
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            
+            stats = {}
+            
+            # Dateigröße
+            stats['db_size_mb'] = round(os.path.getsize(self.db_path) / (1024 * 1024), 2)
+            
+            # Tabellen-Zählungen
+            tables = {
+                'categories': 'Kategorien',
+                'budget': 'Budget-Einträge',
+                'tracking': 'Buchungen',
+                'savings_goals': 'Sparziele',
+                'tags': 'Tags',
+                'recurring_transactions': 'Wiederkehrende Transaktionen'
+            }
+            
+            for table, label in tables.items():
+                try:
+                    cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                    stats[label] = cursor.fetchone()[0]
+                except sqlite3.OperationalError:
+                    stats[label] = 0
+            
+            # Jahre mit Daten
+            cursor.execute("SELECT DISTINCT year FROM budget ORDER BY year")
+            stats['Jahre'] = ", ".join(str(y[0]) for y in cursor.fetchall())
+            
+            conn.close()
+            return stats
+            
+        except Exception as e:
+            return {'Fehler': str(e)}
+    
+    def export_to_sql(self, output_path: str) -> Tuple[bool, str]:
+        """
+        Exportiert Datenbank als SQL-Dump.
         
-        if include_tracking:
-            cur = self.conn.execute("SELECT date, typ, category, amount, details FROM tracking")
-            data['tracking'] = [
-                {
-                    'date': row[0],
-                    'typ': row[1],
-                    'category': row[2],
-                    'amount': float(row[3]),
-                    'details': row[4]
-                }
-                for row in cur.fetchall()
-            ]
-        
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        Args:
+            output_path: Ziel-Dateipfad
+            
+        Returns:
+            (success, message)
+        """
+        try:
+            conn = sqlite3.connect(self.db_path)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for line in conn.iterdump():
+                    f.write(f'{line}\n')
+            
+            conn.close()
+            
+            return True, f"Export erfolgreich: {output_path}"
+            
+        except Exception as e:
+            return False, f"Fehler beim Export: {str(e)}"
+
+
+if __name__ == '__main__':
+    # Test
+    model = DatabaseManagementModel('test_budget.db')
+    
+    print("=== Database Statistics ===")
+    for key, value in model.get_database_statistics().items():
+        print(f"{key}: {value}")
+    
+    print("\n=== Available Backups ===")
+    for backup in model.get_available_backups():
+        print(f"{backup['filename']} - {backup['size_mb']} MB - {backup['created']}")
