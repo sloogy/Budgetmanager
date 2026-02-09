@@ -2,6 +2,7 @@ from __future__ import annotations
 import sqlite3
 import sys
 from datetime import date
+from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QMenuBar, QMenu, QMessageBox,
     QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication
@@ -11,6 +12,7 @@ from PySide6.QtCore import Qt, QTimer, QRect
 from PySide6.QtGui import QScreen
 
 from model.category_model import CategoryModel
+from model.undo_redo_model import UndoRedoModel
 from views.tabs.tracking_tab import TrackingTab
 from views.tabs.categories_tab import CategoriesTab
 from views.tabs.budget_tab import BudgetTab
@@ -81,6 +83,9 @@ class MainWindow(QMainWindow):
         # Einstellungen laden
         self.settings = Settings()
         
+        # Undo/Redo
+        self.undo_redo = UndoRedoModel(conn)
+
         # Theme Manager initialisieren
         self.theme_manager = ThemeManager(self.settings)
         
@@ -108,6 +113,12 @@ class MainWindow(QMainWindow):
         self.budget_tab.quick_add_requested.connect(self._show_quick_add)
         self.categories_tab.quick_add_requested.connect(self._show_quick_add)
         self.overview_tab.quick_add_requested.connect(self._show_quick_add)
+        
+        # Settings-Checkboxen mit Settings synchronisieren
+        if hasattr(self.budget_tab, 'chk_autosave'):
+            self.budget_tab.chk_autosave.toggled.connect(self._on_autosave_changed)
+        if hasattr(self.budget_tab, 'chk_ask_due'):
+            self.budget_tab.chk_ask_due.toggled.connect(self._on_ask_due_changed)
         
         # Tab-Definitionen (Index -> Widget, Name)
         self._tab_definitions = {
@@ -423,6 +434,12 @@ class MainWindow(QMainWindow):
         shortcuts_action.triggered.connect(self._show_shortcuts)
         help_menu.addAction(shortcuts_action)
         
+        # Erste Schritte / Setup-Assistent
+        setup_action = QAction("🧭 &Erste Schritte...", self)
+        setup_action.setStatusTip("Startet den Setup-Assistenten (First-Start-Guide)")
+        setup_action.triggered.connect(lambda: self._start_setup_assistant(force=True))
+        help_menu.addAction(setup_action)
+        
         help_menu.addSeparator()
         
         # Über
@@ -442,6 +459,14 @@ class MainWindow(QMainWindow):
         # Tracking-Tab
         if hasattr(self.tracking_tab, 'set_recent_days'):
             self.tracking_tab.set_recent_days(self.settings.recent_days)
+    
+    def _on_autosave_changed(self, checked: bool):
+        """Speichert Auto-Save Einstellung wenn Checkbox geändert wird"""
+        self.settings.auto_save = checked
+        
+    def _on_ask_due_changed(self, checked: bool):
+        """Speichert Ask-Due Einstellung wenn Checkbox geändert wird"""
+        self.settings.ask_due = checked
     
     def _load_tab_order(self):
         """Lädt Tabs in der gespeicherten Reihenfolge"""
@@ -672,6 +697,23 @@ class MainWindow(QMainWindow):
     def _setup_edit_menu(self):
         """Erstellt das Bearbeiten-Menü mit allen möglichen Actions"""
         self.edit_menu.clear()
+
+        # Undo/Redo (immer verfügbar)
+        self.undo_action = QAction("↩️ &Undo", self)
+        self.undo_action.setShortcut(QKeySequence.Undo)
+        self.undo_action.setShortcutContext(Qt.ApplicationShortcut)
+        self.undo_action.triggered.connect(self._undo_global)
+        self.edit_menu.addAction(self.undo_action)
+
+        self.redo_action = QAction("↪️ &Redo", self)
+        self.redo_action.setShortcuts([QKeySequence.Redo, QKeySequence("Ctrl+Shift+Z")])
+        self.redo_action.setShortcutContext(Qt.ApplicationShortcut)
+        self.redo_action.triggered.connect(self._redo_global)
+        self.edit_menu.addAction(self.redo_action)
+
+        self.edit_menu.addSeparator()
+
+        self._update_undo_redo_actions()
         
         # === ALLGEMEINE AKTIONEN (immer sichtbar) ===
         self._edit_actions_general = []
@@ -793,6 +835,9 @@ class MainWindow(QMainWindow):
     def _on_tab_changed(self, index: int):
         """Wird aufgerufen wenn Tab gewechselt wird"""
         self._update_edit_menu()
+        self._update_undo_redo_actions()
+
+
     
     def _update_edit_menu(self):
         """Aktualisiert die Sichtbarkeit der Bearbeiten-Menü-Einträge"""
@@ -829,6 +874,8 @@ class MainWindow(QMainWindow):
         # Allgemeine Aktionen aktivieren für andere Tabs
         for action in self._edit_actions_general:
             action.setEnabled(True)
+
+        self._update_undo_redo_actions()
     
     # --- Bearbeiten-Menü Handler ---
     def _edit_add(self):
@@ -1040,6 +1087,24 @@ class MainWindow(QMainWindow):
             elif hasattr(tab, 'load'):
                 tab.load()
         self.statusBar().showMessage("Alle Tabs aktualisiert", 2000)
+
+
+    def _update_undo_redo_actions(self) -> None:
+        """Aktiviert/Deaktiviert Undo/Redo je nach Stack."""
+        if hasattr(self, "undo_action"):
+            self.undo_action.setEnabled(self.undo_redo.can_undo())
+        if hasattr(self, "redo_action"):
+            self.redo_action.setEnabled(self.undo_redo.can_redo())
+
+    def _undo_global(self) -> None:
+        if self.undo_redo.undo():
+            self._refresh_all_tabs()
+        self._update_undo_redo_actions()
+
+    def _redo_global(self) -> None:
+        if self.undo_redo.redo():
+            self._refresh_all_tabs()
+        self._update_undo_redo_actions()
 
     def _set_current_year(self):
         """Setzt in allen Tabs das aktuelle Jahr"""
@@ -1275,31 +1340,69 @@ class MainWindow(QMainWindow):
         # Tab-Reihenfolge speichern
         self._save_tab_order()
         
-        # Bestätigung vor dem Schließen
+        # Wenn Auto-Save aktiv: Einfach speichern und schließen
+        if hasattr(self, 'settings') and self.settings.auto_save:
+            try:
+                self.budget_tab.save()
+            except Exception:
+                pass  # Fehler ignorieren beim Schließen
+            event.accept()
+            return
+        
+        # Wenn Auto-Save nicht aktiv: Einmal fragen ob gespeichert werden soll
         reply = QMessageBox.question(
             self,
             "Beenden",
-            "Möchten Sie den Budgetmanager wirklich beenden?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            "Möchten Sie das Budget vor dem Beenden speichern?",
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            QMessageBox.Save
         )
         
-        if reply == QMessageBox.Yes:
-            # Speichern falls nötig
-            if hasattr(self, 'settings') and not self.settings.auto_save:
-                reply2 = QMessageBox.question(
-                    self,
-                    "Speichern",
-                    "Möchten Sie das Budget vor dem Beenden noch speichern?",
-                    QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
-                    QMessageBox.Yes
-                )
-                if reply2 == QMessageBox.Cancel:
-                    event.ignore()
-                    return
-                elif reply2 == QMessageBox.Yes:
-                    self.budget_tab.save()
-            
+        if reply == QMessageBox.Save:
+            try:
+                self.budget_tab.save()
+            except Exception:
+                pass
             event.accept()
-        else:
+        elif reply == QMessageBox.Discard:
+            event.accept()
+        else:  # Cancel
             event.ignore()
+
+    # =========================================================================
+    # Setup-Assistent / Onboarding
+    # =========================================================================
+    def _start_setup_assistant(self, *, force: bool = False, db_existed_before: bool | None = None) -> None:
+        """Startet den First-Start-Guide (Setup-Assistent).
+        
+        Args:
+            force: True = immer starten (z.B. aus Menü), False = nur wenn Bedingungen erfüllt
+            db_existed_before: Optional, ob die DB vor dem Start schon existierte
+        """
+        try:
+            from views.setup_assistant_dialog import SetupAssistantDialog
+
+            # Autostart: nur wenn aktiviert und noch nicht abgeschlossen
+            if not force:
+                if not bool(self.settings.get("show_onboarding", True)):
+                    return
+                if bool(self.settings.get("setup_completed", False)):
+                    return
+
+            # db_existed_before: idealerweise aus main.py (vor open_db) übergeben
+            db_existed = True
+            if db_existed_before is not None:
+                db_existed = bool(db_existed_before)
+            else:
+                try:
+                    db_path = Path(self.settings.get("database_path", "budgetmanager.db")).expanduser()
+                    db_existed = db_path.exists()
+                except Exception:
+                    db_existed = True
+
+            dlg = SetupAssistantDialog(self, self.conn, self.settings, db_existed_before=db_existed)
+            dlg.show()
+            dlg.raise_()
+            dlg.activateWindow()
+        except Exception as e:
+            QMessageBox.critical(self, "Fehler", f"Setup-Assistent konnte nicht gestartet werden:\n{e}")

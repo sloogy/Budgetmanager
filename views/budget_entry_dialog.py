@@ -86,6 +86,8 @@ class BudgetEntryDialog(QDialog):
 
         self.category = QComboBox()
         self.category.setEditable(True)
+        # Autofilter/Completer deaktivieren - nur manuelle Auswahl
+        self.category.setCompleter(None)
         self._set_categories(categories)
 
         self.amount = QLineEdit()
