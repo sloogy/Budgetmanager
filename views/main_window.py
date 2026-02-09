@@ -1245,8 +1245,8 @@ class MainWindow(QMainWindow):
         db_path = self.settings.database_path
         dialog = BackupRestoreDialog(self, self.conn, db_path, self.settings)
         result = dialog.exec()
-        # Falls Datenbank restored wurde, sollte App neu gestartet werden
-        if result == QDialog.Accepted:
+        # Nur dann Neustart verlangen, wenn die aktive DB wirklich ersetzt wurde
+        if result == QDialog.Accepted and getattr(dialog, "db_changed", False):
             QMessageBox.information(
                 self,
                 "Neustart erforderlich",
@@ -1262,18 +1262,21 @@ class MainWindow(QMainWindow):
         self._refresh_all_tabs()
     
     def _refresh_all_tabs(self):
-        """Aktualisiert alle Tabs nach Kategorien-Änderungen."""
+        """Aktualisiert alle Tabs nach Änderungen.
+
+        Wichtig: Tabs implementieren nicht einheitlich `load()`.
+        Für Stabilität bevorzugen wir `refresh()` und fallen auf `load()` zurück.
+        """
         try:
-            if hasattr(self.budget_tab, 'load'):
-                self.budget_tab.load()
-            if hasattr(self.tracking_tab, 'load'):
-                self.tracking_tab.load()
-            if hasattr(self.categories_tab, 'load'):
-                self.categories_tab.load()
-            if hasattr(self.overview_tab, 'load'):
-                self.overview_tab.load()
+            for tab in [self.budget_tab, self.categories_tab, self.tracking_tab, self.overview_tab]:
+                if hasattr(tab, 'refresh'):
+                    tab.refresh()
+                elif hasattr(tab, 'load'):
+                    tab.load()
         except Exception:
-            pass  # Fehler ignorieren
+            # Refresh darf nie die UI killen, aber wir wollen wenigstens eine Spur im Terminal.
+            import traceback
+            traceback.print_exc()
     
     def _show_theme_profiles(self):
         """Zeigt Erscheinungsprofile Dialog"""
