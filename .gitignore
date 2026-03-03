@@ -34,3 +34,5 @@ budgetmanager_settings.json
 
 # local work folder
 bm_work/
+
+.wget-hsts
