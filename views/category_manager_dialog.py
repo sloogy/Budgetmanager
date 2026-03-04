@@ -234,13 +234,13 @@ class CategoryManagerDialog(QDialog):
             type_item.setForeground(0, QBrush(type_colors.get(typ, QColor(c.text))))
             
             # Kategorien nach Parent gruppieren
-            root_cats = [c for c in cats if not c.parent_id]
+            root_cats = [cat for cat in cats if not cat.parent_id]
             child_map = {}
-            for c in cats:
-                if c.parent_id:
-                    if c.parent_id not in child_map:
-                        child_map[c.parent_id] = []
-                    child_map[c.parent_id].append(c)
+            for cat in cats:
+                if cat.parent_id:
+                    if cat.parent_id not in child_map:
+                        child_map[cat.parent_id] = []
+                    child_map[cat.parent_id].append(cat)
             
             def add_category(cat: Category, parent_item: QTreeWidgetItem):
                 item = QTreeWidgetItem(parent_item)
