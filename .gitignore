@@ -1,18 +1,33 @@
-# --- AI runtime/state (nicht versionieren) ---
+# =============================================================
+# BudgetManager — .gitignore
+# =============================================================
+
+# --- AI-Tools & Agent-State (NICHT versionieren) ---
 .ai/
-.ai/**
-
-
-
-# Falls du Gemini local state hast (nur wenn es runtime ist)
+.claude/
 .gemini/
-.gemini/**
 .codex/
-.codex/**
+.copilot/
+.cursor/
+
+# AI-Markdown-Artefakte
+AGENTS.md
+CLAUDE.md
+SUMMARY.md
+ANALYSE_*.md
+ANALYSYS_*.md
+UI_KONSISTENZ_ANALYSE.md
+BUGFIX*.md
+BUGFIX_COMPLETED.md
+*_ANALYSE.md
+*_ANALYSIS.md
+last_review.md
+.ai_dispatch/
 
 # --- Python ---
 __pycache__/
 *.py[cod]
+*.pyo
 .venv/
 venv/
 .env
@@ -20,25 +35,24 @@ venv/
 # --- Build/Packaging ---
 build/
 dist/
-*.spec
+# *.spec ist NICHT ignoriert – wird für GitHub Actions benötigt!
 
 # --- Logs/Temp ---
 *.log
 *.tmp
 .DS_Store
+Thumbs.db
 
-# Backups / Exports
+# --- Backups / Exports ---
 data/backups/
 *.bmr
 
-# --- Data: User-spezifische Dateien (NICHT versionieren) ---
-data/*.enc          # Verschlüsselte Datenbank (persönliche Daten!)
-data/users.json     # Benutzerkonten
-data/budgetmanager_settings.json  # Lokale Einstellungen
+# --- Data: User-spezifische Dateien (persönliche Daten!) ---
+data/*.enc
+data/users.json
+data/budgetmanager_settings.json
+budgetmanager_settings.json
 data/*.log
 data/*crash*.log
 data/i18n_audit_report.txt
 data/*.txt
-
-# Spec-Datei versionieren (wird für GitHub Actions Build benötigt)
-# *.spec  ← bewusst auskommentiert

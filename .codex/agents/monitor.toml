@@ -1,7 +1,0 @@
-# Monitor role (read-only; long polling)
-sandbox_mode = "read-only"
-model_reasoning_effort = "minimal"
-developer_instructions = """
-You are a monitor. Your job is to wait and report status.
-If tests/build are running, poll periodically and summarize progress.
-"""
