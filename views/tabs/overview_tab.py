@@ -209,6 +209,7 @@ class OverviewTab(QWidget):
         self.budget_tabs.addTab(self.budget_panel.w_budget_table,    tr("tab.budget_table"))
         # Tab 4: Sparziele
         self.budget_tabs.addTab(self.savings_panel,                  tr("tab.savings"))
+        self.budget_tabs.setTabVisible(4, False)  # Sparziele jetzt als eigener Haupt-Tab
 
         bg_layout.addWidget(self.budget_tabs)
         left_layout.addWidget(self.budget_group)

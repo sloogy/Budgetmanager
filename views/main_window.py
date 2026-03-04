@@ -36,6 +36,7 @@ from views.shortcuts_dialog import ShortcutsDialog
 from views.tabs.budget_tab import BudgetTab
 from views.tabs.categories_tab import CategoriesTab
 from views.tabs.overview_tab import OverviewTab
+from views.tabs.overview_savings_panel import OverviewSavingsPanel
 from views.tabs.tracking_tab import TrackingTab
 from views.tags_manager_dialog import TagsManagerDialog
 from views.update_dialog import UpdateDialog
@@ -136,6 +137,7 @@ class MainWindow(QMainWindow):
         self.categories_tab = CategoriesTab(conn)
         self.tracking_tab = TrackingTab(conn, settings=self.settings)
         self.overview_tab = OverviewTab(conn, settings=self.settings)
+        self.savings_tab = OverviewSavingsPanel(conn)
         
         # Schnelleingabe-Signals von Tabs verbinden
         self.budget_tab.quick_add_requested.connect(self._show_quick_add)
@@ -167,12 +169,14 @@ class MainWindow(QMainWindow):
             1: ("fixed", tr("tab.categories")),
             2: ("fixed", tr("tab.tracking")),
             3: ("tr", "tab.overview"),
+            4: ("tr", "tab.savings"),
         }
         self._tab_definitions = {
             0: (self.budget_tab, tr("tab.budget")),
             1: (self.categories_tab, tr("tab.categories")),
             2: (self.tracking_tab, tr("tab.tracking")),
             3: (self.overview_tab, tr("tab.overview")),
+            4: (self.savings_tab, tr("tab.savings")),
         }
         
         # Tabs in gespeicherter Reihenfolge hinzufügen
@@ -707,9 +711,9 @@ class MainWindow(QMainWindow):
         show_categories = self.settings.show_categories_tab
         
         # Validierung: Stelle sicher, dass alle Indizes vorhanden sind
-        all_ids = {0, 1, 2, 3}
+        all_ids = {0, 2, 3, 4}
         if not saved_order or not all_ids.issubset(set(saved_order) | {1}):  # 1 kann fehlen
-            saved_order = [0, 1, 2, 3]
+            saved_order = [0, 1, 2, 3, 4]
         
         # Tabs in gespeicherter Reihenfolge hinzufügen
         for tab_id in saved_order:
@@ -729,6 +733,8 @@ class MainWindow(QMainWindow):
                 self.tabs.setTabIcon(i, get_icon("📁"))
             elif widget is self.tracking_tab:
                 self.tabs.setTabIcon(i, get_icon("📊"))
+            elif hasattr(self, "savings_tab") and widget is self.savings_tab:
+                self.tabs.setTabIcon(i, get_icon("🎯"))
             else:
                 self.tabs.setTabIcon(i, QIcon())
     
@@ -813,7 +819,7 @@ class MainWindow(QMainWindow):
         show_categories = self.settings.show_categories_tab
         
         # Tabs in Standardreihenfolge hinzufügen
-        default_order = [0, 1, 2, 3]
+        default_order = [0, 1, 2, 3, 4]
         for tab_id in default_order:
             # Kategorien-Tab überspringen wenn nicht aktiviert
             if tab_id == 1 and not show_categories:
@@ -1015,6 +1021,8 @@ class MainWindow(QMainWindow):
                     self.overview_tab.refresh_data()
                 elif hasattr(self.overview_tab, "refresh"):
                     self.overview_tab.refresh()
+            if hasattr(self, "savings_tab") and hasattr(self.savings_tab, "refresh"):
+                self.savings_tab.refresh()
         except Exception as e:
             logger.debug("if hasattr(self, 'tracking_tab') and hasattr(self.: %s", e)
 
