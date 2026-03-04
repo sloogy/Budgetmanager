@@ -1,0 +1,23 @@
+I18N CHECK
+==========
+Status: WARN (fr.json incomplete)
+Date: 2026-03-04
+
+Command: python ai/i18n_check.py
+
+Results:
+- de.json: 1171 keys — 0 missing, 0 extra — OK
+- en.json: 1171 keys — 0 missing, 0 extra — OK
+- fr.json: 1155 keys — 16 missing, 0 extra — INCOMPLETE
+
+Missing keys in fr.json (sample):
+  create_user.btn_create
+  create_user.display_name_label
+  create_user.first_user_info
+  create_user.password_label
+  create_user.password_placeholder
+  create_user.password_repeat_placeholder
+  create_user.pin_label
+  create_user.pin_placeholder
+  create_user.pin_repeat_label
+  create_user.pin_repeat_placeholder

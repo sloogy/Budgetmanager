@@ -1,0 +1,27 @@
+# Auto-generated mapping for default category display names
+
+DEFAULT_CATEGORY_NAME_TO_KEY = {
+    'Lohn (Netto)': 'cat.default.01',
+    'Nebenerweb': 'cat.default.02',
+    'Alimente (Netto)': 'cat.default.03',
+    'Miete': 'cat.default.04',
+    'Strom': 'cat.default.05',
+    'Telefonie Internet TV': 'cat.default.06',
+    'Natel': 'cat.default.07',
+    'Streaming & Computer Abos': 'cat.default.08',
+    'SERAFE': 'cat.default.09',
+    'Steuern': 'cat.default.10',
+    'Krankenkasse': 'cat.default.11',
+    'Rechtschutzz': 'cat.default.12',
+    'Hausrat': 'cat.default.13',
+    'Haftpflicht': 'cat.default.14',
+    'KFZ Rückzahlung': 'cat.default.15',
+    'Tirza Jugendlohn.': 'cat.default.16',
+    'Freizeit': 'cat.default.17',
+    'ÖV / Sprit': 'cat.default.18',
+    'Nahrungsmittel': 'cat.default.19',
+    'Ferien': 'cat.default.20',
+    'Rücklagen': 'cat.default.21',
+    'Sonderanschaffungen': 'cat.default.22',
+    '3. Säule': 'cat.default.23',
+}

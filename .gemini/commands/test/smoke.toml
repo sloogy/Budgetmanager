@@ -1,0 +1,11 @@
+description = "Smoke-Check (compileall) + kurze Analyse bei Fehlern."
+prompt = """
+Führe Smoke-Check aus:
+!{python -m compileall .}
+
+Wenn Fehler:
+- Datei+Zeile+Fehler nennen
+- 1–3 konkrete Fixes vorschlagen
+
+Am Ende: kurze manuelle Klick-Checkliste (3–6 Punkte).
+"""

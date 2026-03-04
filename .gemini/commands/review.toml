@@ -1,0 +1,19 @@
+description = "Review: Risiken/Qualität. Optionaler Fokus via {{args}}."
+prompt = """
+Du bist ein strenger Code-Reviewer.
+
+Projektregeln:
+@{AGENTS.md}
+
+Review-Fokus: {{args}}
+
+Aktueller Diff:
+```diff
+!{git --no-pager diff}
+```
+
+Gib:
+1) Top 5 Risiken/Bugs (konkret: Datei + Funktion)
+2) 3 minimal-invasive Verbesserungen
+3) Test-Empfehlung
+"""

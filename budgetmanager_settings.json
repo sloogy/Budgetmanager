@@ -1,0 +1,17 @@
+{
+  "theme": "dark",
+  "auto_save": true,
+  "ask_due": true,
+  "window_width": 2560,
+  "window_height": 1370,
+  "last_budget_year": null,
+  "last_overview_year": null,
+  "refresh_on_start": true,
+  "recent_days": 30,
+  "tab_order": [
+    2,
+    0,
+    1,
+    3
+  ]
+}

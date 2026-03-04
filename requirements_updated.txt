@@ -1,0 +1,17 @@
+# Core Dependencies
+PySide6>=6.6.0          # Qt für Python - UI Framework
+openpyxl>=3.1.0         # Excel-Export Funktionalität
+
+# Update-Tool Dependencies
+requests>=2.31.0        # HTTP-Requests für Update-Prüfung
+packaging>=23.0         # Version Parsing
+
+# Optional: Für erweiterte Features
+matplotlib>=3.7.0       # Diagramme und Visualisierungen (optional)
+
+# Development Dependencies (nur für Entwicklung)
+# Uncomment wenn benötigt:
+# pyinstaller>=6.0.0    # Windows EXE erstellen
+# pytest>=7.4.0         # Testing
+# black>=23.0.0         # Code Formatting
+# mypy>=1.5.0           # Type Checking

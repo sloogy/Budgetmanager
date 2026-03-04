@@ -1,0 +1,30 @@
+# Project-scoped Codex config (loaded only when project is trusted)
+# Token-sparend + Multi-agents
+
+model_verbosity = "low"
+model_reasoning_summary = "none"
+model_reasoning_effort = "low"
+
+approval_policy = "never"
+sandbox_mode = "workspace-write"
+
+agents.max_threads = 4
+agents.max_depth = 1
+
+# Treat this folder as root even without .git
+project_root_markers = [".git", "AGENTS.md", "main.py", "requirements.txt"]
+
+[features]
+multi_agent = true
+
+[agents.explorer]
+description = "Read-only explorer: find relevant files, produce file list + plan."
+config_file = "agents/explorer.toml"
+
+[agents.worker]
+description = "Implementation worker: apply minimal code changes, run smoke."
+config_file = "agents/worker.toml"
+
+[agents.reviewer]
+description = "Reviewer: check diff for risks, missing i18n keys, regressions."
+config_file = "agents/reviewer.toml"

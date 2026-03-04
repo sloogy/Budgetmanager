@@ -1,0 +1,21 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "teammateMode": "in-process",
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "async": true,
+            "statusMessage": "Auto-dispatch (Codex/Gemini)…",
+            "command": "bash $CLAUDE_PROJECT_DIR/.claude/hooks/dispatch.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

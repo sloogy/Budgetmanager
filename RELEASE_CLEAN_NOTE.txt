@@ -1,0 +1,6 @@
+Diese Release-Kopie wurde automatisch bereinigt:
+- __pycache__/ und *.pyc entfernt
+- budgetmanager.db entfernt (wird beim Start neu erstellt)
+- budgetmanager_settings.json entfernt (wird beim Start mit Defaults neu erstellt)
+
+Hinweis: Build-Skripte/Installer können noch Versions-/Icon-Themen enthalten (siehe Analyse im Chat).

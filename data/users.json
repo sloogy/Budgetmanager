@@ -1,0 +1,17 @@
+{
+  "users": [
+    {
+      "username": "c",
+      "display_name": "c.",
+      "security": "quick",
+      "salt_hex": "95de02a7c91c5deb0befc42886a8b045",
+      "db_filename": "c.enc",
+      "created": "2026-03-02T11:16:28.650884",
+      "db_key_b64": "HK7izm8oiWvDr9IGsNh_UeZCxFcnKVq2zXIU9aeOrcg=",
+      "wrapped_db_key_b64": "",
+      "pw_hash": "",
+      "restore_key_offered": false,
+      "is_default": true
+    }
+  ]
+}
