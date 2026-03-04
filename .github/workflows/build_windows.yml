@@ -1,0 +1,63 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "dev", "beta", "main" ]
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path "requirements.txt") { pip install -r requirements.txt }
+          elseif (Test-Path "requirements_updated.txt") { pip install -r requirements_updated.txt }
+          else { throw "No requirements*.txt found" }
+          pip install pyinstaller
+
+      - name: Build (PyInstaller spec)
+        shell: pwsh
+        run: |
+          pyinstaller --clean --noconfirm BudgetManager.spec
+
+      # Artefakt immer hochladen (auch bei branch pushes)
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BudgetManager-windows-dist
+          path: dist/**
+
+      # Bei Tags: dist zippen (one zip)
+      - name: Zip dist (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $zip = "BudgetManager-$tag-windows.zip"
+          Compress-Archive -Path "dist\*" -DestinationPath $zip -Force
+          echo "ZIP_NAME=$zip" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      # Bei Tags: Release erstellen + ZIP anhängen
+      - name: Create GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ env.ZIP_NAME }}
