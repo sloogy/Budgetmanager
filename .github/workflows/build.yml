@@ -60,13 +60,7 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}
 
-      - name: Upload to Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ matrix.artifact_name }}
-          generate_release_notes: true
-
-  # ── Job 3: latest.json generieren & hochladen ────────────────────────
+  # ── Job 3: ZIP + latest.json generieren & hochladen ──────────────────
   manifest:
     needs: build
     runs-on: ubuntu-latest
@@ -87,19 +81,55 @@ jobs:
           name: BudgetManager-linux
           path: artifacts/
 
-      - name: Generate latest.json
+      - name: Build portable ZIP + latest.json
         shell: bash
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+          ZIP_NAME="BudgetManager-${TAG}-portable.zip"
 
-          WIN_FILE="artifacts/BudgetManager-windows.exe"
-          LIN_FILE="artifacts/BudgetManager-linux"
+          # ── Ordnerstruktur aufbauen ──────────────────────────────────
+          mkdir -p portable/data/backups
 
-          WIN_SHA=$(sha256sum "$WIN_FILE" | awk '{print $1}')
-          LIN_SHA=$(sha256sum "$LIN_FILE" | awk '{print $1}')
+          # Executables
+          cp artifacts/BudgetManager-windows.exe portable/BudgetManager-windows.exe
+          cp artifacts/BudgetManager-linux        portable/BudgetManager-linux
+          chmod +x portable/BudgetManager-linux
 
+          # Platzhalter damit data/ nicht leer ist
+          touch portable/data/.keep
+          touch portable/data/backups/.keep
+
+          # Linux-Starter-Skript (setzt chmod und startet)
+          cat > portable/start-linux.sh <<'STARTER'
+          #!/usr/bin/env bash
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          chmod +x "$DIR/BudgetManager-linux"
+          exec "$DIR/BudgetManager-linux" "$@"
+          STARTER
+          chmod +x portable/start-linux.sh
+
+          # README
+          cat > portable/README.txt <<RDME
+          BudgetManager ${VERSION} — Portable
+          =====================================
+          Windows : Doppelklick auf BudgetManager-windows.exe
+          Linux   : ./start-linux.sh  (oder chmod +x BudgetManager-linux && ./BudgetManager-linux)
+
+          Daten (DB, Einstellungen, Backups) werden in ./data/ gespeichert.
+          Stick einfach mitnehmen — alles bleibt portabel.
+          RDME
+
+          # ── ZIP erstellen ────────────────────────────────────────────
+          cd portable && zip -r "../${ZIP_NAME}" . && cd ..
+
+          # ── SHA256 berechnen ─────────────────────────────────────────
+          WIN_SHA=$(sha256sum "artifacts/BudgetManager-windows.exe" | awk '{print $1}')
+          LIN_SHA=$(sha256sum "artifacts/BudgetManager-linux"        | awk '{print $1}')
+          ZIP_SHA=$(sha256sum "${ZIP_NAME}"                           | awk '{print $1}')
+
+          # ── latest.json schreiben ────────────────────────────────────
           cat > latest.json <<EOF
           {
             "app": "Budgetmanager",
@@ -116,15 +146,26 @@ jobs:
                 "type": "portable",
                 "url": "${BASE}/BudgetManager-linux",
                 "sha256": "${LIN_SHA}"
+              },
+              "portable_zip": {
+                "type": "portable-zip",
+                "url": "${BASE}/${ZIP_NAME}",
+                "sha256": "${ZIP_SHA}"
               }
             }
           }
           EOF
 
-          echo "Generated latest.json:"
+          echo "ZIP: ${ZIP_NAME}"
+          echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
           cat latest.json
 
-      - name: Upload latest.json to Release
+      - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
-          files: latest.json
+          generate_release_notes: true
+          files: |
+            artifacts/BudgetManager-windows.exe
+            artifacts/BudgetManager-linux
+            ${{ env.ZIP_NAME }}
+            latest.json
