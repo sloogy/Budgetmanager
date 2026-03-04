@@ -216,8 +216,8 @@ class MainWindow(QMainWindow):
         if self.settings.refresh_on_start:
             self._refresh_all_tabs()
 
-        # Auto-Backup prüfen (wenn aktiviert)
-        self._check_auto_backup()
+        # Auto-Backup wird via QTimer.singleShot aus main.py gestartet,
+        # damit _encrypted_session korrekt gesetzt ist.
     
     def _restore_window_state(self):
         """Stellt Fenster-Größe, -Position und -Status wieder her"""

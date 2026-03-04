@@ -318,6 +318,10 @@ def main() -> int:
             save_timer.start(5 * 60 * 1000)
             win._save_timer = save_timer
 
+        # Auto-Backup nach Event-Loop-Start prüfen (nicht in __init__,
+        # damit _encrypted_session korrekt gesetzt ist und kein Access Violation entsteht)
+        QTimer.singleShot(500, win._check_auto_backup)
+
         win.show()
 
         # Setup-Assistent
