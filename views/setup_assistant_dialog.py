@@ -18,6 +18,7 @@ from views.budget_fill_dialog import BudgetFillDialog
 from model.category_model import CategoryModel
 from model.budget_model import BudgetModel
 from model.tracking_model import TrackingModel
+from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 
@@ -180,9 +181,11 @@ class SetupAssistantDialog(QDialog):
         # Restore + Reset buttons
         from PySide6.QtWidgets import QPushButton, QHBoxLayout
         btn_row = QHBoxLayout()
-        btn_restore = QPushButton("💾 " + tr("setup.setup_db_restore"))
+        btn_restore = QPushButton(tr("setup.setup_db_restore"))
+        btn_restore.setIcon(get_icon("💾"))
         btn_restore.clicked.connect(self._do_restore_backup)
-        btn_reset = QPushButton("🗑️ " + tr("setup.setup_db_reset"))
+        btn_reset = QPushButton(tr("setup.setup_db_reset"))
+        btn_reset.setIcon(get_icon("🗑️"))
         btn_reset.clicked.connect(self._do_reset_database)
         btn_row.addWidget(btn_restore)
         btn_row.addWidget(btn_reset)

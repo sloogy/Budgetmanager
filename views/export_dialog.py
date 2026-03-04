@@ -14,6 +14,7 @@ from model.tracking_model import TrackingModel
 
 
 import logging
+from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 logger = logging.getLogger(__name__)
@@ -61,7 +62,7 @@ class ExportDialog(QDialog):
         self.chk_budget.setChecked(True)
         data_layout.addWidget(self.chk_budget)
         
-        self.chk_categories = QCheckBox("📁 Kategorien")
+        self.chk_categories = QCheckBox("Kategorien")
         data_layout.addWidget(self.chk_categories)
         
         data_group.setLayout(data_layout)
@@ -107,7 +108,8 @@ class ExportDialog(QDialog):
         # === BUTTONS ===
         btn_layout = QHBoxLayout()
         
-        self.btn_export = QPushButton("📤 Exportieren...")
+        self.btn_export = QPushButton("Exportieren...")
+        self.btn_export.setIcon(get_icon("📤"))
         self.btn_export.clicked.connect(self._do_export)
         btn_layout.addWidget(self.btn_export)
         

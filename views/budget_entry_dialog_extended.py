@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from model.category_model import CategoryModel, Category
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from utils.icons import get_icon
 
 def _get_months():
     """Gibt die lokalisierten Monatskurzbezeichnungen zurück."""
@@ -214,19 +215,23 @@ class CategoryManagementWidget(QWidget):
         
         # Management-Button mit Menü
         self.btn_manage = QToolButton()
-        self.btn_manage.setText("⚙")
+        self.btn_manage.setText("")
+        self.btn_manage.setIcon(get_icon("⚙️"))
         self.btn_manage.setToolTip("Kategorie-Optionen")
         self.btn_manage.setPopupMode(QToolButton.InstantPopup)
         
         menu = QMenu(self.btn_manage)
         self.act_new = menu.addAction(tr("budget.ctx.new_category"))
-        self.act_new_sub = menu.addAction("📂 Neue Unterkategorie…")
+        self.act_new_sub = menu.addAction("Neue Unterkategorie…")
+        self.act_new_sub.setIcon(get_icon("📂"))
         menu.addSeparator()
         self.act_rename = menu.addAction(tr("budget.ctx.rename"))
         self.act_delete = menu.addAction(tr("btn.loeschen_2"))
         menu.addSeparator()
-        self.act_toggle_fix = menu.addAction("📌 Fixkosten umschalten")
-        self.act_toggle_rec = menu.addAction("🔁 Wiederkehrend umschalten")
+        self.act_toggle_fix = menu.addAction("Fixkosten umschalten")
+        self.act_toggle_fix.setIcon(get_icon("📌"))
+        self.act_toggle_rec = menu.addAction("Wiederkehrend umschalten")
+        self.act_toggle_rec.setIcon(get_icon("🔁"))
         self.act_set_day = menu.addAction(tr("dlg.faelligkeitstag_setzen_1"))
         
         self.btn_manage.setMenu(menu)

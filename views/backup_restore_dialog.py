@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from model.app_paths import resolve_in_app
+from utils.icons import get_icon
 
 logger = logging.getLogger(__name__)
 
@@ -52,18 +53,25 @@ class BackupRestoreDialog(QDialog):
         self.resize(600, 400)
         
         # UI Elemente
-        self.btn_create_backup = QPushButton("💾 " + tr("btn.create_backup"))
-        self.btn_restore = QPushButton("📥 " + tr("backup.btn_restore"))
-        self.btn_export = QPushButton("📤 " + tr("backup.btn_export"))
-        self.btn_import = QPushButton("📁 " + tr("backup.btn_import"))
-        self.btn_delete = QPushButton("🗑 " + tr("btn.backup_loeschen"))
-        self.btn_reset_db = QPushButton("🔄 " + tr("dlg.datenbank_zuruecksetzen"))
+        self.btn_create_backup = QPushButton(tr("btn.create_backup"))
+        self.btn_create_backup.setIcon(get_icon("💾"))
+        self.btn_restore = QPushButton(tr("backup.btn_restore"))
+        self.btn_restore.setIcon(get_icon("📥"))
+        self.btn_export = QPushButton(tr("backup.btn_export"))
+        self.btn_export.setIcon(get_icon("📤"))
+        self.btn_import = QPushButton(tr("backup.btn_import"))
+        self.btn_import.setIcon(get_icon("📁"))
+        self.btn_delete = QPushButton(tr("btn.backup_loeschen"))
+        self.btn_delete.setIcon(get_icon("🗑"))
+        self.btn_reset_db = QPushButton(tr("dlg.datenbank_zuruecksetzen"))
+        self.btn_reset_db.setIcon(get_icon("🔄"))
         self.btn_emergency_reset = QPushButton(tr("backup.btn_emergency_reset"))
         self.btn_emergency_reset.setToolTip(
             tr("backup.emergency_tooltip")
         )
         self.btn_emergency_reset.setStyleSheet(f"color: {ui_colors(self).negative}; font-weight: bold;")
-        self.btn_close = QPushButton("✕ " + tr("btn.close"))
+        self.btn_close = QPushButton(tr("btn.close"))
+        self.btn_close.setIcon(get_icon("✗"))
         
         # Liste der Backups
         self.backup_list = QListWidget()

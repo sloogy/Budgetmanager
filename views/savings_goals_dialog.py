@@ -18,6 +18,7 @@ from model.savings_goals_model import (
     STATUS_LABELS, STATUS_ICONS,
 )
 from model.category_model import CategoryModel
+from utils.icons import get_icon
 from utils.money import format_money, get_symbol, currency_header
 from views.ui_colors import ui_colors
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
@@ -38,13 +39,17 @@ class SavingsGoalsDialog(QDialog):
         
         # Buttons
         self.btn_add = QPushButton(tr("btn.btn_new_goal"))
-        self.btn_edit = QPushButton("✏️ Bearbeiten")
+        self.btn_edit = QPushButton("Bearbeiten")
+        self.btn_edit.setIcon(get_icon("✏️"))
         self.btn_delete = QPushButton(tr("btn.loeschen_1"))
-        self.btn_add_progress = QPushButton("📈 Fortschritt")
-        self.btn_sync = QPushButton("🔄 Sync")
+        self.btn_add_progress = QPushButton("Fortschritt")
+        self.btn_add_progress.setIcon(get_icon("📈"))
+        self.btn_sync = QPushButton("Sync")
+        self.btn_sync.setIcon(get_icon("🔄"))
         # Lifecycle-Buttons
         self.btn_release = QPushButton(tr("btn.btn_unlock"))
-        self.btn_complete = QPushButton("✅ Abschliessen")
+        self.btn_complete = QPushButton("Abschliessen")
+        self.btn_complete.setIcon(get_icon("✅"))
         self.btn_reopen = QPushButton(tr("btn.wieder_oeffnen"))
         self.btn_close = QPushButton(tr("btn.close"))
         
@@ -144,7 +149,8 @@ class SavingsGoalsDialog(QDialog):
             return
 
         menu = QMenu(self)
-        act_edit = menu.addAction("✏️ Bearbeiten…")
+        act_edit = menu.addAction("Bearbeiten…")
+        act_edit.setIcon(get_icon("✏️"))
         act_progress = menu.addAction(tr("btn.fortschritt_hinzufuegen"))
         act_sync = menu.addAction(tr("dlg.sync_mit_tracking"))
         menu.addSeparator()
@@ -152,9 +158,11 @@ class SavingsGoalsDialog(QDialog):
         # Lifecycle-Aktionen je nach Status
         act_release = act_complete = act_reopen = None
         if goal.is_saving:
-            act_release = menu.addAction("🔓 Freigeben…")
+            act_release = menu.addAction("Freigeben…")
+            act_release.setIcon(get_icon("🔓"))
         if goal.is_saving or goal.is_released:
-            act_complete = menu.addAction("✅ Abschliessen…")
+            act_complete = menu.addAction("Abschliessen…")
+            act_complete.setIcon(get_icon("✅"))
         if goal.is_released or goal.is_completed:
             act_reopen = menu.addAction(tr("btn.wieder_oeffnen_1"))
 
@@ -210,7 +218,8 @@ class SavingsGoalsDialog(QDialog):
             self.table.insertRow(r)
             
             # Name
-            name_item = QTableWidgetItem(f"{goal.status_icon} {goal.name}")
+            name_item = QTableWidgetItem(goal.name)
+            name_item.setIcon(get_icon(goal.status_icon))
             name_item.setData(Qt.UserRole, goal.id)
             tooltip_parts = [f"Status: {goal.status_label}"]
             if goal.category:
@@ -249,7 +258,8 @@ class SavingsGoalsDialog(QDialog):
             self.table.setItem(r, 4, remaining_item)
             
             # Status
-            status_item = QTableWidgetItem(f"{goal.status_icon} {goal.status_label}")
+            status_item = QTableWidgetItem(goal.status_label)
+            status_item.setIcon(get_icon(goal.status_icon))
             status_item.setTextAlignment(Qt.AlignCenter)
             if goal.is_released:
                 status_item.setForeground(QColor(ui_colors(self).accent))
@@ -503,7 +513,7 @@ class EditGoalDialog(QDialog):
                     pairs = []
             if pairs:
                 for label, real in pairs:
-                    self.category_combo.addItem(trf("tracking.filter.typ_prefix"), real)
+                    self.category_combo.addItem(f"{display_typ(typ)} / {label}", real)
             else:
                 for cat in self.cat_model.list_names(typ):
                     self.category_combo.addItem(f"{typ} / {cat}", cat)

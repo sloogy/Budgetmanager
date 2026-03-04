@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QFont
+from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QMessageBox, QFrame, QFormLayout,
@@ -27,6 +27,7 @@ from model.user_model import (
     SECURITY_LABELS, SECURITY_ICONS,
 )
 from views.ui_colors import ui_colors
+from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 
@@ -74,9 +75,12 @@ class AccountManagementDialog(QDialog):
 
         # ── Tabs ──
         tabs = QTabWidget()
-        tabs.addTab(self._build_profile_tab(), "✏️ Profil")
-        tabs.addTab(self._build_secret_tab(), "🔑 Passwort / PIN")
-        tabs.addTab(self._build_security_tab(), "🔒 Sicherheitsstufe")
+        tabs.addTab(self._build_profile_tab(), "Profil")
+        tabs.setTabIcon(0, get_icon("✏️"))
+        tabs.addTab(self._build_secret_tab(), "Passwort / PIN")
+        tabs.setTabIcon(1, get_icon("🔑"))
+        tabs.addTab(self._build_security_tab(), "Sicherheitsstufe")
+        tabs.setTabIcon(2, get_icon("🔒"))
         layout.addWidget(tabs)
 
         # ── Schließen ──
@@ -116,7 +120,8 @@ class AccountManagementDialog(QDialog):
         layout.addLayout(form)
         layout.addSpacing(10)
 
-        btn_save_name = QPushButton("💾 Namen speichern")
+        btn_save_name = QPushButton("Namen speichern")
+        btn_save_name.setIcon(get_icon("💾"))
         btn_save_name.setStyleSheet("""
             QPushButton {
                 padding: 10px 20px; background: #2196F3; color: white;
@@ -203,7 +208,8 @@ class AccountManagementDialog(QDialog):
             v.addWidget(self.txt_restore_key)
 
             btns = QHBoxLayout()
-            btn_copy = QPushButton("📋 Kopieren")
+            btn_copy = QPushButton("Kopieren")
+            btn_copy.setIcon(get_icon("📋"))
             btn_copy.clicked.connect(lambda: self._copy_restore_key())
             btns.addWidget(btn_copy)
             btns.addStretch()
@@ -530,9 +536,11 @@ class AccountManagementDialog(QDialog):
         self.btn_sec_apply.setEnabled(not same_level)
         if same_level:
             self.btn_sec_apply.setText("(Aktuelle Stufe)")
+            self.btn_sec_apply.setIcon(QIcon())
         else:
             target_label = SECURITY_LABELS.get(target, target)
-            self.btn_sec_apply.setText(f"🔒 Wechseln zu: {target_label}")
+            self.btn_sec_apply.setText(f"Wechseln zu: {target_label}")
+            self.btn_sec_apply.setIcon(get_icon("🔒"))
 
     def _get_selected_security(self) -> str:
         if self.rb_sec_quick.isChecked():
@@ -709,7 +717,8 @@ class AccountManagementDialog(QDialog):
 
         # Kopier-Button
         btn_layout = QHBoxLayout()
-        btn_copy = QPushButton("📋 In Zwischenablage kopieren")
+        btn_copy = QPushButton("In Zwischenablage kopieren")
+        btn_copy.setIcon(get_icon("📋"))
         btn_copy.setStyleSheet("""
             QPushButton {
                 padding: 8px 16px; background: #17a2b8; color: white;
@@ -724,7 +733,8 @@ class AccountManagementDialog(QDialog):
 
         layout.addSpacing(10)
 
-        btn_ok = QPushButton("✅ Ich habe den Key notiert")
+        btn_ok = QPushButton("Ich habe den Key notiert")
+        btn_ok.setIcon(get_icon("✅"))
         btn_ok.setStyleSheet("""
             QPushButton {
                 padding: 10px 24px; background: #27ae60; color: white;
@@ -741,6 +751,7 @@ class AccountManagementDialog(QDialog):
         from PySide6.QtWidgets import QApplication
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
-        btn.setText("✅ Kopiert!")
+        btn.setText("Kopiert!")
+        btn.setIcon(get_icon("✅"))
         from PySide6.QtCore import QTimer
-        QTimer.singleShot(2000, lambda: btn.setText("📋 In Zwischenablage kopieren"))
+        QTimer.singleShot(2000, lambda: (btn.setText("In Zwischenablage kopieren"), btn.setIcon(get_icon("📋"))))

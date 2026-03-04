@@ -10,6 +10,7 @@ from PySide6.QtWidgets import (
     QComboBox, QColorDialog, QMessageBox, QGroupBox, QInputDialog,
     QFileDialog
 )
+from utils.icons import get_icon
 from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtGui import QColor
 from views.ui_colors import ui_colors
@@ -51,7 +52,8 @@ class ThemeEditorDialog(QDialog):
         
         # Buttons
         btn_layout = QHBoxLayout()
-        self.btn_new = QPushButton("➕ " + tr("btn.new_theme"))
+        self.btn_new = QPushButton(tr("btn.new_theme"))
+        self.btn_new.setIcon(get_icon("➕"))
         self.btn_duplicate = QPushButton(tr("tracking.ctx.duplicate"))
         self.btn_delete = QPushButton(tr("btn.loeschen_1"))
         self.btn_reset = QPushButton(tr("dlg.zuruecksetzen_1"))
@@ -64,14 +66,17 @@ class ThemeEditorDialog(QDialog):
         
         # Import/Export
         io_layout = QHBoxLayout()
-        self.btn_import = QPushButton("📥 " + tr("btn.import_theme"))
-        self.btn_export = QPushButton("📤 " + tr("btn.export_theme"))
+        self.btn_import = QPushButton(tr("btn.import_theme"))
+        self.btn_import.setIcon(get_icon("📥"))
+        self.btn_export = QPushButton(tr("btn.export_theme"))
+        self.btn_export.setIcon(get_icon("📤"))
         io_layout.addWidget(self.btn_import)
         io_layout.addWidget(self.btn_export)
         left.addLayout(io_layout)
         
         # Apply Button
-        self.btn_apply = QPushButton("✅ " + tr("btn.apply_theme"))
+        self.btn_apply = QPushButton(tr("btn.apply_theme"))
+        self.btn_apply.setIcon(get_icon("✅"))
         self.btn_apply.setStyleSheet(f"background-color: {ui_colors(self).accent}; color: white; font-weight: bold; padding: 10px;")
         left.addWidget(self.btn_apply)
         

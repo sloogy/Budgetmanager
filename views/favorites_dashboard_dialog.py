@@ -19,6 +19,7 @@ from model.favorites_model import FavoritesModel
 from model.budget_model import BudgetModel
 from model.tracking_model import TrackingModel
 from utils.money import format_money
+from utils.icons import get_icon
 from views.ui_colors import ui_colors
 
 
@@ -165,7 +166,8 @@ class FavoritesDashboardDialog(QDialog):
             self.table.setItem(row, 0, typ_item)
             
             # Kategorie-Name
-            name_item = QTableWidgetItem(f"⭐ {category}")
+            name_item = QTableWidgetItem(category)
+            name_item.setIcon(get_icon("⭐"))
             self.table.setItem(row, 1, name_item)
             
             # Budget

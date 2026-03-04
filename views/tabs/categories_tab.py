@@ -30,6 +30,7 @@ from settings import Settings
 
 from model.category_model import CategoryModel, Category
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from utils.icons import get_icon
 from views.ui_colors import ui_colors
 
 
@@ -340,10 +341,13 @@ class CategoriesTab(QWidget):
         editable = self._selected_editable_category_items()
         menu = QMenu(self)
 
-        act_new_root = menu.addAction("➕ Neu (Hauptkategorie)")
-        act_new_sub = menu.addAction("📂 Neu (Unterkategorie)")
+        act_new_root = menu.addAction("Neu (Hauptkategorie)")
+        act_new_root.setIcon(get_icon("➕"))
+        act_new_sub = menu.addAction("Neu (Unterkategorie)")
+        act_new_sub.setIcon(get_icon("📂"))
         menu.addSeparator()
-        act_rename = menu.addAction("✏️ Umbenennen")
+        act_rename = menu.addAction("Umbenennen")
+        act_rename.setIcon(get_icon("✏️"))
         act_delete = menu.addAction(tr("btn.loeschen_1"))
         act_mass = menu.addAction(tr("ctx.mass_edit"))
         menu.addSeparator()

@@ -337,9 +337,29 @@ def main() -> int:
 
         rc = app.exec()
 
-        # ── Cleanup ──────────────────────────────────
+        # ── Cleanup (Reihenfolge kritisch für PyInstaller!) ────
+        # Qt-Objekte müssen vor QApplication zerstört werden,
+        # sonst Segfault beim nächsten Start (stale _MEIPASS refs).
         if encrypted_session:
             encrypted_session.close()
+
+        # LRU-Caches mit Qt-Objekten leeren
+        try:
+            from utils.icons import get_icon
+            get_icon.cache_clear()
+        except Exception:
+            pass
+
+        # MainWindow explizit zerstören vor QApplication
+        win.close()
+        del win
+
+        # QApplication sauber beenden
+        app.processEvents()
+        del app
+
+        import gc
+        gc.collect()
 
         return rc
 

@@ -23,6 +23,7 @@ from PySide6.QtCharts import (
     QBarSeries, QBarSet, QBarCategoryAxis, QValueAxis,
 )
 
+from utils.icons import get_icon
 from utils.i18n import tr
 from utils.money import format_money as format_chf
 from views.ui_colors import ui_colors
@@ -48,8 +49,14 @@ class CompactKPICard(QFrame):
         layout.setSpacing(2)
 
         header = QHBoxLayout()
-        icon_label = QLabel(icon)
-        icon_label.setStyleSheet("font-size: 16pt;")
+        icon_label = QLabel("")
+        icon_obj = get_icon(icon)
+        if not icon_obj.isNull():
+            icon_label.setPixmap(icon_obj.pixmap(20, 20))
+            icon_label.setFixedSize(20, 20)
+        else:
+            icon_label.setText(icon)
+            icon_label.setStyleSheet("font-size: 16pt;")
         header.addWidget(icon_label)
 
         title_label = QLabel(title)

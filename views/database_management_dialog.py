@@ -24,6 +24,7 @@ from PySide6.QtGui import QFont
 
 from model.database_management_model import DatabaseManagementModel
 from views.ui_colors import ui_colors
+from utils.icons import get_icon
 from utils.i18n import tr, trf, tr_msg, display_typ, db_typ_from_display
 
 
@@ -64,7 +65,8 @@ class DatabaseManagementDialog(QDialog):
         self.stats_text.setMaximumHeight(150)
         stats_layout.addWidget(self.stats_text)
         
-        refresh_btn = QPushButton("🔄 Aktualisieren")
+        refresh_btn = QPushButton("Aktualisieren")
+        refresh_btn.setIcon(get_icon("🔄"))
         refresh_btn.clicked.connect(self._load_statistics)
         stats_layout.addWidget(refresh_btn)
         

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from model.category_model import CategoryModel, Category
+from utils.icons import get_icon
 
 
 import logging
@@ -133,7 +134,8 @@ class CategoryPropertiesDialog(QDialog):
         self.btn_cancel = QPushButton(tr("btn.cancel"))
         btn_layout.addWidget(self.btn_cancel)
         
-        self.btn_save = QPushButton("💾 Speichern")
+        self.btn_save = QPushButton("Speichern")
+        self.btn_save.setIcon(get_icon("💾"))
         self.btn_save.setDefault(True)
         btn_layout.addWidget(self.btn_save)
         

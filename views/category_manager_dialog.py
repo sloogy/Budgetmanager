@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from model.category_model import CategoryModel, Category
+from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 
@@ -58,17 +59,20 @@ class CategoryManagerDialog(QDialog):
         # === Toolbar ===
         toolbar = QHBoxLayout()
         
-        self.btn_add = QPushButton("➕ Neue Kategorie")
+        self.btn_add = QPushButton("Neue Kategorie")
+        self.btn_add.setIcon(get_icon("➕"))
         self.btn_add.clicked.connect(self._add_category)
         toolbar.addWidget(self.btn_add)
         
-        self.btn_add_sub = QPushButton("📂 Unterkategorie")
+        self.btn_add_sub = QPushButton("Unterkategorie")
+        self.btn_add_sub.setIcon(get_icon("📂"))
         self.btn_add_sub.clicked.connect(self._add_subcategory)
         toolbar.addWidget(self.btn_add_sub)
         
         toolbar.addSpacing(20)
         
-        self.btn_rename = QPushButton("✏️ Umbenennen")
+        self.btn_rename = QPushButton("Umbenennen")
+        self.btn_rename.setIcon(get_icon("✏️"))
         self.btn_rename.clicked.connect(self._rename_category)
         toolbar.addWidget(self.btn_rename)
         
@@ -193,7 +197,8 @@ class CategoryManagerDialog(QDialog):
         footer.addWidget(self.status_label)
         footer.addStretch()
         
-        self.btn_refresh = QPushButton("🔄 Aktualisieren")
+        self.btn_refresh = QPushButton("Aktualisieren")
+        self.btn_refresh.setIcon(get_icon("🔄"))
         self.btn_refresh.clicked.connect(self._load_categories)
         footer.addWidget(self.btn_refresh)
         
@@ -373,7 +378,8 @@ class CategoryManagerDialog(QDialog):
         
         menu = QMenu(self)
         
-        menu.addAction("✏️ Umbenennen", self._rename_category)
+        act_rename = menu.addAction("Umbenennen", self._rename_category)
+        act_rename.setIcon(get_icon("✏️"))
         menu.addAction(tr("btn.unterkategorie_hinzufuegen"), self._add_subcategory)
         menu.addSeparator()
         
@@ -384,8 +390,9 @@ class CategoryManagerDialog(QDialog):
         rec_text = tr("budget.ctx.rec_disable") if cat["is_recurring"] else tr("budget.ctx.rec_enable")
         menu.addAction(rec_text, lambda: self._toggle_single_flag(cat["id"], "is_recurring", not cat["is_recurring"]))
         
-        menu.addAction(f"📅 Fälligkeitstag setzen… ({cat['recurring_day']}.)", 
-                      lambda: self._set_single_day(cat["id"]))
+        act_set_day = menu.addAction(f"Fälligkeitstag setzen… ({cat['recurring_day']}.)",
+                                     lambda: self._set_single_day(cat["id"]))
+        act_set_day.setIcon(get_icon("📅"))
         
         menu.addSeparator()
         menu.addAction(tr("btn.loeschen_1"), self._delete_categories)

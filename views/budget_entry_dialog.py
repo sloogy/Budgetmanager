@@ -117,7 +117,7 @@ class BudgetEntryDialog(QDialog):
         self.only_if_empty.setChecked(False)
 
         # --- Neue Kategorie Sektion ---
-        self.new_category_group = QGroupBox("📁 Neue Kategorie erstellen")
+        self.new_category_group = QGroupBox("Neue Kategorie erstellen")
         self.new_category_group.setCheckable(True)
         self.new_category_group.setChecked(False)
         self.new_category_group.setVisible(False)

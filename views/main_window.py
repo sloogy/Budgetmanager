@@ -6,7 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QActionGroup, QKeySequence, QShortcut, QDesktopServices
+from PySide6.QtGui import QAction, QActionGroup, QIcon, QKeySequence, QShortcut, QDesktopServices
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QMenuBar, QMenu, QMessageBox,
     QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication, QPushButton
@@ -19,6 +19,7 @@ from model.category_model import CategoryModel
 from model.shortcuts_config import load_shortcuts, save_shortcuts
 from model.undo_redo_model import UndoRedoModel
 from settings import Settings
+from utils.icons import get_icon
 from utils.i18n import tr
 from settings_dialog import SettingsDialog
 from theme_manager import ThemeManager
@@ -163,19 +164,20 @@ class MainWindow(QMainWindow):
         # Tab-Labels: keys statt eingefrorenem tr()-String (fuer retranslate_ui)
         self._tab_label_keys = {
             0: ("tr", "tab.budget"),
-            1: ("fixed", "📁 " + tr("tab.categories")),
-            2: ("fixed", "📊 " + tr("tab.tracking")),
+            1: ("fixed", tr("tab.categories")),
+            2: ("fixed", tr("tab.tracking")),
             3: ("tr", "tab.overview"),
         }
         self._tab_definitions = {
             0: (self.budget_tab, tr("tab.budget")),
-            1: (self.categories_tab, "📁 " + tr("tab.categories")),
-            2: (self.tracking_tab, "📊 " + tr("tab.tracking")),
+            1: (self.categories_tab, tr("tab.categories")),
+            2: (self.tracking_tab, tr("tab.tracking")),
             3: (self.overview_tab, tr("tab.overview")),
         }
         
         # Tabs in gespeicherter Reihenfolge hinzufügen
         self._load_tab_order()
+        self._apply_tab_icons()
 
         self.setCentralWidget(self.tabs)
         
@@ -361,6 +363,7 @@ class MainWindow(QMainWindow):
 
         # Übersicht → Subtabs ein/ausblenden
         overview_menu = anzeigen_menu.addMenu(tr("menu.overview_subtabs"))
+        overview_menu.setIcon(get_icon("📈"))
         self._overview_visibility_actions = {}
 
         vis = self.settings.get('overview_visible_subtabs', {}) or {}
@@ -387,22 +390,26 @@ class MainWindow(QMainWindow):
 
         # Zu Tabs wechseln
         goto_budget = QAction(tr("menu.goto_budget"), self)
+        goto_budget.setIcon(get_icon("💰"))
         goto_budget.setShortcut("Ctrl+1")
         goto_budget.triggered.connect(lambda: self._goto_tab(self.budget_tab))
         view_menu.addAction(goto_budget)
 
         self.goto_categories_action = QAction(tr("menu.goto_categories"), self)
+        self.goto_categories_action.setIcon(get_icon("📁"))
         self.goto_categories_action.setShortcut("Ctrl+2")
         self.goto_categories_action.triggered.connect(lambda: self._goto_tab(self.categories_tab))
         view_menu.addAction(self.goto_categories_action)
         self._update_categories_menu_visibility()
 
         goto_tracking = QAction(tr("menu.goto_tracking"), self)
+        goto_tracking.setIcon(get_icon("📊"))
         goto_tracking.setShortcut("Ctrl+3")
         goto_tracking.triggered.connect(lambda: self._goto_tab(self.tracking_tab))
         view_menu.addAction(goto_tracking)
 
         goto_overview = QAction(tr("menu.goto_overview"), self)
+        goto_overview.setIcon(get_icon("📈"))
         goto_overview.setShortcut("Ctrl+4")
         goto_overview.triggered.connect(lambda: self._goto_tab(self.overview_tab))
         view_menu.addAction(goto_overview)
@@ -411,6 +418,7 @@ class MainWindow(QMainWindow):
 
         # Toggle für Kategorien-Tab
         self.toggle_categories_action = QAction(tr("menu.toggle_categories"), self)
+        self.toggle_categories_action.setIcon(get_icon("🛠️"))
         self.toggle_categories_action.setCheckable(True)
         self.toggle_categories_action.setChecked(self.settings.show_categories_tab)
         self.toggle_categories_action.setToolTip(tr("tip.categories_tab_expert"))
@@ -428,6 +436,7 @@ class MainWindow(QMainWindow):
         view_menu.addSeparator()
 
         fullscreen_action = QAction(tr("menu.fullscreen"), self)
+        fullscreen_action.setIcon(get_icon("🖥️"))
         fullscreen_action.setShortcut("F11")
         fullscreen_action.setCheckable(True)
         fullscreen_action.setChecked(self.settings.get("window_is_fullscreen", False))
@@ -435,6 +444,7 @@ class MainWindow(QMainWindow):
         view_menu.addAction(fullscreen_action)
 
         maximize_action = QAction(tr("menu.maximize"), self)
+        maximize_action.setIcon(get_icon("🔲"))
         maximize_action.setShortcut("F10")
         maximize_action.setCheckable(True)
         maximize_action.toggled.connect(self._toggle_maximize)
@@ -444,6 +454,7 @@ class MainWindow(QMainWindow):
 
         # ── Tab-Leiste: Sichtbarkeit + Position ──────────────────────
         tab_bar_menu = view_menu.addMenu(tr("menu.tab_bar"))
+        tab_bar_menu.setIcon(get_icon("📌"))
 
         self._act_tab_bar_show = QAction(tr("menu.tab_bar_show"), self)
         self._act_tab_bar_show.setCheckable(True)
@@ -465,6 +476,14 @@ class MainWindow(QMainWindow):
         ]
         for pos_key, pos_label in _pos_defs:
             act = QAction(pos_label, self)
+            if pos_key == "west":
+                act.setIcon(get_icon("⬅️"))
+            elif pos_key == "east":
+                act.setIcon(get_icon("➡️"))
+            elif pos_key == "north":
+                act.setIcon(get_icon("⬆️"))
+            elif pos_key == "south":
+                act.setIcon(get_icon("⬇️"))
             act.setCheckable(True)
             act.setChecked(pos_key == _cur_pos)
             act.setData(pos_key)
@@ -477,12 +496,14 @@ class MainWindow(QMainWindow):
         extras_menu = menubar.addMenu(tr("menu.extras"))
 
         quick_add_action = QAction(tr("menu.quick_add"), self)
+        quick_add_action.setIcon(get_icon("⚡"))
         quick_add_action.setShortcut("Ctrl+N")
         quick_add_action.setStatusTip(tr("menu.quick_add_tip"))
         quick_add_action.triggered.connect(self._show_quick_add)
         extras_menu.addAction(quick_add_action)
 
         search_action = QAction(tr("menu.search"), self)
+        search_action.setIcon(get_icon("🔍"))
         search_action.setShortcut("Ctrl+F")
         search_action.setStatusTip(tr("menu.search_tip"))
         search_action.triggered.connect(self._show_global_search)
@@ -491,24 +512,28 @@ class MainWindow(QMainWindow):
         extras_menu.addSeparator()
 
         category_manager_action = QAction(tr("menu.category_manager"), self)
+        category_manager_action.setIcon(get_icon("📁"))
         category_manager_action.setShortcut("Ctrl+K")
         category_manager_action.setStatusTip(tr("menu.category_manager_tip"))
         category_manager_action.triggered.connect(self._show_category_manager)
         extras_menu.addAction(category_manager_action)
 
         tags_manager_action = QAction(tr("menu.tags_manager"), self)
+        tags_manager_action.setIcon(get_icon("🏷️"))
         tags_manager_action.setShortcut("Ctrl+T")
         tags_manager_action.setStatusTip(tr("menu.tags_manager_tip"))
         tags_manager_action.triggered.connect(self._show_tags_manager)
         extras_menu.addAction(tags_manager_action)
 
         favorites_action = QAction(tr("menu.favorites"), self)
+        favorites_action.setIcon(get_icon("⭐"))
         favorites_action.setShortcut("F12")
         favorites_action.setStatusTip(tr("menu.favorites_tip"))
         favorites_action.triggered.connect(self._show_favorites_dashboard)
         extras_menu.addAction(favorites_action)
 
         budget_warnings_action = QAction(tr("menu.budget_warnings"), self)
+        budget_warnings_action.setIcon(get_icon("🚨"))
         budget_warnings_action.setShortcut("Ctrl+W")
         budget_warnings_action.setStatusTip(tr("menu.budget_warnings_tip"))
         budget_warnings_action.triggered.connect(lambda: self._check_budget_warnings())
@@ -517,6 +542,7 @@ class MainWindow(QMainWindow):
         extras_menu.addSeparator()
 
         updates_action = QAction(tr("menu.updates"), self)
+        updates_action.setIcon(get_icon("⬆️"))
         updates_action.setShortcut("Ctrl+U")
         updates_action.setStatusTip(tr("menu.updates_tip"))
         updates_action.triggered.connect(self._show_update_dialog)
@@ -525,6 +551,7 @@ class MainWindow(QMainWindow):
         extras_menu.addSeparator()
 
         export_action = QAction(tr("menu.export"), self)
+        export_action.setIcon(get_icon("📤"))
         export_action.setShortcut("Ctrl+E")
         export_action.setStatusTip(tr("menu.export_tip"))
         export_action.triggered.connect(self._show_export)
@@ -533,15 +560,18 @@ class MainWindow(QMainWindow):
         extras_menu.addSeparator()
 
         savings_action = QAction(tr("menu.savings_goals"), self)
+        savings_action.setIcon(get_icon("💰"))
         savings_action.triggered.connect(self._show_savings_goals)
         extras_menu.addAction(savings_action)
 
         backup_action = QAction(tr("menu.backup"), self)
+        backup_action.setIcon(get_icon("💾"))
         backup_action.setStatusTip(tr("menu.backup_tip"))
         backup_action.triggered.connect(self._show_backup_restore)
         extras_menu.addAction(backup_action)
 
         db_manage_action = QAction(tr("menu.db_management"), self)
+        db_manage_action.setIcon(get_icon("🗄️"))
         db_manage_action.triggered.connect(self._show_database_management)
         extras_menu.addAction(db_manage_action)
 
@@ -555,6 +585,7 @@ class MainWindow(QMainWindow):
         extras_menu.addSeparator()
 
         reset_tabs_action = QAction(tr("menu.reset_tab_order"), self)
+        reset_tabs_action.setIcon(get_icon("🔄"))
         reset_tabs_action.triggered.connect(self._reset_tab_order)
         extras_menu.addAction(reset_tabs_action)
 
@@ -566,6 +597,7 @@ class MainWindow(QMainWindow):
         account_menu = menubar.addMenu(tr("menu.account"))
 
         account_manage_action = QAction(tr("menu.account_manage"), self)
+        account_manage_action.setIcon(get_icon("👤"))
         account_manage_action.setStatusTip(tr("menu.account_manage_tip"))
         account_manage_action.triggered.connect(self._show_account_management)
         account_menu.addAction(account_manage_action)
@@ -585,17 +617,20 @@ class MainWindow(QMainWindow):
         help_menu = menubar.addMenu(tr("menu.help"))
 
         shortcuts_action = QAction(tr("menu.shortcuts"), self)
+        shortcuts_action.setIcon(get_icon("⌨️"))
         shortcuts_action.setShortcut("F1")
         shortcuts_action.triggered.connect(self._show_shortcuts)
         help_menu.addAction(shortcuts_action)
 
         setup_action = QAction(tr("menu.setup_assistant"), self)
+        setup_action.setIcon(get_icon("🚀"))
         setup_action.triggered.connect(lambda: self._start_setup_assistant(force=True))
         help_menu.addAction(setup_action)
 
         help_menu.addSeparator()
 
         about_action = QAction(tr("menu.about"), self)
+        about_action.setIcon(get_icon("ℹ️"))
         about_action.triggered.connect(self._show_about)
         help_menu.addAction(about_action)
 
@@ -684,8 +719,18 @@ class MainWindow(QMainWindow):
             widget, name = self._tab_definitions[tab_id]
             # Kategorien-Tab umbenennen wenn sichtbar (Experten-Modus markieren)
             if tab_id == 1 and show_categories:
-                name = "🛠️ Kategorien (Experten)"
+                name = "Kategorien (Experten)"
             self.tabs.addTab(widget, name)
+
+    def _apply_tab_icons(self) -> None:
+        for i in range(self.tabs.count()):
+            widget = self.tabs.widget(i)
+            if widget is self.categories_tab:
+                self.tabs.setTabIcon(i, get_icon("📁"))
+            elif widget is self.tracking_tab:
+                self.tabs.setTabIcon(i, get_icon("📊"))
+            else:
+                self.tabs.setTabIcon(i, QIcon())
     
     def _save_tab_order(self):
         """Speichert die aktuelle Tab-Reihenfolge"""
@@ -736,7 +781,8 @@ class MainWindow(QMainWindow):
                 else:
                     insert_at = 1
                 
-                self.tabs.insertTab(insert_at, self.categories_tab, "🛠️ Kategorien (Experten)")
+                self.tabs.insertTab(insert_at, self.categories_tab, "Kategorien (Experten)")
+                self.tabs.setTabIcon(insert_at, get_icon("🛠️"))
                 self.statusBar().showMessage("Kategorien-Tab aktiviert", 2000)
         else:
             # Tab entfernen wenn vorhanden
@@ -775,8 +821,9 @@ class MainWindow(QMainWindow):
             widget, name = self._tab_definitions[tab_id]
             # Kategorien-Tab umbenennen wenn sichtbar
             if tab_id == 1 and show_categories:
-                name = "🛠️ Kategorien (Experten)"
+                name = "Kategorien (Experten)"
             self.tabs.addTab(widget, name)
+        self._apply_tab_icons()
         
         # Vorherigen Tab wiederherstellen
         if current_widget:
@@ -1006,7 +1053,8 @@ class MainWindow(QMainWindow):
         self._edit_actions_general.append(add_action)
         
         # Bearbeiten
-        edit_action = QAction("✏️ &Bearbeiten...", self)
+        edit_action = QAction("&Bearbeiten...", self)
+        edit_action.setIcon(get_icon("✏️"))
         edit_action.setShortcut("F2")
         edit_action.triggered.connect(self._edit_edit)
         self.edit_menu.addAction(edit_action)
@@ -1024,31 +1072,36 @@ class MainWindow(QMainWindow):
         # === BUDGET-TAB AKTIONEN ===
         self._edit_actions_budget = []
         
-        budget_entry_action = QAction("📝 Budget &erfassen...", self)
+        budget_entry_action = QAction("Budget &erfassen...", self)
+        budget_entry_action.setIcon(get_icon("📝"))
         budget_entry_action.triggered.connect(self._budget_entry)
         self.edit_menu.addAction(budget_entry_action)
         self._edit_actions_budget.append(budget_entry_action)
         
-        budget_edit_action = QAction("✏️ Budget &bearbeiten...", self)
+        budget_edit_action = QAction("Budget &bearbeiten...", self)
+        budget_edit_action.setIcon(get_icon("✏️"))
         budget_edit_action.triggered.connect(self._budget_edit)
         self.edit_menu.addAction(budget_edit_action)
         self._edit_actions_budget.append(budget_edit_action)
         
         self.edit_menu.addSeparator()
         
-        budget_seed_action = QAction("🌱 Zeilen aus &Kategorien erzeugen", self)
+        budget_seed_action = QAction("Zeilen aus &Kategorien erzeugen", self)
+        budget_seed_action.setIcon(get_icon("🌱"))
         budget_seed_action.triggered.connect(self._budget_seed)
         self.edit_menu.addAction(budget_seed_action)
         self._edit_actions_budget.append(budget_seed_action)
         
-        budget_copy_action = QAction("📋 Jahr &kopieren...", self)
+        budget_copy_action = QAction("Jahr &kopieren...", self)
+        budget_copy_action.setIcon(get_icon("📋"))
         budget_copy_action.triggered.connect(self._budget_copy_year)
         self.edit_menu.addAction(budget_copy_action)
         self._edit_actions_budget.append(budget_copy_action)
         
         self.edit_menu.addSeparator()
         
-        budget_remove_row_action = QAction("🗑️ Budget-&Zeile entfernen", self)
+        budget_remove_row_action = QAction("Budget-&Zeile entfernen", self)
+        budget_remove_row_action.setIcon(get_icon("🗑️"))
         budget_remove_row_action.triggered.connect(self._budget_remove_row)
         self.edit_menu.addAction(budget_remove_row_action)
         self._edit_actions_budget.append(budget_remove_row_action)
@@ -1061,12 +1114,14 @@ class MainWindow(QMainWindow):
         # === KATEGORIEN-TAB AKTIONEN ===
         self._edit_actions_categories = []
         
-        cat_new_main_action = QAction("📁 Neue &Hauptkategorie...", self)
+        cat_new_main_action = QAction("Neue &Hauptkategorie...", self)
+        cat_new_main_action.setIcon(get_icon("📁"))
         cat_new_main_action.triggered.connect(self._categories_new_main)
         self.edit_menu.addAction(cat_new_main_action)
         self._edit_actions_categories.append(cat_new_main_action)
         
-        cat_new_sub_action = QAction("📂 Neue &Unterkategorie...", self)
+        cat_new_sub_action = QAction("Neue &Unterkategorie...", self)
+        cat_new_sub_action.setIcon(get_icon("📂"))
         cat_new_sub_action.triggered.connect(self._categories_new_sub)
         self.edit_menu.addAction(cat_new_sub_action)
         self._edit_actions_categories.append(cat_new_sub_action)
@@ -1078,7 +1133,8 @@ class MainWindow(QMainWindow):
         
         self.edit_menu.addSeparator()
         
-        cat_mass_edit_action = QAction("✏️ &Massenbearbeitung...", self)
+        cat_mass_edit_action = QAction("&Massenbearbeitung...", self)
+        cat_mass_edit_action.setIcon(get_icon("✏️"))
         cat_mass_edit_action.setStatusTip(tr("lbl.flags_fuer_mehrere_kategorien"))
         cat_mass_edit_action.triggered.connect(self._categories_mass_edit)
         self.edit_menu.addAction(cat_mass_edit_action)
@@ -1089,7 +1145,8 @@ class MainWindow(QMainWindow):
         
         self.edit_menu.addSeparator()
         
-        fix_action = QAction("📅 &Fixkosten buchen...", self)
+        fix_action = QAction("&Fixkosten buchen...", self)
+        fix_action.setIcon(get_icon("📅"))
         fix_action.setShortcut("Ctrl+Shift+F")
         fix_action.triggered.connect(self._tracking_add_fixcosts)
         self.edit_menu.addAction(fix_action)
@@ -1098,7 +1155,8 @@ class MainWindow(QMainWindow):
         # === ÜBERSICHT-TAB AKTIONEN ===
         self._edit_actions_overview = []
         
-        refresh_overview_action = QAction("🔄 Daten &aktualisieren", self)
+        refresh_overview_action = QAction("Daten &aktualisieren", self)
+        refresh_overview_action.setIcon(get_icon("🔄"))
         refresh_overview_action.setShortcut("F5")
         refresh_overview_action.triggered.connect(self._overview_refresh)
         self.edit_menu.addAction(refresh_overview_action)
@@ -1770,8 +1828,8 @@ class MainWindow(QMainWindow):
         # Tab-Labels aktualisieren
         self._tab_definitions = {
             0: (self.budget_tab, tr("tab.budget")),
-            1: (self.categories_tab, "📁 " + tr("tab.categories")),
-            2: (self.tracking_tab, "📊 " + tr("tab.tracking")),
+            1: (self.categories_tab, tr("tab.categories")),
+            2: (self.tracking_tab, tr("tab.tracking")),
             3: (self.overview_tab, tr("tab.overview")),
         }
         for i in range(self.tabs.count()):
@@ -1780,6 +1838,7 @@ class MainWindow(QMainWindow):
                 if widget is tab_widget:
                     self.tabs.setTabText(i, label)
                     break
+        self._apply_tab_icons()
         # Menü-Einträge aktualisieren
         try:
             self._setup_menus()

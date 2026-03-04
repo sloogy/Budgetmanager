@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from utils.i18n import tr, trf
+from utils.icons import get_icon
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, is_income
 from utils.i18n import display_typ, db_typ_from_display, tr_category_name
 from model.category_model import CategoryModel, Category
@@ -680,9 +681,7 @@ class BudgetTab(QWidget):
                         # Im Baum-Modus: nur den Kategorienamen anzeigen – Einrückung macht die Struktur sichtbar.
                         display_name = tr_category_name(name)
                     
-                    # Favoriten-Stern hinzufügen
-                    if self.favorites.is_favorite(t, name):
-                        display_name = f"⭐ {display_name}"
+                    is_favorite = self.favorites.is_favorite(t, name)
                     
                     label = self._format_cat_label(display_name, depth, has_children, collapsed)
                     cat_item = QTableWidgetItem(label)
@@ -694,6 +693,8 @@ class BudgetTab(QWidget):
                     cat_item.setData(ROLE_PATH, path)
                     cat_item.setData(ROLE_COLLAPSED, False)
                     cat_item.setToolTip(path)
+                    if is_favorite:
+                        cat_item.setIcon(get_icon("⭐"))
                     self.table.setItem(r, 0, cat_item)
 
                     # Spalte 1: Fix (Fix)

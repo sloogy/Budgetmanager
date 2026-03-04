@@ -29,6 +29,7 @@ from model.user_model import (
     SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD,
     SECURITY_LABELS, SECURITY_ICONS,
 )
+from utils.icons import get_icon
 from views.ui_colors import ui_colors
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
@@ -386,7 +387,7 @@ class LoginDialog(QDialog):
         main_layout.setContentsMargins(30, 20, 30, 20)
 
         # Header
-        header = QLabel("💰 Budgetmanager")
+        header = QLabel("Budgetmanager")
         header.setAlignment(Qt.AlignCenter)
         hf = QFont(); hf.setPointSize(18); hf.setBold(True)
         header.setFont(hf)
@@ -416,7 +417,8 @@ class LoginDialog(QDialog):
 
         foot.addStretch()
 
-        btn_manage = QPushButton("⚙️ Verwalten")
+        btn_manage = QPushButton("Verwalten")
+        btn_manage.setIcon(get_icon("⚙️"))
         btn_manage.setFlat(True)
         btn_manage.setStyleSheet(f"color: {ui_colors(self).text_dim}; font-size: 11px;")
         btn_manage.clicked.connect(self._on_manage)
@@ -494,7 +496,8 @@ class LoginDialog(QDialog):
         self.content.addSpacing(10)
 
         if user.is_quick:
-            btn = QPushButton("⚡ Starten")
+            btn = QPushButton("Starten")
+            btn.setIcon(get_icon("⚡"))
             btn.setStyleSheet("""
                 QPushButton { padding: 14px; background: #27ae60; color: white;
                               border: none; border-radius: 5px; font-size: 15px; font-weight: bold; }
@@ -514,7 +517,8 @@ class LoginDialog(QDialog):
             self.content.addWidget(self.edt_single)
 
             self.content.addSpacing(8)
-            btn = QPushButton("🔓 Anmelden")
+            btn = QPushButton("Anmelden")
+            btn.setIcon(get_icon("🔓"))
             btn.setStyleSheet("""
                 QPushButton { padding: 10px; background: #2196F3; color: white;
                               border: none; border-radius: 5px; font-size: 14px; font-weight: bold; }
@@ -524,7 +528,8 @@ class LoginDialog(QDialog):
             self.content.addWidget(btn)
 
             # Restore-Key Link
-            btn_restore = QPushButton("🔑 Restore-Key verwenden")
+            btn_restore = QPushButton("Restore-Key verwenden")
+            btn_restore.setIcon(get_icon("🔑"))
             btn_restore.setFlat(True)
             btn_restore.setStyleSheet(f"color: {ui_colors(self).warning}; font-size: 11px;")
             btn_restore.clicked.connect(lambda: self._on_restore(user))
@@ -560,7 +565,8 @@ class LoginDialog(QDialog):
 
         self.content.addSpacing(8)
 
-        self.btn_multi_login = QPushButton("🔓 Anmelden")
+        self.btn_multi_login = QPushButton("Anmelden")
+        self.btn_multi_login.setIcon(get_icon("🔓"))
         self.btn_multi_login.setStyleSheet("""
             QPushButton { padding: 10px; background: #2196F3; color: white;
                           border: none; border-radius: 5px; font-size: 14px; font-weight: bold; }
@@ -570,7 +576,8 @@ class LoginDialog(QDialog):
         self.content.addWidget(self.btn_multi_login)
 
         # Restore-Key Link
-        self.btn_multi_restore = QPushButton("🔑 Restore-Key verwenden")
+        self.btn_multi_restore = QPushButton("Restore-Key verwenden")
+        self.btn_multi_restore.setIcon(get_icon("🔑"))
         self.btn_multi_restore.setFlat(True)
         self.btn_multi_restore.setStyleSheet(f"color: {ui_colors(self).warning}; font-size: 11px;")
         self.btn_multi_restore.clicked.connect(self._on_multi_restore)
@@ -589,7 +596,8 @@ class LoginDialog(QDialog):
 
         if user.is_quick:
             self.multi_secret_frame.setVisible(False)
-            self.btn_multi_login.setText("⚡ Starten")
+            self.btn_multi_login.setText("Starten")
+            self.btn_multi_login.setIcon(get_icon("⚡"))
             self.btn_multi_restore.setVisible(False)
         else:
             self.multi_secret_frame.setVisible(True)
@@ -597,14 +605,16 @@ class LoginDialog(QDialog):
             ph = "4–8 Ziffern" if user.is_pin else "Passwort eingeben…"
             self.edt_multi.setPlaceholderText(ph)
             self.edt_multi.clear()
-            self.btn_multi_login.setText("🔓 Anmelden")
+            self.btn_multi_login.setText("Anmelden")
+            self.btn_multi_login.setIcon(get_icon("🔓"))
             self.btn_multi_restore.setVisible(True)
 
     # ── Fall 3: Quick + Auth gemischt ────────────
     def _build_mixed(self, quick_users: list[User], auth_users: list[User]):
         # Quick-Benutzer als grosse Buttons
         for u in quick_users:
-            btn = QPushButton(f"⚡ {u.display_name}")
+            btn = QPushButton(u.display_name)
+            btn.setIcon(get_icon("⚡"))
             btn.setStyleSheet("""
                 QPushButton { padding: 14px; background: #27ae60; color: white;
                               border: none; border-radius: 5px; font-size: 14px; font-weight: bold; }
@@ -632,7 +642,8 @@ class LoginDialog(QDialog):
             self.edt_mixed.returnPressed.connect(lambda: self._login_auth(u, self.edt_mixed))
             self.content.addWidget(self.edt_mixed)
 
-            btn = QPushButton("🔓 Anmelden")
+            btn = QPushButton("Anmelden")
+            btn.setIcon(get_icon("🔓"))
             btn.setStyleSheet("""
                 QPushButton { padding: 8px; background: #2196F3; color: white;
                               border: none; border-radius: 5px; font-weight: bold; }

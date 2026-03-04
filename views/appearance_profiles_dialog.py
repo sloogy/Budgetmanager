@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from settings import Settings
+from utils.icons import get_icon
 
 
 def _default_profile() -> Dict[str, Any]:
@@ -544,7 +545,8 @@ class AppearanceProfilesDialog(QDialog):
         for name in sorted(self._profiles.keys(), key=str.lower):
             it = QListWidgetItem(name)
             if name == self._active_name:
-                it.setText(f"✅ {name}")
+                it.setText(name)
+                it.setIcon(get_icon("✅"))
                 it.setData(Qt.UserRole, name)
             else:
                 it.setData(Qt.UserRole, name)

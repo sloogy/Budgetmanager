@@ -41,6 +41,7 @@ from model.savings_goals_model import SavingsGoalsModel
 from model.budget_overview_model import BudgetOverviewModel
 from settings import Settings
 
+from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from utils.money import format_money as format_chf, currency_header
 
@@ -269,12 +270,14 @@ class OverviewTab(QWidget):
         self.month_combo.setFixedWidth(120)
         layout.addWidget(self.month_combo)
 
-        self.btn_refresh = QPushButton("🔄")
+        self.btn_refresh = QPushButton("")
+        self.btn_refresh.setIcon(get_icon("🔄"))
         self.btn_refresh.setFixedWidth(35)
         self.btn_refresh.setToolTip(tr("overview.tip.refresh"))
         layout.addWidget(self.btn_refresh)
 
-        self.btn_toggle_right = QPushButton("📋")
+        self.btn_toggle_right = QPushButton("")
+        self.btn_toggle_right.setIcon(get_icon("📋"))
         self.btn_toggle_right.setFixedWidth(35)
         self.btn_toggle_right.setToolTip(tr("overview.tip.toggle_sidebar"))
         self.btn_toggle_right.setCheckable(True)

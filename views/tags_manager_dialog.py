@@ -18,6 +18,7 @@ from PySide6.QtGui import QColor, QBrush
 import sqlite3
 
 from model.tags_model import TagsModel
+from utils.icons import get_icon
 from utils.money import format_money
 
 
@@ -69,12 +70,14 @@ class TagsManagerDialog(QDialog):
         # Button-Leiste
         btn_layout = QHBoxLayout()
         
-        self.btn_add = QPushButton("➕ Neu")
+        self.btn_add = QPushButton("Neu")
+        self.btn_add.setIcon(get_icon("➕"))
         self.btn_add.setToolTip("Neues Tag erstellen")
         self.btn_add.clicked.connect(self._add_tag)
         btn_layout.addWidget(self.btn_add)
         
-        self.btn_edit = QPushButton("✏️ Bearbeiten")
+        self.btn_edit = QPushButton("Bearbeiten")
+        self.btn_edit.setIcon(get_icon("✏️"))
         self.btn_edit.setToolTip(tr("dlg.ausgewaehltes_tag_bearbeiten"))
         self.btn_edit.clicked.connect(self._edit_tag)
         self.btn_edit.setEnabled(False)
@@ -93,7 +96,8 @@ class TagsManagerDialog(QDialog):
         self.btn_merge.clicked.connect(self._merge_tags)
         btn_layout.addWidget(self.btn_merge)
         
-        self.btn_stats = QPushButton("📊 Statistiken")
+        self.btn_stats = QPushButton("Statistiken")
+        self.btn_stats.setIcon(get_icon("📊"))
         self.btn_stats.setToolTip("Tag-Statistiken anzeigen")
         self.btn_stats.clicked.connect(self._show_stats)
         btn_layout.addWidget(self.btn_stats)
@@ -117,7 +121,8 @@ class TagsManagerDialog(QDialog):
             return
         self.table.selectRow(row)
         menu = QMenu(self)
-        act_edit = menu.addAction("✏️ Bearbeiten…")
+        act_edit = menu.addAction("Bearbeiten…")
+        act_edit.setIcon(get_icon("✏️"))
         act_color = menu.addAction(tr("dlg.farbe_aendern_1"))
         menu.addSeparator()
         act_delete = menu.addAction(tr("btn.loeschen_1"))
@@ -176,7 +181,8 @@ class TagsManagerDialog(QDialog):
             actions_layout.setSpacing(4)
             
             # Farbe ändern Button
-            btn_color = QPushButton("🎨")
+            btn_color = QPushButton("")
+            btn_color.setIcon(get_icon("🎨"))
             btn_color.setFixedSize(30, 24)
             btn_color.setToolTip(tr("dlg.farbe_aendern"))
             btn_color.clicked.connect(lambda checked, tid=tag_id: self._change_color(tid))

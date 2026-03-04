@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from model.recurring_transactions_model import RecurringTransactionsModel, RecurringTransaction
+from utils.icons import get_icon
 
 
 class RecurringTransactionsDialog(QDialog):
@@ -55,11 +56,16 @@ class RecurringTransactionsDialog(QDialog):
         # Buttons
         btn_layout = QHBoxLayout()
         
-        self.btn_add = QPushButton("➕ Neu")
-        self.btn_edit = QPushButton("✏️ Bearbeiten")
-        self.btn_delete = QPushButton("🗑️ Löschen")
-        self.btn_toggle = QPushButton("⏸️ Aktivieren/Deaktivieren")
-        self.btn_check_pending = QPushButton("🔍 Fällige Buchungen prüfen")
+        self.btn_add = QPushButton("Neu")
+        self.btn_add.setIcon(get_icon("➕"))
+        self.btn_edit = QPushButton("Bearbeiten")
+        self.btn_edit.setIcon(get_icon("✏️"))
+        self.btn_delete = QPushButton("Löschen")
+        self.btn_delete.setIcon(get_icon("🗑️"))
+        self.btn_toggle = QPushButton("Aktivieren/Deaktivieren")
+        self.btn_toggle.setIcon(get_icon("⏸️"))
+        self.btn_check_pending = QPushButton("Fällige Buchungen prüfen")
+        self.btn_check_pending.setIcon(get_icon("🔍"))
         self.btn_close = QPushButton("Schließen")
         
         btn_layout.addWidget(self.btn_add)

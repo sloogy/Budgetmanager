@@ -7,16 +7,24 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ## [1.0.25] - 2026-03-04
 
-### Behoben
-- **Backup: `users.json` fehlte im Backup** — `create_backup()` in `backup_restore_dialog.py` inkludierte bisher keine `users.json`. Backups waren dadurch unvollständig und konnten Benutzerprofile nicht wiederherstellen. Fix: `users.json` wird jetzt analog zu `_create_bmr_backup()` mit einbezogen. Backups haben konsistente Größe und sind vollständig wiederherstellbar (Settings + Users).
+### Neue Features
+- **Modernisierung der UI-Icons**: Alle Emoji-Text-Präfixe in Buttons, Menüs und Aktionen wurden durch native QIcons ersetzt (zentral gesteuert über `utils/icons.py`).
+- **Lokalisierung bereinigt**: Emojis wurden aus den Sprachdateien (`de.json`, `en.json`, `fr.json`) entfernt und durch reine Text-Labels ersetzt. Die Icons werden nun programmatisch zugewiesen.
+- **Backup-Verwaltung**: Neue Option "Ältestes Backup automatisch löschen" in den Einstellungen hinzugefügt.
+- **Automatisierte Releases**: GitHub Actions Workflow für den automatischen Build von Windows EXE, Linux Binaries und Portable ZIP-Archiven implementiert.
+- **Update-Sicherheit**: Das Update-Manifest (`latest.json`) inklusive SHA256-Prüfsummen wird nun automatisch bei jedem Release generiert.
 
-### Hinzugefügt
-- **Icon-System: `utils/icons.py`** — Neues Modul mit `get_icon(emoji, size) -> QIcon` Funktion. Ersetzt Emoji-Strings durch plattformunabhängig gerenderte Qt-Icons. LRU-Cache für Performance, automatischer Fallback bei fehlender Emoji-Unterstützung. Verbessert Cross-Platform-Kompatibilität (Windows/macOS/Linux).
+### Bugfixes
+- **CategoryManagerDialog**: Behebung eines `AttributeError` ('warning_bg'), bei dem eine Schleifenvariable das globale Farbobjekt überschrieb.
+- **Einstellungen**: Fehler korrigiert, bei dem `backup_auto_delete` und `auto_backup_keep` beim Schließen des Dialogs nicht korrekt gespeichert wurden.
+- **Backup-Limit**: Die maximale Anzahl an Backups wird nun auch bei manuell ausgelösten Sicherungen korrekt erzwungen.
+- **Sicherheits-Backups**: Automatische Backups vor Wiederherstellungen (`before_restore`) oder Resets wachsen nicht mehr unbegrenzt (Limit auf 3 Dateien gesetzt).
+- **Statistik-Fix**: Der Zähler für gespeicherte Backups ignoriert nun temporäre Sicherheits-Backups.
 
-### Technisch
-- `backup_restore_dialog.py`: `users_json_path` Parameter im `create_backup()` Aufruf ergänzt.
-- Neues Modul `utils/icons.py` mit Emoji-zu-QIcon-Rendering via QPainter.
-- QA: `compileall` PASS, i18n-Check PASS (16 pre-existing fehlende Keys in `fr.json` im `create_user.*` Namespace — nicht durch diese Änderungen verursacht).
+### Bereinigung (Cleanup)
+- **Repo-Hygiene**: AI-Konfigurationsdateien und Metadaten (`.claude/`, `.gemini/`, `.codex/`, `AGENTS.md`, etc.) wurden aus der Versionsverwaltung entfernt.
+- **Datenschutz & Sicherheit**: `.gitignore` erweitert, um benutzerspezifische Daten wie `c.enc`, `users.json` und lokale Einstellungen strikt auszuschließen.
+- **Build-Optimierung**: Benutzerspezifische Dateien wurden aus dem `BudgetManager.spec` Bundle entfernt, um saubere Builds zu gewährleisten.
 
 ---
 
