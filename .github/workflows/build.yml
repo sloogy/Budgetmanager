@@ -3,12 +3,13 @@ name: Build Executables
 on:
   push:
     tags:
-      - 'v*'          # Trigger: git tag v1.0.0 && git push origin v1.0.0
+      - 'v*'          # Trigger: git tag v1.0.24 && git push origin v1.0.24
 
 permissions:
-  contents: write    # Nötig für Release-Erstellung
+  contents: write
 
 jobs:
+  # ── Job 1+2: Parallel Builds ─────────────────────────────────────────
   build:
     strategy:
       fail-fast: false
@@ -53,8 +54,77 @@ jobs:
         shell: bash
         run: mv "${{ matrix.pyinstaller_output }}" "${{ matrix.artifact_name }}"
 
+      - name: Upload artifact (for manifest job)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: ${{ matrix.artifact_name }}
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ matrix.artifact_name }}
           generate_release_notes: true
+
+  # ── Job 3: latest.json generieren & hochladen ────────────────────────
+  manifest:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BudgetManager-windows.exe
+          path: artifacts/
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BudgetManager-linux
+          path: artifacts/
+
+      - name: Generate latest.json
+        shell: bash
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
+
+          WIN_FILE="artifacts/BudgetManager-windows.exe"
+          LIN_FILE="artifacts/BudgetManager-linux"
+
+          WIN_SHA=$(sha256sum "$WIN_FILE" | awk '{print $1}')
+          LIN_SHA=$(sha256sum "$LIN_FILE" | awk '{print $1}')
+
+          cat > latest.json <<EOF
+          {
+            "app": "Budgetmanager",
+            "channel": "stable",
+            "version": "${VERSION}",
+            "release_tag": "${TAG}",
+            "assets": {
+              "windows": {
+                "type": "portable",
+                "url": "${BASE}/BudgetManager-windows.exe",
+                "sha256": "${WIN_SHA}"
+              },
+              "linux": {
+                "type": "portable",
+                "url": "${BASE}/BudgetManager-linux",
+                "sha256": "${LIN_SHA}"
+              }
+            }
+          }
+          EOF
+
+          echo "Generated latest.json:"
+          cat latest.json
+
+      - name: Upload latest.json to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: latest.json
