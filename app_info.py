@@ -14,7 +14,7 @@ solange das Projekt noch nicht "fertig" ist.
 APP_NAME = "Budgetmanager"
 
 # SemVer-ähnlich, aber mit 4 Stellen wie von dir gewünscht: 0.MAJOR.MINOR.PATCH
-APP_VERSION = "1.0.27"
+APP_VERSION = "1.0.28"
 
 # Nur Anzeige (About-Dialog). Kannst du jederzeit anpassen.
 APP_RELEASE_DATE = "4. März 2026"

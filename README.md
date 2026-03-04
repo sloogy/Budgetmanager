@@ -1,8 +1,8 @@
-# 💰 BudgetManager v1.0.27
+# 💰 BudgetManager v1.0.28
 
 Eine umfassende Personal-Finance-Anwendung zur Verwaltung von Budget, Buchungen und Sparzielen.
 
-![Version](https://img.shields.io/badge/version-1.0.27-blue)
+![Version](https://img.shields.io/badge/version-1.0.28-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
