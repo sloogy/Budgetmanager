@@ -16,8 +16,8 @@ a = Analysis(
         # Sprachdateien (PFLICHT – ohne diese startet die App auf Englisch-Fallback)
         ('locales',          'locales'),
 
-        # Standard-Kategorien für DB-Reset und Erststart
-        ('data',             'data'),
+        # Standard-Kategorien für DB-Reset und Erststart (KEIN c.enc/users.json!)
+        ('data/default_categories.json', 'data'),
 
         # Theme-Profile (25 vordefinierte + benutzerdefinierte)
         ('views/profiles',   'views/profiles'),

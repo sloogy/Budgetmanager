@@ -1,0 +1,60 @@
+name: Build Executables
+
+on:
+  push:
+    tags:
+      - 'v*'          # Trigger: git tag v1.0.0 && git push origin v1.0.0
+
+permissions:
+  contents: write    # Nötig für Release-Erstellung
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: BudgetManager-windows.exe
+            pyinstaller_output: dist/BudgetManager.exe
+
+          - os: ubuntu-latest
+            artifact_name: BudgetManager-linux
+            pyinstaller_output: dist/BudgetManager
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install PySide6 openpyxl cryptography requests packaging pyinstaller
+
+      - name: Install UPX (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y upx-ucl
+
+      - name: Install UPX (Windows)
+        if: runner.os == 'Windows'
+        run: choco install upx --no-progress -y
+
+      - name: Build with PyInstaller
+        run: pyinstaller BudgetManager.spec --noconfirm
+
+      - name: Rename artifact
+        shell: bash
+        run: mv "${{ matrix.pyinstaller_output }}" "${{ matrix.artifact_name }}"
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifact_name }}
+          generate_release_notes: true

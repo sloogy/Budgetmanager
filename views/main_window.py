@@ -896,6 +896,8 @@ class MainWindow(QMainWindow):
             self.settings.set("highlight_fixcosts", new_settings.get("highlight_fixcosts", True))
             self.settings.set("auto_backup", new_settings.get("auto_backup", False))
             self.settings.set("backup_days", int(new_settings.get("backup_days", 30) or 30))
+            self.settings.set("auto_backup_keep", int(new_settings.get("auto_backup_keep", 10) or 10))
+            self.settings.set("backup_auto_delete", bool(new_settings.get("backup_auto_delete", False)))
 
             # Tastenkürzel speichern und neu laden
             shortcut_map = new_settings.get("shortcuts")

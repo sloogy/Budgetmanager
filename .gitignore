@@ -30,8 +30,15 @@ dist/
 # Backups / Exports
 data/backups/
 *.bmr
-# --- Data: Backups & Logs (nicht versionieren) ---
+
+# --- Data: User-spezifische Dateien (NICHT versionieren) ---
+data/*.enc          # Verschlüsselte Datenbank (persönliche Daten!)
+data/users.json     # Benutzerkonten
+data/budgetmanager_settings.json  # Lokale Einstellungen
 data/*.log
 data/*crash*.log
 data/i18n_audit_report.txt
 data/*.txt
+
+# Spec-Datei versionieren (wird für GitHub Actions Build benötigt)
+# *.spec  ← bewusst auskommentiert
