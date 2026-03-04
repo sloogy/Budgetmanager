@@ -659,6 +659,7 @@
   "chk": {
     "autosave": "Enregistrement automatique",
     "auto_backup": "Activer la sauvegarde automatique",
+    "backup_auto_delete": "Supprimer automatiquement la sauvegarde la plus ancienne",
     "backup_before_reset": "Créer une sauvegarde avant la réinitialisation (recommandé)",
     "ask_on_due": "Demander à l'échéance (p. ex. coûts récurrents)",
     "ask_while_typing": "Demander l'échéance lors de la saisie",

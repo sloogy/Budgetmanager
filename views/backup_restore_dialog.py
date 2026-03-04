@@ -224,6 +224,28 @@ class BackupRestoreDialog(QDialog):
                 + (f"\n\n✓ {tr('dlg.settings_included')}" if has_settings else ""),
             )
             self.refresh_backup_list()
+            # Silent cleanup for manual backups: enforce configured keep limit.
+            try:
+                keep_n = int(self.settings.get("auto_backup_keep", 10) or 10)
+            except Exception:
+                keep_n = 10
+            keep_n = max(3, min(200, keep_n))
+
+            backups = sorted(
+                self.backup_dir.glob("budgetmanager_backup_*.bmr"),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+            for old_backup in backups[keep_n:]:
+                try:
+                    old_backup.unlink()
+                    logger.debug("Deleted old backup (manual cleanup): %s", old_backup)
+                except Exception as cleanup_err:
+                    logger.debug(
+                        "Could not delete old backup during manual cleanup (%s): %s",
+                        old_backup,
+                        cleanup_err,
+                    )
         except Exception as e:
             QMessageBox.critical(
                 self,
@@ -292,6 +314,7 @@ class BackupRestoreDialog(QDialog):
             # Aktuelles Backup vor Restore (immer als .bmr, damit restorefähig)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self._create_bmr_backup(prefix=f"budgetmanager_before_restore_{timestamp}", note="Before Restore")
+            self._cleanup_safety_backups("budgetmanager_before_restore_*.bmr")
             
             # Legacy (File-DB): Connection schliessen, damit SQLite die Datei freigibt
             # Encrypted (In-Memory): NICHT conn.close() – das würde die ganze App-DB killen.
@@ -436,6 +459,7 @@ class BackupRestoreDialog(QDialog):
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self._create_bmr_backup(prefix=f"budgetmanager_before_restore_{timestamp}", note="Before Restore")
+            self._cleanup_safety_backups("budgetmanager_before_restore_*.bmr")
 
             if self.encrypted_session is None:
                 try:
@@ -711,6 +735,7 @@ class BackupRestoreDialog(QDialog):
             # Backup erstellen (immer als .bmr)
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self._create_bmr_backup(prefix=f"budgetmanager_before_reset_{timestamp}", note="Before Reset")
+            self._cleanup_safety_backups("budgetmanager_before_reset_*.bmr")
             
             # Alle Tabellen löschen (Whitelist verhindert SQL-Injection)
             # Vollständige Whitelist aller DB-Tabellen (bei Schema-Änderungen mitziehen!)
@@ -781,10 +806,12 @@ class BackupRestoreDialog(QDialog):
         # Backup versuchen (optional – kann fehlschlagen wenn Session eingefroren)
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self._create_bmr_backup(
-                prefix=f"budgetmanager_emergency_reset_{timestamp}",
-                note="Emergency Reset"
-            )
+            backup_prefix = f"budgetmanager_emergency_reset_{timestamp}"
+            self._create_bmr_backup(prefix=backup_prefix, note="Emergency Reset")
+            if backup_prefix.startswith("budgetmanager_before_restore_"):
+                self._cleanup_safety_backups("budgetmanager_before_restore_*.bmr")
+            elif backup_prefix.startswith("budgetmanager_before_reset_"):
+                self._cleanup_safety_backups("budgetmanager_before_reset_*.bmr")
         except Exception as e:
             logger.warning("Notfall-Backup fehlgeschlagen (nicht kritisch): %s", e)
 
@@ -883,6 +910,25 @@ class BackupRestoreDialog(QDialog):
             settings_path=s_path if s_path.exists() else None,
             users_json_path=u_path if u_path.exists() else None,
         )
+
+    def _cleanup_safety_backups(self, pattern: str, keep: int = 3) -> None:
+        """Löscht alte Safety-Backups und behält nur die neuesten `keep` Dateien."""
+        try:
+            files = sorted(
+                self.backup_dir.glob(pattern),
+                key=lambda p: p.stat().st_mtime,
+                reverse=True,
+            )
+        except Exception as e:
+            logger.debug("Safety-Backup-Scan fehlgeschlagen (%s): %s", pattern, e)
+            return
+
+        for old_file in files[keep:]:
+            try:
+                old_file.unlink()
+                logger.debug("Altes Safety-Backup gelöscht: %s", old_file)
+            except Exception as e:
+                logger.debug("Konnte Safety-Backup nicht löschen (%s): %s", old_file, e)
 
 
 from PySide6.QtCore import Qt

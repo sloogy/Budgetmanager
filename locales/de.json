@@ -659,6 +659,7 @@
   "chk": {
     "autosave": "Auto-Speichern",
     "auto_backup": "Automatische Sicherung aktivieren",
+    "backup_auto_delete": "Ältestes Backup automatisch löschen",
     "backup_before_reset": "Backup vor Reset erstellen (empfohlen)",
     "ask_on_due": "Bei Fälligkeit nachfragen (z. B. wiederkehrende Kosten)",
     "ask_while_typing": "Beim Tippen nach Fälligkeit fragen",

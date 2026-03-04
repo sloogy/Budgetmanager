@@ -1,5 +1,0 @@
-i18n key sync (flattened):
-- de.json: total=1164 missing=0 extra=0
-- en.json: total=1164 missing=0 extra=0
-- fr.json: total=1148 missing=16 extra=0
-  missing sample: ['create_user.btn_create', 'create_user.display_name_label', 'create_user.first_user_info', 'create_user.password_label', 'create_user.password_placeholder', 'create_user.password_repeat_placeholder', 'create_user.pin_label', 'create_user.pin_placeholder', 'create_user.pin_repeat_label', 'create_user.pin_repeat_placeholder']

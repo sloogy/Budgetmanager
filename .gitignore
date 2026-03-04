@@ -1,4 +1,37 @@
-.venv/
+# --- AI runtime/state (nicht versionieren) ---
+.ai/
+.ai/**
+
+
+
+# Falls du Gemini local state hast (nur wenn es runtime ist)
+.gemini/
+.gemini/**
+.codex/
+.codex/**
+
+# --- Python ---
 __pycache__/
-*.pyc
+*.py[cod]
+.venv/
+venv/
+.env
+
+# --- Build/Packaging ---
+build/
+dist/
+*.spec
+
+# --- Logs/Temp ---
 *.log
+*.tmp
+.DS_Store
+
+# Backups / Exports
+data/backups/
+*.bmr
+# --- Data: Backups & Logs (nicht versionieren) ---
+data/*.log
+data/*crash*.log
+data/i18n_audit_report.txt
+data/*.txt

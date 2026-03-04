@@ -659,6 +659,7 @@
   "chk": {
     "autosave": "Auto-Save",
     "auto_backup": "Enable automatic backup",
+    "backup_auto_delete": "Automatically delete oldest backup",
     "backup_before_reset": "Create backup before reset (recommended)",
     "ask_on_due": "Ask on due date (e.g. recurring costs)",
     "ask_while_typing": "Ask about due date while typing",

@@ -457,6 +457,7 @@ class SettingsDialog(QDialog):
         self.sb_backup_keep.setValue(10)
         self.sb_backup_keep.setSuffix(tr("settings_ui.suffix_backups"))
         self.sb_backup_keep.setToolTip(tr("settings_ui.backup_keep_tooltip"))
+        self.cb_auto_delete = QCheckBox(tr("chk.backup_auto_delete"))
         self.btn_backup_now = QPushButton(tr("settings.create_backup_now"))
         self.btn_backup_now.clicked.connect(self._create_backup_now)
         self.lbl_last_backup = QLabel(tr("settings_ui.last_backup_never"))
@@ -465,6 +466,7 @@ class SettingsDialog(QDialog):
         flb.addRow(self.cb_auto_backup)
         flb.addRow(tr("settings_ui.lbl_interval"), self.sb_backup_days)
         flb.addRow(tr("settings_ui.lbl_keep"), self.sb_backup_keep)
+        flb.addRow("", self.cb_auto_delete)
         flb.addRow(tr("settings_ui.lbl_last_backup"), self.lbl_last_backup)
         flb.addRow(tr("settings_ui.lbl_backup_count"), self.lbl_backup_count)
         flb.addRow("", self.btn_backup_now)
@@ -571,6 +573,7 @@ class SettingsDialog(QDialog):
         self.cb_auto_backup.setChecked(bool(self.settings.get("auto_backup", False)))
         self.sb_backup_days.setValue(int(self.settings.get("backup_days", 30)))
         self.sb_backup_keep.setValue(int(self.settings.get("auto_backup_keep", 10) or 10))
+        self.cb_auto_delete.setChecked(bool(self.settings.get("backup_auto_delete", False)))
         self._refresh_backup_status()
 
         # Nach vollständigem Rendern prüfen ob Backup-Limit überschritten
@@ -609,6 +612,7 @@ class SettingsDialog(QDialog):
             "auto_backup": self.cb_auto_backup.isChecked(),
             "backup_days": int(self.sb_backup_days.value()),
             "auto_backup_keep": int(self.sb_backup_keep.value()),
+            "backup_auto_delete": self.cb_auto_delete.isChecked(),
             # Experten-Modus
             "show_categories_tab": self.cb_show_categories_tab.isChecked(),
             # Tastenkürzel
@@ -713,7 +717,7 @@ class SettingsDialog(QDialog):
         # Anzahl Backups im Backup-Ordner
         try:
             backup_dir = resolve_in_app(self.settings.get("backup_directory", "data/backups"))
-            count = sum(1 for _ in backup_dir.glob("*.bmr")) if backup_dir.exists() else 0
+            count = sum(1 for _ in backup_dir.glob("budgetmanager_backup_*.bmr")) if backup_dir.exists() else 0
             self.lbl_backup_count.setText(str(count))
         except Exception:
             self.lbl_backup_count.setText("?")
@@ -800,6 +804,16 @@ class SettingsDialog(QDialog):
             return
 
         to_delete_count = len(all_backups) - keep_n
+
+        if self.settings.get("backup_auto_delete", False):
+            # Silent auto-delete: remove oldest backups beyond retention limit.
+            for old in all_backups[keep_n:]:
+                try:
+                    old.unlink()
+                except Exception as e:
+                    logger.debug("%s", e)
+            self._refresh_backup_status()
+            return
 
         # Dialog aufbauen
         dlg = QDialog(self)

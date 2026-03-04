@@ -12,11 +12,11 @@
   "auto_generate_budget_warnings": true,
   "carryover_start_month": 10,
   "carryover_start_year": 2025,
-  "window_width": 1416,
+  "window_width": 2542,
   "window_height": 1352,
-  "window_x": 2560,
-  "window_y": 0,
-  "window_is_maximized": false,
+  "window_x": 2549,
+  "window_y": -49,
+  "window_is_maximized": true,
   "window_is_fullscreen": false,
   "last_budget_year": null,
   "last_overview_year": null,
@@ -54,5 +54,5 @@
   "backup_days": 1,
   "shortcuts": {},
   "tab_position": "west",
-  "last_auto_backup": "2026-03-04T11:20:48.338155"
+  "last_auto_backup": "2026-03-04T14:32:36.346774"
 }

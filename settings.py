@@ -83,6 +83,8 @@ class Settings:
 
             # AutoBackup: wie viele Auto-Backups sollen maximal behalten werden?
             "auto_backup_keep": 10,
+            # AutoBackup: bei Überschreitung älteste Backups automatisch löschen?
+            "backup_auto_delete": False,
             # Design/Theme (V2)
             "active_design_profile": "V2 Hell – Neon Cyan",
             "last_design_profile_hell": "V2 Hell – Neon Cyan",
