@@ -47,6 +47,11 @@ Thumbs.db
 data/backups/
 *.bmr
 
+# --- Build-Ausgaben ---
+installer_output/
+dist/
+build/
+
 # --- Data: User-spezifische Dateien (persönliche Daten!) ---
 data/*.enc
 data/users.json

@@ -214,26 +214,6 @@ def build_installer():
         print("❌ Fehler beim Erstellen des Installers")
         return False
 
-def create_portable_zip():
-    """Erstellt eine portable ZIP-Version"""
-    print("📦 Erstelle portable ZIP-Version...")
-    
-    import zipfile
-    
-    zip_name = f"installer_output/{APP_NAME}_Portable_{VERSION}.zip"
-    os.makedirs("installer_output", exist_ok=True)
-    
-    with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        # Füge EXE hinzu
-        zipf.write(f"dist/{APP_NAME}.exe", f"{APP_NAME}/{APP_NAME}.exe")
-        
-        # Füge zusätzliche Dateien hinzu
-        for file in ['README.md', 'CHANGELOG.md', 'LICENSE.txt']:
-            if os.path.exists(f"dist/{file}"):
-                zipf.write(f"dist/{file}", f"{APP_NAME}/{file}")
-    
-    print(f"  ✓ Portable Version erstellt: {zip_name}")
-
 def main():
     print(f"""
 ╔════════════════════════════════════════════════════╗
@@ -257,11 +237,8 @@ def main():
     
     # Schritt 5: Zusätzliche Dateien kopieren
     copy_additional_files()
-    
-    # Schritt 6: Portable ZIP erstellen
-    create_portable_zip()
-    
-    # Schritt 7: Installer erstellen
+
+    # Schritt 6: Installer erstellen
     build_installer()
     
     print(f"""
@@ -271,7 +248,6 @@ def main():
 
 Ausgabe-Dateien:
   • dist/{APP_NAME}.exe
-  • installer_output/{APP_NAME}_Portable_{VERSION}.zip
   • installer_output/{APP_NAME}_Setup_{VERSION}.exe (falls Inno Setup verfügbar)
 
 Nächste Schritte:
