@@ -1,8 +1,8 @@
-# 💰 BudgetManager v1.0.28
+# 💰 BudgetManager v1.0.32
 
 Eine umfassende Personal-Finance-Anwendung zur Verwaltung von Budget, Buchungen und Sparzielen.
 
-![Version](https://img.shields.io/badge/version-1.0.28-blue)
+![Version](https://img.shields.io/badge/version-1.0.32-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![License](https://img.shields.io/badge/license-MIT-orange)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -35,13 +35,15 @@ python3 main.py
 
 ---
 
-## 🎯 Was ist neu in v1.0.26?
+## 🎯 Was ist neu in v1.0.32?
+
+Die Releases 1.0.29–1.0.32 konzentrierten sich auf Stabilität und Qualität: GUI-Smoke-Tests in der CI, transaktionale Undo/Redo-Gruppen, beseitigte stille `except`-Blöcke und ein behobener Headless-Hänger im `closeEvent` (modaler Beenden-Dialog blockierte die Tests). Details siehe [CHANGELOG.md](CHANGELOG.md).
 
 ### ✨ Vollständiger Funktionsumfang
 - **🔒 Multi-Account-System**: Quick-Modus, PIN und Passwort-Schutz mit PBKDF2 (200.000 Iterationen)
 - **📅 Wiederkehrende Buchungen**: Automatisch mit Soll-Datum und Direktbuchung
 - **💾 Backup inkl. Einstellungen**: Backup und Restore inklusive app-Einstellungen
-- **🌍 Mehrsprachig**: Vollständige DE / EN / FR Lokalisierung (758 Keys)
+- **🌍 Mehrsprachig**: Vollständige DE / EN / FR Lokalisierung (1211 Keys)
 - **🎨 25 Themes**: Hell, Dunkel, Gruvbox, Nord, Dracula, Solarized und mehr
 - **↩️ Persistentes Undo/Redo**: Überlebt Neustart (SQLite-basiert)
 - **🗂️ Sparziele-Tab**: Sparziele als eigenständiger Tab neben der Übersicht
@@ -203,4 +205,4 @@ MIT License — siehe [LICENSE.txt](LICENSE.txt)
 
 ---
 
-**Version**: 1.0.26 | **Datum**: 04.03.2026 | **Status**: Stable ✅
+**Version**: 1.0.32 | **Datum**: 12.06.2026 | **Status**: Stable ✅
