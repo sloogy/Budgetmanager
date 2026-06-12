@@ -662,8 +662,8 @@ class BudgetTab(QWidget):
                             itx = self.table.item(r, cc)
                             if itx:
                                 itx.setBackground(QBrush(bg))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Zeilen-Hintergrund konnte nicht gesetzt werden: %s", e)
 
                 for row in flat:
                     name = row["name"]

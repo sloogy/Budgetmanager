@@ -184,8 +184,8 @@ def main() -> int:
         try:
             if os.environ.get("BM_I18N_DEBUG", "").strip() not in ("", "0", "false", "False"):
                 set_debug_missing(True)
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).debug("BM_I18N_DEBUG-Auswertung fehlgeschlagen: %s", e)
 
         # UserModel früh laden – wird für Language-Check und Login-Flow benötigt
         from model.user_model import UserModel
@@ -280,6 +280,30 @@ def main() -> int:
             Path(backup_dir).mkdir(parents=True, exist_ok=True)
             migration_info = migrate_all(conn, str(db_path), backup_dir)
         else:
+            # Verschlüsselter Modus: Die Migration läuft auf der In-Memory-DB.
+            # Falls sie nötig ist, sichern wir VORHER die originale .enc-Datei —
+            # geht beim anschließenden verschlüsselten Speichern etwas schief,
+            # bleibt der letzte gute Stand erhalten.
+            if encrypted_session is not None:
+                try:
+                    from model.migrations import _get_db_version, CURRENT_VERSION
+                    if _get_db_version(conn) < CURRENT_VERSION:
+                        import shutil
+                        from datetime import datetime as _dt
+                        enc_src = Path(encrypted_session.enc_path)
+                        if enc_src.exists():
+                            backup_dir_p = resolve_in_app(settings.backup_directory)
+                            backup_dir_p.mkdir(parents=True, exist_ok=True)
+                            stamp = _dt.now().strftime("%Y%m%d_%H%M%S")
+                            enc_backup = backup_dir_p / f"pre_migration_{stamp}.enc"
+                            shutil.copy2(str(enc_src), str(enc_backup))
+                            logging.getLogger(__name__).info(
+                                "Pre-Migration-Backup der verschlüsselten DB: %s", enc_backup
+                            )
+                except Exception as e:
+                    logging.getLogger(__name__).warning(
+                        "Pre-Migration-Backup (.enc) fehlgeschlagen: %s", e
+                    )
             migration_info = migrate_all(conn)
 
         if migration_info.get('migrations_applied'):
@@ -325,7 +349,16 @@ def main() -> int:
         win.show()
 
         # Setup-Assistent
-        db_existed = db_path is not None and db_path.exists() if db_path else True
+        # WICHTIG: db_existed_before wurde VOR open_db() ermittelt — nach open_db()
+        # existiert die Datei immer, wodurch der Setup-Assistent beim Erststart
+        # fälschlich unterdrückt wurde.
+        if db_path is not None:
+            try:
+                db_existed = bool(db_existed_before)
+            except NameError:
+                db_existed = db_path.exists()
+        else:
+            db_existed = True
         if encrypted_session:
             # Bei verschlüsselter DB: Setup wenn DB leer
             try:
@@ -351,8 +384,8 @@ def main() -> int:
         try:
             from utils.icons import get_icon
             get_icon.cache_clear()
-        except Exception:
-            pass
+        except Exception as e:
+            logging.getLogger(__name__).debug("Icon-Cache-Clear beim Shutdown fehlgeschlagen: %s", e)
 
         # MainWindow explizit zerstören vor QApplication
         win.close()

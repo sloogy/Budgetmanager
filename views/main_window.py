@@ -20,7 +20,7 @@ from model.shortcuts_config import load_shortcuts, save_shortcuts
 from model.undo_redo_model import UndoRedoModel
 from settings import Settings
 from utils.icons import get_icon
-from utils.i18n import tr
+from utils.i18n import tr, trf
 from settings_dialog import SettingsDialog
 from theme_manager import ThemeManager
 from views.account_management_dialog import AccountManagementDialog
@@ -97,7 +97,7 @@ class AboutDialog(QDialog):
             dlg = UpdateDialog(self.parent() or self)
             dlg.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Update", trf("lbl.updatedialog_konnte_nicht_geoeffnet"))
+            QMessageBox.warning(self, "Update", trf("lbl.updatedialog_konnte_nicht_geoeffnet", e=str(e)))
 
 class MainWindow(QMainWindow):
     def __init__(self, conn: sqlite3.Connection, *,
@@ -670,16 +670,16 @@ class MainWindow(QMainWindow):
             sb.addPermanentWidget(self._status_user_label)
             sb.addPermanentWidget(self._status_db_label, 1)
         except Exception as e:
-            logger.warning(tr("lbl.statusbarinfo_konnte_nicht_gesetzt"), e)
+            logger.warning("%s: %s", tr("lbl.statusbarinfo_konnte_nicht_gesetzt"), e)
 
     def _open_data_folder(self):
         """Öffnet den aktuellen Datenordner im Dateimanager."""
         try:
             folder = data_dir()
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
-            self.statusBar().showMessage(trf("lbl.datenordner_geoeffnet_folder"), 3000)
+            self.statusBar().showMessage(trf("lbl.datenordner_geoeffnet_folder", folder=str(folder)), 3000)
         except Exception as e:
-            QMessageBox.warning(self, "Datenordner", trf("msg.datenordner_fehler"))
+            QMessageBox.warning(self, "Datenordner", trf("msg.datenordner_fehler", e=str(e)))
         
 
     def _apply_settings_to_tabs(self):
@@ -1563,7 +1563,7 @@ class MainWindow(QMainWindow):
             msg.exec()
             
         except Exception as e:
-            QMessageBox.warning(self, "Hinweis", trf("msg.fehler_beim_laden_der"))
+            QMessageBox.warning(self, "Hinweis", trf("msg.fehler_beim_laden_der", e=str(e)))
 
     def _show_about(self):
         """Zeigt Über-Dialog"""
@@ -1614,7 +1614,7 @@ class MainWindow(QMainWindow):
                 self._account_info_action.setText(
                     f"{icon} {new_name} — {self._active_user.security_label}"
                 )
-            self.statusBar().showMessage(trf("lbl.anzeigename_geaendert_new_name"), 3000)
+            self.statusBar().showMessage(trf("lbl.anzeigename_geaendert_new_name", new_name=new_name), 3000)
 
     def _on_security_changed(self, new_security: str):
         """Aktualisiert den Fenstertitel nach Sicherheitsstufen-Wechsel."""
@@ -1629,7 +1629,8 @@ class MainWindow(QMainWindow):
                     f"{icon} {name} — {self._active_user.security_label}"
                 )
             self.statusBar().showMessage(
-                trf("lbl.sicherheitsstufe_geaendert_self_active_usersecurity_label"), 3000
+                trf("lbl.sicherheitsstufe_geaendert_self_active_usersecurity_label",
+                    label=self._active_user.security_label), 3000
             )
     
     def _show_shortcuts(self):
@@ -1769,13 +1770,24 @@ class MainWindow(QMainWindow):
             active_user=self._active_user,
         )
         result = dialog.exec()
-        # Nur dann Neustart verlangen, wenn die aktive DB wirklich ersetzt wurde
-        if result == QDialog.Accepted and getattr(dialog, "db_changed", False) and not getattr(dialog, "exit_requested", False):
-            QMessageBox.information(
-                self,
-                "Neustart erforderlich",
-                "Bitte starten Sie die Anwendung neu, um die Änderungen zu übernehmen."
-            )
+        # Nach erfolgreichem Restore:
+        # - Unverschlüsselt: Daten wurden direkt in die Live-Connection zurückgespielt
+        #   → Tabs refreshen, KEIN Neustart nötig.
+        # - Verschlüsselt: .enc auf Disk wurde ersetzt, In-Memory-DB ist noch alt
+        #   → Neustart erforderlich.
+        if getattr(dialog, "db_changed", False) and not getattr(dialog, "exit_requested", False):
+            if encrypted_session is None:
+                try:
+                    self._refresh_all_tabs()
+                    self.statusBar().showMessage(tr("database.msg.restore_success"), 5000)
+                except Exception as e:
+                    logger.warning("Tab-Refresh nach Restore fehlgeschlagen: %s", e)
+            else:
+                QMessageBox.information(
+                    self,
+                    "Neustart erforderlich",
+                    "Bitte starten Sie die Anwendung neu, um die Änderungen zu übernehmen."
+                )
     
     def _show_database_management(self):
         """Zeigt den Datenbank-Verwaltungsdialog (Statistiken, Reset, Bereinigung)"""
@@ -1789,7 +1801,8 @@ class MainWindow(QMainWindow):
         else:
             db_path = str(resolve_in_app(self.settings.database_path))
 
-        dialog = DatabaseManagementDialog(db_path, parent=self, conn=self.conn)
+        dialog = DatabaseManagementDialog(db_path, parent=self, conn=self.conn,
+                                          encrypted=encrypted_session is not None)
         result = dialog.exec()
 
         # Nach Änderungen (Reset/Bereinigung): Encrypted Session auf Disk schreiben + Tabs refreshen
@@ -1847,11 +1860,17 @@ class MainWindow(QMainWindow):
                     self.tabs.setTabText(i, label)
                     break
         self._apply_tab_icons()
-        # Menü-Einträge aktualisieren
+        # Menü-Einträge aktualisieren: Menüleiste leeren und komplett neu aufbauen.
+        # (Hinweis: Es gab nie eine Methode `_setup_menus` — der frühere Aufruf
+        # schlug still fehl, wodurch Menüs nach Sprachwechsel unverändert blieben.)
         try:
-            self._setup_menus()
+            self.menuBar().clear()
+            self._create_menu()
+            self._update_edit_menu()
+            self._update_categories_menu_visibility()
+            self._update_undo_redo_actions()
         except Exception as e:
-            logger.debug("_retranslate_ui menu rebuild: %s", e)
+            logger.warning("_retranslate_ui menu rebuild fehlgeschlagen: %s", e)
         # Status-Bar
         self.statusBar().showMessage(tr("msg.language_changed"), 2000)
 
@@ -2012,6 +2031,12 @@ class MainWindow(QMainWindow):
             event.accept()
             return
         
+        # In Tests / headless: blockierenden Bestätigungsdialog überspringen.
+        # exec() würde ohne Display ewig warten und den Prozess aufhängen.
+        if getattr(self, "_suppress_close_confirm", False):
+            event.accept()
+            return
+
         # Wenn Auto-Save nicht aktiv: Einmal fragen ob gespeichert werden soll
         reply = QMessageBox.question(
             self,
@@ -2078,4 +2103,4 @@ class MainWindow(QMainWindow):
             dlg.raise_()
             dlg.activateWindow()
         except Exception as e:
-            QMessageBox.critical(self, "Fehler", trf("msg.setup_assistent_fehler"))
+            QMessageBox.critical(self, "Fehler", trf("msg.setup_assistent_fehler", e=str(e)))

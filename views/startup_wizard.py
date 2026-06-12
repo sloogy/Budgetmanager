@@ -478,7 +478,7 @@ class StartupWizard(QDialog):
                     last_exc = exc
                     if attempt < 2:
                         QMessageBox.warning(self, tr("msg.info"), f"Bitte erneut versuchen.\n\n{exc}")
-            raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen"))
+            raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen", last_exc=str(last_exc)))
 
         raise ValueError(f"Unbekanntes Format: {src.name}")
 

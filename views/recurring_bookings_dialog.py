@@ -334,9 +334,9 @@ class RecurringBookingsDialog(QDialog):
         selected = self._count_selected()
         
         self.lbl_total.setText(trf("lbl.lbl_total", n=total))
-        self.lbl_overdue.setText(trf("dlg.ueberfaellig_overdue"))
+        self.lbl_overdue.setText(trf("dlg.ueberfaellig_overdue", overdue=overdue))
         self.lbl_upcoming.setText(trf("lbl.lbl_pending", n=upcoming))
-        self.lbl_selected.setText(trf("dlg.ausgewaehlt_selected"))
+        self.lbl_selected.setText(trf("dlg.ausgewaehlt_selected", selected=selected))
 
     def _count_selected(self) -> int:
         """Zählt ausgewählte Items"""

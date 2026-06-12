@@ -201,7 +201,7 @@ def import_categories_from_xlsx(conn: sqlite3.Connection, xlsx_path: Path) -> Ca
 
         cid = get_id(typ, name)
         if cid is None:
-            raise RuntimeError(trf("lbl.konnte_kategorie_nicht_anlegen"))
+            raise RuntimeError(trf("lbl.konnte_kategorie_nicht_anlegen", typ=typ, name=name))
         return cid
 
     # Daten

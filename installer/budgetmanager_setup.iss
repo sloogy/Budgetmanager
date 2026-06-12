@@ -11,9 +11,9 @@
 ; - PyInstaller EXE im dist/ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "1.0.0"
+#define MyAppVersion "1.0.31"
 #define MyAppPublisher "Christian"
-#define MyAppURL "https://github.com/DEIN_GITHUB/budgetmanager"  ; TODO: echte URL eintragen
+#define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"
 
 [Setup]

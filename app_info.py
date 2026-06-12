@@ -14,10 +14,10 @@ solange das Projekt noch nicht "fertig" ist.
 APP_NAME = "Budgetmanager"
 
 # SemVer-ähnlich, aber mit 4 Stellen wie von dir gewünscht: 0.MAJOR.MINOR.PATCH
-APP_VERSION = "1.0.28"
+APP_VERSION = "1.0.32"
 
 # Nur Anzeige (About-Dialog). Kannst du jederzeit anpassen.
-APP_RELEASE_DATE = "4. März 2026"
+APP_RELEASE_DATE = "12. Juni 2026"
 
 
 def app_window_title() -> str:

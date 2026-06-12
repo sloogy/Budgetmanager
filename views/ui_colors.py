@@ -128,8 +128,8 @@ class UIColors:
             normed = _nt(typ)
             if normed in self.type_colors:
                 return self.type_colors[normed]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("normalize_typ(%r) fehlgeschlagen: %s", typ, e)
         return self.text_dim
 
     def type_qcolor(self, typ: str) -> QColor:

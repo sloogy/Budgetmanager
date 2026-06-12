@@ -151,7 +151,7 @@ class AccountManagementDialog(QDialog):
             self._header_label.setText(f"👤 {new_name}")
             self.display_name_changed.emit(new_name)
             QMessageBox.information(self, "Gespeichert",
-                                   trf("account.anzeigename_geaendert_zu_new_name"))
+                                   trf("account.anzeigename_geaendert_zu_new_name", new_name=new_name))
         else:
             QMessageBox.critical(self, tr("msg.error"),
                                 tr("account.name_konnte_nicht_gespeichert"))
@@ -223,7 +223,7 @@ class AccountManagementDialog(QDialog):
         is_pin = self.user.is_pin
         mode_label = "PIN" if is_pin else "Passwort"
 
-        layout.addWidget(QLabel(trf("account.aendere_dein_aktuelles_mode_label")))
+        layout.addWidget(QLabel(trf("account.aendere_dein_aktuelles_mode_label", mode_label=mode_label)))
         layout.addSpacing(5)
 
         self._secret_form_frame = QFrame()
@@ -262,7 +262,7 @@ class AccountManagementDialog(QDialog):
         layout.addWidget(self._secret_form_frame)
         layout.addSpacing(10)
 
-        btn_change = QPushButton(trf("account.mode_label_aendern"))
+        btn_change = QPushButton(trf("account.mode_label_aendern", mode_label=mode_label))
         btn_change.setStyleSheet("""
             QPushButton {
                 padding: 10px 20px; background: #e67e22; color: white;
@@ -300,17 +300,17 @@ class AccountManagementDialog(QDialog):
 
         if not old_secret:
             QMessageBox.warning(self, "Hinweis",
-                               trf("account.bitte_das_aktuelle_mode_label"))
+                               trf("account.bitte_das_aktuelle_mode_label", mode_label=mode_label))
             return
 
         if not new_secret:
             QMessageBox.warning(self, "Hinweis",
-                               trf("account.bitte_ein_neues_mode_label"))
+                               trf("account.bitte_ein_neues_mode_label", mode_label=mode_label))
             return
 
         if new_secret != new_secret2:
             QMessageBox.warning(self, "Hinweis",
-                               trf("account.die_mode_labeleingaben_stimmen_nicht"))
+                               trf("account.die_mode_labeleingaben_stimmen_nicht", mode_label=mode_label))
             return
 
         if is_pin:
@@ -339,10 +339,10 @@ class AccountManagementDialog(QDialog):
                 self._show_restore_key(restore_key, mode_label)
             else:
                 QMessageBox.information(self, "Erfolg",
-                                       trf("account.mode_label_wurde_erfolgreich_geaendert"))
+                                       trf("account.mode_label_wurde_erfolgreich_geaendert", mode_label=mode_label))
         else:
             QMessageBox.critical(self, tr("msg.error"),
-                                trf("account.das_aktuelle_mode_label_ist"))
+                                trf("account.das_aktuelle_mode_label_ist", mode_label=mode_label))
             self.edt_old_secret.clear()
             self.edt_old_secret.setFocus()
 
@@ -569,7 +569,7 @@ class AccountManagementDialog(QDialog):
             if not old_secret:
                 mode = "PIN" if self.user.is_pin else "Passwort"
                 QMessageBox.warning(self, "Hinweis",
-                                   trf("account.bitte_das_aktuelle_mode"))
+                                   trf("account.bitte_das_aktuelle_mode", mode=mode))
                 return
 
         # Neues Secret prüfen wenn Ziel nicht Quick
@@ -580,13 +580,13 @@ class AccountManagementDialog(QDialog):
             if not new_secret:
                 kind = "PIN" if target == SECURITY_PIN else "Passwort"
                 QMessageBox.warning(self, "Hinweis",
-                                   trf("account.bitte_ein_neues_kind"))
+                                   trf("account.bitte_ein_neues_kind", kind=kind))
                 return
 
             if new_secret != new_secret2:
                 kind = "PIN" if target == SECURITY_PIN else "Passwort"
                 QMessageBox.warning(self, "Hinweis",
-                                   trf("account.die_kindeingaben_stimmen_nicht"))
+                                   trf("account.die_kindeingaben_stimmen_nicht", kind=kind))
                 return
 
             if target == SECURITY_PIN:
@@ -656,7 +656,7 @@ class AccountManagementDialog(QDialog):
             if self.user.needs_auth:
                 mode = "PIN" if self.user.is_pin else "Passwort"
                 QMessageBox.critical(self, tr("msg.error"),
-                                    trf("account.das_aktuelle_mode_ist"))
+                                    trf("account.das_aktuelle_mode_ist", mode=mode))
                 self.edt_sec_old.clear()
                 self.edt_sec_old.setFocus()
             else:
@@ -682,7 +682,7 @@ class AccountManagementDialog(QDialog):
         layout.setSpacing(10)
         layout.setContentsMargins(20, 15, 20, 15)
 
-        header = QLabel(trf("account.context_erfolgreich_geaendert"))
+        header = QLabel(trf("account.context_erfolgreich_geaendert", context=(context or tr("dlg.restore_key_new"))))
         hf = QFont(); hf.setPointSize(13); hf.setBold(True)
         header.setFont(hf)
         header.setStyleSheet(f"color: {ui_colors(self).ok};")

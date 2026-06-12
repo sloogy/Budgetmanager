@@ -1,4 +1,5 @@
 from __future__ import annotations
+import logging
 
 import sys
 from pathlib import Path
@@ -25,6 +26,8 @@ def _read_budget_block(ws, start_row:int, end_row:int, year:int, typ:str, budget
             try:
                 amt=float(v)
             except Exception:
+                logging.getLogger(__name__).debug(
+                    "Excel-Import: Zelle r%s/c%s ist keine Zahl (%r) — übersprungen", r, col, v)
                 continue
             budget.set_amount(year, month, typ, cat.strip(), amt)
 

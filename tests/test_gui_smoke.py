@@ -62,6 +62,7 @@ def main_window(qapp, migrated_conn):
     from views.main_window import MainWindow
 
     win = MainWindow(migrated_conn)
+    win._suppress_close_confirm = True  # headless: Beenden-Bestätigung überspringen
     yield win
     win.close()
     win.deleteLater()

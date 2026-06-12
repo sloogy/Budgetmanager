@@ -322,7 +322,7 @@ class RestoreKeyDialog(QDialog):
         self.setMinimumSize(460, 220)
         layout = QVBoxLayout(self)
 
-        layout.addWidget(QLabel(trf("account.restorekey_fuer_buserdisplay_nameb")))
+        layout.addWidget(QLabel(trf("account.restorekey_fuer_buserdisplay_nameb", name=user.display_name)))
 
         self.edt_key = QLineEdit()
         self.edt_key.setPlaceholderText("XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX")
@@ -784,6 +784,6 @@ class LoginDialog(QDialog):
         )
         if reply == QMessageBox.Yes:
             self.user_model.delete_user(user.username, delete_db=True)
-            QMessageBox.information(self, tr("account.geloescht"), trf("account.userdisplay_name_wurde_geloescht"))
+            QMessageBox.information(self, tr("account.geloescht"), trf("account.userdisplay_name_wurde_geloescht", name=user.display_name))
             self.user_model = UserModel()
             self._build_content()

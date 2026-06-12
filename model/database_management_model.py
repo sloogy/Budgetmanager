@@ -29,58 +29,8 @@ class DatabaseManagementModel:
     """Verwaltung von Datenbank-Operationen inkl. Reset."""
     
     # Standard-Kategorien die beim Reset erstellt werden
-    DEFAULT_CATEGORIES = {
-        "Einkommen": [
-            "Lohn (Netto)",
-            "Nebenverdienst",
-            "Bonuszahlungen",
-            "Sonstige Einnahmen"
-        ],
-        "Ausgaben": [
-            # Wohnen
-            "Miete/Hypothek",
-            "Nebenkosten",
-            "Hausrat/Reparaturen",
-            "Strom & Gas",
-            
-            # Versicherungen
-            "Krankenversicherung",
-            "Haftpflicht",
-            "Hausrat",
-            "Auto/Motorrad",
-            
-            # Lebensunterhalt
-            "Lebensmittel",
-            "Drogerie/Apotheke",
-            "Kleidung",
-            
-            # Transport
-            "ÖV/Benzin",
-            "Auto-Unterhalt",
-            "Parkgebühren",
-            
-            # Kommunikation
-            "Telefon/Internet",
-            "Streaming-Dienste",
-            
-            # Freizeit
-            "Restaurant/Café",
-            "Hobbys",
-            "Urlaub/Reisen",
-            "Sport/Fitness",
-            
-            # Sonstiges
-            "Geschenke",
-            "Haustiere",
-            "Sonstiges"
-        ],
-        "Ersparnisse": [
-            "Notgroschen",
-            "Altersvorsorge",
-            "Sparziele",
-            "Investitionen"
-        ]
-    }
+    # DEFAULT_CATEGORIES wurde in v1.0.30 entfernt — zentrale Quelle ist
+    # jetzt model/default_categories.py (data/default_categories.json).
     
     def __init__(self, db_path: str, conn: sqlite3.Connection = None):
         self.db_path = db_path
@@ -157,40 +107,13 @@ class DatabaseManagementModel:
         
         return sorted(backups, key=lambda x: x['created'], reverse=True)
     
-    def restore_backup(self, backup_path: str) -> Tuple[bool, str]:
-        """
-        Stellt Datenbank aus Backup wieder her.
-        
-        Args:
-            backup_path: Pfad zur Backup-Datei
-            
-        Returns:
-            (success, message)
-        """
-        try:
-            if not os.path.exists(backup_path):
-                return False, "database.msg.backup_file_not_found"
-            
-            # Aktuelles DB als Sicherheit kopieren
-            temp_backup = self.db_path + ".before_restore"
-            shutil.copy2(self.db_path, temp_backup)
-            
-            try:
-                # Restore durchführen
-                shutil.copy2(backup_path, self.db_path)
-                return True, "database.msg.restore_success"
-            except Exception as e:
-                # Bei Fehler: Original wiederherstellen
-                shutil.copy2(temp_backup, self.db_path)
-                return False, ("database.msg.restore_failed", {"err": str(e)})
-            finally:
-                # Temp-Backup löschen
-                if os.path.exists(temp_backup):
-                    os.remove(temp_backup)
-                    
-        except Exception as e:
-            return False, ("database.msg.unexpected", {"err": str(e)})
-    
+    # HINWEIS (v1.0.30): Die frühere Methode restore_backup() wurde entfernt.
+    # Sie kopierte Backup-Dateien per shutil.copy2 direkt über die aktive DB —
+    # ohne Format-Prüfung. Aktuelle Backups sind .bmr-Bundles (ZIP), die so
+    # die Datenbank zerstört hätten. Sie wurde nirgends aufgerufen (toter Code).
+    # Restore läuft ausschließlich über views/backup_restore_dialog.py
+    # (Bundle-Logik + SQLite-Backup-API bzw. verschlüsselter Pfad).
+
     def reset_database(self, create_backup: bool = True, 
                        keep_user_data: bool = False) -> Tuple[bool, str]:
         """
@@ -285,15 +208,36 @@ class DatabaseManagementModel:
                 )
             """)
         
-        for typ, categories in self.DEFAULT_CATEGORIES.items():
-            for cat_name in categories:
-                try:
-                    cursor.execute("""
-                        INSERT INTO categories (typ, name) 
-                        VALUES (?, ?)
-                    """, (typ, cat_name))
-                except sqlite3.IntegrityError:
-                    logger.debug("_create_default_categories: %s/%s bereits vorhanden", typ, cat_name)
+        # Zentrale Quelle (v1.0.30): identisch mit Erststart (ensure_defaults),
+        # damit Reset und Erststart dieselben Kategorien erzeugen.
+        from model.default_categories import load_default_categories
+
+        cols_cur = cursor.execute("PRAGMA table_info(categories)")
+        cols = {r[1] for r in cols_cur.fetchall()}
+        for dc in load_default_categories():
+            try:
+                if {"is_fix", "is_recurring", "recurring_day"} <= cols:
+                    cursor.execute(
+                        "INSERT INTO categories (typ, name, is_fix, is_recurring, recurring_day) "
+                        "VALUES (?, ?, ?, ?, ?)",
+                        (dc.typ, dc.name, int(dc.is_fix), int(dc.is_recurring), int(dc.recurring_day)),
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO categories (typ, name) VALUES (?, ?)",
+                        (dc.typ, dc.name),
+                    )
+            except sqlite3.IntegrityError:
+                logger.debug("_create_default_categories: %s/%s bereits vorhanden", dc.typ, dc.name)
+
+        # Flag setzen, damit ensure_defaults() beim nächsten Start nicht
+        # erneut einfügt (gleiche Quelle, aber konsistentes Verhalten).
+        try:
+            cursor.execute(
+                "INSERT OR REPLACE INTO system_flags(key, value) VALUES('defaults_loaded', 'true')"
+            )
+        except sqlite3.OperationalError:
+            logger.debug("system_flags-Tabelle nicht vorhanden — Flag übersprungen")
     
     def cleanup_database(self) -> Tuple[bool, str, dict]:
         """

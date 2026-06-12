@@ -560,8 +560,10 @@ class OverviewBudgetPanel(QObject):
             )
             for s in suggs:
                 suggestion_map[(s.typ, s.category)] = float(s.suggested_amount)
-        except Exception:
-            pass
+        except Exception as e:
+            # WICHTIG: nicht still schlucken — sonst fehlen Budget-Vorschläge
+            # in der Übersicht, ohne dass es jemand merkt.
+            logger.warning("Budget-Vorschläge konnten nicht berechnet werden: %s", e)
 
         cat_rows, total_budget, total_actual = [], 0.0, 0.0
 
@@ -587,8 +589,11 @@ class OverviewBudgetPanel(QObject):
                         year, month_idx, typ_db,
                         start_month=co_start, start_year=co_year
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    # WICHTIG: nicht still schlucken — sonst fehlen Monatsüberträge
+                    # in der Übersicht, ohne dass es jemand merkt.
+                    logger.warning("Monatsüberträge konnten nicht berechnet werden (%s/%s %s): %s",
+                                   month_idx, year, typ_db, e)
 
             for cat in sorted(set(budget_cats) | set(actual_cats) | set(carry_cats)):
                 b = budget_cats.get(cat, 0.0)

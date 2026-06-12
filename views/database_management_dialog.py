@@ -23,6 +23,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 
 from model.database_management_model import DatabaseManagementModel
+from pathlib import Path
 from views.ui_colors import ui_colors
 from utils.icons import get_icon
 from utils.i18n import tr, trf, tr_msg, display_typ, db_typ_from_display
@@ -31,9 +32,10 @@ from utils.i18n import tr, trf, tr_msg, display_typ, db_typ_from_display
 class DatabaseManagementDialog(QDialog):
     """Dialog für Datenbank-Verwaltung."""
     
-    def __init__(self, db_path: str, parent=None, conn=None):
+    def __init__(self, db_path: str, parent=None, conn=None, encrypted: bool = False):
         super().__init__(parent)
         self.db_path = db_path
+        self.encrypted = encrypted  # True = verschlüsselter Modus (db_path zeigt auf .enc)
         self.model = DatabaseManagementModel(db_path, conn=conn)
         self.data_changed = False  # Wird True nach Reset/Bereinigung → main_window refresht Tabs
 
@@ -119,8 +121,19 @@ class DatabaseManagementDialog(QDialog):
         reset_layout.addWidget(self.radio_partial)
         
         self.chk_backup = QCheckBox(tr("chk.backup_before_reset"))
+        # v1.0.31: Konto-/Settings-Löschung ist jetzt OPT-IN statt automatischer
+        # Bestandteil des Full-Resets. Vorher wurden users.json und Settings beim
+        # vollen Reset kommentarlos mitgelöscht — im verschlüsselten Modus gehen
+        # damit Salt/Schlüssel verloren und die .enc-Datei wird dauerhaft unlesbar.
+        self.chk_delete_account = QCheckBox(tr("dbmgmt.chk_delete_account"))
+        self.chk_delete_account.setChecked(False)
+        self.chk_delete_account.setToolTip(
+            tr("dbmgmt.chk_delete_account_tip_encrypted") if self.encrypted
+            else tr("dbmgmt.chk_delete_account_tip_plain")
+        )
         self.chk_backup.setChecked(True)
         reset_layout.addWidget(self.chk_backup)
+        reset_layout.addWidget(self.chk_delete_account)
         
         reset_btn = QPushButton(tr("dlg.datenbank_zuruecksetzen_2"))
         reset_btn.setStyleSheet(f"""
@@ -205,6 +218,7 @@ class DatabaseManagementDialog(QDialog):
         """Führt Datenbank-Reset durch."""
         keep_tracking = self.radio_partial.isChecked()
         create_backup = self.chk_backup.isChecked()
+        delete_account = (not keep_tracking) and self.chk_delete_account.isChecked()
         
         reset_type = tr("dbmgmt.reset_type_partial") if keep_tracking else tr("dbmgmt.reset_type_full")
 
@@ -228,12 +242,19 @@ class DatabaseManagementDialog(QDialog):
         if reply != QMessageBox.Yes:
             return
         
-        # Zweite Bestätigung für kompletten Reset
+        # Zweite Bestätigung für kompletten Reset — benennt explizit,
+        # ob auch Benutzerkonto/Einstellungen gelöscht werden (v1.0.31)
         if not keep_tracking:
+            body = tr("dbmgmt.last_warning_body")
+            if delete_account:
+                body += "\n\n" + (
+                    tr("dbmgmt.account_warning_encrypted") if self.encrypted
+                    else tr("dbmgmt.account_warning_plain")
+                )
             reply2 = QMessageBox.warning(
                 self,
                 tr("dbmgmt.last_warning_title"),
-                tr("dbmgmt.last_warning_body"),
+                body,
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No
             )
@@ -257,23 +278,38 @@ class DatabaseManagementDialog(QDialog):
         if success:
             self.data_changed = True
 
-            # Bei vollem Reset: users.json + Settings löschen
-            if not keep_tracking:
+            # Benutzerkonto + Settings nur löschen, wenn explizit gewählt
+            # (v1.0.31 — vorher automatisch bei jedem Full-Reset; im
+            # verschlüsselten Modus zerstörte das den Zugang zur .enc-Datei).
+            # Vor dem Löschen wird alles ins Backup-Verzeichnis gesichert,
+            # damit die Aktion umkehrbar bleibt.
+            if delete_account:
+                import shutil
+                from datetime import datetime as _dt
+                from model.app_paths import backups_dir
+                stamp = _dt.now().strftime("%Y%m%d_%H%M%S")
+                bdir = backups_dir()
                 extra_errors = []
                 try:
                     from model.user_model import _users_file_path
                     users_file = _users_file_path()
                     if users_file.exists():
+                        shutil.copy2(str(users_file), str(bdir / f"users_pre_reset_{stamp}.json"))
+                        if self.encrypted:
+                            enc_p = Path(self.db_path)
+                            if enc_p.exists():
+                                shutil.copy2(str(enc_p), str(bdir / f"pre_reset_{stamp}.enc"))
                         users_file.unlink()
-                        logger.info("users.json gelöscht (Full-Reset)")
+                        logger.info("users.json gelöscht (Sicherung: users_pre_reset_%s.json)", stamp)
                 except Exception as e:
                     extra_errors.append(f"users.json: {e}")
                 try:
                     from model.app_paths import settings_path
                     sf = settings_path()
                     if sf.exists():
+                        shutil.copy2(str(sf), str(bdir / f"settings_pre_reset_{stamp}.json"))
                         sf.unlink()
-                        logger.info("Settings-Datei gelöscht (Full-Reset)")
+                        logger.info("Settings-Datei gelöscht (Sicherung: settings_pre_reset_%s.json)", stamp)
                 except Exception as e:
                     extra_errors.append(f"settings: {e}")
                 if extra_errors:

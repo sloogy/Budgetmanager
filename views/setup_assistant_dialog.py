@@ -218,7 +218,7 @@ class SetupAssistantDialog(QDialog):
         vb.addWidget(self.rb_cat_manager)
         vb.addWidget(self.rb_cat_excel)
         lay.addWidget(gb)
-        self.cb_clean_start = QCheckBox(trf("setup.clean_start_vorhandene_kategorien"))
+        self.cb_clean_start = QCheckBox(trf("setup.clean_start_vorhandene_kategorien", cnt=cnt))
         allow_clean = self._is_safe_to_reset()
         self.cb_clean_start.setEnabled(bool(allow_clean and cnt > 0))
         if not allow_clean and cnt > 0:
@@ -645,8 +645,8 @@ class SetupAssistantDialog(QDialog):
                     f"<b>{tr('setup.setup_db_path')}:</b> {self.db_path}<br>"
                     + tr("setup.setup_db_desc")
                 )
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Setup-DB-Label konnte nicht gesetzt werden: %s", e)
         except Exception as e:
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(self, tr("msg.error"), str(e))

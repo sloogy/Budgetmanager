@@ -454,8 +454,8 @@ class ThemeEditorDialog(QDialog):
             for w in QApplication.allWidgets():
                 try:
                     w.update()
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Widget-Update beim Theme-Refresh fehlgeschlagen: %s", e)
             QMessageBox.information(
                 self, tr("msg.success"),
                 trf("msg.theme_applied", name=self.current_theme),

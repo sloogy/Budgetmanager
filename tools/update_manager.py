@@ -1,4 +1,9 @@
 from __future__ import annotations
+# HINWEIS: Der produktive Update-Pfad der App ist updater/ (Manifest:
+# https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json).
+# Dieses Modul ist ein eigenstaendiges Werkzeug und derzeit nicht in die App
+# eingebunden.
+import logging
 import requests
 import json
 import os
@@ -25,8 +30,8 @@ class UpdateManager:
     
     def __init__(self, 
                  current_version: str,
-                 repo_owner: str = "yourusername",
-                 repo_name: str = "budgetmanager",
+                 repo_owner: str = "sloogy",
+                 repo_name: str = "Budgetmanager",
                  update_channel: str = "stable"):
         """
         Args:
@@ -277,8 +282,9 @@ class UpdateManager:
                 with open(settings_file, 'r') as f:
                     saved_settings = json.load(f)
                     default_settings.update(saved_settings)
-            except Exception:
-                pass
+            except Exception as e:
+                logging.getLogger(__name__).warning(
+                    "Update-Settings defekt (%s) — Defaults werden verwendet: %s", settings_file, e)
         
         return default_settings
     

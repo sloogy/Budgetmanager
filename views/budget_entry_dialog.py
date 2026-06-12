@@ -269,7 +269,7 @@ class BudgetEntryDialog(QDialog):
                     self.category.setEditText(current_text)
                     
         except Exception as e:
-            print(trf("msg.fehler_beim_aktualisieren_der"))
+            logger.warning(trf("msg.fehler_beim_aktualisieren_der", e=str(e)))
 
     def _update_parent_categories(self, typ: str):
         """Aktualisiert das Parent-Kategorie-Dropdown basierend auf dem Typ."""
@@ -299,7 +299,7 @@ class BudgetEntryDialog(QDialog):
                 self._existing_categories.add(cat.name.strip().lower())
                 
         except Exception as e:
-            print(trf("msg.fehler_beim_laden_der_1"))
+            logger.warning(trf("msg.fehler_beim_laden_der_1", e=str(e)))
 
     def _check_category_exists(self, text: str = None):
         """Prüft ob die eingegebene Kategorie existiert und zeigt ggf. die Erstellungs-Option."""

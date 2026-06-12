@@ -39,33 +39,30 @@ class CategoryModel:
         if flag:
             return  # Defaults wurden bereits geladen, nichts tun
         
-        defaults = {
-            "Einkommen": [("Lohn (Netto)", 0, 1), ("Nebenerweb", 0, 0), ("Alimente (Netto)", 0, 0)],
-            "Ausgaben": [
-                ("Miete", 1, 1), ("Strom", 1, 1), ("Telefonie Internet TV", 1, 1), ("Natel", 1, 1),
-                ("Streaming & Computer Abos", 0, 1), ("SERAFE", 1, 1), ("Steuern", 1, 1),
-                ("Krankenkasse", 1, 1), ("Rechtschutzz", 1, 1), ("Hausrat", 1, 1), ("Haftpflicht", 1, 1),
-                ("KFZ Rückzahlung", 1, 1), ("Tirza Jugendlohn.", 1, 1),
-                ("Freizeit", 0, 0), ("ÖV / Sprit", 0, 0), ("Nahrungsmittel", 0, 0),
-            ],
-            "Ersparnisse": [("Ferien", 0, 0), ("Rücklagen", 0, 0), ("Sonderanschaffungen", 0, 0), ("3. Säule", 0, 1)],
-        }
+        # Zentrale Quelle: data/default_categories.json (siehe model/default_categories.py).
+        # Die frühere hardcodierte Liste (inkl. persönlicher Einträge und Tippfehler
+        # wie "Nebenerweb"/"Rechtschutzz") wurde in v1.0.30 entfernt — Erststart und
+        # Reset verwenden jetzt dieselbe Quelle. Bestehende DBs sind nicht betroffen
+        # (defaults_loaded-Flag verhindert erneutes Einfügen).
+        from model.default_categories import load_default_categories
+        defaults_list = load_default_categories()
+
         cols = self._cols("categories")
         cur=self.conn.cursor()
-        for typ, items in defaults.items():
-            for name, is_fix, is_rec in items:
-                # v6+: parent_id/funded_by/sort_order existieren, bleiben aber NULL/0
-                if "parent_id" in cols and "sort_order" in cols and "funded_by_category_id" in cols:
-                    cur.execute(
-                        "INSERT OR IGNORE INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
-                        "VALUES(?,?,?,?,?,?,?,?)",
-                        (typ, name, None, int(is_fix), int(is_rec), 1, None, 0),
-                    )
-                else:
-                    cur.execute(
-                        "INSERT OR IGNORE INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
-                        (typ, name, int(is_fix), int(is_rec), 1),
-                    )
+        for dc in defaults_list:
+            typ, name, is_fix, is_rec, rec_day = dc.typ, dc.name, dc.is_fix, dc.is_recurring, dc.recurring_day
+            # v6+: parent_id/funded_by/sort_order existieren, bleiben aber NULL/0
+            if "parent_id" in cols and "sort_order" in cols and "funded_by_category_id" in cols:
+                cur.execute(
+                    "INSERT OR IGNORE INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
+                    "VALUES(?,?,?,?,?,?,?,?)",
+                    (typ, name, None, int(is_fix), int(is_rec), int(rec_day), None, 0),
+                )
+            else:
+                cur.execute(
+                    "INSERT OR IGNORE INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
+                    (typ, name, int(is_fix), int(is_rec), int(rec_day)),
+                )
         
         # Markiere als geladen
         cur.execute(

@@ -234,7 +234,7 @@ class CategoriesTab(QWidget):
             return
 
         typ = root.text(self.COL_NAME)
-        name, ok = QInputDialog.getText(self, "Neue Kategorie", trf("tab_ui.name_der_neuen_kategorie"))
+        name, ok = QInputDialog.getText(self, "Neue Kategorie", trf("tab_ui.name_der_neuen_kategorie", typ=typ))
         if not ok:
             return
         name = (name or "").strip()
@@ -244,7 +244,7 @@ class CategoriesTab(QWidget):
         try:
             self.model.create(typ, name, is_fix=False, is_recurring=False, recurring_day=1, parent_id=None)
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), trf("msg.kategorie_anlegen_fehler"))
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.kategorie_anlegen_fehler", e=str(e)))
             return
 
         self.refresh()
@@ -268,7 +268,7 @@ class CategoriesTab(QWidget):
             return
         typ = root.text(self.COL_NAME)
 
-        name, ok = QInputDialog.getText(self, tr("budget.title.new_subcategory"), trf("tab_ui.name_der_unterkategorie_typ"))
+        name, ok = QInputDialog.getText(self, tr("budget.title.new_subcategory"), trf("tab_ui.name_der_unterkategorie_typ", typ=typ))
         if not ok:
             return
         name = (name or "").strip()
@@ -278,7 +278,7 @@ class CategoriesTab(QWidget):
         try:
             self.model.create(typ, name, is_fix=False, is_recurring=False, recurring_day=1, parent_id=(int(parent_id) if parent_id else None))
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), trf("msg.unterkategorie_anlegen_fehler"))
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.unterkategorie_anlegen_fehler", e=str(e)))
             return
 
         self.refresh()
@@ -312,7 +312,7 @@ class CategoriesTab(QWidget):
         try:
             self.model.delete_by_ids(ids)
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), trf("msg.kategorie_loeschen_fehler"))
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.kategorie_loeschen_fehler", e=str(e)))
             return
 
         self.refresh()
@@ -637,7 +637,7 @@ class CategoriesTab(QWidget):
         dlg.setMinimumWidth(420)
 
         layout = QVBoxLayout(dlg)
-        info = QLabel(trf("tab_ui.aenderungen_auf_bleneditableb_ausgewaehlte"))
+        info = QLabel(trf("tab_ui.aenderungen_auf_bleneditableb_ausgewaehlte", count=len(editable)))
         info.setWordWrap(True)
         layout.addWidget(info)
 

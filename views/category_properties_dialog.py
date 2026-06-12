@@ -276,7 +276,7 @@ class BulkCategoryEditDialog(QDialog):
         layout = QVBoxLayout(self)
         
         # Info
-        info = QLabel(trf("dlg.blenselfcategoriesb_kategorien_ausgewaehlt"))
+        info = QLabel(trf("dlg.blenselfcategoriesb_kategorien_ausgewaehlt", count=len(self.categories)))
         layout.addWidget(info)
         
         # Liste der ausgewählten Kategorien

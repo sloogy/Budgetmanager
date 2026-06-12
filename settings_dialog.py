@@ -741,7 +741,7 @@ class SettingsDialog(QDialog):
                 src_db = resolve_in_app(self.settings.database_path)
 
             if not src_db.exists():
-                QMessageBox.warning(self, "Sicherung", trf("msg.db_nicht_gefunden"))
+                QMessageBox.warning(self, "Sicherung", trf("msg.db_nicht_gefunden", src_db=str(src_db)))
                 return
 
             backup_dir = resolve_in_app(
@@ -784,7 +784,7 @@ class SettingsDialog(QDialog):
             QMessageBox.critical(
                 self,
                 "Sicherung fehlgeschlagen",
-                trf("msg.backup_erstellen_fehler"),
+                trf("msg.backup_erstellen_fehler", exc=str(exc)),
             )
 
     def _check_and_cleanup_backups(self, backup_dir: Path) -> None:
@@ -845,7 +845,7 @@ class SettingsDialog(QDialog):
 
         btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         btn_box.button(QDialogButtonBox.Ok).setText(tr("backup.cleanup_delete_btn"))
-        btn_box.button(QDialogButtonBox.Cancel).setText(tr("cancel"))
+        btn_box.button(QDialogButtonBox.Cancel).setText(tr("btn.cancel"))
         btn_box.accepted.connect(dlg.accept)
         btn_box.rejected.connect(dlg.reject)
         layout.addWidget(btn_box)

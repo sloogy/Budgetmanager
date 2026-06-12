@@ -599,7 +599,7 @@ class AddProgressDialog(QDialog):
         super().__init__(parent)
         self.goal = goal
         
-        self.setWindowTitle(trf("btn.fortschritt_hinzufuegen_goalname"))
+        self.setWindowTitle(trf("btn.fortschritt_hinzufuegen_goalname", name=goal.name))
         self.setModal(True)
         
         self.amount_spin = QDoubleSpinBox()

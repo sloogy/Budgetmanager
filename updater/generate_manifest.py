@@ -14,7 +14,7 @@ Beispiel (Windows + Linux ZIPs):
     --channel stable \
     --windows-zip dist/BudgetManager_PORTABLE_WINDOWS.zip \
     --linux-zip dist/BudgetManager_PORTABLE_LINUX.zip \
-    --base-url https://github.com/<user>/<repo>/releases/download/v0.2.0.4 \
+    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v0.2.0.4 \
     --out latest.json
 
 Danach lädst du die ZIP(s) + latest.json als Release-Assets hoch.

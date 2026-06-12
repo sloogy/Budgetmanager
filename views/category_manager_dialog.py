@@ -353,7 +353,7 @@ class CategoryManagerDialog(QDialog):
             else:
                 self.day_check.setChecked(False)
         else:
-            self.selection_label.setText(trf("dlg.count_kategorien_ausgewaehlt"))
+            self.selection_label.setText(trf("dlg.count_kategorien_ausgewaehlt", count=count))
             self.btn_apply.setEnabled(True)
             # Reset Combos für Mehrfachauswahl
             self.fix_combo.setCurrentIndex(0)
@@ -497,7 +497,7 @@ class CategoryManagerDialog(QDialog):
             self.categories_changed.emit()
             flag_name = tr("tracking.title.fixcosts") if flag == "is_fix" else tr("lbl.recurring")
             status = "aktiviert" if value else "deaktiviert"
-            self.status_label.setText(trf("dlg.flag_name_fuer_changed_kategorien"))
+            self.status_label.setText(trf("dlg.flag_name_fuer_changed_kategorien", flag_name=flag_name, changed=changed, status=status))
     
     def _add_category(self) -> None:
         """Fügt eine neue Kategorie hinzu."""
@@ -625,7 +625,7 @@ class CategoryManagerDialog(QDialog):
         
         names = [c["name"] for c in selected[:10]]
         if len(selected) > 10:
-            names.append(trf("dlg.und_lenselected_10_weitere"))
+            names.append(trf("dlg.und_lenselected_10_weitere", count=len(selected) - 10))
         
         msg = f"{len(selected)} Kategorie(n) wirklich löschen?\n\n"
         msg += "\n".join(f"  • {n}" for n in names)
@@ -659,7 +659,7 @@ class CategoryManagerDialog(QDialog):
         if deleted > 0:
             self._load_categories()
             self.categories_changed.emit()
-            self.status_label.setText(trf("dlg.deleted_kategorien_geloescht"))
+            self.status_label.setText(trf("dlg.deleted_kategorien_geloescht", deleted=deleted))
         
         if errors:
             QMessageBox.warning(

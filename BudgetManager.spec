@@ -1,46 +1,50 @@
 # -*- mode: python ; coding: utf-8 -*-
-import os
+"""PyInstaller-Spec für BudgetManager.
+
+Wird vom GitHub-Workflow (.github/workflows/build.yml) und für lokale Builds
+verwendet:
+
+    pyinstaller BudgetManager.spec --noconfirm
+
+Erzeugt:
+    dist/BudgetManager.exe   (Windows)
+    dist/BudgetManager       (Linux)
+
+WICHTIG — Nicht-Python-Assets müssen hier explizit gelistet sein,
+sonst fehlen sie im Frozen-Build (siehe `datas`):
+    - locales/   → Übersetzungen (utils/i18n.py erwartet sie relativ zum Bundle-Root)
+    - data/default_categories.json → zentrale Default-Kategorien-Quelle
+"""
+
+import sys
+from pathlib import Path
 
 block_cipher = None
 
+datas = [
+    ("locales", "locales"),
+    ("data/default_categories.json", "data"),
+    # 25 mitgelieferte Theme-Profile — ThemeManager lädt sie aus
+    # <bundle>/views/profiles (theme_manager.py: bundled_dir)
+    ("views/profiles", "views/profiles"),
+]
+
 a = Analysis(
-    ['main.py'],
+    ["main.py"],
     pathex=[],
     binaries=[],
-    datas=[
-        # Dokumentation
-        ('README.md',    '.'),
-        ('CHANGELOG.md', '.'),
-        ('LICENSE.txt',  '.'),
-
-        # Sprachdateien (PFLICHT – ohne diese startet die App auf Englisch-Fallback)
-        ('locales',          'locales'),
-
-        # Standard-Kategorien für DB-Reset und Erststart (KEIN c.enc/users.json!)
-        ('data/default_categories.json', 'data'),
-
-        # Theme-Profile (25 vordefinierte + benutzerdefinierte)
-        ('views/profiles',   'views/profiles'),
-
-        # Updater-Modul
-        ('updater',          'updater'),
-    ],
-    hiddenimports=[
-        'PySide6.QtCore',
-        'PySide6.QtGui',
-        'PySide6.QtWidgets',
-        'PySide6.QtCharts',
-        'PySide6.QtSvg',
-        'sqlite3',
-        'openpyxl',
-        'openpyxl.cell._writer',
-        'openpyxl.styles.borders',
-        'openpyxl.drawing.image',
-    ],
+    datas=datas,
+    hiddenimports=[],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['tkinter', 'matplotlib', 'numpy', 'scipy'],
+    excludes=[
+        # Dev-/Build-Tools nie einpacken
+        "pytest", "black", "mypy", "pyinstaller",
+        # matplotlib ist optional und groß — nur einpacken, wenn wirklich genutzt
+        "matplotlib",
+        "tkinter",
+    ],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
@@ -56,12 +60,12 @@ exe = EXE(
     a.zipfiles,
     a.datas,
     [],
-    name='BudgetManager',
+    name="BudgetManager",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
     upx=True,
-    upx_exclude=[],
+    upx_exclude=["vcruntime140.dll", "python3*.dll", "Qt6*.dll"],
     runtime_tmpdir=None,
     console=False,
     disable_windowed_traceback=False,
@@ -69,5 +73,4 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='icon.ico' if os.path.exists('icon.ico') else None,
 )

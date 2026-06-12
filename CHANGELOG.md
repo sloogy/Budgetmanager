@@ -5,6 +5,127 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ---
 
+## [1.0.32] - 2026-06-12 — Headless-Hänger im closeEvent behoben
+
+### GUI-Smoke-Tests blockierten beim Schließen
+
+- **Vorher**: Lief Auto-Save nicht, zeigte `MainWindow.closeEvent` eine modale `QMessageBox.question` (Speichern/Verwerfen/Abbrechen). Headless (`QT_QPA_PLATFORM=offscreen`) klickt niemand — der `exec()`-Aufruf blockierte für immer. Der Test-*Lauf* meldete zwar `PASSED`, der Prozess beendete sich aber nicht und musste per `timeout` abgebrochen werden. Ausgelöst wurde der Dialog auch durch das automatische Widget-Schließen beim Teardown.
+- **Jetzt**: `closeEvent` prüft ein Flag `self._suppress_close_confirm`; ist es gesetzt, wird ohne Dialog akzeptiert. Der Auto-Save-Pfad und das normale Verhalten für Endnutzer bleiben unverändert (Guard greift erst *nach* dem Auto-Save-Early-Return und *vor* dem Dialog).
+- Die Fixture in `tests/test_gui_smoke.py` setzt das Flag direkt nach der Erzeugung des Fensters, sodass die Tests von selbst durchlaufen — ohne `timeout`-Krücke.
+- Gegencheck: Alle übrigen `.exec()`/`QMessageBox`-Aufrufe in `main_window.py` liegen in Menü-/Button-Handlern und feuern nur bei Nutzerinteraktion, nicht im Start- oder Schließpfad.
+
+---
+
+## [1.0.31] - 2026-06-11 — Qualitäts-Fixes (Punkte 2, 3, 4)
+
+### GUI-Smoke-Tests in CI (Punkt 2)
+
+- **Neue Tests `tests/test_gui_smoke.py`**: Starten die echte Qt-App headless (`QT_QPA_PLATFORM=offscreen`) und prüfen genau die Pfade, die in v1.0.29 still kaputt waren — MainWindow-Start (hätte den fehlenden `trf`-Import gefangen), Sprachwechsel mit Menü-Neuaufbau (hätte den `_setup_menus`-Bug gefangen), Tab-Durchschalten, Statusmeldungen mit `trf()`.
+- Ohne installiertes PySide6 werden die Tests sauber übersprungen (verifiziert), in CI laufen sie vor jedem Build. Der Linux-Runner bekommt dafür die nötigen Qt-Systemlibs (libegl1 etc.).
+
+### Undo/Redo-Gruppen transaktional (Punkt 3)
+
+- **Vorher**: Jede Operation einer Undo-/Redo-Gruppe committete einzeln. Schlug eine Operation mitten in der Gruppe fehl, blieb ein halber Undo zurück — erste Operationen angewendet, Rest nicht, Stack-Eintrag teilweise verschoben.
+- **Jetzt**: Die gesamte Gruppe (alle Operationen + Stack-Verschiebung + Löschung) läuft in einer Transaktion. Bei einem Fehler wird vollständig zurückgerollt, `undo()`/`redo()` liefern `False`, und eine Log-Warnung benennt die Gruppe und den Fehler. Die Einzel-Commits in `_delete_by_id`/`_insert_row`/`_update_by_id`/`_rename_cascade` wurden entfernt (nur intern verwendet, verifiziert).
+- **Neuer Regressionstest** `test_undo_group_is_atomic`: provoziert einen Fehler mitten in einer Gruppe und prüft, dass die Datenzeile unangetastet bleibt, die Stack-Gruppe vollständig erhalten ist und der Redo-Stack keine Reste enthält.
+
+### Stille except-Blöcke beseitigt (Punkt 4)
+
+- **Alle 11 verbliebenen `except: pass`-Blöcke** loggen jetzt — dieselbe Fehlerklasse, die die „unerklärlichen Instabilitäten" von v1.0.29 verursachte. Zwei davon waren funktional relevant und loggen als WARNING:
+  - `overview_budget_panel.py`: Fehlgeschlagene **Budget-Vorschläge** fehlten still in der Übersicht
+  - `overview_budget_panel.py`: Fehlgeschlagene **Monatsüberträge** fehlten still in der Übersicht (inkl. Monat/Jahr/Typ im Log)
+- Außerdem als WARNING: defekte Update-Settings (`update_manager.py`). Der Rest (Theme-Refresh, Icon-Cache, Excel-Zellen u.a.) loggt auf DEBUG. `tools/import_excel.py` und `tools/update_manager.py` haben jetzt einen Logger.
+
+### Verifikation
+
+- 13/13 Kern-Tests grün (inkl. neuem Atomicity-Test), 0 stille except-pass-Blöcke, 0 undefinierte Namen, 0 Import-Probleme, Versionen synchron auf 1.0.31
+
+---
+
+### Nachgereichte Fixes (zweite Tiefenanalyse)
+
+- **Syntaxfehler in `tools/import_excel.py` und `tools/update_manager.py` behoben** (eigener Fehler aus dem except-Logging-Fix): `import logging` war vor `from __future__ import annotations` eingefügt worden — die beiden Werkzeuge kompilierten nicht. Neu in CI: `python -m compileall` prüft jetzt ALLE Dateien (auch tools/, die pytest nicht importiert), damit so etwas nie wieder durchrutscht.
+- **Sparziel-Redo korrigiert (fachlich falsch)**: `_post_recalc()` wendete bei Redo dieselben Vorzeichen wie bei Undo an — nach Undo+Redo einer Sparbuchung wich das Sparziel um den doppelten Betrag ab statt zum Ausgangswert zurückzukehren. Jetzt richtungsabhängig (`redo=True` invertiert alle Deltas). Neuer Regressionstest `test_savings_goal_undo_redo_returns_to_start` (500 → Undo 400 → Redo 500, stabil über zwei Zyklen).
+- **Reset-Dialog entschärft**: Die Löschung von `users.json` + Einstellungen ist nicht mehr automatischer Bestandteil des Full-Resets, sondern eine eigene Opt-in-Checkbox (Default AUS). Im verschlüsselten Modus zerstörte die automatische Löschung Salt/Schlüssel-Metadaten — die `.enc`-Datei war danach dauerhaft unlesbar. Vor dem Löschen werden `users.json`, Einstellungen und (im verschlüsselten Modus) die `.enc`-Datei ins Backup-Verzeichnis gesichert; die zweite Warnstufe benennt die Konsequenzen jetzt explizit (neue i18n-Keys DE/EN/FR). Dies revidiert die frühere Einstufung von Audit-Punkt P0.4 als „widerlegt": Das Model war unschuldig, der Dialog nicht.
+- **Theme-Profile im Build**: `views/profiles/` (25 mitgelieferte Themes) fehlte in `BudgetManager.spec` — im Frozen-Build wären alle Themes verschwunden. Ergänzt.
+- **Release-Stand geprüft**: Neuester öffentlicher GitHub-Release ist v1.0.28 (4. März) — v1.0.29–31 wurden noch nicht gepusht/getaggt. Kein Code-Problem; Release-Schritt steht aus.
+
+---
+
+### Update-Adresse final eingetragen
+
+- **GitHub-Repo `sloogy/Budgetmanager`** überall hinterlegt: Installer-URL (Platzhalter `DEIN_GITHUB` ersetzt), Default in `tools/update_manager.py` (war `yourusername`; Modul ist als nicht-eingebundenes Standalone-Werkzeug markiert) und Doku-Beispiele in `updater/`. Der produktive Update-Pfad (`updater/common.py` → `releases/latest/download/latest.json`) zeigte bereits korrekt auf das Repo; der CI-Workflow generiert die Manifest-URLs ohnehin dynamisch aus `github.repository`.
+
+---
+
+## [1.0.30] - 2026-06-11 — Stabilitäts- und Release-Fix
+
+Basierend auf der Tiefenanalyse von v1.0.29. Geprüfte, aber widerlegte Punkte
+sind unten dokumentiert.
+
+### Build & Release (P0.1, P1.1, P1.5)
+
+- **`BudgetManager.spec` erstellt**: Der GitHub-Workflow rief `pyinstaller BudgetManager.spec` auf, die Datei existierte aber nicht im Repo — der CI-Build wäre abgebrochen. Die Spec bündelt explizit `locales/` und `data/default_categories.json` (Assets fehlen sonst im Frozen-Build).
+- **Versionschaos behoben**: `app_info.py` ist jetzt die einzige Versionsquelle. Neues Skript `tools/sync_version.py` synchronisiert `version.json` (war 1.0.24), `VERSION_INFO.txt` (war 1.0.0) und den Inno-Setup-Installer (war 1.0.0). Der CI-Workflow prüft die Konsistenz vor jedem Build (`--check`).
+- **Requirements aufgeteilt**: `requirements.txt` (Laufzeit), `requirements-dev.txt` (pytest/black/mypy), `requirements-build.txt` (PyInstaller). Vorher waren Dev-Tools aktiv in der Laufzeit-Liste. Workflow installiert jetzt aus `requirements-build.txt`. Altlast `requirements_updated.txt` entfernt.
+
+### Datensicherheit (P0.2, P0.3)
+
+- **Pre-Migration-Backup für verschlüsselte DBs**: Vor einer Schema-Migration im verschlüsselten Modus wird die originale `.enc`-Datei jetzt als `pre_migration_<Zeitstempel>.enc` ins Backup-Verzeichnis kopiert. Vorher gab es dort — anders als im unverschlüsselten Pfad — keinerlei Datei-Sicherung.
+- **Gefährliche `restore_backup()`-Methode entfernt** (`DatabaseManagementModel`): Sie kopierte Backup-Dateien ohne Format-Prüfung per `shutil.copy2` über die aktive DB — ein `.bmr`-Bundle (ZIP) hätte die Datenbank zerstört. Die Methode wurde nirgends aufgerufen (toter Code), war aber eine Falle für künftige Verdrahtung.
+
+### Default-Kategorien zentralisiert (P1.2)
+
+- **Eine Quelle statt drei**: `data/default_categories.json` ist jetzt die einzige Quelle (neues Modul `model/default_categories.py` mit eingebautem Fallback). Vorher erzeugten Erststart (`ensure_defaults`, hardcodiert inkl. persönlicher Einträge wie „Tirza Jugendlohn." und Tippfehlern „Nebenerweb"/„Rechtschutzz") und Reset (`DEFAULT_CATEGORIES`, andere Liste) **unterschiedliche** Kategorien.
+- **Bestands-DBs bleiben unangetastet** (defaults_loaded-Flag); die alten Namen bleiben in `utils/category_i18n.py` gemappt. Für die Namen der zentralen Quelle wurden 34 neue `cat.default.*`-Übersetzungen (DE/EN/FR) ergänzt.
+- Reset setzt jetzt das `defaults_loaded`-Flag, damit Erststart-Logik nicht erneut einfügt.
+
+### Tests & CI (P1.4)
+
+- **Neue Testsuite `tests/test_core.py`** (12 Tests, ohne Qt lauffähig): Migration (frisch + idempotent), Reset (erzeugt identische Kategorien wie Erststart; `system_flags` überlebt), Undo/Redo-Roundtrip, Tabellen-Whitelist, Recurring-Datumslogik (Monatsende-Überlauf, Schaltjahr, start_date), `.bmr`-Bundle-Roundtrip, Restore via SQLite-Backup-API.
+- Tests laufen im CI-Workflow vor jedem Build.
+
+### Geprüfte, aber widerlegte Analysepunkte
+
+- **P0.4 (Reset zerstört Login)**: Falsch — Reset löscht nur DB-Tabellen; `users.json`/`settings.json` liegen außerhalb der DB. Per Test abgesichert.
+- **P0.5 (manuelle Tabellenlisten im Reset)**: Bereits erledigt — Reset liest dynamisch aus `sqlite_master` mit Preserve-Liste; `suggestion_accepted` wird miterfasst.
+- **P0.6 (Backup sichert falsche Datei)**: Code-seitig behoben — vor dem Bundle wird `encrypted_session.save()` aufgerufen und die echte `.enc` gebündelt. Der manuelle Restore-Test mit verschlüsselter DB auf Windows bleibt als Release-Auflage offen.
+
+### Bekannte offene Punkte (bewusst nicht in 1.0.30)
+
+- Echte `accounts`-Tabelle / ID-basierte Verknüpfung statt Kategorie-Text (P1.6) — größerer Architektur-Umbau, eigenes Release
+- Restliche hardcodierte deutsche UI-Texte (P2.1) — schrittweise, Datei für Datei
+- Installer-Finalisierung: GitHub-URL-Platzhalter `DEIN_GITHUB` in `installer/budgetmanager_setup.iss` muss noch durch die echte URL ersetzt werden (P2.2)
+
+---
+
+## [1.0.29] - 2026-06-11
+
+### Stabilitäts-Fixes (Ursachen der gemeldeten Instabilitäten)
+
+- **Fehlender `trf`-Import in `main_window.py`**: An 7 Stellen wurde `trf()` verwendet, obwohl nur `tr` importiert war. Jede dieser Stellen (u. a. Statusmeldung nach Anzeigename-Änderung, Datenordner öffnen, Update-Dialog-Fehler, Setup-Assistent-Fehler) löste einen `NameError` aus, der vom globalen Excepthook als „Unerwarteter Fehler“-Dialog angezeigt wurde — die eigentliche Aktion war dabei meist erfolgreich, was die Fehler scheinbar zufällig und nicht nachvollziehbar machte.
+- **Restore bei unverschlüsselter DB komplett überarbeitet**: Bisher wurde die Live-DB-Verbindung der App geschlossen und die Datei per `shutil.copy2` ersetzt. Folgen: (1) Bei „Nein“ auf den Neustart-Dialog lief die gesamte App auf einer toten Verbindung („Cannot operate on a closed database“ bei jedem Klick). (2) Zurückgebliebene `-wal`/`-shm`-Dateien konnten beim nächsten Start alte Daten über die wiederhergestellte DB spielen (Datenkorruption). Jetzt: Restore über die SQLite-Backup-API direkt in die lebende Verbindung — kein Neustart mehr nötig, Tabs werden automatisch aktualisiert, keine WAL-Risiken. Verschlüsselter Modus unverändert (Neustart weiterhin erforderlich).
+- **Menüs wurden nach Sprachwechsel nie übersetzt**: `_retranslate_ui()` rief die nicht existierende Methode `_setup_menus()` auf; der Fehler wurde still verschluckt. Jetzt wird die Menüleiste geleert und vollständig neu aufgebaut (inkl. Bearbeiten-Menü-Status und Kategorien-Sichtbarkeit).
+- **Setup-Assistent erschien beim unverschlüsselten Erststart nie**: `db_existed` wurde erst nach `open_db()` geprüft (die Datei existiert dann immer). Jetzt wird der vor dem Öffnen ermittelte Zustand (`db_existed_before`) verwendet.
+
+### i18n-Fixes
+
+- **39 `trf()`-Aufrufe ohne Format-Argumente korrigiert** (account_management, category_manager, categories_tab, login, backup_restore, settings, startup_wizard, setup_assistant, recurring_bookings, savings_goals, budget_entry, category_excel_io, category_properties, main_window): Nutzer sahen rohe Platzhalter wie `{e}`, `{mode_label}`, `{count}` statt der Werte.
+- **Ungültige Platzhalter in Sprachdateien normalisiert**: `{self._active_user.security_label}` → `{label}`, `{len(selected) - 10}` → `{count}`, `{goal.name}`/`{user.display_name}` → `{name}`, `{len(self.categories)}`/`{len(editable)}` → `{count}` (alle drei Sprachen).
+- **`tr("cancel")` → `tr("btn.cancel")`** im Backup-Bereinigungsdialog (Button zeigte wörtlich „cancel“).
+- **16 fehlende französische Übersetzungen ergänzt** (`create_user.*` im Startup-Wizard/Login); `dlg.und_lenselected_10_weitere` für EN/FR übersetzt. Alle drei Locales jetzt identisch mit 1 172 Keys, 0 fehlende Keys, 0 ungültige Platzhalter (per AST-Audit verifiziert).
+- **Logging-Fix**: `logger.warning(tr(...), e)` ohne `%s` im Format-String erzeugte interne Logging-Fehler; auf `logger.warning("%s: %s", …)` umgestellt. Zwei `print()`-Fehlerausgaben in `budget_entry_dialog.py` auf Logger umgestellt.
+
+### Aufräumarbeiten (Dead Ends)
+
+- **6 nie importierte Module nach `_attic/` verschoben** (per Import-Graph-Analyse verifiziert): `views/recurring_transactions_dialog_extended.py` (meldete „Buchung erfolgreich“, ohne tatsächlich zu buchen — der Insert war nur ein Kommentar!), `views/fixcost_check_dialog.py`, `model/fixcost_check_model.py` (öffnete eigene Datei-Verbindungen, die im verschlüsselten Modus ins Leere greifen), `model/budget_warnings_model.py` (ersetzt durch `_extended`), `views/appearance_profiles_dialog.py`, `views/theme_profiles_dialog.py`. Begründung je Datei in `_attic/README.md`. Die produktiven Pfade (tracking_tab → `RecurringBookingsDialog`/`MissingBookingsDialog`, `theme_editor_dialog`, `budget_warnings_model_extended`) sind nicht betroffen.
+
+### Verifikation
+
+- 0 Syntaxfehler, 0 undefinierte Namen, 0 unauflösbare projektinterne Importe (AST-Analyse über alle 86 aktiven Module)
+- Funktionale Smoke-Tests: Undo/Redo-Roundtrip, Recurring-Datumslogik inkl. Monatsende-Überlauf (31. → 28./29. Feb., Schaltjahr), Restore via Backup-API mit weiterhin gültiger Live-Verbindung
+
+---
 ## [1.0.25] - 2026-03-04
 
 ### Neue Features

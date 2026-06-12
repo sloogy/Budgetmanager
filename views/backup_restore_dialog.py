@@ -324,13 +324,18 @@ class BackupRestoreDialog(QDialog):
             self._create_bmr_backup(prefix=f"budgetmanager_before_restore_{timestamp}", note="Before Restore")
             self._cleanup_safety_backups("budgetmanager_before_restore_*.bmr")
             
-            # Legacy (File-DB): Connection schliessen, damit SQLite die Datei freigibt
+            # Legacy (File-DB): Restore erfolgt jetzt über die SQLite-Backup-API
+            # direkt IN die lebende Connection (siehe _restore_to_active).
+            # Die Connection darf daher NICHT geschlossen werden — sonst läuft
+            # die gesamte App danach auf einer toten Verbindung
+            # ("Cannot operate on a closed database").
             # Encrypted (In-Memory): NICHT conn.close() – das würde die ganze App-DB killen.
             if self.encrypted_session is None:
                 try:
-                    self.conn.close()
+                    # Offene Transaktion beenden, damit backup() sauber starten kann
+                    self.conn.rollback()
                 except Exception as e:
-                    logger.debug("self.conn.close(): %s", e)
+                    logger.debug("self.conn.rollback(): %s", e)
             else:
                 # Nach Restore darf Auto-Save die neue .enc nicht wieder überschreiben.
                 try:
@@ -405,7 +410,7 @@ class BackupRestoreDialog(QDialog):
         
         try:
             shutil.copy2(backup_path, file_path)
-            QMessageBox.information(self, tr("backup.import_success_title"), trf("msg.backup_exportiert"))
+            QMessageBox.information(self, tr("backup.import_success_title"), trf("msg.backup_exportiert", file_path=str(file_path)))
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), f"Export fehlgeschlagen:\n{e}")
     
@@ -471,9 +476,11 @@ class BackupRestoreDialog(QDialog):
 
             if self.encrypted_session is None:
                 try:
-                    self.conn.close()
+                    # Verbindung offen lassen (Restore via Backup-API),
+                    # nur offene Transaktion beenden.
+                    self.conn.rollback()
                 except Exception as e:
-                    logger.debug("self.conn.close(): %s", e)
+                    logger.debug("self.conn.rollback(): %s", e)
             else:
                 try:
                     self.encrypted_session.freeze()
@@ -534,8 +541,25 @@ class BackupRestoreDialog(QDialog):
                 except Exception as e:
                     logger.debug("%s", e)
         if self.encrypted_session is None:
-            # legacy: 1:1 copy
-            shutil.copy2(str(src), str(self.db_path))
+            # Legacy: Backup über die SQLite-Backup-API direkt in die LIVE-Connection
+            # zurückspielen. Vorteile gegenüber dem früheren File-Copy:
+            #   1. Die Haupt-Connection der App bleibt gültig (vorher: geschlossene
+            #      Connection → "Cannot operate on a closed database" bei jedem Klick,
+            #      wenn der Nutzer den Neustart ablehnte).
+            #   2. WAL wird korrekt behandelt — beim File-Copy konnten zurückgebliebene
+            #      -wal/-shm Dateien beim nächsten Start ALTE Daten über die
+            #      wiederhergestellte DB spielen (Datenkorruption).
+            #   3. Atomar auf Seitenebene, kein Zeitfenster mit halber Datei.
+            import sqlite3 as _sqlite3
+            try:
+                ro_uri = f"file:{src.as_posix()}?mode=ro"
+                src_conn = _sqlite3.connect(ro_uri, uri=True)
+            except Exception:
+                src_conn = _sqlite3.connect(str(src))
+            try:
+                src_conn.backup(self.conn)
+            finally:
+                src_conn.close()
             return
 
         # encrypted mode
@@ -583,7 +607,7 @@ class BackupRestoreDialog(QDialog):
                             )
                         else:
                             break
-                raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen"))
+                raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen", last_exc=str(last_exc)))
 
         if src.suffix.lower() == ".db":
             # unverschlüsselte DB importieren → verschlüsselt speichern (ersetzt aktive)
@@ -673,6 +697,18 @@ class BackupRestoreDialog(QDialog):
             user_line = f"Aktiver Benutzer: {getattr(self.active_user, 'display_name', '')} ({getattr(self.active_user, 'security_label', getattr(self.active_user, 'security', ''))})\n"
         else:
             user_line = "Aktiver Benutzer: (unverschlüsselte DB / kein User-Modus)\n"
+
+        if self.encrypted_session is None:
+            # Legacy: Restore erfolgte direkt in die Live-Connection → kein Neustart nötig.
+            QMessageBox.information(
+                self,
+                tr("database.msg.restore_success"),
+                "Datenbank wurde wiederhergestellt.\n\n"
+                f"{user_line}"
+                f"Aktive DB:\n{target}\n\n"
+                "Die Daten sind sofort aktiv — ein Neustart ist nicht erforderlich.",
+            )
+            return
 
         msg = (
             "Datenbank wurde wiederhergestellt.\n\n"

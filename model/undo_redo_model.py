@@ -148,15 +148,26 @@ class UndoRedoModel:
             return False
 
         rows = self._read_group("undo_stack", last_gid, order="DESC")
-        # inverse order for undo
-        for r in rows:
-            self._apply_inverse(r)
-            self._push_to_other_stack("redo_stack", r)
+        # Gesamte Gruppe transaktional: Schlägt eine Operation fehl, wird ALLES
+        # zurückgerollt — vorher konnte ein Fehler mitten in der Gruppe einen
+        # halben Undo hinterlassen (erste Operationen committet, Rest nicht,
+        # Stack-Eintrag noch vorhanden).
+        try:
+            # inverse order for undo
+            for r in rows:
+                self._apply_inverse(r)
+                self._push_to_other_stack("redo_stack", r)
+            self.conn.execute("DELETE FROM undo_stack WHERE group_id=?", (last_gid,))
+            self.conn.commit()
+        except Exception as e:
+            try:
+                self.conn.rollback()
+            except Exception as re:
+                logger.debug("Rollback nach Undo-Fehler fehlgeschlagen: %s", re)
+            logger.warning("Undo der Gruppe %s fehlgeschlagen — vollständig zurückgerollt: %s", last_gid, e)
+            return False
 
-        self.conn.execute("DELETE FROM undo_stack WHERE group_id=?", (last_gid,))
-        self.conn.commit()
-
-        self._post_recalc(rows)
+        self._post_recalc(rows, redo=False)
         return True
 
     def redo(self) -> bool:
@@ -166,14 +177,22 @@ class UndoRedoModel:
             return False
 
         rows = self._read_group("redo_stack", last_gid, order="ASC")
-        for r in rows:
-            self._apply_forward(r)
-            self._push_to_other_stack("undo_stack", r, clear_redo=False)
+        # Gesamte Gruppe transaktional (siehe undo())
+        try:
+            for r in rows:
+                self._apply_forward(r)
+                self._push_to_other_stack("undo_stack", r, clear_redo=False)
+            self.conn.execute("DELETE FROM redo_stack WHERE group_id=?", (last_gid,))
+            self.conn.commit()
+        except Exception as e:
+            try:
+                self.conn.rollback()
+            except Exception as re:
+                logger.debug("Rollback nach Redo-Fehler fehlgeschlagen: %s", re)
+            logger.warning("Redo der Gruppe %s fehlgeschlagen — vollständig zurückgerollt: %s", last_gid, e)
+            return False
 
-        self.conn.execute("DELETE FROM redo_stack WHERE group_id=?", (last_gid,))
-        self.conn.commit()
-
-        self._post_recalc(rows)
+        self._post_recalc(rows, redo=True)
         return True
 
     # ------------------------------------------------------------
@@ -373,8 +392,8 @@ class UndoRedoModel:
         if "id" not in data:
             return
         safe = self._safe_table(table)
+        # Kein commit() hier — Transaktionsklammer liegt in undo()/redo()
         self.conn.execute(f"DELETE FROM {safe} WHERE id=?", (int(data["id"]),))
-        self.conn.commit()
 
     def _insert_row(self, table: str, data: dict[str, Any]) -> None:
         safe = self._safe_table(table)
@@ -389,7 +408,6 @@ class UndoRedoModel:
             f"INSERT OR REPLACE INTO {safe}({col_sql}) VALUES({placeholders})",
             values,
         )
-        self.conn.commit()
 
     def _update_by_id(self, table: str, data: dict[str, Any]) -> None:
         safe = self._safe_table(table)
@@ -402,7 +420,6 @@ class UndoRedoModel:
         set_sql = ", ".join([f"{k}=?" for k in set_cols])
         values = [data[k] for k in set_cols] + [int(data["id"])]
         self.conn.execute(f"UPDATE {safe} SET {set_sql} WHERE id=?", values)
-        self.conn.commit()
 
     def _rename_cascade(self, *, cat_id: int, typ: str, old_name: str, new_name: str) -> None:
         self.conn.execute("UPDATE categories SET name=? WHERE id=?", (new_name, int(cat_id)))
@@ -415,15 +432,22 @@ class UndoRedoModel:
             "UPDATE tracking SET category=? WHERE typ=? AND category=?",
             (new_name, typ, old_name),
         )
-        self.conn.commit()
 
-    def _post_recalc(self, rows: list[UndoRow]) -> None:
+    def _post_recalc(self, rows: list[UndoRow], *, redo: bool = False) -> None:
         """Nach Undo/Redo abhängige Daten korrigieren (Sparziele).
         
         WICHTIG: Wir berechnen NICHT pauschal neu, da das manuell eingetragene
         Sparziel-Beträge überschreiben würde. Stattdessen passen wir den Betrag
         entsprechend der rückgängig gemachten/wiederholten Operation an.
+
+        Die Fallunterscheidungen unten sind aus UNDO-Sicht formuliert.
+        Redo ist exakt die Umkehrung — daher wird jedes Delta mit `sign`
+        multipliziert (Fix v1.0.31: vorher wurde bei Redo dasselbe Vorzeichen
+        wie bei Undo angewendet, wodurch sich der Sparziel-Betrag nach
+        Undo+Redo um den doppelten Buchungsbetrag verschob statt zum
+        Ausgangswert zurückzukehren).
         """
+        sign = -1.0 if redo else 1.0
         for r in rows:
             if r.table_name != "tracking":
                 continue
@@ -439,7 +463,7 @@ class UndoRedoModel:
                     category = r.new_data.get("category")
                     amount = float(r.new_data.get("amount", 0))
                     if category and amount:
-                        self._adjust_savings_goal(category, -amount)
+                        self._adjust_savings_goal(category, sign * -amount)
                 
                 # Bei Undo einer DELETE: Die Buchung wurde wiederhergestellt
                 # → Betrag zum Sparziel addieren
@@ -447,7 +471,7 @@ class UndoRedoModel:
                     category = r.old_data.get("category")
                     amount = float(r.old_data.get("amount", 0))
                     if category and amount:
-                        self._adjust_savings_goal(category, amount)
+                        self._adjust_savings_goal(category, sign * amount)
                 
                 # Bei Undo einer UPDATE: alte Werte wiederherstellen
                 elif r.operation.upper() == "UPDATE":
@@ -456,13 +480,13 @@ class UndoRedoModel:
                         old_cat = r.old_data.get("category")
                         old_amt = float(r.old_data.get("amount", 0))
                         if old_cat and old_amt:
-                            self._adjust_savings_goal(old_cat, old_amt)
+                            self._adjust_savings_goal(old_cat, sign * old_amt)
                     # Neue Ersparnisse-Buchung rückgängig machen
                     if new_typ == TYP_SAVINGS:
                         new_cat = r.new_data.get("category")
                         new_amt = float(r.new_data.get("amount", 0))
                         if new_cat and new_amt:
-                            self._adjust_savings_goal(new_cat, -new_amt)
+                            self._adjust_savings_goal(new_cat, sign * -new_amt)
                             
             except Exception as e:
                 logger.error("Fehler bei Sparziel-Korrektur: %s", e)
