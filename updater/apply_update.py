@@ -8,6 +8,7 @@ from pathlib import Path
 from updater.common import (
     app_dir,
     backup_current_zip,
+    enable_utf8_console,
     find_staged_root,
     staging_dir_for,
     updates_dir,
@@ -70,6 +71,7 @@ def copy_new(src_root: Path, dst_root: Path, exclude: tuple[str, ...]) -> None:
 
 
 def main() -> int:
+    enable_utf8_console()
     v = latest_staged_version()
     if not v:
         print("❌ Kein staged Update gefunden. Erst ausführen: python -m updater.check_update")

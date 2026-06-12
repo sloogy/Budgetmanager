@@ -5,6 +5,16 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ---
 
+## [1.0.33] - 2026-06-12 — Updater-Crash auf Windows-Konsole behoben
+
+### UnicodeEncodeError bei `--check-update` / `--apply-update`
+
+- **Vorher**: Der Updater gibt Statusmeldungen mit Emojis aus (`⬇️`, `❌`, `✓`). Die Windows-Konsole nutzt standardmäßig die Codepage cp1252, die diese Zeichen nicht kodieren kann — `print()` warf einen `UnicodeEncodeError: 'charmap' codec can't encode characters in position 0-1`. Das beendete den Updater-CLI-Modus mit einem „Unhandled exception in script"-Dialog (Traceback in `updater/check_update.py`, Zeile 42).
+- **Jetzt**: Neue Hilfsfunktion `enable_utf8_console()` in `updater/common.py` stellt `stdout`/`stderr` auf UTF-8 um (`errors="replace"` als Sicherheitsnetz). Sie wird zu Beginn von `check_update.main()`, `apply_update.main()` und `generate_manifest.main()` aufgerufen. Robust gegen fehlende Streams (windowed PyInstaller-Build ohne Konsole: Streams sind dann `None` oder ohne `reconfigure` — wird sauber übersprungen).
+- Verifiziert: cp1252-Stream reproduziert den exakten Fehler; nach `enable_utf8_console()` wird die Emoji-Zeile fehlerfrei als UTF-8 geschrieben.
+
+---
+
 ## [1.0.32] - 2026-06-12 — Headless-Hänger im closeEvent behoben
 
 ### GUI-Smoke-Tests blockierten beim Schließen

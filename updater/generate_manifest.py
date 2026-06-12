@@ -26,7 +26,7 @@ import argparse
 import json
 from pathlib import Path
 
-from updater.common import sha256_file
+from updater.common import enable_utf8_console, sha256_file
 
 
 def _asset_entry(base_url: str, zip_path: Path) -> dict:
@@ -38,6 +38,7 @@ def _asset_entry(base_url: str, zip_path: Path) -> dict:
 
 
 def main() -> int:
+    enable_utf8_console()
     p = argparse.ArgumentParser(description="Generate latest.json manifest for BudgetManager releases")
     p.add_argument("--version", required=True, help="App version, e.g. 0.2.0.4")
     p.add_argument("--release-tag", required=True, help="Git tag, e.g. v0.2.0.4")

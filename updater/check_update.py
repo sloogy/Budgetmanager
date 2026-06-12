@@ -7,6 +7,7 @@ from updater.common import (
     cache_zip_path,
     detect_platform_key,
     download_file,
+    enable_utf8_console,
     fetch_manifest,
     is_newer,
     read_current_version,
@@ -19,6 +20,7 @@ from updater.common import (
 
 
 def main() -> int:
+    enable_utf8_console()
     current = read_current_version()
     print(f"BudgetManager Updater (portable)\nAktuell: {current}")
 

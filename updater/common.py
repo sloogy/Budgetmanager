@@ -43,6 +43,27 @@ class Manifest:
     assets: Dict[str, AssetInfo]
 
 
+def enable_utf8_console() -> None:
+    """Erzwingt UTF-8 für stdout/stderr.
+
+    Die Windows-Konsole nutzt standardmäßig cp1252 und kann Emojis/Sonderzeichen
+    (z.B. ⬇️, ❌, ✓) nicht kodieren -> UnicodeEncodeError beim print().
+    Diese Funktion stellt die Streams auf UTF-8 um (mit errors='replace' als
+    Sicherheitsnetz) und ist robust gegen fehlende Streams, etwa in einem
+    windowed PyInstaller-Build ohne Konsole.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        if stream is None:
+            continue
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            pass
+
+
 def _is_frozen() -> bool:
     return bool(getattr(sys, "frozen", False))
 
