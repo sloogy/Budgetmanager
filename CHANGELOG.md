@@ -1,3 +1,22 @@
+# Version 1.0.38 - i18n Hardcoding Fix + Kategorie Drag & Drop
+
+Datum: 13. Juni 2026
+
+## Fixes
+- `tools/i18n_audit.py` repariert: Ignore-Filter prüft nun relative Pfade, damit `/mnt/data/...` nicht mehr das gesamte Projekt ausblendet.
+- Verdächtige hardcodierte UI-Texte in den aktiven Python-Views/Dialogen auf i18n-Keys umgestellt.
+- Fehlende i18n-Keys in `de.json`, `en.json` und `fr.json` ergänzt.
+- Audit läuft wieder ohne fehlende Keys und ohne verdächtige hardcoded UI-Strings.
+
+## Usability
+- Kategorien-Manager unterstützt jetzt Drag & Drop für Ebenenwechsel:
+  - Kategorie auf Kategorie ziehen → wird Child/Unterkategorie.
+  - Kategorie auf Typ-Header ziehen → wird Parent/Hauptkategorie.
+- Kontextmenü-Aktion ergänzt: „Zur Hauptkategorie machen“.
+- Kategorien-Filter arbeitet nun mit internen Werten (`currentData`) statt mit übersetzten Texten.
+
+---
+
 # Changelog — BudgetManager
 
 Alle wichtigen Änderungen an diesem Projekt werden in dieser Datei dokumentiert.
@@ -621,3 +640,10 @@ _Siehe separate Release Notes für diese Version._
 - Budget-Planung nach Kategorien.
 - SQLite als Datenbank-Backend.
 - Kategorien-Verwaltung.
+
+## Merge-Fix nach 1.0.38
+- Versionen verglichen: `category_drag_drop.zip` und `category_drag_drop claude.zip` sind inhaltlich identisch.
+- `i18n_dragdrop_fixed` als Basis übernommen, weil dort die Hardcoding-/i18n-Fixes enthalten sind.
+- Sinnvolle Drag-&-Drop-Ergänzungen aus der Kategorie-Version zurückgeführt: defensives `CategoryModel.can_reparent()`, Kontextmenü „Verschieben unter…“, Auswahl nach Verschieben.
+- Einstellungen → Über: Version wird jetzt automatisch aus `app_info.app_version_label()` gesetzt und zusätzlich beim Öffnen der Einstellungen übergeben.
+- Einstellungen → Verhalten: Formularlayout für HiDPI/lange deutsche Labels robuster gemacht und Seite scrollbar gemacht.

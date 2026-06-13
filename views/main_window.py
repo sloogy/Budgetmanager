@@ -97,7 +97,7 @@ class AboutDialog(QDialog):
             dlg = UpdateDialog(self.parent() or self)
             dlg.exec()
         except Exception as e:
-            QMessageBox.warning(self, "Update", trf("lbl.updatedialog_konnte_nicht_geoeffnet", e=str(e)))
+            QMessageBox.warning(self, tr('auto.views_main_window.100_update_81ab2a4e'), trf("lbl.updatedialog_konnte_nicht_geoeffnet", e=str(e)))
 
 class MainWindow(QMainWindow):
     def __init__(self, conn: sqlite3.Connection, *,
@@ -664,8 +664,8 @@ class MainWindow(QMainWindow):
                 except Exception:
                     dbp = Path("(unbekannt)")
 
-            self._status_user_label.setText(f"User: {user_name}")
-            self._status_db_label.setText(f"DB: {dbp}")
+            self._status_user_label.setText(trf('auto.views_main_window.667_user_value_0_adcf7358', value_0=(user_name)))
+            self._status_db_label.setText(trf('auto.views_main_window.668_db_value_0_04d0a9b3', value_0=(dbp)))
 
             sb.addPermanentWidget(self._status_user_label)
             sb.addPermanentWidget(self._status_db_label, 1)
@@ -679,7 +679,7 @@ class MainWindow(QMainWindow):
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
             self.statusBar().showMessage(trf("lbl.datenordner_geoeffnet_folder", folder=str(folder)), 3000)
         except Exception as e:
-            QMessageBox.warning(self, "Datenordner", trf("msg.datenordner_fehler", e=str(e)))
+            QMessageBox.warning(self, tr('auto.views_main_window.682_datenordner_6efcd047'), trf("msg.datenordner_fehler", e=str(e)))
         
 
     def _apply_settings_to_tabs(self):
@@ -879,6 +879,7 @@ class MainWindow(QMainWindow):
         dialog = SettingsDialog(
             self.settings,
             self,
+            app_version=app_version_label(),
             encrypted_mode=is_encrypted,
             encrypted_session=getattr(self, '_encrypted_session', None),
         )
@@ -1034,13 +1035,13 @@ class MainWindow(QMainWindow):
         self.edit_menu.clear()
 
         # Undo/Redo (immer verfügbar)
-        self.undo_action = QAction("↩️ &Undo", self)
+        self.undo_action = QAction(tr('auto.views_main_window.1037_undo_918f0844'), self)
         self.undo_action.setShortcut(QKeySequence.Undo)
         self.undo_action.setShortcutContext(Qt.ApplicationShortcut)
         self.undo_action.triggered.connect(self._undo_global)
         self.edit_menu.addAction(self.undo_action)
 
-        self.redo_action = QAction("↪️ &Redo", self)
+        self.redo_action = QAction(tr('auto.views_main_window.1043_redo_2dcd731a'), self)
         self.redo_action.setShortcuts([QKeySequence.Redo, QKeySequence("Ctrl+Shift+Z")])
         self.redo_action.setShortcutContext(Qt.ApplicationShortcut)
         self.redo_action.triggered.connect(self._redo_global)
@@ -1061,7 +1062,7 @@ class MainWindow(QMainWindow):
         self._edit_actions_general.append(add_action)
         
         # Bearbeiten
-        edit_action = QAction("&Bearbeiten...", self)
+        edit_action = QAction(tr('auto.views_main_window.1064_bearbeiten_4fc85ded'), self)
         edit_action.setIcon(get_icon("✏️"))
         edit_action.setShortcut("F2")
         edit_action.triggered.connect(self._edit_edit)
@@ -1080,13 +1081,13 @@ class MainWindow(QMainWindow):
         # === BUDGET-TAB AKTIONEN ===
         self._edit_actions_budget = []
         
-        budget_entry_action = QAction("Budget &erfassen...", self)
+        budget_entry_action = QAction(tr('auto.views_main_window.1083_budget_erfassen_d622e1c6'), self)
         budget_entry_action.setIcon(get_icon("📝"))
         budget_entry_action.triggered.connect(self._budget_entry)
         self.edit_menu.addAction(budget_entry_action)
         self._edit_actions_budget.append(budget_entry_action)
         
-        budget_edit_action = QAction("Budget &bearbeiten...", self)
+        budget_edit_action = QAction(tr('auto.views_main_window.1089_budget_bearbeiten_45efb7d1'), self)
         budget_edit_action.setIcon(get_icon("✏️"))
         budget_edit_action.triggered.connect(self._budget_edit)
         self.edit_menu.addAction(budget_edit_action)
@@ -1094,13 +1095,13 @@ class MainWindow(QMainWindow):
         
         self.edit_menu.addSeparator()
         
-        budget_seed_action = QAction("Zeilen aus &Kategorien erzeugen", self)
+        budget_seed_action = QAction(tr('auto.views_main_window.1097_zeilen_aus_kategorien_erzeugen_f04f27f9'), self)
         budget_seed_action.setIcon(get_icon("🌱"))
         budget_seed_action.triggered.connect(self._budget_seed)
         self.edit_menu.addAction(budget_seed_action)
         self._edit_actions_budget.append(budget_seed_action)
         
-        budget_copy_action = QAction("Jahr &kopieren...", self)
+        budget_copy_action = QAction(tr('auto.views_main_window.1103_jahr_kopieren_a5365b5b'), self)
         budget_copy_action.setIcon(get_icon("📋"))
         budget_copy_action.triggered.connect(self._budget_copy_year)
         self.edit_menu.addAction(budget_copy_action)
@@ -1108,7 +1109,7 @@ class MainWindow(QMainWindow):
         
         self.edit_menu.addSeparator()
         
-        budget_remove_row_action = QAction("Budget-&Zeile entfernen", self)
+        budget_remove_row_action = QAction(tr('auto.views_main_window.1111_budget_zeile_entfernen_2116ca10'), self)
         budget_remove_row_action.setIcon(get_icon("🗑️"))
         budget_remove_row_action.triggered.connect(self._budget_remove_row)
         self.edit_menu.addAction(budget_remove_row_action)
@@ -1122,13 +1123,13 @@ class MainWindow(QMainWindow):
         # === KATEGORIEN-TAB AKTIONEN ===
         self._edit_actions_categories = []
         
-        cat_new_main_action = QAction("Neue &Hauptkategorie...", self)
+        cat_new_main_action = QAction(tr('auto.views_main_window.1125_neue_hauptkategorie_4edd9c24'), self)
         cat_new_main_action.setIcon(get_icon("📁"))
         cat_new_main_action.triggered.connect(self._categories_new_main)
         self.edit_menu.addAction(cat_new_main_action)
         self._edit_actions_categories.append(cat_new_main_action)
         
-        cat_new_sub_action = QAction("Neue &Unterkategorie...", self)
+        cat_new_sub_action = QAction(tr('auto.views_main_window.1131_neue_unterkategorie_51ea953c'), self)
         cat_new_sub_action.setIcon(get_icon("📂"))
         cat_new_sub_action.triggered.connect(self._categories_new_sub)
         self.edit_menu.addAction(cat_new_sub_action)
@@ -1141,7 +1142,7 @@ class MainWindow(QMainWindow):
         
         self.edit_menu.addSeparator()
         
-        cat_mass_edit_action = QAction("&Massenbearbeitung...", self)
+        cat_mass_edit_action = QAction(tr('auto.views_main_window.1144_massenbearbeitung_aa0c33a1'), self)
         cat_mass_edit_action.setIcon(get_icon("✏️"))
         cat_mass_edit_action.setStatusTip(tr("lbl.flags_fuer_mehrere_kategorien"))
         cat_mass_edit_action.triggered.connect(self._categories_mass_edit)
@@ -1153,7 +1154,7 @@ class MainWindow(QMainWindow):
         
         self.edit_menu.addSeparator()
         
-        fix_action = QAction("&Fixkosten buchen...", self)
+        fix_action = QAction(tr('auto.views_main_window.1156_fixkosten_buchen_61d1976c'), self)
         fix_action.setIcon(get_icon("📅"))
         fix_action.setShortcut("Ctrl+Shift+F")
         fix_action.triggered.connect(self._tracking_add_fixcosts)
@@ -1163,7 +1164,7 @@ class MainWindow(QMainWindow):
         # === ÜBERSICHT-TAB AKTIONEN ===
         self._edit_actions_overview = []
         
-        refresh_overview_action = QAction("Daten &aktualisieren", self)
+        refresh_overview_action = QAction(tr('auto.views_main_window.1166_daten_aktualisieren_6e5a0ee6'), self)
         refresh_overview_action.setIcon(get_icon("🔄"))
         refresh_overview_action.setShortcut("F5")
         refresh_overview_action.triggered.connect(self._overview_refresh)
@@ -1440,7 +1441,7 @@ class MainWindow(QMainWindow):
             self._update_undo_redo_actions()
         except Exception as e:
             logger.error("Budget speichern fehlgeschlagen: %s", e, exc_info=True)
-            QMessageBox.warning(self, "Hinweis", trf("msg.fehler_beim_speichern_e", e=str(e)))
+            QMessageBox.warning(self, tr('dlg.hinweis'), trf("msg.fehler_beim_speichern_e", e=str(e)))
 
     def _refresh_current_tab(self):
         """Aktualisiert den aktuellen Tab"""
@@ -1563,7 +1564,7 @@ class MainWindow(QMainWindow):
             msg.exec()
             
         except Exception as e:
-            QMessageBox.warning(self, "Hinweis", trf("msg.fehler_beim_laden_der", e=str(e)))
+            QMessageBox.warning(self, tr('dlg.hinweis'), trf("msg.fehler_beim_laden_der", e=str(e)))
 
     def _show_about(self):
         """Zeigt Über-Dialog"""
@@ -1574,8 +1575,8 @@ class MainWindow(QMainWindow):
         """Zeigt den Kontoverwaltungs-Dialog."""
         if not self._active_user or not self._user_model:
             QMessageBox.information(
-                self, "Info",
-                "Kontoverwaltung ist nur bei verschlüsselten Konten verfügbar."
+                self, tr('auto.views_main_window.1577_info_a7110986'),
+                tr('auto.views_main_window.1578_kontoverwaltung_ist_nur_bei_verschl_381922cb')
             )
             return
 
@@ -1608,11 +1609,11 @@ class MainWindow(QMainWindow):
         if self._active_user:
             icon = self._active_user.security_icon
             base = app_window_title()
-            self.setWindowTitle(f"{base} — {icon} {new_name}")
+            self.setWindowTitle(trf('auto.views_main_window.1611_value_0_value_1_value_2_1814eaf1', value_0=(base), value_1=(icon), value_2=(new_name)))
             # Konto-Menü Info aktualisieren
             if hasattr(self, '_account_info_action'):
                 self._account_info_action.setText(
-                    f"{icon} {new_name} — {self._active_user.security_label}"
+                    trf('auto.views_main_window.1615_value_0_value_1_value_2_81323b29', value_0=(icon), value_1=(new_name), value_2=(self._active_user.security_label))
                 )
             self.statusBar().showMessage(trf("lbl.anzeigename_geaendert_new_name", new_name=new_name), 3000)
 
@@ -1622,11 +1623,11 @@ class MainWindow(QMainWindow):
             icon = self._active_user.security_icon
             name = self._active_user.display_name
             base = app_window_title()
-            self.setWindowTitle(f"{base} — {icon} {name}")
+            self.setWindowTitle(trf('auto.views_main_window.1625_value_0_value_1_value_2_1999fbaa', value_0=(base), value_1=(icon), value_2=(name)))
             # Konto-Menü Info aktualisieren
             if hasattr(self, '_account_info_action'):
                 self._account_info_action.setText(
-                    f"{icon} {name} — {self._active_user.security_label}"
+                    trf('auto.views_main_window.1629_value_0_value_1_value_2_943d4260', value_0=(icon), value_1=(name), value_2=(self._active_user.security_label))
                 )
             self.statusBar().showMessage(
                 trf("lbl.sicherheitsstufe_geaendert_self_active_usersecurity_label",
@@ -1785,8 +1786,8 @@ class MainWindow(QMainWindow):
             else:
                 QMessageBox.information(
                     self,
-                    "Neustart erforderlich",
-                    "Bitte starten Sie die Anwendung neu, um die Änderungen zu übernehmen."
+                    tr('auto.views_main_window.1788_neustart_erforderlich_288778eb'),
+                    tr('auto.views_main_window.1789_bitte_starten_sie_die_anwendung_neu_e67d74c9')
                 )
     
     def _show_database_management(self):
@@ -2040,7 +2041,7 @@ class MainWindow(QMainWindow):
         # Wenn Auto-Save nicht aktiv: Einmal fragen ob gespeichert werden soll
         reply = QMessageBox.question(
             self,
-            "Beenden",
+            tr('msg.confirm_exit'),
             tr("btn.moechten_sie_das_budget"),
             QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
             QMessageBox.Save
@@ -2103,4 +2104,4 @@ class MainWindow(QMainWindow):
             dlg.raise_()
             dlg.activateWindow()
         except Exception as e:
-            QMessageBox.critical(self, "Fehler", trf("msg.setup_assistent_fehler", e=str(e)))
+            QMessageBox.critical(self, tr('msg.error'), trf("msg.setup_assistent_fehler", e=str(e)))

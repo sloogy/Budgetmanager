@@ -47,7 +47,7 @@ class QuickAddDialog(QDialog):
         
         # Typ
         typ_row = QHBoxLayout()
-        typ_row.addWidget(QLabel("Typ:"))
+        typ_row.addWidget(QLabel(tr('lbl.type')))
         self.typ_combo = QComboBox()
         self.typ_combo.addItem(tr("kpi.expenses"), TYP_EXPENSES)
         self.typ_combo.addItem(tr("kpi.income"), TYP_INCOME)
@@ -80,7 +80,7 @@ class QuickAddDialog(QDialog):
         details_row = QHBoxLayout()
         details_row.addWidget(QLabel(tr("lbl.lbl_details")))
         self.details_edit = QLineEdit()
-        self.details_edit.setPlaceholderText("Optional: Beschreibung...")
+        self.details_edit.setPlaceholderText(tr('auto.views_quick_add_dialog.83_optional_beschreibung_5622cc90'))
         details_row.addWidget(self.details_edit, 1)
         layout.addLayout(details_row)
         
@@ -141,11 +141,11 @@ class QuickAddDialog(QDialog):
     def _validate(self) -> bool:
         """Prüft ob alle Pflichtfelder ausgefüllt sind"""
         if not self.cat_combo.currentText().strip():
-            QMessageBox.warning(self, "Hinweis", tr("dlg.bitte_eine_kategorie_auswaehlen"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.bitte_eine_kategorie_auswaehlen"))
             return False
         
         if self.amount_spin.value() <= 0:
-            QMessageBox.warning(self, "Hinweis", tr("dlg.bitte_einen_betrag_0"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.bitte_einen_betrag_0"))
             return False
         
         return True

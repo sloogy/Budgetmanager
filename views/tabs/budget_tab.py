@@ -546,11 +546,7 @@ class BudgetTab(QWidget):
                         it.setForeground(QBrush(QColor(_c.neutral)))
 
                     it.setToolTip(
-                        f"{tr('kpi.income')}:   {fmt_amount(ein)}\n"
-                        f"{tr('kpi.expenses')}:    {fmt_amount(aus)}\n"
-                        f"{tr('typ.Ersparnisse')}:  {fmt_amount(ers)}\n"
-                        f"─────────────────────\n"
-                        f"{tr('lbl.saldo')}:       {fmt_amount(saldo)}"
+                        trf('auto.views_tabs_budget_tab.549_value_0_value_1_value_2_value_3_val_ca79190a', value_0=(tr('kpi.income')), value_1=(fmt_amount(ein)), value_2=(tr('kpi.expenses')), value_3=(fmt_amount(aus)), value_4=(tr('typ.Ersparnisse')), value_5=(fmt_amount(ers)), value_6=(tr('lbl.saldo')), value_7=(fmt_amount(saldo)))
                     )
 
             # Jahr
@@ -571,11 +567,7 @@ class BudgetTab(QWidget):
                     it_total.setForeground(QBrush(QColor(_c.neutral)))
 
                 it_total.setToolTip(
-                    f"{tr('lbl.annual_income')}:   {fmt_amount(jahr_ein)}\n"
-                    f"{tr('lbl.annual_expenses')}:    {fmt_amount(jahr_aus)}\n"
-                    f"{tr('lbl.annual_savings')}:  {fmt_amount(jahr_ers)}\n"
-                    f"─────────────────────────────\n"
-                    f"{tr('lbl.annual_balance')}:       {fmt_amount(jahr_saldo)}"
+                    trf('auto.views_tabs_budget_tab.574_value_0_value_1_value_2_value_3_val_4a746a83', value_0=(tr('lbl.annual_income')), value_1=(fmt_amount(jahr_ein)), value_2=(tr('lbl.annual_expenses')), value_3=(fmt_amount(jahr_aus)), value_4=(tr('lbl.annual_savings')), value_5=(fmt_amount(jahr_ers)), value_6=(tr('lbl.annual_balance')), value_7=(fmt_amount(jahr_saldo)))
                 )
         finally:
             self._internal_change = _prev
@@ -627,7 +619,7 @@ class BudgetTab(QWidget):
                 if typ == "Alle" and flat:
                     r = self.table.rowCount()
                     self.table.insertRow(r)
-                    header_item = QTableWidgetItem(f"═══ {display_typ(t)} ═══")
+                    header_item = QTableWidgetItem(trf('auto.views_tabs_budget_tab.630_value_0_81e0f68e', value_0=(display_typ(t))))
                     header_item.setFlags(header_item.flags() & ~Qt.ItemIsEditable)
                     font = header_item.font()
                     font.setBold(True)
@@ -1725,7 +1717,7 @@ class BudgetTab(QWidget):
         """Benennt eine Kategorie um."""
         new_name, ok = QInputDialog.getText(
             self, tr("budget.title.rename_category"),
-            f"Neuer Name für '{cat_name}':",
+            trf('auto.views_tabs_budget_tab.1728_neuer_name_fuer_value_0_c7b0c766', value_0=(cat_name)),
             text=cat_name
         )
         if not ok or not new_name.strip():
@@ -1739,7 +1731,7 @@ class BudgetTab(QWidget):
         if new_name in self.cats.list_names(typ):
             QMessageBox.warning(
                 self, tr("msg.error"),
-                f"Eine Kategorie mit dem Namen '{new_name}' existiert bereits."
+                trf('auto.views_tabs_budget_tab.1742_eine_kategorie_mit_dem_namen_value__7edb2756', value_0=(new_name))
             )
             return
         
@@ -1829,7 +1821,7 @@ class BudgetTab(QWidget):
         
         name, ok = QInputDialog.getText(
             self, tr("budget.title.new_subcategory"),
-            f"Name der neuen Unterkategorie unter '{parent_name}':"
+            trf('auto.views_tabs_budget_tab.1832_name_der_neuen_unterkategorie_unter_99fa4bed', value_0=(parent_name))
         )
         if not ok or not name.strip():
             return
@@ -1931,7 +1923,7 @@ class BudgetTab(QWidget):
         self.favorites.add(typ, category)
         self.load()  # Tabelle neu laden um Stern-Symbol anzuzeigen
         QMessageBox.information(
-            self, "Favorit",
+            self, tr('auto.views_tabs_budget_tab.1934_favorit_6f4adb2a'),
             trf("budget.msg.added_to_favorites", category=category)
         )
     
@@ -1940,8 +1932,8 @@ class BudgetTab(QWidget):
         self.favorites.remove(typ, category)
         self.load()  # Tabelle neu laden um Stern-Symbol zu entfernen
         QMessageBox.information(
-            self, "Favorit",
-            f"☆ '{category}' wurde aus Favoriten entfernt."
+            self, tr('auto.views_tabs_budget_tab.1943_favorit_a9b8479f'),
+            trf('auto.views_tabs_budget_tab.1944_value_0_wurde_aus_favoriten_entfern_56aa3cd9', value_0=(category))
         )
     
     def _create_auto_warnings(self, year: int) -> None:
@@ -2112,16 +2104,16 @@ class BudgetTab(QWidget):
 
     def _show_tree_menu(self) -> None:
         menu = QMenu(self)
-        act_expand_all = menu.addAction("Alles aufklappen")
-        act_collapse_all = menu.addAction("Alles zuklappen (nur Hauptkategorien)")
+        act_expand_all = menu.addAction(tr('auto.views_tabs_budget_tab.2115_alles_aufklappen_d750a09b'))
+        act_collapse_all = menu.addAction(tr('auto.views_tabs_budget_tab.2116_alles_zuklappen_nur_hauptkategorien_4f06f19e'))
         menu.addSeparator()
-        act_depth0 = menu.addAction("Nur Ebene 0 anzeigen")
-        act_depth1 = menu.addAction("Bis Ebene 1 anzeigen")
-        act_depth2 = menu.addAction("Bis Ebene 2 anzeigen")
+        act_depth0 = menu.addAction(tr('auto.views_tabs_budget_tab.2118_nur_ebene_0_anzeigen_b996cf39'))
+        act_depth1 = menu.addAction(tr('auto.views_tabs_budget_tab.2119_bis_ebene_1_anzeigen_ec306d04'))
+        act_depth2 = menu.addAction(tr('auto.views_tabs_budget_tab.2120_bis_ebene_2_anzeigen_52a77975'))
 
         menu.addSeparator()
-        act_view_tree = menu.addAction("Baum einblenden (Auf/Zuklappen)")
-        act_view_path = menu.addAction("Baum ausblenden (Pfad anzeigen)")
+        act_view_tree = menu.addAction(tr('auto.views_tabs_budget_tab.2123_baum_einblenden_auf_zuklappen_0f72e127'))
+        act_view_path = menu.addAction(tr('auto.views_tabs_budget_tab.2124_baum_ausblenden_pfad_anzeigen_508ded75'))
 
 
         action = menu.exec(self.btn_tree.mapToGlobal(self.btn_tree.rect().bottomLeft()))

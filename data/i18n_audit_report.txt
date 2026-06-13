@@ -1,213 +1,214 @@
 BudgetManager i18n Audit
 ========================
-Root: /mnt/data/bm_0483
-Locales: /mnt/data/bm_0483/locales
+Root: /mnt/data/bm_final
+Locales: /mnt/data/bm_final/locales
 
 [OK] Alle referenzierten Keys existieren in de.json
 
 [OK] en.json hat alle Keys von de.json
 
-[INFO] 478 Key(s) in de.json wirken ungenutzt (kein tr()/trf() Treffer):
-  - btn.add
-  - btn.apply
-  - btn.back
+[INFO] 270 Key(s) in de.json wirken ungenutzt (kein tr()/trf() Treffer):
+  - backup.restore_key_dialog_label
+  - backup.restore_key_title
+  - backup_restore.auto_backup_notice
+  - backup_restore.backup_created
+  - backup_restore.error_title
   - btn.book_fixcosts
-  - btn.cancel
-  - btn.close
-  - btn.copy
-  - btn.create_backup
-  - btn.delete
-  - btn.deselect_all
-  - btn.edit
+  - btn.delete_theme
+  - btn.duplicate_theme
   - btn.export
   - btn.import_data
   - btn.load
   - btn.new_goal
   - btn.no
-  - btn.ok
   - btn.open
   - btn.preview
-  - btn.refresh
   - btn.reset_default
-  - btn.reset_filters
+  - btn.reset_theme
   - btn.restore_backup
-  - btn.save
   - btn.save_all
-  - btn.select_all
+  - btn.save_and_new
   - btn.suggestions
+  - btn.unlock
+  - btn.wirklich_loeschen
   - btn.yes
-  - budget.btn.copy_year
-  - budget.btn.delete_category_global
-  - budget.btn.edit
-  - budget.btn.entry
-  - budget.btn.load
-  - budget.btn.quick_add
-  - budget.btn.remove_row
-  - budget.btn.seed
-  - budget.btn.tree
-  - budget.chk.ask_due
-  - budget.ctx.copy_row_all_months
-  - budget.ctx.delete_category
-  - budget.ctx.delete_row_this_year
-  - budget.ctx.edit_budget
-  - budget.ctx.favorite
-  - budget.ctx.fix_disable
-  - budget.ctx.fix_enable
-  - budget.ctx.new_category
-  - budget.ctx.new_subcategory
-  - budget.ctx.properties
-  - budget.ctx.rec_disable
-  - budget.ctx.rec_enable
-  - budget.ctx.rename
-  - budget.ctx.section_budget
-  - budget.ctx.section_category
-  - budget.ctx.section_favorites
-  - budget.ctx.set_due_day
-  - budget.ctx.unfavorite
-  - budget.msg.added_to_favorites
-  - budget.msg.change_failed
-  - budget.msg.copied_to_all_months
-  - budget.msg.copy_year_diff
-  - budget.msg.copy_year_done
-  - budget.msg.create_category_failed
-  - budget.msg.create_failed
-  - budget.msg.delete_category_also_sub
-  - budget.msg.delete_category_confirm
-  - budget.msg.delete_category_warning
-  - budget.msg.delete_global_warn_1
-  - budget.msg.delete_global_warn_2
   - budget.msg.edit_buffer_help
-  - budget.msg.edit_buffer_help_short
-  - budget.msg.fix_toggled
-  - budget.msg.no_value_to_copy
-  - budget.msg.parent_has_children
-  - budget.msg.rec_toggled
-  - budget.msg.remove_row_confirm
-  - budget.msg.remove_row_confirm_short
-  - budget.msg.rename_failed
-  - budget.msg.renamed
-  - budget.msg.seed_done
-  - budget.msg.select_category_row
-  - budget.msg.select_month_cell
-  - budget.msg.set_due_day_done
-  - budget.msg.set_due_day_prompt
   - budget.msg.total_parent_readonly
-  - budget.overview.all
-  - budget.overview.part
-  - budget.overview.single
-  - budget.row.budget_balance
-  - budget.tip.overview
-  - budget.tip.quick_add
-  - budget.tip.tree
-  - budget.title.category_error
-  - budget.title.delete_category
-  - budget.title.new_subcategory
-  - budget.title.rename_category
-  - budget.title.set_due_day
+  - cat.default.01
+  - cat.default.02
+  - cat.default.03
+  - cat.default.04
+  - cat.default.05
+  - cat.default.06
+  - cat.default.07
+  - cat.default.08
+  - cat.default.09
+  - cat.default.10
+  - cat.default.101
+  - cat.default.102
+  - cat.default.103
+  - cat.default.104
+  - cat.default.105
+  - cat.default.106
+  - cat.default.107
+  - cat.default.108
+  - cat.default.109
+  - cat.default.11
+  - cat.default.110
+  - cat.default.111
+  - cat.default.112
+  - cat.default.113
+  - cat.default.114
+  - cat.default.115
+  - cat.default.116
+  - cat.default.117
+  - cat.default.118
+  - cat.default.119
+  - cat.default.12
+  - cat.default.120
+  - cat.default.121
+  - cat.default.122
+  - cat.default.123
+  - cat.default.124
+  - cat.default.125
+  - cat.default.126
+  - cat.default.127
+  - cat.default.128
+  - cat.default.129
+  - cat.default.13
+  - cat.default.130
+  - cat.default.131
+  - cat.default.132
+  - cat.default.133
+  - cat.default.134
+  - cat.default.14
+  - cat.default.15
+  - cat.default.16
+  - cat.default.17
+  - cat.default.18
+  - cat.default.19
+  - cat.default.20
+  - cat.default.21
+  - cat.default.22
+  - cat.default.23
+  - categories.drag_hint
+  - categories.make_root
+  - categories.moved_to_root
+  - catmgr.move_err_cycle
+  - catmgr.move_err_missing
+  - catmgr.move_err_self
+  - catmgr.move_err_type
   - chk.amount_filter
   - chk.ask_on_due
   - chk.ask_while_typing
-  - chk.auto_backup
-  - chk.auto_update
-  - chk.autosave
-  - chk.backup_before_reset
-  - chk.copy_amounts
   - chk.date_filter
-  - chk.guided_setup
-  - chk.show_onboarding
-  - chk.show_onboarding_end
+  - common.backup
+  - common.export
+  - common.restart_app
+  - common.restore
   - ctx.add_subcategory
   - ctx.delete
   - ctx.duplicate
   - ctx.edit
   - ctx.move
   - ctx.remove_row
-  - ctx.rename
-  - ctx.set_all_fix_off
-  - ctx.set_all_fix_on
-  - ctx.set_all_recurring_off
-  - ctx.set_all_recurring_on
   - ctx.set_tags
-  - ctx.toggle_fix
-  - ctx.toggle_recurring
+  - database.msg.backup_failed
+  - database.msg.backup_failed_prefix
+  - database.msg.backup_file_not_found
+  - database.msg.db_not_found
+  - database.msg.reset_all
+  - database.msg.reset_budget_categories
+  - database.msg.restore_failed
+  - database.msg.unexpected
   - dlg.about
-  - dlg.account_mgmt
-  - dlg.appearance
-  - dlg.backup_restore
-  - dlg.budget_adjustment
-  - dlg.budget_entry
-  - dlg.budget_warnings
-  - dlg.category_create
-  - dlg.category_manager
-  - dlg.confirm
-  - dlg.copy_year
-  - dlg.db_info
-  - dlg.db_management
-  - dlg.db_updated
-  - dlg.export
+  - dlg.ausfuehren
+  - dlg.available_themes
+  - dlg.b_existiert_noch_nicht
+  - dlg.color_backgrounds
+  - dlg.color_basic_settings
+  - dlg.color_secondary_text
+  - dlg.dlg_budgets_effective
   - dlg.favorites
-  - dlg.global_search
-  - dlg.login
-  - dlg.login_create_user
-  - dlg.no_data
-  - dlg.quick_add
-  - dlg.recurring_manager
-  - dlg.restore_key_enter
-  - dlg.restore_key_new
-  - dlg.restore_key_note
-  - dlg.savings_goals
-  - dlg.settings
-  - dlg.setup_assistant
-  - dlg.shortcuts
-  - dlg.tags_manager
-  - dlg.tags_merge
-  - dlg.tags_stats
-  - dlg.theme_editor
-  - dlg.tracking_entry
-  - dlg.update
-  - grp.application
-  - grp.base_properties
-  - grp.base_settings
+  - dlg.moechten_sie_fortfahren
+  - dlg.nicht_gefunden
+  - dlg.tagfarbe_waehlen
+  - dlg.wurde_importiert
+  - dlg.zuruecksetzen_lbl
   - grp.behavior
-  - grp.budget_overview
-  - grp.budget_vs_actual
-  - grp.current_level
-  - grp.db_cleanup
-  - grp.db_path
-  - grp.db_stats
   - grp.display
-  - grp.locale
   - grp.method
   - grp.security
-  - header.action
   - header.actual
-  - header.amount
   - header.book
-  - header.budget
-  - header.category
-  - header.date
-  - header.day
-  - header.description
-  - header.designation
-  - header.fix
-  - header.group
   - header.percent
-  - header.recurring_symbol
   - header.rest
-  - header.shortcut_current
   - header.shortcut_default
   - header.status
-  - header.tags
-  - header.type
   - kpi.balance
-  - kpi.expenses
-  - kpi.income
-  - kpi.savings
   - lbl.actual
-  - lbl.all
   - lbl.all_categories
   - lbl.all_tags
-  - lbl.amount
-  ... (+278 weitere)
+  - lbl.amount_filter_active
+  - lbl.balance
+  - lbl.balanced
+  - lbl.balanced_count
+  - lbl.booking_type_label
+  - lbl.categories_count
+  - lbl.current_amount
+  - lbl.date
+  - lbl.date_filter_active
+  - lbl.deadline
+  - lbl.deficit
+  - lbl.deficit_count
+  - lbl.designation
+  - lbl.details
+  - lbl.deviations_only
+  - lbl.entries
+  - lbl.expenses
+  - lbl.filters
+  - lbl.fix
+  - lbl.goal_name
+  - lbl.goals_count
+  - lbl.income
+  - lbl.keine_budgetauffaelligkeiten_gefunden
+  - lbl.no_data
+  - lbl.no_entries
+  - lbl.not_completed
+  - lbl.not_opened
+  - lbl.notes
+  - lbl.pending
+  - lbl.percent
+  - lbl.quick_add_title
+  - lbl.savings
+  - lbl.savings_all_reached
+  - lbl.savings_goal_count_many
+  - lbl.savings_goal_count_one
+  - lbl.savings_summary_total
+  - lbl.source
+  - lbl.summary_budget_total
+  - lbl.summary_exceeded
+  - lbl.surplus
+  - lbl.surplus_count
+  - lbl.target_amount
+  - lbl.total
+  - lbl.transactions_count
+  - lbl.uebersicht
+  - lbl.uebersprungen
+  - lbl.view
+  - menu.account_mgmt
+  - menu.appearance
+  - menu.copy
+  - menu.cut
+  - menu.fullscreen_tip
+  - menu.logout
+  - menu.open_about
+  - menu.open_about_tip
+  - menu.open_backup
+  - menu.open_backup_tip
+  - menu.open_settings
+  - menu.open_settings_tip
+  ... (+70 weitere)
 
 [OK] Keine verdächtigen hardcoded UI-Strings gefunden
+

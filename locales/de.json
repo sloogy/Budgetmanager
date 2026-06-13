@@ -183,7 +183,9 @@
     "btn_save_and_new": "✅ Speichern & Neu",
     "btn_unlock": "🔓 Freigeben",
     "finish": "Fertig",
-    "back_step": "Zurück"
+    "back_step": "Zurück",
+    "new_category": "Neue Kategorie",
+    "subcategory": "Unterkategorie"
   },
   "lbl": {
     "all": "Alle",
@@ -374,7 +376,8 @@
     "header_adjust": "Anpassen",
     "budgets_adjusted": "Budgets angepasst",
     "source": "Quelle",
-    "details": "Details"
+    "details": "Details",
+    "recurring_short": "Wdh."
   },
   "ctx": {
     "edit": "Bearbeiten…",
@@ -723,7 +726,12 @@
     "create_backup_now": "Sicherung jetzt erstellen",
     "backup_group": "Sicherung",
     "backup_success_body": "Backup erfolgreich erstellt:\n{backup_name}\n\nOrt: {backup_dir}",
-    "backup_failed_title": "Sicherung fehlgeschlagen"
+    "backup_failed_title": "Sicherung fehlgeschlagen",
+    "recent_days_filter": "Schnellfilter „nur letzte … Tage“",
+    "recurring_preferred_day": "Bevorzugter Tag (wiederkehrend)",
+    "carryover_start_month": "Kumulation Startmonat",
+    "carryover_start_year": "Kumulation Startjahr",
+    "months_suffix": " Monate"
   },
   "radio": {
     "cat_manager": "Kategorien-Manager verwenden (im Programm)",
@@ -1273,7 +1281,8 @@
     "lbl_backup_count": "Gespeicherte Backups",
     "about_name": "Name",
     "about_version": "Version",
-    "enc_info": "🔒 Deine Datenbank ist verschlüsselt.\nPfad und Datenbank werden über die Kontoverwaltung verwaltet."
+    "enc_info": "🔒 Deine Datenbank ist verschlüsselt.\nPfad und Datenbank werden über die Kontoverwaltung verwaltet.",
+    "version_unknown": "(Version unbekannt)"
   },
   "update": {
     "hint_staging": "Hinweis: 'Prüfen & herunterladen' lädt ein Update und legt es in 'updates/staging/' ab."
@@ -1392,7 +1401,40 @@
     "confirm_delete_multi": "{n} Kategorie(n) inklusive Unterkategorien löschen?",
     "filter_all": "Alle",
     "filter_fixcosts": "Nur Fixkosten",
-    "filter_recurring": "Nur Wiederkehrend"
+    "filter_recurring": "Nur Wiederkehrend",
+    "activate": "✓ Aktivieren",
+    "deactivate": "✗ Deaktivieren",
+    "day_suffix": ". des Monats",
+    "loaded_count": "{count} Kategorien geladen",
+    "type_header_count": "{typ} ({count})",
+    "drag_hint": "💡 Tipp: Kategorien per Drag-and-Drop umhängen — auf eine andere Kategorie ziehen macht sie zur Unterkategorie, auf den Typ-Kopf (z. B. Ausgaben) ziehen macht sie zur Hauptkategorie. Alternativ Rechtsklick → „Verschieben unter…“.",
+    "make_root": "Zur Hauptkategorie machen",
+    "drag_only_same_type": "Kategorien können nur innerhalb desselben Typs verschoben werden.",
+    "drag_not_onto_self": "Eine Kategorie kann nicht auf sich selbst verschoben werden.",
+    "drag_no_cycle": "Diese Verschiebung ist nicht möglich, weil sonst eine Endlosschleife in der Hierarchie entsteht.",
+    "move_failed": "Verschieben fehlgeschlagen:\n{e}",
+    "moved_count": "{count} Kategorie(n) verschoben nach: {target}",
+    "moved_to_root": "{name} ist jetzt eine Hauptkategorie.",
+    "set_due_day_action": "Fälligkeitstag setzen… ({day}.)",
+    "day_prompt": "Tag im Monat (1–31):",
+    "updated_count": "{count} Kategorie(n) aktualisiert",
+    "status_activated": "aktiviert",
+    "status_deactivated": "deaktiviert",
+    "new_category_name_prompt": "Name der neuen {typ}-Kategorie:",
+    "category_exists": "Eine Kategorie „{name}“ existiert bereits.",
+    "created": "Kategorie „{name}“ erstellt",
+    "create_failed": "Erstellen fehlgeschlagen:\n{e}",
+    "select_exactly_one_parent": "Bitte genau eine Kategorie als Parent auswählen.",
+    "new_subcategory_name_prompt": "Name der neuen Unterkategorie unter „{parent}“:",
+    "subcategory_created": "Unterkategorie „{name}“ erstellt",
+    "select_exactly_one_rename": "Bitte genau eine Kategorie zum Umbenennen auswählen.",
+    "rename_prompt": "Neuer Name für „{name}“:",
+    "renamed": "Kategorie umbenannt: „{old}“ → „{new}“",
+    "rename_failed": "Umbenennen fehlgeschlagen:\n{e}",
+    "confirm_delete_count": "{count} Kategorie(n) wirklich löschen?",
+    "delete_with_entries_warning": "⚠️ WARNUNG: Alle zugehörigen Budget- und Tracking-Einträge werden ebenfalls gelöscht!",
+    "partial_failed_title": "Teilweise fehlgeschlagen",
+    "errors_at": "Fehler bei:"
   },
   "startup": {
     "welcome_title": "🚀 Willkommen im Budgetmanager",
@@ -1430,5 +1472,396 @@
   "chart": {
     "top6_budget_vs_actual": "Top 6 – Budget vs. Gebucht",
     "open_budgeted_amounts": "Offene budgetierte Beträge"
+  },
+  "auto": {
+    "main": {
+      "337_value_0_value_1_value_2_08554ed9": "{value_0} — {value_1} {value_2}",
+      "410_startfehler_1a2ebad1": "Startfehler",
+      "411_budgetmanager_konnte_nicht_gestarte_8ae862ce": "Budgetmanager konnte nicht gestartet werden:\n\n{value_0}\n\nDetails siehe budgetmanager.log."
+    },
+    "settings_dialog": {
+      "146_start_bedienung_809e5573": "Start & Bedienung",
+      "182_eingabe_workflow_c2c724ba": "Eingabe & Workflow",
+      "212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5": "Bevorzugter Tag für neue wiederkehrende Kategorien/Buchungen.\nWird automatisch gesetzt, wenn du eine Kategorie als wiederkehrend markierst.\nMonatsende = letzter Tag des Monats.",
+      "226_mindestanzahl_aufeinanderfolgender__c912895e": "Mindestanzahl aufeinanderfolgender Monate mit gleichem Trend,\nbevor ein Anpassungsvorschlag angezeigt wird.",
+      "237_ab_welchem_monat_soll_der_uebertrag_6ec46422": "Ab welchem Monat soll der Übertrag kumuliert werden?\nBeispiel: Ab März → Jan/Feb haben keinen Übertrag,\nKumulation beginnt erst ab März.",
+      "246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac": "Ab welchem Jahr soll der Übertrag kumuliert werden?\nDer Übertrag wird jahresübergreifend mitgenommen.\nBeispiel: Startjahr 2025, Startmonat März →\nKumulation beginnt ab März 2025 und zieht sich\nüber alle Folgejahre.",
+      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Separaten Kategorien-Tab anzeigen",
+      "262_aktiviert_den_separaten_kategorien__7db32e53": "Aktiviert den separaten Kategorien-Tab für erweiterte Kategorie-Verwaltung.\n\nStandard: Deaktiviert – Kategorien werden direkt im Budget-Dialog erstellt und verwaltet.\nDer separate Tab ist nützlich für Massenbearbeitung, Filter und erweiterte Optionen.\n\nÄnderung erfordert Neustart der Anwendung.",
+      "270_small_i_hinweis_kategorien_koennen__5859fbbe": "<small><i>Hinweis: Kategorien können auch direkt im Budget-Dialog über das ⚙-Menü erstellt und bearbeitet werden.</i></small>",
+      "310_tabellen_listen_d0cf90f1": "Tabellen & Listen",
+      "328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c": "<i>Klicke auf ein Kürzel und drücke die gewünschte Tastenkombination. Leere Felder deaktivieren das Kürzel.</i>",
+      "485_budgetmanager_11c4305b": "Budgetmanager",
+      "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "SQLite Datenbank (*.db *.sqlite *.sqlite3);;Alle Dateien (*)",
+      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Backup erfolgreich erstellt:\n{value_0}\n\nOrt: {value_1}"
+    },
+    "views_budget_entry_dialog_extended": {
+      "82_kategorie_details_6ef68b34": "Kategorie-Details",
+      "90_b_value_0_b_ee6c93f4": "<b>{value_0}</b>",
+      "95_hauptkategorie_kein_parent_883e571a": "— Hauptkategorie (kein Parent) —",
+      "110_eigenschaften_902ad0b9": "Eigenschaften",
+      "140_kategorie_erstellen_d45dd95d": "Kategorie erstellen",
+      "164_eine_kategorie_mit_dem_namen_value__2fba299b": "Eine Kategorie mit dem Namen '{value_0}' existiert bereits.",
+      "184_konnte_kategorie_nicht_erstellen_va_dce4d9f6": "Konnte Kategorie nicht erstellen:\n{value_0}",
+      "220_kategorie_optionen_e050bea2": "Kategorie-Optionen",
+      "225_neue_unterkategorie_e01e0b00": "Neue Unterkategorie…",
+      "314_name_der_neuen_kategorie_value_0_399f599a": "Name der neuen Kategorie ({value_0}):",
+      "333_konnte_kategorie_nicht_erstellen_va_12bb8446": "Konnte Kategorie nicht erstellen:\n{value_0}",
+      "358_parent_kategorie_23016e6b": "Parent-Kategorie",
+      "375_name_der_neuen_unterkategorie_unter_655e15ec": "Name der neuen Unterkategorie unter '{value_0}':",
+      "394_konnte_unterkategorie_nicht_erstell_10c56189": "Konnte Unterkategorie nicht erstellen:\n{value_0}",
+      "404_umbenennen_6ad211f7": "Umbenennen",
+      "405_neuer_name_fuer_value_0_ac7dc2c9": "Neuer Name für '{value_0}':",
+      "425_kategorie_umbenannt_value_0_value_1_ac33fb77": "Kategorie umbenannt: '{value_0}' → '{value_1}'\nAlle Budget- und Tracking-Einträge wurden aktualisiert.",
+      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Umbenennen fehlgeschlagen:\n{value_0}",
+      "506_tag_im_monat_fuer_value_0_1_31_1fcfbede": "Tag im Monat für '{value_0}' (1-31):",
+      "516_faelligkeitstag_fuer_value_0_auf_va_02c90616": "Fälligkeitstag für '{value_0}' auf {value_1}. gesetzt.\n(Wiederkehrend wurde automatisch aktiviert)",
+      "616_z_b_1200_00_ad178edd": "z.B. 1200.00",
+      "620_monat_88dd17e2": "Monat",
+      "620_bereich_8b22d123": "Bereich",
+      "715_fehlt_2f708b3e": "Fehlt"
+    },
+    "views_language_select_dialog": {
+      "22_language_sprache_langue_cec30925": "Language / Sprache / Langue",
+      "34_h3_style_margin_0_welcome_willkomme_eef30112": "<h3 style='margin:0'>Welcome / Willkommen / Bienvenue</h3><p style='color:{value_0}'>Please select your language:<br>Bitte wähle deine Sprache:<br>Veuillez choisir votre langue :</p>",
+      "57_ok_6128635b": "✓  OK"
+    },
+    "views_database_management_dialog": {
+      "54_datenbank_verwaltung_de01b445": "🗄️ Datenbank-Verwaltung",
+      "83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4": "Entfernt verwaiste Einträge, ungültige Daten und optimiert die Datenbank.\nDiese Operation ist sicher und löscht keine wichtigen Daten.",
+      "89_datenbank_bereinigen_031c950d": "🧹 Datenbank bereinigen",
+      "101_b_achtung_b_diese_aktion_loescht_da_28422052": "<b>ACHTUNG:</b> Diese Aktion löscht Daten!\nEs wird automatisch ein Backup erstellt.",
+      "118_budget_kategorien_zuruecksetzen_buc_e2fafa90": "Budget & Kategorien zurücksetzen (Buchungen behalten)",
+      "207_value_0_details_value_1_c4c562a1": "{value_0}\n\nDetails:\n{value_1}"
+    },
+    "views_startup_wizard": {
+      "78_value_0_9628887f": "◀ {value_0}",
+      "89_value_0_e2a7ae74": "{value_0} ▶",
+      "232_value_0_0df8e20d": "{value_0} ▶",
+      "267_budgetmanager_backups_bmr_enc_db_d504b057": "Budgetmanager Backups (*.bmr *.enc *.db)",
+      "480_bitte_erneut_versuchen_value_0_2762b9bc": "Bitte erneut versuchen.\n\n{value_0}"
+    },
+    "views_export_dialog": {
+      "37_export_format_46cddde9": "Export-Format",
+      "54_zu_exportierende_daten_263da15e": "Zu exportierende Daten",
+      "57_tracking_daten_transaktionen_e754548e": "📊 Tracking-Daten (Transaktionen)",
+      "61_budget_daten_d0bbdcff": "💰 Budget-Daten",
+      "72_zeitraum_91c1e2b4": "Zeitraum",
+      "94_optionen_21208517": "Optionen",
+      "111_exportieren_f9fcfb6d": "Exportieren...",
+      "146_export_speichern_unter_7108d72d": "Export speichern unter",
+      "147_value_0_value_1_3c09bb8d": "{value_0}.{value_1}"
+    },
+    "views_account_management_dialog": {
+      "58_value_0_ce49c534": "👤 {value_0}",
+      "78_profil_a112e8f0": "Profil",
+      "80_passwort_pin_2e7b87ff": "Passwort / PIN",
+      "123_namen_speichern_3c32107f": "Namen speichern",
+      "145_info_80dc0679": "Info",
+      "151_value_0_3a8da07a": "👤 {value_0}",
+      "153_gespeichert_1672f513": "Gespeichert",
+      "172_dein_konto_hat_aktuell_b_keinen_pas_1282d8ba": "⚡ Dein Konto hat aktuell <b>keinen Passwortschutz</b>.\n\nUm ein Passwort oder eine PIN zu setzen, wechsle zuerst\ndie Sicherheitsstufe im Tab «🔒 Sicherheitsstufe».\n\n<b>Wichtig:</b> Auch ohne Passwort gibt es einen <b>Restore-Key</b>. Damit kannst du ein verschlüsseltes Backup wieder öffnen.",
+      "186_b_nur_an_einem_sicheren_ort_speiche_b5321905": "⚠️ <b>Nur an einem sicheren Ort speichern.</b>\nPIN oder Restore-Key verlieren = Datenbank kann nicht mehr entschlüsselt werden.",
+      "237_aktuelles_value_0_eingeben_53722645": "Aktuelles {value_0} eingeben",
+      "257_value_0_wiederholen_679c9574": "{value_0} wiederholen",
+      "360_wechsle_die_sicherheitsstufe_deines_f6de7988": "Wechsle die Sicherheitsstufe deines Kontos.\nDie Datenbank bleibt dabei erhalten.",
+      "378_neue_sicherheitsstufe_3f613920": "Neue Sicherheitsstufe",
+      "385_schneller_zugriff_ohne_eingabe_schu_5c56399c": "Schneller Zugriff ohne Eingabe.\nSchützt vor Versehen — nicht bei USB-Verlust.",
+      "415_aktuelles_passwort_38b1f100": "Aktuelles Passwort:",
+      "427_neues_passwort_d5fba2a0": "Neues Passwort:",
+      "513_quick_modus_entfernt_den_passwortsc_84601067": "⚠️ Quick-Modus entfernt den Passwortschutz!\nJeder mit Zugriff auf deine Dateien kann die Daten öffnen.",
+      "525_value_0_oder_restore_key_verlieren__81330d27": "⚠️ {value_0} oder Restore-Key verlieren = Datenbank unwiederbringlich verloren!",
+      "538_aktuelle_stufe_5d6746d9": "(Aktuelle Stufe)",
+      "542_wechseln_zu_value_0_c4af1f8b": "Wechseln zu: {value_0}",
+      "558_info_c90436c3": "Info",
+      "606_schutz_entfernen_0233ca15": "Schutz entfernen",
+      "634_value_0_value_1_erstellt_value_2_08181f59": "{value_0} {value_1}  •  Erstellt: {value_2}",
+      "653_sicherheitsstufe_geaendert_zu_value_de978174": "Sicherheitsstufe geändert zu «{value_0}».",
+      "692_b_wichtig_b_dein_restore_key_hat_si_aa706b0f": "⚠️ <b>WICHTIG:</b> Dein Restore-Key hat sich geändert!<br>Notiere diesen Key sicher — er ist dein Notfall-Zugang.<br>Ohne diesen Key und ohne Passwort/PIN sind deine Daten <b>verloren</b>!",
+      "705_dein_neuer_restore_key_0417e1e7": "Dein neuer Restore-Key:",
+      "720_in_zwischenablage_kopieren_a988f8aa": "In Zwischenablage kopieren",
+      "736_ich_habe_den_key_notiert_9961ef11": "Ich habe den Key notiert",
+      "754_kopiert_833acc01": "Kopiert!",
+      "757_in_zwischenablage_kopieren_a4a61e69": "In Zwischenablage kopieren"
+    },
+    "views_budget_adjustment_dialog": {
+      "366_value_0_e619e83b": "{value_0}%",
+      "634_value_0_budget_s_wurden_erfolgreich_e65aecbd": "✓ {value_0} Budget(s) wurden erfolgreich angepasst {value_1}.\n\n{value_2}\n\nDie neuen Budgets sind sofort wirksam.\nBereits angepasste Kategorien werden aus der Liste entfernt."
+    },
+    "views_budget_fill_dialog": {
+      "40_b_budget_ausfuellen_b_br_trage_dein_680d66fc": "<b>Budget ausfüllen</b><br>Trage deine Monatswerte direkt in die Tabelle ein (Doppelklick/F2). Nutze <b>🌳 Baum</b> für Ein-/Ausklappen oder Pfad-Anzeige.<br><small>Tipp: Speichere danach mit <b>Strg+S</b> oder unten mit \"Speichern &amp; Schließen\".</small>"
+    },
+    "views_quick_add_dialog": {
+      "83_optional_beschreibung_5622cc90": "Optional: Beschreibung..."
+    },
+    "views_category_manager_dialog": {
+      "111_all_0aa3eab1": "all",
+      "115_fix_79f4d539": "fix",
+      "116_recurring_c39ebe21": "recurring"
+    },
+    "views_tracker_dialog": {
+      "54_z_b_12_50_7eb13fc1": "z.B. 12.50",
+      "162_fehlt_fb898654": "Fehlt",
+      "165_fehlt_a7f19cb1": "Fehlt"
+    },
+    "views_budget_entry_dialog": {
+      "102_z_b_1200_00_d7c96b70": "z.B. 1200.00",
+      "105_monat_069d7526": "Monat",
+      "105_bereich_1f8db464": "Bereich",
+      "120_neue_kategorie_erstellen_2cbb61c0": "Neue Kategorie erstellen",
+      "145_diese_kategorie_ist_eine_monatlich__584b29cb": "Diese Kategorie ist eine monatlich feste Ausgabe",
+      "290_value_0_b601d60d": "  ↳ {value_0}",
+      "324_die_kategorie_value_0_existiert_noc_66c8701f": "💡 Die Kategorie \"{value_0}\" existiert noch nicht.\nAktiviere diese Option, um sie direkt zu erstellen.",
+      "376_fehlt_e088971c": "Fehlt"
+    },
+    "views_main_window": {
+      "100_update_81ab2a4e": "Update",
+      "667_user_value_0_adcf7358": "User: {value_0}",
+      "668_db_value_0_04d0a9b3": "DB: {value_0}",
+      "682_datenordner_6efcd047": "Datenordner",
+      "1037_undo_918f0844": "↩️ &Undo",
+      "1043_redo_2dcd731a": "↪️ &Redo",
+      "1064_bearbeiten_4fc85ded": "&Bearbeiten...",
+      "1083_budget_erfassen_d622e1c6": "Budget &erfassen...",
+      "1089_budget_bearbeiten_45efb7d1": "Budget &bearbeiten...",
+      "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Zeilen aus &Kategorien erzeugen",
+      "1103_jahr_kopieren_a5365b5b": "Jahr &kopieren...",
+      "1111_budget_zeile_entfernen_2116ca10": "Budget-&Zeile entfernen",
+      "1125_neue_hauptkategorie_4edd9c24": "Neue &Hauptkategorie...",
+      "1131_neue_unterkategorie_51ea953c": "Neue &Unterkategorie...",
+      "1144_massenbearbeitung_aa0c33a1": "&Massenbearbeitung...",
+      "1156_fixkosten_buchen_61d1976c": "&Fixkosten buchen...",
+      "1166_daten_aktualisieren_6e5a0ee6": "Daten &aktualisieren",
+      "1577_info_a7110986": "Info",
+      "1578_kontoverwaltung_ist_nur_bei_verschl_381922cb": "Kontoverwaltung ist nur bei verschlüsselten Konten verfügbar.",
+      "1611_value_0_value_1_value_2_1814eaf1": "{value_0} — {value_1} {value_2}",
+      "1615_value_0_value_1_value_2_81323b29": "{value_0} {value_1} — {value_2}",
+      "1625_value_0_value_1_value_2_1999fbaa": "{value_0} — {value_1} {value_2}",
+      "1629_value_0_value_1_value_2_943d4260": "{value_0} {value_1} — {value_2}",
+      "1788_neustart_erforderlich_288778eb": "Neustart erforderlich",
+      "1789_bitte_starten_sie_die_anwendung_neu_e67d74c9": "Bitte starten Sie die Anwendung neu, um die Änderungen zu übernehmen."
+    },
+    "views_savings_goals_dialog": {
+      "42_bearbeiten_ba02fd7d": "Bearbeiten",
+      "47_sync_0d895102": "Sync",
+      "51_abschliessen_dfbbbdb2": "Abschliessen",
+      "58_sparziel_freigeben_der_aktuelle_sta_cc2b88a8": "Sparziel freigeben: Der aktuelle Stand wird eingefroren.\nAb dann können Ausgaben gegen dieses Ziel gebucht werden.",
+      "62_sparziel_abschliessen_wird_archivie_010ae566": "Sparziel abschliessen: Wird archiviert und als erledigt markiert.",
+      "65_sparziel_wieder_zum_sparen_oeffnen__a747e4b3": "Sparziel wieder zum Sparen öffnen.\nDer Freigabe-Status wird zurückgesetzt.",
+      "75_ziel_value_0_4affdb3b": "Ziel ({value_0})",
+      "75_aktuell_value_0_30c65ab2": "Aktuell ({value_0})",
+      "76_restbetrag_86038dcb": "Restbetrag",
+      "77_verbraucht_f5ec0888": "Verbraucht",
+      "105_lebenszyklus_b_sparend_b_b_freigege_b8234217": "💡 Lebenszyklus: <b>Sparend</b> → <b>Freigegeben</b> (Verbrauch möglich) → <b>Abgeschlossen</b> (Archiv)",
+      "161_freigeben_a27ef668": "Freigeben…",
+      "164_abschliessen_786dc795": "Abschliessen…",
+      "282_value_0_f11eb723": "-{value_0}",
+      "350_sparziel_value_0_wirklich_loeschen_a0a55e23": "Sparziel «{value_0}» wirklich löschen?",
+      "378_dieses_sparziel_ist_mit_keiner_kate_b42a28db": "Dieses Sparziel ist mit keiner Kategorie verknüpft.",
+      "386_synchronisiert_2f5168bf": "Synchronisiert",
+      "387_sparziel_value_0_wurde_mit_tracking_3a7d4952": "Sparziel «{value_0}» wurde mit Tracking synchronisiert.\n\nKategorie: {value_1}\nVorher: {value_2}\nNachher: {value_3}\nDifferenz: {value_4}",
+      "409_sparziel_freigeben_adf2825a": "Sparziel freigeben",
+      "410_sparziel_value_0_freigeben_aktuelle_7e8d5f78": "Sparziel «{value_0}» freigeben?\n\nAktueller Stand: {value_1}\nZiel: {value_2}\n\nDer aktuelle Stand ({value_3}) wird eingefroren.\nAb dann werden negative Buchungen als Verbrauch erfasst.\n\nFortfahren?",
+      "425_sparziel_value_0_wurde_freigegeben__f6d8c79d": "Sparziel «{value_0}» wurde freigegeben.\n\nEingefrorener Betrag: {value_1}\nDu kannst jetzt Ausgaben gegen dieses Ziel buchen.",
+      "444_sparziel_abschliessen_81af1e70": "Sparziel abschliessen",
+      "465_sparziel_value_0_wieder_zum_sparen__1510830d": "Sparziel «{value_0}» wieder zum Sparen öffnen?\n\nDer Freigabe-Status und der eingefrorene Betrag werden zurückgesetzt.\nFortfahren?",
+      "506_keine_8218b1ac": "(Keine)",
+      "516_value_0_value_1_e61189ab": "{value_0} / {value_1}",
+      "519_value_0_value_1_016e0b40": "{value_0} / {value_1}",
+      "560_i_small_tipp_wenn_eine_kategorie_au_ddfbcc66": "<i><small>💡 Tipp: Wenn eine Kategorie ausgewählt ist, wird der Fortschritt automatisch mit Ersparnisse-Buchungen dieser Kategorie synchronisiert.</small></i>",
+      "612_aktuell_value_0_05ac9b67": "Aktuell: {value_0}",
+      "613_ziel_value_0_3aea07af": "Ziel: {value_0}",
+      "614_restbetrag_value_0_711be043": "Restbetrag: {value_0}",
+      "616_status_freigegeben_eingef_value_0_6728eed9": "Status: 🔓 Freigegeben (eingef. {value_0})"
+    },
+    "views_theme_editor_dialog": {
+      "103_hell_66974dd7": "hell",
+      "103_dunkel_b0351793": "dunkel",
+      "297_neues_theme_7b9881d9": "Neues Theme",
+      "297_theme_name_e4293a7f": "Theme-Name:",
+      "316_theme_duplizieren_610b8173": "Theme duplizieren",
+      "317_neuer_name_771ef819": "Neuer Name:",
+      "318_value_0_kopie_7305d694": "{value_0} (Kopie)",
+      "388_theme_importieren_3afd6b46": "Theme importieren",
+      "388_json_json_90618946": "JSON (*.json)",
+      "403_name_existiert_4dd02b77": "Name existiert",
+      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Theme-Name existiert bereits. Neuer Name:",
+      "405_value_0_import_6030fc3e": "{value_0} (Import)",
+      "418_import_fehlgeschlagen_value_0_17d04026": "Import fehlgeschlagen:\n{value_0}",
+      "426_theme_exportieren_30cdc637": "Theme exportieren",
+      "427_value_0_json_05d9a4f0": "{value_0}.json",
+      "428_json_json_7142e86c": "JSON (*.json)",
+      "444_export_fehlgeschlagen_value_0_b3ec54e6": "Export fehlgeschlagen:\n{value_0}"
+    },
+    "views_tags_manager_dialog": {
+      "45_tags_ermoeglichen_eine_zusaetzliche_115e8eae": "Tags ermöglichen eine zusätzliche Kategorisierung von Buchungen.\nSie können Tags erstellen, bearbeiten, löschen und zusammenführen.",
+      "54_anzahl_verwendungen_838041ae": "Anzahl Verwendungen",
+      "54_aktionen_3bb76da2": "Aktionen",
+      "75_neues_tag_erstellen_08b57a81": "Neues Tag erstellen",
+      "79_bearbeiten_86a45c89": "Bearbeiten",
+      "99_statistiken_6940bacd": "Statistiken",
+      "101_tag_statistiken_anzeigen_48ad4b4e": "Tag-Statistiken anzeigen",
+      "168_keine_8f599208": "(keine)",
+      "207_neues_tag_ef65ca35": "Neues Tag",
+      "208_tag_name_3d6e24ad": "Tag-Name:",
+      "221_tag_existiert_20291c3b": "Tag existiert",
+      "222_ein_tag_mit_dem_namen_value_0_exist_be543b1c": "Ein Tag mit dem Namen '{value_0}' existiert bereits.",
+      "249_tag_value_0_wurde_erstellt_3d280c8d": "Tag '{value_0}' wurde erstellt.",
+      "255_tag_konnte_nicht_erstellt_werden_955e67d7": "Tag konnte nicht erstellt werden.",
+      "269_tag_bearbeiten_5fd01a35": "Tag bearbeiten",
+      "270_neuer_name_ada4af32": "Neuer Name:",
+      "283_tag_existiert_1725866c": "Tag existiert",
+      "284_ein_tag_mit_dem_namen_value_0_exist_126d57ed": "Ein Tag mit dem Namen '{value_0}' existiert bereits.",
+      "296_tag_wurde_umbenannt_in_value_0_a29907d3": "Tag wurde umbenannt in '{value_0}'.",
+      "302_tag_konnte_nicht_umbenannt_werden_a89177d2": "Tag konnte nicht umbenannt werden.",
+      "349_tag_value_0_wurde_geloescht_b148924f": "Tag '{value_0}' wurde gelöscht.",
+      "355_tag_konnte_nicht_geloescht_werden_8f83bd72": "Tag konnte nicht gelöscht werden.",
+      "391_farbe_konnte_nicht_gespeichert_werd_124397e4": "Farbe konnte nicht gespeichert werden.",
+      "403_es_muessen_mindestens_2_tags_vorhan_656a7014": "Es müssen mindestens 2 Tags vorhanden sein zum Zusammenführen.",
+      "417_waehlen_sie_die_tags_aus_die_zusamm_8f9053ec": "Wählen Sie die Tags aus, die zusammengeführt werden sollen.\nAlle ausgewählten Tags werden in das Ziel-Tag überführt.",
+      "459_ziel_und_quelle_duerfen_nicht_ident_8347b5bc": "Ziel und Quelle dürfen nicht identisch sein.",
+      "471_tags_wurden_erfolgreich_zusammengef_c25182ec": "Tags wurden erfolgreich zusammengeführt.",
+      "477_tags_konnten_nicht_zusammengefuehrt_5b23f4a0": "Tags konnten nicht zusammengeführt werden.",
+      "488_es_sind_noch_keine_tags_mit_buchung_502ddf34": "Es sind noch keine Tags mit Buchungen vorhanden.",
+      "501_anzahl_buchungen_d50207ae": "Anzahl Buchungen",
+      "501_gesamtbetrag_034bb324": "Gesamtbetrag"
+    },
+    "views_shortcuts_dialog": {
+      "92_i_tipp_tastenkuerzel_koennen_unter__17d1ba87": "💡 <i>Tipp: Tastenkürzel können unter Einstellungen → Tastenkürzel individuell angepasst werden.</i>"
+    },
+    "views_backup_restore_dialog": {
+      "80_value_0_value_1_e0475ff7": "{value_0}: {value_1}",
+      "94_value_0_value_1_value_2_fd084554": "{value_0}\n{value_1}: {value_2}",
+      "415_export_fehlgeschlagen_value_0_208f6ca9": "Export fehlgeschlagen:\n{value_0}",
+      "468_import_fehlgeschlagen_value_0_fabf2450": "Import fehlgeschlagen:\n{value_0}",
+      "706_datenbank_wurde_wiederhergestellt_v_442b01cf": "Datenbank wurde wiederhergestellt.\n\n{value_0}Aktive DB:\n{value_1}\n\nDie Daten sind sofort aktiv — ein Neustart ist nicht erforderlich.",
+      "722_neustart_erforderlich_5f2fbae8": "Neustart erforderlich",
+      "811_datenbank_wurde_zurueckgesetzt_back_48960617": "Datenbank wurde zurückgesetzt.\n\nBackup erstellt: budgetmanager_before_reset_{value_0}.bmr\n\nBitte starten Sie die Anwendung neu.",
+      "820_reset_fehlgeschlagen_value_0_9b562dab": "Reset fehlgeschlagen:\n{value_0}",
+      "830_notfall_reset_31e1b16e": "🆘 NOTFALL-RESET",
+      "831_warnung_dies_loescht_alle_daten_buc_e8992ed0": "WARNUNG: Dies löscht ALLE Daten (Buchungen, Budget, Kategorien, ...)!\n\nVerwende dies nur, wenn du nicht mehr auf ein Backup zugreifen kannst.\n\nDie Anwendung wird danach neu gestartet.\n\nWirklich fortfahren?",
+      "842_letzte_bestaetigung_f0c15a52": "Letzte Bestätigung",
+      "843_alle_daten_werden_unwiderruflich_ge_de7300e7": "Alle Daten werden UNWIDERRUFLICH gelöscht.\nWirklich?",
+      "922_notfall_reset_657ef552": "Notfall-Reset"
+    },
+    "views_login_dialog": {
+      "390_budgetmanager_b7a0d9a3": "Budgetmanager",
+      "396_deine_finanzen_deine_kontrolle_46d15e4b": "Deine Finanzen. Deine Kontrolle.",
+      "420_verwalten_a32436b5": "Verwalten",
+      "472_noch_kein_benutzer_eingerichtet_ers_0a15a1a4": "Noch kein Benutzer eingerichtet.\n\nErstelle einen Benutzer, um loszulegen.",
+      "499_starten_00906f67": "Starten",
+      "520_anmelden_e04d6ff2": "Anmelden",
+      "531_restore_key_verwenden_3cecdcdd": "Restore-Key verwenden",
+      "568_anmelden_2adc1609": "Anmelden",
+      "579_restore_key_verwenden_3077a331": "Restore-Key verwenden",
+      "599_starten_3071b86d": "Starten",
+      "608_anmelden_da7d6295": "Anmelden",
+      "645_anmelden_08c3b10b": "Anmelden",
+      "731_info_c75cf25d": "Info"
+    },
+    "views_category_properties_dialog": {
+      "72_b_value_0_b_dba5f175": "<b>{value_0}</b>",
+      "92_markiert_diese_kategorie_als_fixkos_36056c84": "Markiert diese Kategorie als Fixkosten.\nFixkosten werden in der Übersicht separat ausgewiesen.",
+      "99_markiert_diese_kategorie_als_wieder_6c7786cd": "Markiert diese Kategorie als wiederkehrende Ausgabe.\nWiederkehrende Kategorien können automatisch gebucht werden.",
+      "117_small_i_tipp_wenn_du_einen_faelligk_01c58f1d": "<small><i>Tipp: Wenn du einen Fälligkeitstag setzt, wird 'Wiederkehrend' automatisch aktiviert.</i></small>",
+      "185_eine_kategorie_mit_dem_namen_value__53b9f84f": "Eine Kategorie mit dem Namen '{value_0}' existiert bereits.",
+      "220_speichern_fehlgeschlagen_value_0_3a729058": "Speichern fehlgeschlagen:\n{value_0}",
+      "254_loeschen_fehlgeschlagen_value_0_833e313c": "Löschen fehlgeschlagen:\n{value_0}",
+      "286_value_0_value_1_90606f5a": "{value_0} ({value_1})",
+      "325_small_i_hinweis_wenn_du_einen_faell_5237905b": "<small><i>Hinweis: Wenn du einen Fälligkeitstag setzt, wird 'Wiederkehrend' automatisch aktiviert.</i></small>",
+      "397_ergebnis_0d350353": "Ergebnis",
+      "429_z_b_versicherung_streaming_6d95c073": "z.B. Versicherung, Streaming, ...",
+      "473_erstellen_482a728e": "✓ Erstellen",
+      "490_hauptkategorie_kein_parent_90e59485": "— Hauptkategorie (kein Parent) —",
+      "509_eine_kategorie_mit_dem_namen_value__1f3513d0": "Eine Kategorie mit dem Namen '{value_0}' existiert bereits.",
+      "530_erstellen_fehlgeschlagen_value_0_bb0f3855": "Erstellen fehlgeschlagen:\n{value_0}"
+    },
+    "views_global_search_dialog": {
+      "97_ergebnisse_mindestens_2_zeichen_ein_e1b35814": "Ergebnisse: (mindestens 2 Zeichen eingeben)",
+      "153_ergebnisse_value_0_gefunden_b64f61d2": "Ergebnisse: {value_0} gefunden"
+    },
+    "views_recurring_bookings_dialog": {
+      "128_b_fixkosten_b_sind_fix_und_nicht_ed_38adb145": "<b>Fixkosten</b> sind fix und nicht editierbar. <b>Wiederkehrende</b> (ohne Fixkosten) sind variabel: Betrag anpassen und auswählen, was gebucht werden soll.",
+      "137_span_style_color_value_0_ueberfaell_81b0f0f3": "💡 <span style='color:{value_0};'>Überfällige</span> Buchungen sind vorausgewählt. <span style='color:{value_1};'>Zukünftige</span> können manuell ausgewählt werden.",
+      "169_art_e71cc758": "Art"
+    },
+    "views_update_dialog": {
+      "58_aktuell_installiert_b_value_0_b_br__6b5cab7b": "Aktuell installiert: <b>{value_0}</b><br>Updates werden nur bei Klick geprüft.",
+      "182_kein_update_bereit_dffe0658": "Kein Update bereit",
+      "189_update_installieren_8d363062": "Update installieren",
+      "205_updater_konnte_nicht_gestartet_werd_e418fb58": "Updater konnte nicht gestartet werden:\n{value_0}"
+    },
+    "views_setup_assistant_dialog": {
+      "239_h3_value_0_h3_63ad18ac": "<h3>{value_0}</h3>",
+      "598_small_value_0_small_c3c36140": "<small>🔒 {value_0}</small>"
+    },
+    "views_missing_bookings_dialog": {
+      "47_folgende_buchungen_sind_in_diesem_m_5717d0dc": "Folgende Buchungen sind in diesem Monat noch nicht vorhanden. Wähle aus, was eingefügt werden soll:"
+    },
+    "views_tabs_overview_kpi_panel": {
+      "346_value_0_value_1_value_2_294a97b0": "{value_0} – {value_1} {value_2}"
+    },
+    "views_tabs_overview_budget_panel": {
+      "536_b_value_0_i_value_1_r_value_2_25a9e209": "B: {value_0}\nI: {value_1}\nR: {value_2}"
+    },
+    "views_tabs_categories_tab": {
+      "68_neu_hauptkategorie_d317a531": "Neu (Hauptkategorie)",
+      "69_neu_unterkategorie_577581bc": "Neu (Unterkategorie)",
+      "344_neu_hauptkategorie_852d2884": "Neu (Hauptkategorie)",
+      "346_neu_unterkategorie_18e330b2": "Neu (Unterkategorie)",
+      "349_umbenennen_4ad27303": "Umbenennen",
+      "647_setzen_ja_f86a5233": "Setzen: Ja",
+      "647_setzen_nein_60c1ccf6": "Setzen: Nein",
+      "651_setzen_ja_63aa1520": "Setzen: Ja",
+      "651_setzen_nein_e7dfddad": "Setzen: Nein",
+      "656_tag_setzen_c7df7554": "Tag setzen…",
+      "730_value_0_kategorie_n_aktualisiert_0cf1c2ab": "{value_0} Kategorie(n) aktualisiert."
+    },
+    "views_tabs_overview_savings_panel": {
+      "220_value_0_20ee72be": "-{value_0}"
+    },
+    "views_tabs_overview_right_panel": {
+      "145_min_value_0_b5706b16": "Min {value_0}:",
+      "151_max_value_0_f4d06ed5": "Max {value_0}:"
+    },
+    "views_tabs_budget_tab": {
+      "549_value_0_value_1_value_2_value_3_val_ca79190a": "{value_0}:   {value_1}\n{value_2}:    {value_3}\n{value_4}:  {value_5}\n─────────────────────\n{value_6}:       {value_7}",
+      "574_value_0_value_1_value_2_value_3_val_4a746a83": "{value_0}:   {value_1}\n{value_2}:    {value_3}\n{value_4}:  {value_5}\n─────────────────────────────\n{value_6}:       {value_7}",
+      "630_value_0_81e0f68e": "═══ {value_0} ═══",
+      "1728_neuer_name_fuer_value_0_c7b0c766": "Neuer Name für '{value_0}':",
+      "1742_eine_kategorie_mit_dem_namen_value__7edb2756": "Eine Kategorie mit dem Namen '{value_0}' existiert bereits.",
+      "1832_name_der_neuen_unterkategorie_unter_99fa4bed": "Name der neuen Unterkategorie unter '{value_0}':",
+      "1934_favorit_6f4adb2a": "Favorit",
+      "1943_favorit_a9b8479f": "Favorit",
+      "1944_value_0_wurde_aus_favoriten_entfern_56aa3cd9": "☆ '{value_0}' wurde aus Favoriten entfernt.",
+      "2115_alles_aufklappen_d750a09b": "Alles aufklappen",
+      "2116_alles_zuklappen_nur_hauptkategorien_4f06f19e": "Alles zuklappen (nur Hauptkategorien)",
+      "2118_nur_ebene_0_anzeigen_b996cf39": "Nur Ebene 0 anzeigen",
+      "2119_bis_ebene_1_anzeigen_ec306d04": "Bis Ebene 1 anzeigen",
+      "2120_bis_ebene_2_anzeigen_52a77975": "Bis Ebene 2 anzeigen",
+      "2123_baum_einblenden_auf_zuklappen_0f72e127": "Baum einblenden (Auf/Zuklappen)",
+      "2124_baum_ausblenden_pfad_anzeigen_508ded75": "Baum ausblenden (Pfad anzeigen)"
+    },
+    "views_tabs_tracking_tab": {
+      "56_nur_letzte_value_0_tage_48196fae": "Nur letzte {value_0} Tage",
+      "119_id_db302b9b": "_id",
+      "457_nur_letzte_value_0_tage_be9a083a": "Nur letzte {value_0} Tage",
+      "582_nur_letzte_value_0_tage_a8e14b8a": "Nur letzte {value_0} Tage",
+      "682_diese_buchung_wird_als_verbrauch_vo_54220c3f": "Diese Buchung wird als Verbrauch vom freigegebenen Sparziel <b>«{value_0}»</b> erfasst.\n\nFreigegebener Betrag: {value_1}\nEntnahme: {value_2}"
+    }
+  },
+  "login": {
+    "password_placeholder": "Passwort eingeben…"
+  },
+  "catmgr": {
+    "drag_hint": "💡 Tipp: Kategorien per Drag-and-Drop umhängen — auf eine andere Kategorie ziehen macht sie zur Unterkategorie, auf den Typ-Kopf (z. B. Ausgaben) ziehen macht sie zur Hauptkategorie. Alternativ Rechtsklick → „Verschieben unter…“.",
+    "move_under": "Verschieben unter…",
+    "move_to_top": "Zur Hauptkategorie machen",
+    "move_no_targets": "Keine gültigen Ziele",
+    "move_not_possible": "Verschieben nicht möglich",
+    "move_err_self": "Eine Kategorie kann nicht unter sich selbst verschoben werden.",
+    "move_err_type": "Kategorien können nur innerhalb desselben Typs verschoben werden.",
+    "move_err_cycle": "Eine Kategorie kann nicht unter eine ihrer eigenen Unterkategorien verschoben werden.",
+    "move_err_missing": "Kategorie oder Ziel nicht gefunden."
   }
 }

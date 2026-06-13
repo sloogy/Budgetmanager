@@ -39,31 +39,29 @@ class SavingsGoalsDialog(QDialog):
         
         # Buttons
         self.btn_add = QPushButton(tr("btn.btn_new_goal"))
-        self.btn_edit = QPushButton("Bearbeiten")
+        self.btn_edit = QPushButton(tr('auto.views_savings_goals_dialog.42_bearbeiten_ba02fd7d'))
         self.btn_edit.setIcon(get_icon("✏️"))
         self.btn_delete = QPushButton(tr("btn.loeschen_1"))
-        self.btn_add_progress = QPushButton("Fortschritt")
+        self.btn_add_progress = QPushButton(tr('lbl.savings_goal_progress'))
         self.btn_add_progress.setIcon(get_icon("📈"))
-        self.btn_sync = QPushButton("Sync")
+        self.btn_sync = QPushButton(tr('auto.views_savings_goals_dialog.47_sync_0d895102'))
         self.btn_sync.setIcon(get_icon("🔄"))
         # Lifecycle-Buttons
         self.btn_release = QPushButton(tr("btn.btn_unlock"))
-        self.btn_complete = QPushButton("Abschliessen")
+        self.btn_complete = QPushButton(tr('auto.views_savings_goals_dialog.51_abschliessen_dfbbbdb2'))
         self.btn_complete.setIcon(get_icon("✅"))
         self.btn_reopen = QPushButton(tr("btn.wieder_oeffnen"))
         self.btn_close = QPushButton(tr("btn.close"))
         
         # Tooltips
         self.btn_release.setToolTip(
-            "Sparziel freigeben: Der aktuelle Stand wird eingefroren.\n"
-            "Ab dann können Ausgaben gegen dieses Ziel gebucht werden."
+            tr('auto.views_savings_goals_dialog.58_sparziel_freigeben_der_aktuelle_sta_cc2b88a8')
         )
         self.btn_complete.setToolTip(
-            "Sparziel abschliessen: Wird archiviert und als erledigt markiert."
+            tr('auto.views_savings_goals_dialog.62_sparziel_abschliessen_wird_archivie_010ae566')
         )
         self.btn_reopen.setToolTip(
-            "Sparziel wieder zum Sparen öffnen.\n"
-            "Der Freigabe-Status wird zurückgesetzt."
+            tr('auto.views_savings_goals_dialog.65_sparziel_wieder_zum_sparen_oeffnen__a747e4b3')
         )
         self.btn_sync.setToolTip(
             tr("tip.sync_tracking")
@@ -72,9 +70,9 @@ class SavingsGoalsDialog(QDialog):
         # Tabelle: 9 Spalten inkl. Status und Verbrauch
         self.table = QTableWidget(0, 9)
         self.table.setHorizontalHeaderLabels([
-            "Name", f"Ziel ({currency_header()})", f"Aktuell ({currency_header()})", 
-            "Fortschritt", "Restbetrag", "Status",
-            "Freigegeben", "Verbraucht", "Frist"
+            tr('lbl.name'), trf('auto.views_savings_goals_dialog.75_ziel_value_0_4affdb3b', value_0=(currency_header())), trf('auto.views_savings_goals_dialog.75_aktuell_value_0_30c65ab2', value_0=(currency_header())), 
+            tr('lbl.savings_goal_progress'), tr('auto.views_savings_goals_dialog.76_restbetrag_86038dcb'), tr('lbl.status'),
+            tr('lbl.savings_goal_released'), tr('auto.views_savings_goals_dialog.77_verbraucht_f5ec0888'), tr('tooltip.deadline')
         ])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -102,7 +100,7 @@ class SavingsGoalsDialog(QDialog):
         
         # Info-Label
         info = QLabel(
-            "💡 Lebenszyklus: <b>Sparend</b> → <b>Freigegeben</b> (Verbrauch möglich) → <b>Abgeschlossen</b> (Archiv)"
+            tr('auto.views_savings_goals_dialog.105_lebenszyklus_b_sparend_b_b_freigege_b8234217')
         )
         info.setWordWrap(True)
         _c = ui_colors(self)
@@ -149,7 +147,7 @@ class SavingsGoalsDialog(QDialog):
             return
 
         menu = QMenu(self)
-        act_edit = menu.addAction("Bearbeiten…")
+        act_edit = menu.addAction(tr('btn.edit'))
         act_edit.setIcon(get_icon("✏️"))
         act_progress = menu.addAction(tr("btn.fortschritt_hinzufuegen"))
         act_sync = menu.addAction(tr("dlg.sync_mit_tracking"))
@@ -158,10 +156,10 @@ class SavingsGoalsDialog(QDialog):
         # Lifecycle-Aktionen je nach Status
         act_release = act_complete = act_reopen = None
         if goal.is_saving:
-            act_release = menu.addAction("Freigeben…")
+            act_release = menu.addAction(tr('auto.views_savings_goals_dialog.161_freigeben_a27ef668'))
             act_release.setIcon(get_icon("🔓"))
         if goal.is_saving or goal.is_released:
-            act_complete = menu.addAction("Abschliessen…")
+            act_complete = menu.addAction(tr('auto.views_savings_goals_dialog.164_abschliessen_786dc795'))
             act_complete.setIcon(get_icon("✅"))
         if goal.is_released or goal.is_completed:
             act_reopen = menu.addAction(tr("btn.wieder_oeffnen_1"))
@@ -279,7 +277,7 @@ class SavingsGoalsDialog(QDialog):
             if goal.is_released or goal.is_completed:
                 spent = self.goals_model.get_spent_amount(goal.id)
                 if spent > 0:
-                    spent_item = QTableWidgetItem(f"-{format_money(spent)}")
+                    spent_item = QTableWidgetItem(trf('auto.views_savings_goals_dialog.282_value_0_f11eb723', value_0=(format_money(spent))))
                     spent_item.setForeground(QColor(ui_colors(self).negative))
                 else:
                     spent_item = QTableWidgetItem(format_money(0))
@@ -347,7 +345,7 @@ class SavingsGoalsDialog(QDialog):
         
         if QMessageBox.question(
             self, tr("common.delete"), 
-            f"Sparziel «{goal.name}» wirklich löschen?"
+            trf('auto.views_savings_goals_dialog.350_sparziel_value_0_wirklich_loeschen_a0a55e23', value_0=(goal.name))
         ) != QMessageBox.Yes:
             return
         
@@ -375,7 +373,7 @@ class SavingsGoalsDialog(QDialog):
         if not goal.category:
             QMessageBox.information(
                 self, tr("dlg.keine_kategorie"), 
-                "Dieses Sparziel ist mit keiner Kategorie verknüpft."
+                tr('auto.views_savings_goals_dialog.378_dieses_sparziel_ist_mit_keiner_kate_b42a28db')
             )
             return
         
@@ -383,12 +381,8 @@ class SavingsGoalsDialog(QDialog):
         new_amount = self.goals_model.sync_with_tracking(goal.id)
         
         QMessageBox.information(
-            self, "Synchronisiert",
-            f"Sparziel «{goal.name}» wurde mit Tracking synchronisiert.\n\n"
-            f"Kategorie: {goal.category}\n"
-            f"Vorher: {format_money(old_amount)}\n"
-            f"Nachher: {format_money(new_amount)}\n"
-            f"Differenz: {format_money(new_amount - old_amount, force_sign=True)}"
+            self, tr('auto.views_savings_goals_dialog.386_synchronisiert_2f5168bf'),
+            trf('auto.views_savings_goals_dialog.387_sparziel_value_0_wurde_mit_tracking_3a7d4952', value_0=(goal.name), value_1=(goal.category), value_2=(format_money(old_amount)), value_3=(format_money(new_amount)), value_4=(format_money(new_amount - old_amount, force_sign=True)))
         )
         self.refresh()
 
@@ -406,13 +400,8 @@ class SavingsGoalsDialog(QDialog):
             return
 
         reply = QMessageBox.question(
-            self, "Sparziel freigeben",
-            f"Sparziel «{goal.name}» freigeben?\n\n"
-            f"Aktueller Stand: {format_money(goal.current_amount)}\n"
-            f"Ziel: {format_money(goal.target_amount)}\n\n"
-            f"Der aktuelle Stand ({format_money(goal.current_amount)}) wird eingefroren.\n"
-            f"Ab dann werden negative Buchungen als Verbrauch erfasst.\n\n"
-            f"Fortfahren?",
+            self, tr('auto.views_savings_goals_dialog.409_sparziel_freigeben_adf2825a'),
+            trf('auto.views_savings_goals_dialog.410_sparziel_value_0_freigeben_aktuelle_7e8d5f78', value_0=(goal.name), value_1=(format_money(goal.current_amount)), value_2=(format_money(goal.target_amount)), value_3=(format_money(goal.current_amount))),
             QMessageBox.Yes | QMessageBox.No
         )
         if reply != QMessageBox.Yes:
@@ -421,10 +410,8 @@ class SavingsGoalsDialog(QDialog):
         result = self.goals_model.release(goal.id)
         if result:
             QMessageBox.information(
-                self, "Freigegeben",
-                f"Sparziel «{result.name}» wurde freigegeben.\n\n"
-                f"Eingefrorener Betrag: {format_money(result.released_amount)}\n"
-                f"Du kannst jetzt Ausgaben gegen dieses Ziel buchen."
+                self, tr('lbl.savings_goal_released'),
+                trf('auto.views_savings_goals_dialog.425_sparziel_value_0_wurde_freigegeben__f6d8c79d', value_0=(result.name), value_1=(format_money(result.released_amount)))
             )
         self.refresh()
 
@@ -441,7 +428,7 @@ class SavingsGoalsDialog(QDialog):
             extra = f"\nVerbraucht seit Freigabe: {format_money(spent)}\n"
 
         reply = QMessageBox.question(
-            self, "Sparziel abschliessen",
+            self, tr('auto.views_savings_goals_dialog.444_sparziel_abschliessen_81af1e70'),
             f"Sparziel «{goal.name}» wirklich abschliessen?\n\nStand: {format_money(goal.current_amount)}\n{extra}"
             f"Das Ziel wird archiviert und kann nicht mehr bebucht werden.\n" +
             tr("btn.wieder_oeffnen_ist_jederzeit"),
@@ -462,9 +449,7 @@ class SavingsGoalsDialog(QDialog):
 
         reply = QMessageBox.question(
             self, tr("btn.sparziel_wieder_oeffnen"),
-            f"Sparziel «{goal.name}» wieder zum Sparen öffnen?\n\n"
-            f"Der Freigabe-Status und der eingefrorene Betrag werden zurückgesetzt.\n"
-            f"Fortfahren?",
+            trf('auto.views_savings_goals_dialog.465_sparziel_value_0_wieder_zum_sparen__1510830d', value_0=(goal.name)),
             QMessageBox.Yes | QMessageBox.No
         )
         if reply != QMessageBox.Yes:
@@ -503,7 +488,7 @@ class EditGoalDialog(QDialog):
         self.deadline_edit.setSpecialValueText("Kein Datum")
         
         self.category_combo = QComboBox()
-        self.category_combo.addItem("(Keine)")
+        self.category_combo.addItem(tr('auto.views_savings_goals_dialog.506_keine_8218b1ac'))
         for typ in [TYP_SAVINGS, TYP_INCOME, TYP_EXPENSES]:
             pairs = []
             if hasattr(self.cat_model, "list_names_tree"):
@@ -513,10 +498,10 @@ class EditGoalDialog(QDialog):
                     pairs = []
             if pairs:
                 for label, real in pairs:
-                    self.category_combo.addItem(f"{display_typ(typ)} / {label}", real)
+                    self.category_combo.addItem(trf('auto.views_savings_goals_dialog.516_value_0_value_1_e61189ab', value_0=(display_typ(typ)), value_1=(label)), real)
             else:
                 for cat in self.cat_model.list_names(typ):
-                    self.category_combo.addItem(f"{typ} / {cat}", cat)
+                    self.category_combo.addItem(trf('auto.views_savings_goals_dialog.519_value_0_value_1_016e0b40', value_0=(typ), value_1=(cat)), cat)
 
         self.notes_edit = QTextEdit()
         
@@ -557,8 +542,7 @@ class EditGoalDialog(QDialog):
         layout.addWidget(self.category_combo)
         
         sync_hint = QLabel(
-            "<i><small>💡 Tipp: Wenn eine Kategorie ausgewählt ist, wird der Fortschritt "
-            "automatisch mit Ersparnisse-Buchungen dieser Kategorie synchronisiert.</small></i>"
+            tr('auto.views_savings_goals_dialog.560_i_small_tipp_wenn_eine_kategorie_au_ddfbcc66')
         )
         sync_hint.setWordWrap(True)
         sync_hint.setStyleSheet(f"color: {ui_colors(self).text_dim}; padding: 5px;")
@@ -609,11 +593,11 @@ class AddProgressDialog(QDialog):
         self.amount_spin.setValue(0)
         
         layout = QVBoxLayout()
-        layout.addWidget(QLabel(f"Aktuell: {format_money(goal.current_amount)}"))
-        layout.addWidget(QLabel(f"Ziel: {format_money(goal.target_amount)}"))
-        layout.addWidget(QLabel(f"Restbetrag: {format_money(goal.remaining_amount)}"))
+        layout.addWidget(QLabel(trf('auto.views_savings_goals_dialog.612_aktuell_value_0_05ac9b67', value_0=(format_money(goal.current_amount)))))
+        layout.addWidget(QLabel(trf('auto.views_savings_goals_dialog.613_ziel_value_0_3aea07af', value_0=(format_money(goal.target_amount)))))
+        layout.addWidget(QLabel(trf('auto.views_savings_goals_dialog.614_restbetrag_value_0_711be043', value_0=(format_money(goal.remaining_amount)))))
         if goal.is_released:
-            layout.addWidget(QLabel(f"Status: 🔓 Freigegeben (eingef. {format_money(goal.released_amount)})"))
+            layout.addWidget(QLabel(trf('auto.views_savings_goals_dialog.616_status_freigegeben_eingef_value_0_6728eed9', value_0=(format_money(goal.released_amount)))))
         layout.addSpacing(10)
         layout.addWidget(QLabel(tr("btn.betrag_hinzufuegen")))
         layout.addWidget(self.amount_spin)

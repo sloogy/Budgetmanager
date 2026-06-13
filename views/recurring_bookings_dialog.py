@@ -125,8 +125,7 @@ class RecurringBookingsDialog(QDialog):
         info_layout = QVBoxLayout(info_frame)
         
         self.lbl = QLabel(
-            "<b>Fixkosten</b> sind fix und nicht editierbar. "
-            "<b>Wiederkehrende</b> (ohne Fixkosten) sind variabel: Betrag anpassen und auswählen, was gebucht werden soll."
+            tr('auto.views_recurring_bookings_dialog.128_b_fixkosten_b_sind_fix_und_nicht_ed_38adb145')
         )
         self.lbl.setWordWrap(True)
         self.lbl.setTextFormat(Qt.RichText)
@@ -134,8 +133,7 @@ class RecurringBookingsDialog(QDialog):
         
         _c = ui_colors(self)
         hint = QLabel(
-            f"💡 <span style='color:{_c.negative};'>Überfällige</span> Buchungen sind vorausgewählt. "
-            f"<span style='color:{_c.ok};'>Zukünftige</span> können manuell ausgewählt werden."
+            trf('auto.views_recurring_bookings_dialog.137_span_style_color_value_0_ueberfaell_81b0f0f3', value_0=(_c.negative), value_1=(_c.ok))
         )
         hint.setTextFormat(Qt.RichText)
         hint.setWordWrap(True)
@@ -166,7 +164,7 @@ class RecurringBookingsDialog(QDialog):
         # Tabelle
         self.table = QTableWidget(0, 8)
         self.table.setHorizontalHeaderLabels([
-            "Buchen", "Art", "Datum", "Status", "Typ", tr("header.category"), currency_header(), tr("lbl.description")
+            tr('btn.book'), tr('auto.views_recurring_bookings_dialog.169_art_e71cc758'), tr('header.date'), tr('lbl.status'), tr('header.type'), tr("header.category"), currency_header(), tr("lbl.description")
         ])
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -198,7 +196,7 @@ class RecurringBookingsDialog(QDialog):
         self.btn_all = QPushButton(tr("btn.all"))
         self.btn_none = QPushButton(tr("btn.none"))
         self.btn_overdue_only = QPushButton(tr("dlg.nur_ueberfaellige"))
-        self.btn_fix_only = QPushButton("Nur Fixkosten")
+        self.btn_fix_only = QPushButton(tr('chk.only_fixed'))
         self.btn_ok = QPushButton(tr("btn.book"))
         self.btn_ok.setStyleSheet(f"""
             QPushButton {{

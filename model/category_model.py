@@ -406,14 +406,91 @@ class CategoryModel:
         for r in old_rows:
             self.undo.record_operation("categories", "DELETE", r, None, group_id=group)
 
+    def get_by_id(self, cat_id: int) -> Category | None:
+        """Einzelne Kategorie per ID (oder None)."""
+        r = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        if r is None:
+            return None
+        return Category(
+            int(r["id"]),
+            r["typ"],
+            r["name"],
+            int(r["parent_id"]) if "parent_id" in r.keys() and r["parent_id"] is not None else None,
+            bool(r["is_fix"]),
+            bool(r["is_recurring"]),
+            int(r["recurring_day"] or 1),
+            int(r["funded_by_category_id"]) if "funded_by_category_id" in r.keys() and r["funded_by_category_id"] is not None else None,
+            int(r["sort_order"]) if "sort_order" in r.keys() and r["sort_order"] is not None else 0,
+        )
+
+    def _descendant_ids(self, cat_id: int) -> set[int]:
+        """Alle Nachfahren-IDs (rekursiv) einer Kategorie."""
+        cols = self._cols("categories")
+        if "parent_id" not in cols:
+            return set()
+        result: set[int] = set()
+        frontier = [int(cat_id)]
+        while frontier:
+            current = frontier.pop()
+            rows = self.conn.execute(
+                "SELECT id FROM categories WHERE parent_id=?", (current,)
+            ).fetchall()
+            for r in rows:
+                cid = int(r["id"])
+                if cid not in result:
+                    result.add(cid)
+                    frontier.append(cid)
+        return result
+
+    def can_reparent(self, cat_id: int, new_parent_id: int | None) -> tuple[bool, str]:
+        """Prüft, ob ``cat_id`` unter ``new_parent_id`` verschoben werden darf.
+
+        Returns (ok, reason_key). ``reason_key`` ist ein i18n-Schlüssel, der bei
+        ``ok=False`` erklärt, warum der Verschiebe-Vorgang nicht erlaubt ist.
+        """
+        cat_id = int(cat_id)
+        if new_parent_id is None:
+            return True, ""
+        new_parent_id = int(new_parent_id)
+
+        if new_parent_id == cat_id:
+            return False, "catmgr.move_err_self"
+
+        cur = self.conn.execute(
+            "SELECT typ FROM categories WHERE id=?", (cat_id,)
+        ).fetchone()
+        par = self.conn.execute(
+            "SELECT typ FROM categories WHERE id=?", (new_parent_id,)
+        ).fetchone()
+        if cur is None or par is None:
+            return False, "catmgr.move_err_missing"
+        if cur["typ"] != par["typ"]:
+            return False, "catmgr.move_err_type"
+
+        # Zyklus: Ziel darf kein Nachfahre der bewegten Kategorie sein.
+        if new_parent_id in self._descendant_ids(cat_id):
+            return False, "catmgr.move_err_cycle"
+
+        return True, ""
+
     def update_parent(self, cat_id: int, new_parent_id: int | None) -> None:
         cols = self._cols("categories")
         if "parent_id" not in cols:
             return
+
+        # Defensive Validierung – verhindert Zyklen / Typ-Mischung auch dann,
+        # wenn ein Aufrufer die Prüfung über can_reparent() übersprungen hat.
+        ok, reason = self.can_reparent(cat_id, new_parent_id)
+        if not ok:
+            raise ValueError(reason)
+
         old = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
         old_d = dict(old) if old else None
 
-        self.conn.execute("UPDATE categories SET parent_id=? WHERE id=?", (new_parent_id, int(cat_id)))
+        self.conn.execute(
+            "UPDATE categories SET parent_id=? WHERE id=?",
+            (None if new_parent_id is None else int(new_parent_id), int(cat_id)),
+        )
         self.conn.commit()
 
         new = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()

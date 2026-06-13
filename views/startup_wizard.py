@@ -75,7 +75,7 @@ class StartupWizard(QDialog):
         nav.setContentsMargins(24, 8, 24, 16)
         nav.setSpacing(8)
 
-        self.btn_back = QPushButton(f"◀ {tr('btn.back_step')}")
+        self.btn_back = QPushButton(trf('auto.views_startup_wizard.78_value_0_9628887f', value_0=(tr('btn.back_step'))))
         self.btn_back.setVisible(False)
         self.btn_back.clicked.connect(self._go_back)
         nav.addWidget(self.btn_back)
@@ -86,7 +86,7 @@ class StartupWizard(QDialog):
         self.btn_cancel.clicked.connect(self.reject)
         nav.addWidget(self.btn_cancel)
 
-        self.btn_next = QPushButton(f"{tr('btn.continue')} ▶")
+        self.btn_next = QPushButton(trf('auto.views_startup_wizard.89_value_0_e2a7ae74', value_0=(tr('btn.continue'))))
         self.btn_next.setDefault(True)
         self.btn_next.setMinimumWidth(110)
         self.btn_next.clicked.connect(self._go_next)
@@ -191,7 +191,7 @@ class StartupWizard(QDialog):
 
         self.edt_secret = QLineEdit()
         self.edt_secret.setStyleSheet("padding: 6px;")
-        self.lbl_secret = QLabel("PIN:")
+        self.lbl_secret = QLabel(tr('create_user.pin_label'))
         sf_lay.addRow(self.lbl_secret, self.edt_secret)
 
         self.edt_secret2 = QLineEdit()
@@ -229,7 +229,7 @@ class StartupWizard(QDialog):
             self.btn_next.setText(tr("btn.finish"))
             self.btn_next.setVisible(True)
         else:
-            self.btn_next.setText(f"{tr('btn.continue')} ▶")
+            self.btn_next.setText(trf('auto.views_startup_wizard.232_value_0_0df8e20d', value_0=(tr('btn.continue'))))
             self.btn_next.setVisible(True)
 
     def _go_next(self) -> None:
@@ -264,7 +264,7 @@ class StartupWizard(QDialog):
             self,
             tr("lbl.backup_auswaehlen"),
             str(Path.home()),
-            "Budgetmanager Backups (*.bmr *.enc *.db)"
+            tr('auto.views_startup_wizard.267_budgetmanager_backups_bmr_enc_db_d504b057')
         )
         if not src_path:
             return
@@ -477,7 +477,7 @@ class StartupWizard(QDialog):
                 except Exception as exc:
                     last_exc = exc
                     if attempt < 2:
-                        QMessageBox.warning(self, tr("msg.info"), f"Bitte erneut versuchen.\n\n{exc}")
+                        QMessageBox.warning(self, tr("msg.info"), trf('auto.views_startup_wizard.480_bitte_erneut_versuchen_value_0_2762b9bc', value_0=(exc)))
             raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen", last_exc=str(last_exc)))
 
         raise ValueError(f"Unbekanntes Format: {src.name}")

@@ -94,7 +94,7 @@ class GlobalSearchDialog(QDialog):
         self.table.setRowCount(0)
         
         if len(query) < 2:
-            self.result_label.setText("Ergebnisse: (mindestens 2 Zeichen eingeben)")
+            self.result_label.setText(tr('auto.views_global_search_dialog.97_ergebnisse_mindestens_2_zeichen_ein_e1b35814'))
             return
         
         results = []
@@ -150,7 +150,7 @@ class GlobalSearchDialog(QDialog):
                                 })
         
         # Ergebnisse anzeigen
-        self.result_label.setText(f"Ergebnisse: {len(results)} gefunden")
+        self.result_label.setText(trf('auto.views_global_search_dialog.153_ergebnisse_value_0_gefunden_b64f61d2', value_0=(len(results))))
         
         for r in results:
             row = self.table.rowCount()

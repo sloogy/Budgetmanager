@@ -40,7 +40,7 @@ class ShortcutsDialog(QDialog):
         # Tabelle
         self.table = QTableWidget()
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels([tr("dlg.shortcuts"), "Aktion", "Gruppe"])
+        self.table.setHorizontalHeaderLabels([tr("dlg.shortcuts"), tr('header.action'), tr('header.group')])
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -89,8 +89,7 @@ class ShortcutsDialog(QDialog):
 
         # Tipp
         tip = QLabel(
-            "💡 <i>Tipp: Tastenkürzel können unter Einstellungen → Tastenkürzel "
-            "individuell angepasst werden.</i>"
+            tr('auto.views_shortcuts_dialog.92_i_tipp_tastenkuerzel_koennen_unter__17d1ba87')
         )
         tip.setWordWrap(True)
         layout.addWidget(tip)

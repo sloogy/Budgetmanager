@@ -100,7 +100,7 @@ class ThemeEditorDialog(QDialog):
         basic_form.addRow(tr("lbl.theme_name") + ":", self.name_edit)
         
         self.modus_combo = QComboBox()
-        self.modus_combo.addItems(["hell", "dunkel"])  # Internal values, not translated
+        self.modus_combo.addItems([tr('auto.views_theme_editor_dialog.103_hell_66974dd7'), tr('auto.views_theme_editor_dialog.103_dunkel_b0351793')])  # Internal values, not translated
         self.modus_combo.currentTextChanged.connect(self._on_changed)
         basic_form.addRow(tr("lbl.theme_mode") + ":", self.modus_combo)
         
@@ -294,7 +294,7 @@ class ThemeEditorDialog(QDialog):
     
     def _new_theme(self):
         """Neues Theme erstellen"""
-        name, ok = QInputDialog.getText(self, "Neues Theme", "Theme-Name:")
+        name, ok = QInputDialog.getText(self, tr('auto.views_theme_editor_dialog.297_neues_theme_7b9881d9'), tr('auto.views_theme_editor_dialog.297_theme_name_e4293a7f'))
         if ok and name:
             # Basis von Standard Hell
             base = self.theme_manager.get_profile("Standard Hell")
@@ -313,9 +313,9 @@ class ThemeEditorDialog(QDialog):
             return
         
         name, ok = QInputDialog.getText(
-            self, "Theme duplizieren", 
-            "Neuer Name:",
-            text=f"{self.current_theme} (Kopie)"
+            self, tr('auto.views_theme_editor_dialog.316_theme_duplizieren_610b8173'), 
+            tr('auto.views_theme_editor_dialog.317_neuer_name_771ef819'),
+            text=trf('auto.views_theme_editor_dialog.318_value_0_kopie_7305d694', value_0=(self.current_theme))
         )
         
         if ok and name:
@@ -337,7 +337,7 @@ class ThemeEditorDialog(QDialog):
         if self.theme_manager.is_bundled(self.current_theme) and not self.theme_manager.has_override(self.current_theme):
             QMessageBox.warning(
                 self,
-                "Fehler",
+                tr('msg.error'),
                 "Mitgelieferte Themes können nicht gelöscht werden.\n\n" +
                 tr("msg.theme_override_hinweis"),
             )
@@ -363,7 +363,7 @@ class ThemeEditorDialog(QDialog):
         if not self.theme_manager.is_bundled(self.current_theme) and not self.theme_manager.has_override(self.current_theme):
             QMessageBox.information(
                 self,
-                "Hinweis",
+                tr('dlg.hinweis'),
                 "Dieses Theme hat kein mitgeliefertes Standard-Profil zum Zurücksetzen.\n" +
                 tr("dlg.tipp_eigene_themes_koennen"),
             )
@@ -380,12 +380,12 @@ class ThemeEditorDialog(QDialog):
         if reply == QMessageBox.Yes:
             self.theme_manager.reset_profile(self.current_theme)
             self._on_theme_selected(self.current_theme)  # Neu laden
-            QMessageBox.information(self, "Erfolg", tr("dlg.theme_wurde_zurueckgesetzt"))
+            QMessageBox.information(self, tr('msg.success'), tr("dlg.theme_wurde_zurueckgesetzt"))
 
     def _import_theme(self):
         """Theme importieren"""
         file, _ = QFileDialog.getOpenFileName(
-            self, "Theme importieren", "", "JSON (*.json)"
+            self, tr('auto.views_theme_editor_dialog.388_theme_importieren_3afd6b46'), "", tr('auto.views_theme_editor_dialog.388_json_json_90618946')
         )
         
         if not file:
@@ -400,9 +400,9 @@ class ThemeEditorDialog(QDialog):
             # Falls Name existiert, frage nach neuem Namen
             if name in self.theme_manager.get_all_profiles():
                 name, ok = QInputDialog.getText(
-                    self, "Name existiert", 
-                    "Theme-Name existiert bereits. Neuer Name:",
-                    text=f"{name} (Import)"
+                    self, tr('auto.views_theme_editor_dialog.403_name_existiert_4dd02b77'), 
+                    tr('auto.views_theme_editor_dialog.404_theme_name_existiert_bereits_neuer__ebc86c02'),
+                    text=trf('auto.views_theme_editor_dialog.405_value_0_import_6030fc3e', value_0=(name))
                 )
                 if not ok:
                     return
@@ -415,7 +415,7 @@ class ThemeEditorDialog(QDialog):
             QMessageBox.information(self, tr("dlg.backup_erfolg"), trf("msg.theme_importiert", name=name))
             
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Import fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_theme_editor_dialog.418_import_fehlgeschlagen_value_0_17d04026', value_0=(e)))
     
     def _export_theme(self):
         """Theme exportieren"""
@@ -423,9 +423,9 @@ class ThemeEditorDialog(QDialog):
             return
         
         file, _ = QFileDialog.getSaveFileName(
-            self, "Theme exportieren", 
-            f"{self.current_theme}.json",
-            "JSON (*.json)"
+            self, tr('auto.views_theme_editor_dialog.426_theme_exportieren_30cdc637'), 
+            trf('auto.views_theme_editor_dialog.427_value_0_json_05d9a4f0', value_0=(self.current_theme)),
+            tr('auto.views_theme_editor_dialog.428_json_json_7142e86c')
         )
         
         if not file:
@@ -438,10 +438,10 @@ class ThemeEditorDialog(QDialog):
                     data = {"name": self.current_theme, **profile.to_dict()}
                     json.dump(data, f, indent=2, ensure_ascii=False)
                 
-                QMessageBox.information(self, "Erfolg", tr("dlg.theme_wurde_exportiert"))
+                QMessageBox.information(self, tr('msg.success'), tr("dlg.theme_wurde_exportiert"))
                 
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Export fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_theme_editor_dialog.444_export_fehlgeschlagen_value_0_b3ec54e6', value_0=(e)))
     
     def _apply_theme(self):
         """Theme anwenden"""

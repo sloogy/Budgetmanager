@@ -533,7 +533,7 @@ class OverviewBudgetPanel(QObject):
                     asum = sum(r.amount for r in trows if _norm(r.typ) == typ)
                     rest = bsum - asum
 
-                cell = QTableWidgetItem(f"B: {format_chf(bsum)}\nI: {format_chf(asum)}\nR: {format_chf(rest)}")
+                cell = QTableWidgetItem(trf('auto.views_tabs_overview_budget_panel.536_b_value_0_i_value_1_r_value_2_25a9e209', value_0=(format_chf(bsum)), value_1=(format_chf(asum)), value_2=(format_chf(rest))))
                 cell.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 cell.setToolTip(
                     f"{typ} – {col_labels[ci]}\n" +

@@ -77,7 +77,7 @@ class BackupRestoreDialog(QDialog):
         self.backup_list = QListWidget()
         
         # Layout
-        info_label = QLabel(f"{tr('backup.backup_folder')}: {self.backup_dir}")
+        info_label = QLabel(trf('auto.views_backup_restore_dialog.80_value_0_value_1_e0475ff7', value_0=(tr('backup.backup_folder')), value_1=(self.backup_dir)))
         info_label.setWordWrap(True)
 
         # Aktiven Benutzer + DB anzeigen (damit klar ist, WAS ersetzt wird)
@@ -91,7 +91,7 @@ class BackupRestoreDialog(QDialog):
         else:
             user_txt = f"{tr('backup.active_user')}: {tr('backup.unencrypted')}"
 
-        active_label = QLabel(f"{user_txt}\n{tr('backup.active_db')}: {active_db_path}")
+        active_label = QLabel(trf('auto.views_backup_restore_dialog.94_value_0_value_1_value_2_fd084554', value_0=(user_txt), value_1=(tr('backup.active_db')), value_2=(active_db_path)))
         active_label.setWordWrap(True)
         
         btn_layout1 = QHBoxLayout()
@@ -412,7 +412,7 @@ class BackupRestoreDialog(QDialog):
             shutil.copy2(backup_path, file_path)
             QMessageBox.information(self, tr("backup.import_success_title"), trf("msg.backup_exportiert", file_path=str(file_path)))
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Export fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_backup_restore_dialog.415_export_fehlgeschlagen_value_0_208f6ca9', value_0=(e)))
     
     def import_backup(self):
         file_path, _ = QFileDialog.getOpenFileName(
@@ -465,7 +465,7 @@ class BackupRestoreDialog(QDialog):
                 # reuse restore flow, aber ohne zweite Auswahl
                 self._restore_from_path(str(import_path))
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Import fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_backup_restore_dialog.468_import_fehlgeschlagen_value_0_fabf2450', value_0=(e)))
 
     def _restore_from_path(self, backup_path: str):
         """Interner Helper: Restore von einem beliebigen Pfad (aus Liste oder import)."""
@@ -703,10 +703,7 @@ class BackupRestoreDialog(QDialog):
             QMessageBox.information(
                 self,
                 tr("database.msg.restore_success"),
-                "Datenbank wurde wiederhergestellt.\n\n"
-                f"{user_line}"
-                f"Aktive DB:\n{target}\n\n"
-                "Die Daten sind sofort aktiv — ein Neustart ist nicht erforderlich.",
+                trf('auto.views_backup_restore_dialog.706_datenbank_wurde_wiederhergestellt_v_442b01cf', value_0=(user_line), value_1=(target)),
             )
             return
 
@@ -719,7 +716,7 @@ class BackupRestoreDialog(QDialog):
         )
         if QMessageBox.question(
             self,
-            "Neustart erforderlich",
+            tr('auto.views_backup_restore_dialog.722_neustart_erforderlich_5f2fbae8'),
             msg,
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.Yes,
@@ -766,7 +763,7 @@ class BackupRestoreDialog(QDialog):
         # Nochmal nachfragen
         reply2 = QMessageBox.question(
             self,
-            "Letzte Warnung",
+            tr('dbmgmt.last_warning_title'),
             tr("msg.reset_bestaetigung"),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
@@ -807,17 +804,15 @@ class BackupRestoreDialog(QDialog):
             
             QMessageBox.information(
                 self,
-                "Erfolg",
-                f"Datenbank wurde zurückgesetzt.\n\n"
-                f"Backup erstellt: budgetmanager_before_reset_{timestamp}.bmr\n\n"
-                f"Bitte starten Sie die Anwendung neu."
+                tr('msg.success'),
+                trf('auto.views_backup_restore_dialog.811_datenbank_wurde_zurueckgesetzt_back_48960617', value_0=(timestamp))
             )
             self.accept()
         except Exception as e:
             QMessageBox.critical(
                 self,
-                "Fehler",
-                f"Reset fehlgeschlagen:\n{e}"
+                tr('msg.error'),
+                trf('auto.views_backup_restore_dialog.820_reset_fehlgeschlagen_value_0_9b562dab', value_0=(e))
             )
 
     def emergency_reset(self):
@@ -827,10 +822,8 @@ class BackupRestoreDialog(QDialog):
         """
         reply = QMessageBox.critical(
             self,
-            "🆘 NOTFALL-RESET",
-            "WARNUNG: Dies löscht ALLE Daten (Buchungen, Budget, Kategorien, ...)!\n\n"
-            "Verwende dies nur, wenn du nicht mehr auf ein Backup zugreifen kannst.\n\n"
-            "Die Anwendung wird danach neu gestartet.\n\nWirklich fortfahren?",
+            tr('auto.views_backup_restore_dialog.830_notfall_reset_31e1b16e'),
+            tr('auto.views_backup_restore_dialog.831_warnung_dies_loescht_alle_daten_buc_e8992ed0'),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -839,8 +832,8 @@ class BackupRestoreDialog(QDialog):
 
         reply2 = QMessageBox.question(
             self,
-            "Letzte Bestätigung",
-            "Alle Daten werden UNWIDERRUFLICH gelöscht.\nWirklich?",
+            tr('auto.views_backup_restore_dialog.842_letzte_bestaetigung_f0c15a52'),
+            tr('auto.views_backup_restore_dialog.843_alle_daten_werden_unwiderruflich_ge_de7300e7'),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )
@@ -919,7 +912,7 @@ class BackupRestoreDialog(QDialog):
         msg = "Notfall-Reset abgeschlossen. Die Anwendung wird jetzt beendet."
         if errors:
             msg += "\n\n" + tr("backup_restore.hints_title") + ":\n" + "\n".join(errors)
-        QMessageBox.information(self, "Notfall-Reset", msg)
+        QMessageBox.information(self, tr('auto.views_backup_restore_dialog.922_notfall_reset_657ef552'), msg)
         QApplication.quit()
 
     def _create_bmr_backup(self, *, prefix: str, note: str) -> Path:

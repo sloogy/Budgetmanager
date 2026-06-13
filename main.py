@@ -1,4 +1,5 @@
 from __future__ import annotations
+from utils.i18n import tr, trf
 
 import faulthandler
 import logging
@@ -309,7 +310,7 @@ def main() -> int:
         if migration_info.get('migrations_applied'):
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Information)
-            msg.setWindowTitle("Datenbank aktualisiert")
+            msg.setWindowTitle(tr('dlg.db_updated'))
             info_text = (
                 f"Datenbank von Version {migration_info['old_version']} "
                 f"auf {migration_info['new_version']} aktualisiert.\n\n"
@@ -334,7 +335,7 @@ def main() -> int:
             # Titel: 🔒 + Username
             icon = active_user.security_icon if active_user else "🔒"
             name = active_user.display_name if active_user else ""
-            win.setWindowTitle(f"{win.windowTitle()} — {icon} {name}")
+            win.setWindowTitle(trf('auto.main.337_value_0_value_1_value_2_08554ed9', value_0=(win.windowTitle()), value_1=(icon), value_2=(name)))
 
             # Auto-Save Timer (5 Minuten)
             save_timer = QTimer(win)
@@ -407,9 +408,8 @@ def main() -> int:
             from PySide6.QtWidgets import QApplication, QMessageBox
             if QApplication.instance():
                 QMessageBox.critical(
-                    None, "Startfehler",
-                    f"Budgetmanager konnte nicht gestartet werden:\n\n{exc}\n\n"
-                    "Details siehe budgetmanager.log."
+                    None, tr('auto.main.410_startfehler_1a2ebad1'),
+                    trf('auto.main.411_budgetmanager_konnte_nicht_gestarte_8ae862ce', value_0=(exc))
                 )
         except Exception as ui_exc:
             logger.critical("Fehler beim Anzeigen des Startfehler-Dialogs: %s", ui_exc)

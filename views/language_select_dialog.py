@@ -1,5 +1,6 @@
 """Erstes-Start Sprach-Auswahl Dialog."""
 from __future__ import annotations
+from utils.i18n import tr, trf
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel,
@@ -19,7 +20,7 @@ class LanguageSelectDialog(QDialog):
 
     def __init__(self, parent=None, *, current: str = "de"):
         super().__init__(parent)
-        self.setWindowTitle("Language / Sprache / Langue")
+        self.setWindowTitle(tr('auto.views_language_select_dialog.22_language_sprache_langue_cec30925'))
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setMinimumWidth(340)
         self.selected_code = current
@@ -31,10 +32,7 @@ class LanguageSelectDialog(QDialog):
 
         c = ui_colors(self)
         lbl = QLabel(
-            "<h3 style='margin:0'>Welcome / Willkommen / Bienvenue</h3>"
-            f"<p style='color:{c.text_dim}'>Please select your language:<br>"
-            "Bitte wähle deine Sprache:<br>"
-            "Veuillez choisir votre langue :</p>"
+            trf('auto.views_language_select_dialog.34_h3_style_margin_0_welcome_willkomme_eef30112', value_0=(c.text_dim))
         )
         lbl.setTextFormat(Qt.RichText)
         lay.addWidget(lbl)
@@ -54,7 +52,7 @@ class LanguageSelectDialog(QDialog):
         lay.addWidget(self.list)
 
         btn_row = QHBoxLayout()
-        btn_ok = QPushButton("✓  OK")
+        btn_ok = QPushButton(tr('auto.views_language_select_dialog.57_ok_6128635b'))
         btn_ok.setDefault(True)
         btn_ok.setMinimumHeight(36)
         btn_ok.clicked.connect(self._accept)

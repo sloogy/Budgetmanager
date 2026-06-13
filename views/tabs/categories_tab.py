@@ -65,8 +65,8 @@ class CategoriesTab(QWidget):
         self._loading = False
 
         # Buttons
-        self.btn_new = QPushButton("Neu (Hauptkategorie)")
-        self.btn_new_sub = QPushButton("Neu (Unterkategorie)")
+        self.btn_new = QPushButton(tr('auto.views_tabs_categories_tab.68_neu_hauptkategorie_d317a531'))
+        self.btn_new_sub = QPushButton(tr('auto.views_tabs_categories_tab.69_neu_unterkategorie_577581bc'))
         self.btn_delete = QPushButton(tr("common.delete"))
         self.btn_quick_add = QPushButton(tr("budget.btn.quick_add"))
         self.btn_quick_add.setToolTip(tr("budget.tip.quick_add"))
@@ -234,7 +234,7 @@ class CategoriesTab(QWidget):
             return
 
         typ = root.text(self.COL_NAME)
-        name, ok = QInputDialog.getText(self, "Neue Kategorie", trf("tab_ui.name_der_neuen_kategorie", typ=typ))
+        name, ok = QInputDialog.getText(self, tr('btn.new_category'), trf("tab_ui.name_der_neuen_kategorie", typ=typ))
         if not ok:
             return
         name = (name or "").strip()
@@ -341,12 +341,12 @@ class CategoriesTab(QWidget):
         editable = self._selected_editable_category_items()
         menu = QMenu(self)
 
-        act_new_root = menu.addAction("Neu (Hauptkategorie)")
+        act_new_root = menu.addAction(tr('auto.views_tabs_categories_tab.344_neu_hauptkategorie_852d2884'))
         act_new_root.setIcon(get_icon("➕"))
-        act_new_sub = menu.addAction("Neu (Unterkategorie)")
+        act_new_sub = menu.addAction(tr('auto.views_tabs_categories_tab.346_neu_unterkategorie_18e330b2'))
         act_new_sub.setIcon(get_icon("📂"))
         menu.addSeparator()
-        act_rename = menu.addAction("Umbenennen")
+        act_rename = menu.addAction(tr('auto.views_tabs_categories_tab.349_umbenennen_4ad27303'))
         act_rename.setIcon(get_icon("✏️"))
         act_delete = menu.addAction(tr("btn.loeschen_1"))
         act_mass = menu.addAction(tr("ctx.mass_edit"))
@@ -437,7 +437,7 @@ class CategoriesTab(QWidget):
             day, ok = QInputDialog.getInt(
                 self,
                 tr("dlg.faelligkeitstag"),
-                "Tag im Monat (1–31):",
+                tr('categories.day_prompt'),
                 cur,
                 1,
                 31,
@@ -644,16 +644,16 @@ class CategoriesTab(QWidget):
         form = QFormLayout()
 
         self._mass_fix = QComboBox()
-        self._mass_fix.addItems([tr("tab_ui.nicht_aendern"), "Setzen: Ja", "Setzen: Nein"])
+        self._mass_fix.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.647_setzen_ja_f86a5233'), tr('auto.views_tabs_categories_tab.647_setzen_nein_60c1ccf6')])
         form.addRow("Fixkosten:", self._mass_fix)
 
         self._mass_rec = QComboBox()
-        self._mass_rec.addItems([tr("tab_ui.nicht_aendern"), "Setzen: Ja", "Setzen: Nein"])
+        self._mass_rec.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.651_setzen_ja_63aa1520'), tr('auto.views_tabs_categories_tab.651_setzen_nein_e7dfddad')])
         form.addRow("Wiederkehrend:", self._mass_rec)
 
         day_row = QHBoxLayout()
         self._mass_day_mode = QComboBox()
-        self._mass_day_mode.addItems([tr("tab_ui.nicht_aendern"), "Tag setzen…"])
+        self._mass_day_mode.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.656_tag_setzen_c7df7554')])
         self._mass_day = QSpinBox()
         self._mass_day.setRange(1, 31)
         self._mass_day.setValue(1)
@@ -727,5 +727,5 @@ class CategoriesTab(QWidget):
             self._set_loading(False)
 
         if changed > 0:
-            QMessageBox.information(self, "OK", f"{changed} Kategorie(n) aktualisiert.")
+            QMessageBox.information(self, "OK", trf('auto.views_tabs_categories_tab.730_value_0_kategorie_n_aktualisiert_0cf1c2ab', value_0=(changed)))
             self.refresh()

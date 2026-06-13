@@ -236,7 +236,7 @@ class SetupAssistantDialog(QDialog):
     def _mk_page(self, title: str, body_html: str) -> QWidget:
         w = QWidget()
         lay = QVBoxLayout(w)
-        t = QLabel(f"<h3>{title}</h3>")
+        t = QLabel(trf('auto.views_setup_assistant_dialog.239_h3_value_0_h3_63ad18ac', value_0=(title)))
         t.setTextFormat(Qt.RichText)
         lay.addWidget(t)
 
@@ -595,7 +595,7 @@ class SetupAssistantDialog(QDialog):
         st = self.steps[idx]
         if not can_next and not last:
             hint = tr(st.hint_key) if st.hint_key else tr("setup.hint_locked_generic")
-            self.lbl_next_hint.setText(f"<small>🔒 {hint}</small>")
+            self.lbl_next_hint.setText(trf('auto.views_setup_assistant_dialog.598_small_value_0_small_c3c36140', value_0=(hint)))
             self.lbl_next_hint.setVisible(True)
         else:
             self.lbl_next_hint.setVisible(False)

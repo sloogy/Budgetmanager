@@ -44,13 +44,12 @@ class MissingBookingsDialog(QDialog):
         self._items = items
 
         self.lbl = QLabel(
-            "Folgende Buchungen sind in diesem Monat noch nicht vorhanden. "
-            "Wähle aus, was eingefügt werden soll:"
+            tr('auto.views_missing_bookings_dialog.47_folgende_buchungen_sind_in_diesem_m_5717d0dc')
         )
         self.lbl.setWordWrap(True)
 
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(["Buchen", "Datum", "Typ", tr("header.category"), currency_header()])
+        self.table.setHorizontalHeaderLabels([tr('btn.book'), tr('header.date'), tr('header.type'), tr("header.category"), currency_header()])
         self.table.setAlternatingRowColors(True)
         # PySide6: Enums hängen an QAbstractItemView, nicht an der Instanz
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)

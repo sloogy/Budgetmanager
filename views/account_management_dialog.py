@@ -55,7 +55,7 @@ class AccountManagementDialog(QDialog):
         layout.setContentsMargins(20, 15, 20, 15)
 
         # ── Header ──
-        header = QLabel(f"👤 {self.user.display_name}")
+        header = QLabel(trf('auto.views_account_management_dialog.58_value_0_ce49c534', value_0=(self.user.display_name)))
         header.setAlignment(Qt.AlignCenter)
         hf = QFont(); hf.setPointSize(15); hf.setBold(True)
         header.setFont(hf)
@@ -75,11 +75,11 @@ class AccountManagementDialog(QDialog):
 
         # ── Tabs ──
         tabs = QTabWidget()
-        tabs.addTab(self._build_profile_tab(), "Profil")
+        tabs.addTab(self._build_profile_tab(), tr('auto.views_account_management_dialog.78_profil_a112e8f0'))
         tabs.setTabIcon(0, get_icon("✏️"))
-        tabs.addTab(self._build_secret_tab(), "Passwort / PIN")
+        tabs.addTab(self._build_secret_tab(), tr('auto.views_account_management_dialog.80_passwort_pin_2e7b87ff'))
         tabs.setTabIcon(1, get_icon("🔑"))
-        tabs.addTab(self._build_security_tab(), "Sicherheitsstufe")
+        tabs.addTab(self._build_security_tab(), tr('create_user.security_level'))
         tabs.setTabIcon(2, get_icon("🔒"))
         layout.addWidget(tabs)
 
@@ -120,7 +120,7 @@ class AccountManagementDialog(QDialog):
         layout.addLayout(form)
         layout.addSpacing(10)
 
-        btn_save_name = QPushButton("Namen speichern")
+        btn_save_name = QPushButton(tr('auto.views_account_management_dialog.123_namen_speichern_3c32107f'))
         btn_save_name.setIcon(get_icon("💾"))
         btn_save_name.setStyleSheet("""
             QPushButton {
@@ -138,19 +138,19 @@ class AccountManagementDialog(QDialog):
     def _on_save_display_name(self):
         new_name = self.edt_display_name.text().strip()
         if not new_name:
-            QMessageBox.warning(self, "Hinweis", tr("account.bitte_einen_namen_eingeben"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("account.bitte_einen_namen_eingeben"))
             return
 
         if new_name == self.user.display_name:
-            QMessageBox.information(self, "Info", tr("account.der_name_ist_unveraendert"))
+            QMessageBox.information(self, tr('auto.views_account_management_dialog.145_info_80dc0679'), tr("account.der_name_ist_unveraendert"))
             return
 
         ok = self.user_model.change_display_name(self.user.username, new_name)
         if ok:
             self.user.display_name = new_name
-            self._header_label.setText(f"👤 {new_name}")
+            self._header_label.setText(trf('auto.views_account_management_dialog.151_value_0_3a8da07a', value_0=(new_name)))
             self.display_name_changed.emit(new_name)
-            QMessageBox.information(self, "Gespeichert",
+            QMessageBox.information(self, tr('auto.views_account_management_dialog.153_gespeichert_1672f513'),
                                    trf("account.anzeigename_geaendert_zu_new_name", new_name=new_name))
         else:
             QMessageBox.critical(self, tr("msg.error"),
@@ -169,22 +169,17 @@ class AccountManagementDialog(QDialog):
         # Info-Text je nach aktuellem Modus
         if self.user.is_quick:
             info = QLabel(
-                "⚡ Dein Konto hat aktuell <b>keinen Passwortschutz</b>.\n\n"
-                "Um ein Passwort oder eine PIN zu setzen, wechsle zuerst\n"
-                "die Sicherheitsstufe im Tab «🔒 Sicherheitsstufe».\n\n"
-                "<b>Wichtig:</b> Auch ohne Passwort gibt es einen <b>Restore-Key</b>. "
-                "Damit kannst du ein verschlüsseltes Backup wieder öffnen."
+                tr('auto.views_account_management_dialog.172_dein_konto_hat_aktuell_b_keinen_pas_1282d8ba')
             )
             info.setWordWrap(True)
             info.setStyleSheet(f"padding: 15px; background: {ui_colors(self).warning_bg}; border-radius: 5px;")
             layout.addWidget(info)
 
             # Restore-Key anzeigen (auch im Quick-Modus!)
-            gb = QGroupBox("Restore-Key")
+            gb = QGroupBox(tr('backup.restore_key_dialog_title'))
             v = QVBoxLayout(gb)
             lbl = QLabel(
-                "⚠️ <b>Nur an einem sicheren Ort speichern.</b>\n"
-                "PIN oder Restore-Key verlieren = Datenbank kann nicht mehr entschlüsselt werden."
+                tr('auto.views_account_management_dialog.186_b_nur_an_einem_sicheren_ort_speiche_b5321905')
             )
             lbl.setWordWrap(True)
             lbl.setStyleSheet(f"color:{ui_colors(self).negative};")
@@ -208,7 +203,7 @@ class AccountManagementDialog(QDialog):
             v.addWidget(self.txt_restore_key)
 
             btns = QHBoxLayout()
-            btn_copy = QPushButton("Kopieren")
+            btn_copy = QPushButton(tr('btn.copy'))
             btn_copy.setIcon(get_icon("📋"))
             btn_copy.clicked.connect(lambda: self._copy_restore_key())
             btns.addWidget(btn_copy)
@@ -234,7 +229,7 @@ class AccountManagementDialog(QDialog):
         self.edt_old_secret = QLineEdit()
         self.edt_old_secret.setEchoMode(QLineEdit.Password)
         self.edt_old_secret.setStyleSheet("padding: 6px;")
-        self.edt_old_secret.setPlaceholderText(f"Aktuelles {mode_label} eingeben")
+        self.edt_old_secret.setPlaceholderText(trf('auto.views_account_management_dialog.237_aktuelles_value_0_eingeben_53722645', value_0=(mode_label)))
         if is_pin:
             self.edt_old_secret.setMaxLength(8)
         form.addRow(f"Aktuelles {mode_label}:", self.edt_old_secret)
@@ -244,17 +239,17 @@ class AccountManagementDialog(QDialog):
         self.edt_new_secret.setEchoMode(QLineEdit.Password)
         self.edt_new_secret.setStyleSheet("padding: 6px;")
         if is_pin:
-            self.edt_new_secret.setPlaceholderText("4–8 Ziffern")
+            self.edt_new_secret.setPlaceholderText(tr('create_user.pin_placeholder'))
             self.edt_new_secret.setMaxLength(8)
         else:
-            self.edt_new_secret.setPlaceholderText("Mindestens 4 Zeichen")
+            self.edt_new_secret.setPlaceholderText(tr('create_user.password_placeholder'))
         form.addRow(f"Neues {mode_label}:", self.edt_new_secret)
 
         # Wiederholung
         self.edt_new_secret2 = QLineEdit()
         self.edt_new_secret2.setEchoMode(QLineEdit.Password)
         self.edt_new_secret2.setStyleSheet("padding: 6px;")
-        self.edt_new_secret2.setPlaceholderText(f"{mode_label} wiederholen")
+        self.edt_new_secret2.setPlaceholderText(trf('auto.views_account_management_dialog.257_value_0_wiederholen_679c9574', value_0=(mode_label)))
         if is_pin:
             self.edt_new_secret2.setMaxLength(8)
         form.addRow("Wiederholen:", self.edt_new_secret2)
@@ -283,13 +278,13 @@ class AccountManagementDialog(QDialog):
             if hasattr(self, "txt_restore_key"):
                 key = (self.txt_restore_key.toPlainText() or "").strip()
             if not key or key.startswith("("):
-                QMessageBox.warning(self, "Restore-Key", tr("account.kein_restorekey_verfuegbar"))
+                QMessageBox.warning(self, tr('backup.restore_key_dialog_title'), tr("account.kein_restorekey_verfuegbar"))
                 return
             from PySide6.QtWidgets import QApplication
             QApplication.clipboard().setText(key)
-            QMessageBox.information(self, "Restore-Key", tr("account.restorekey_wurde_kopiert"))
+            QMessageBox.information(self, tr('backup.restore_key_dialog_title'), tr("account.restorekey_wurde_kopiert"))
         except Exception:
-            QMessageBox.warning(self, "Restore-Key", tr("account.kopieren_nicht_moeglich"))
+            QMessageBox.warning(self, tr('backup.restore_key_dialog_title'), tr("account.kopieren_nicht_moeglich"))
 
     def _on_change_secret(self):
         old_secret = self.edt_old_secret.text()
@@ -299,29 +294,29 @@ class AccountManagementDialog(QDialog):
         mode_label = "PIN" if is_pin else "Passwort"
 
         if not old_secret:
-            QMessageBox.warning(self, "Hinweis",
+            QMessageBox.warning(self, tr('dlg.hinweis'),
                                trf("account.bitte_das_aktuelle_mode_label", mode_label=mode_label))
             return
 
         if not new_secret:
-            QMessageBox.warning(self, "Hinweis",
+            QMessageBox.warning(self, tr('dlg.hinweis'),
                                trf("account.bitte_ein_neues_mode_label", mode_label=mode_label))
             return
 
         if new_secret != new_secret2:
-            QMessageBox.warning(self, "Hinweis",
+            QMessageBox.warning(self, tr('dlg.hinweis'),
                                trf("account.die_mode_labeleingaben_stimmen_nicht", mode_label=mode_label))
             return
 
         if is_pin:
             if not new_secret.isdigit() or not (4 <= len(new_secret) <= 8):
-                QMessageBox.warning(self, "Hinweis",
-                                   "PIN muss 4–8 Ziffern lang sein.")
+                QMessageBox.warning(self, tr('dlg.hinweis'),
+                                   tr('account.pin_length'))
                 return
         else:
             if len(new_secret) < 4:
-                QMessageBox.warning(self, "Hinweis",
-                                   "Passwort muss mindestens 4 Zeichen lang sein.")
+                QMessageBox.warning(self, tr('dlg.hinweis'),
+                                   tr('account.password_min_length'))
                 return
 
         # Passwort/PIN ändern (gleiche Sicherheitsstufe beibehalten)
@@ -338,7 +333,7 @@ class AccountManagementDialog(QDialog):
             if restore_key:
                 self._show_restore_key(restore_key, mode_label)
             else:
-                QMessageBox.information(self, "Erfolg",
+                QMessageBox.information(self, tr('msg.success'),
                                        trf("account.mode_label_wurde_erfolgreich_geaendert", mode_label=mode_label))
         else:
             QMessageBox.critical(self, tr("msg.error"),
@@ -357,8 +352,7 @@ class AccountManagementDialog(QDialog):
         layout.setContentsMargins(15, 15, 15, 15)
 
         layout.addWidget(QLabel(
-            "Wechsle die Sicherheitsstufe deines Kontos.\n"
-            "Die Datenbank bleibt dabei erhalten."
+            tr('auto.views_account_management_dialog.360_wechsle_die_sicherheitsstufe_deines_f6de7988')
         ))
         layout.addSpacing(5)
 
@@ -375,15 +369,14 @@ class AccountManagementDialog(QDialog):
         layout.addWidget(current_box)
 
         # Neue Stufe wählen
-        new_box = QGroupBox("Neue Sicherheitsstufe")
+        new_box = QGroupBox(tr('auto.views_account_management_dialog.378_neue_sicherheitsstufe_3f613920'))
         nb_layout = QVBoxLayout(new_box)
 
         self.sec_btn_group = QButtonGroup(self)
 
         self.rb_sec_quick = QRadioButton(tr("radio.security_quick"))
         self.rb_sec_quick.setToolTip(
-            "Schneller Zugriff ohne Eingabe.\n"
-            "Schützt vor Versehen — nicht bei USB-Verlust."
+            tr('auto.views_account_management_dialog.385_schneller_zugriff_ohne_eingabe_schu_5c56399c')
         )
         self.sec_btn_group.addButton(self.rb_sec_quick)
         nb_layout.addWidget(self.rb_sec_quick)
@@ -412,7 +405,7 @@ class AccountManagementDialog(QDialog):
         self.edt_sec_old = QLineEdit()
         self.edt_sec_old.setEchoMode(QLineEdit.Password)
         self.edt_sec_old.setStyleSheet("padding: 6px;")
-        self._lbl_sec_old = QLabel("Aktuelles Passwort:")
+        self._lbl_sec_old = QLabel(tr('auto.views_account_management_dialog.415_aktuelles_passwort_38b1f100'))
         sof_layout.addRow(self._lbl_sec_old, self.edt_sec_old)
         scf_layout.addWidget(self.sec_old_frame)
 
@@ -424,13 +417,13 @@ class AccountManagementDialog(QDialog):
         self.edt_sec_new = QLineEdit()
         self.edt_sec_new.setEchoMode(QLineEdit.Password)
         self.edt_sec_new.setStyleSheet("padding: 6px;")
-        self._lbl_sec_new = QLabel("Neues Passwort:")
+        self._lbl_sec_new = QLabel(tr('auto.views_account_management_dialog.427_neues_passwort_d5fba2a0'))
         snf_layout.addRow(self._lbl_sec_new, self.edt_sec_new)
 
         self.edt_sec_new2 = QLineEdit()
         self.edt_sec_new2.setEchoMode(QLineEdit.Password)
         self.edt_sec_new2.setStyleSheet("padding: 6px;")
-        self._lbl_sec_new2 = QLabel("Wiederholen:")
+        self._lbl_sec_new2 = QLabel(tr('create_user.repeat_label'))
         snf_layout.addRow(self._lbl_sec_new2, self.edt_sec_new2)
 
         scf_layout.addWidget(self.sec_new_frame)
@@ -500,7 +493,7 @@ class AccountManagementDialog(QDialog):
             ph = "4–8 Ziffern" if is_pin_target else "Mindestens 4 Zeichen"
             self.edt_sec_new.setPlaceholderText(ph)
             self.edt_sec_new.setMaxLength(8 if is_pin_target else 128)
-            self._lbl_sec_new2.setText("Wiederholen:")
+            self._lbl_sec_new2.setText(tr('create_user.repeat_label'))
             self.edt_sec_new2.setPlaceholderText(
                 "PIN wiederholen" if is_pin_target else "Passwort wiederholen"
             )
@@ -510,8 +503,7 @@ class AccountManagementDialog(QDialog):
         if target == SECURITY_QUICK:
             if current != SECURITY_QUICK:
                 self.lbl_sec_warn.setText(
-                    "⚠️ Quick-Modus entfernt den Passwortschutz!\n"
-                    "Jeder mit Zugriff auf deine Dateien kann die Daten öffnen."
+                    tr('auto.views_account_management_dialog.513_quick_modus_entfernt_den_passwortsc_84601067')
                 )
                 self.lbl_sec_warn.setStyleSheet(
                     f"color: {ui_colors(self).negative}; font-size: 11px; padding: 5px;"
@@ -522,8 +514,7 @@ class AccountManagementDialog(QDialog):
         elif target in (SECURITY_PIN, SECURITY_PASSWORD):
             kind = "PIN" if target == SECURITY_PIN else "Passwort"
             self.lbl_sec_warn.setText(
-                f"⚠️ {kind} oder Restore-Key verlieren = "
-                f"Datenbank unwiederbringlich verloren!"
+                trf('auto.views_account_management_dialog.525_value_0_oder_restore_key_verlieren__81330d27', value_0=(kind))
             )
             self.lbl_sec_warn.setStyleSheet(
                 f"color: {ui_colors(self).negative}; font-size: 11px; padding: 5px;"
@@ -535,11 +526,11 @@ class AccountManagementDialog(QDialog):
         # Button nur aktiv wenn Stufe wirklich wechselt
         self.btn_sec_apply.setEnabled(not same_level)
         if same_level:
-            self.btn_sec_apply.setText("(Aktuelle Stufe)")
+            self.btn_sec_apply.setText(tr('auto.views_account_management_dialog.538_aktuelle_stufe_5d6746d9'))
             self.btn_sec_apply.setIcon(QIcon())
         else:
             target_label = SECURITY_LABELS.get(target, target)
-            self.btn_sec_apply.setText(f"Wechseln zu: {target_label}")
+            self.btn_sec_apply.setText(trf('auto.views_account_management_dialog.542_wechseln_zu_value_0_c4af1f8b', value_0=(target_label)))
             self.btn_sec_apply.setIcon(get_icon("🔒"))
 
     def _get_selected_security(self) -> str:
@@ -555,7 +546,7 @@ class AccountManagementDialog(QDialog):
         current = self.user.security
 
         if target == current:
-            QMessageBox.information(self, "Info",
+            QMessageBox.information(self, tr('auto.views_account_management_dialog.558_info_c90436c3'),
                                    tr("account.die_sicherheitsstufe_ist_bereits"))
             return
 
@@ -568,7 +559,7 @@ class AccountManagementDialog(QDialog):
             old_secret = self.edt_sec_old.text()
             if not old_secret:
                 mode = "PIN" if self.user.is_pin else "Passwort"
-                QMessageBox.warning(self, "Hinweis",
+                QMessageBox.warning(self, tr('dlg.hinweis'),
                                    trf("account.bitte_das_aktuelle_mode", mode=mode))
                 return
 
@@ -579,31 +570,31 @@ class AccountManagementDialog(QDialog):
 
             if not new_secret:
                 kind = "PIN" if target == SECURITY_PIN else "Passwort"
-                QMessageBox.warning(self, "Hinweis",
+                QMessageBox.warning(self, tr('dlg.hinweis'),
                                    trf("account.bitte_ein_neues_kind", kind=kind))
                 return
 
             if new_secret != new_secret2:
                 kind = "PIN" if target == SECURITY_PIN else "Passwort"
-                QMessageBox.warning(self, "Hinweis",
+                QMessageBox.warning(self, tr('dlg.hinweis'),
                                    trf("account.die_kindeingaben_stimmen_nicht", kind=kind))
                 return
 
             if target == SECURITY_PIN:
                 if not new_secret.isdigit() or not (4 <= len(new_secret) <= 8):
-                    QMessageBox.warning(self, "Hinweis",
-                                       "PIN muss 4–8 Ziffern lang sein.")
+                    QMessageBox.warning(self, tr('dlg.hinweis'),
+                                       tr('account.pin_length'))
                     return
             else:
                 if len(new_secret) < 4:
-                    QMessageBox.warning(self, "Hinweis",
-                                       "Passwort muss mindestens 4 Zeichen lang sein.")
+                    QMessageBox.warning(self, tr('dlg.hinweis'),
+                                       tr('account.password_min_length'))
                     return
 
         # Bestätigung bei Downgrade zu Quick
         if target == SECURITY_QUICK:
             reply = QMessageBox.warning(
-                self, "Schutz entfernen",
+                self, tr('auto.views_account_management_dialog.606_schutz_entfernen_0233ca15'),
                 "Willst du wirklich den Passwortschutz entfernen?\n\n" +
                 tr("account.jeder_mit_zugriff_auf"),
                 QMessageBox.Yes | QMessageBox.No
@@ -631,8 +622,7 @@ class AccountManagementDialog(QDialog):
                 f"{self.user.security_icon} {self.user.security_label}"
             )
             self._status_label.setText(
-                f"{self.user.security_icon} {self.user.security_label}  •  "
-                f"Erstellt: {self.user.created[:10]}"
+                trf('auto.views_account_management_dialog.634_value_0_value_1_erstellt_value_2_08181f59', value_0=(self.user.security_icon), value_1=(self.user.security_label), value_2=(self.user.created[:10]))
             )
             self.security_changed.emit(target)
 
@@ -649,8 +639,8 @@ class AccountManagementDialog(QDialog):
                 self._show_restore_key(restore_key, target_label)
             else:
                 QMessageBox.information(
-                    self, "Erfolg",
-                    f"Sicherheitsstufe geändert zu «{target_label}»."
+                    self, tr('msg.success'),
+                    trf('auto.views_account_management_dialog.653_sicherheitsstufe_geaendert_zu_value_de978174', value_0=(target_label))
                 )
         else:
             if self.user.needs_auth:
@@ -689,9 +679,7 @@ class AccountManagementDialog(QDialog):
         layout.addWidget(header)
 
         warn = QLabel(
-            "⚠️ <b>WICHTIG:</b> Dein Restore-Key hat sich geändert!<br>"
-            "Notiere diesen Key sicher — er ist dein Notfall-Zugang.<br>"
-            "Ohne diesen Key und ohne Passwort/PIN sind deine Daten <b>verloren</b>!"
+            tr('auto.views_account_management_dialog.692_b_wichtig_b_dein_restore_key_hat_si_aa706b0f')
         )
         warn.setWordWrap(True)
         warn.setTextFormat(Qt.RichText)
@@ -702,7 +690,7 @@ class AccountManagementDialog(QDialog):
         layout.addWidget(warn)
 
         layout.addSpacing(5)
-        layout.addWidget(QLabel("Dein neuer Restore-Key:"))
+        layout.addWidget(QLabel(tr('auto.views_account_management_dialog.705_dein_neuer_restore_key_0417e1e7')))
 
         key_edit = QTextEdit()
         key_edit.setPlainText(restore_key)
@@ -717,7 +705,7 @@ class AccountManagementDialog(QDialog):
 
         # Kopier-Button
         btn_layout = QHBoxLayout()
-        btn_copy = QPushButton("In Zwischenablage kopieren")
+        btn_copy = QPushButton(tr('auto.views_account_management_dialog.720_in_zwischenablage_kopieren_a988f8aa'))
         btn_copy.setIcon(get_icon("📋"))
         btn_copy.setStyleSheet("""
             QPushButton {
@@ -733,7 +721,7 @@ class AccountManagementDialog(QDialog):
 
         layout.addSpacing(10)
 
-        btn_ok = QPushButton("Ich habe den Key notiert")
+        btn_ok = QPushButton(tr('auto.views_account_management_dialog.736_ich_habe_den_key_notiert_9961ef11'))
         btn_ok.setIcon(get_icon("✅"))
         btn_ok.setStyleSheet("""
             QPushButton {
@@ -751,7 +739,7 @@ class AccountManagementDialog(QDialog):
         from PySide6.QtWidgets import QApplication
         clipboard = QApplication.clipboard()
         clipboard.setText(text)
-        btn.setText("Kopiert!")
+        btn.setText(tr('auto.views_account_management_dialog.754_kopiert_833acc01'))
         btn.setIcon(get_icon("✅"))
         from PySide6.QtCore import QTimer
-        QTimer.singleShot(2000, lambda: (btn.setText("In Zwischenablage kopieren"), btn.setIcon(get_icon("📋"))))
+        QTimer.singleShot(2000, lambda: (btn.setText(tr('auto.views_account_management_dialog.757_in_zwischenablage_kopieren_a4a61e69')), btn.setIcon(get_icon("📋"))))

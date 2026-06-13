@@ -48,6 +48,29 @@ HARDCODE_HINT_RE = re.compile(
 
 STRING_LITERAL_RE = re.compile(r"(?P<q>['\"])(?P<s>(?:\\.|(?!\1).)*)\1", re.MULTILINE)
 
+OK_LITERAL_EXACT = {"", " ", "OK", "0", "1", "?", "|", "✓", "✗", "★", "∞", r"\n"}
+OK_LITERAL_PATTERNS = [
+    re.compile(r"^[\W_]+$"),
+    re.compile(r"^#[0-9A-Fa-f]{3,8}$"),
+    re.compile(r"^[a-z_][a-z0-9_]*$"),  # interne Datenkeys wie is_fix
+    re.compile(r"^[%dmyYHMS.:%\- /]+$"),  # Datumsformate
+    re.compile(r"^[Xx-]+$"),            # Masken/Placeholder ohne Sprache
+    re.compile(r"^<\/?[a-z][a-z0-9]*>$"), # HTML-Trenner wie <br>
+]
+
+def _looks_user_text_literal(s: str) -> bool:
+    t = str(s or "").strip()
+    if t in OK_LITERAL_EXACT:
+        return False
+    if any(p.match(t) for p in OK_LITERAL_PATTERNS):
+        return False
+    # F-Strings wie "{icon} {name}" enthalten im Quelltext Buchstaben,
+    # aber keinen festen user-visible Text. Erst Platzhalter entfernen.
+    without_placeholders = re.sub(r"\{[^{}]+\}", "", t).strip()
+    if not without_placeholders or not re.search(r"[A-Za-zÄÖÜäöüßÉéÈèÀàÇç]", without_placeholders):
+        return False
+    return True
+
 IGNORE_PATH_PARTS = {
     "__pycache__",
     ".git",
@@ -55,8 +78,14 @@ IGNORE_PATH_PARTS = {
     "venv",
     "build",
     "dist",
-    "data",  # DB / Backups etc.
+    "data",  # DB / Backups etc. im Projekt, nicht /mnt/data
     "locales",  # JSON selbst nicht als Code scannen
+    "docs",
+    "installer",
+    "updater",
+    "tests",
+    "_attic",
+    "tools",
 }
 
 
@@ -89,8 +118,19 @@ def _load_locale_json(path: Path) -> Dict:
 
 
 def _iter_py_files(root: Path) -> Iterable[Path]:
+    """Iteriert Python-Dateien relativ zum Projektroot.
+
+    Wichtig: Nicht gegen absolute Pfadbestandteile prüfen. In der Sandbox
+    liegt das Projekt unter /mnt/data; sonst würde der absolute Ordnername
+    "data" versehentlich das ganze Projekt ausblenden.
+    """
+    root = root.resolve()
     for p in root.rglob("*.py"):
-        if any(part in IGNORE_PATH_PARTS for part in p.parts):
+        try:
+            rel = p.resolve().relative_to(root)
+        except ValueError:
+            rel = p
+        if any(part in IGNORE_PATH_PARTS for part in rel.parts):
             continue
         yield p
 
@@ -114,7 +154,8 @@ def _find_hardcoded_ui_strings(py_path: Path) -> List[HardcodedFinding]:
             continue
         if not HARDCODE_HINT_RE.search(line):
             continue
-        if not STRING_LITERAL_RE.search(line):
+        literals = [m.group("s") for m in STRING_LITERAL_RE.finditer(line)]
+        if not any(_looks_user_text_literal(x) for x in literals):
             continue
         if "print(" in line or "logger." in line or "logging." in line:
             continue
@@ -136,7 +177,7 @@ def main(argv: List[str]) -> int:
     ap.add_argument(
         "--lang",
         action="append",
-        default=["de", "en"],
+        default=None,
         help="Sprache(n) prüfen (Default: --lang de --lang en)",
     )
     ap.add_argument("--out", default="", help="Optional: Report-Datei schreiben")
@@ -145,11 +186,12 @@ def main(argv: List[str]) -> int:
 
     root = Path(args.root).resolve()
     locales_dir = (root / args.locales).resolve()
+    langs = args.lang or ["de", "en"]
 
     # Load locales
     locale_keys: Dict[str, Set[str]] = {}
     try:
-        for lang in args.lang:
+        for lang in langs:
             p = locales_dir / f"{lang}.json"
             if not p.exists():
                 raise RuntimeError(f"Locale fehlt: {p}")
@@ -167,12 +209,12 @@ def main(argv: List[str]) -> int:
         referenced |= _extract_tr_keys_from_code(txt)
         hardcoded.extend(_find_hardcoded_ui_strings(py))
 
-    base_lang = args.lang[0]
+    base_lang = langs[0]
     base = locale_keys[base_lang]
 
     missing_by_lang: Dict[str, Set[str]] = {}
     extra_by_lang: Dict[str, Set[str]] = {}
-    for lang in args.lang[1:]:
+    for lang in langs[1:]:
         missing_by_lang[lang] = base - locale_keys[lang]
         extra_by_lang[lang] = locale_keys[lang] - base
 
@@ -197,7 +239,7 @@ def main(argv: List[str]) -> int:
         out_lines.append(f"[OK] Alle referenzierten Keys existieren in {base_lang}.json")
         out_lines.append("")
 
-    for lang in args.lang[1:]:
+    for lang in langs[1:]:
         miss = missing_by_lang.get(lang, set())
         extra = extra_by_lang.get(lang, set())
 
@@ -253,7 +295,7 @@ def main(argv: List[str]) -> int:
         _write_report(out_path, report)
         print(f"\nReport geschrieben nach: {out_path}")
 
-    problems = bool(missing_in_base) or any(missing_by_lang.get(l) for l in args.lang[1:]) or bool(hardcoded)
+    problems = bool(missing_in_base) or any(missing_by_lang.get(l) for l in langs[1:]) or bool(hardcoded)
     return 1 if problems else 0
 
 

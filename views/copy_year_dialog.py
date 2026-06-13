@@ -33,7 +33,7 @@ class CopyYearDialog(QDialog):
         self.dst.setValue(default_src + 1)
 
         self.scope = QComboBox()
-        self.scope.addItems(["Alle", tr("kpi.expenses"), tr("kpi.income"), tr("typ.Ersparnisse")])
+        self.scope.addItems([tr('typ.Alle'), tr("kpi.expenses"), tr("kpi.income"), tr("typ.Ersparnisse")])
 
         self.carry = QCheckBox(tr("chk.copy_amounts"))
         self.carry.setChecked(True)

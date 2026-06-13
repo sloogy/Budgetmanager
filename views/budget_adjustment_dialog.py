@@ -363,7 +363,7 @@ class BudgetAdjustmentDialog(QDialog):
             self.table.setItem(row, 4, diff_item)
 
             # Überschritten (%)
-            percent_item = QTableWidgetItem(f"{percent_used:.1f}%")
+            percent_item = QTableWidgetItem(trf('auto.views_budget_adjustment_dialog.366_value_0_e619e83b', value_0=(percent_used)))
             percent_item.setTextAlignment(Qt.AlignCenter)
             if percent_used >= 150:
                 percent_item.setBackground(QColor(c.error_bg))
@@ -631,10 +631,7 @@ class BudgetAdjustmentDialog(QDialog):
             QMessageBox.information(
                 self,
                 tr("header.budgets_adjusted"),
-                f"✓ {applied_count} Budget(s) wurden erfolgreich angepasst {scope_text}.\n\n"
-                f"{tr('dlg.dlg_increase_per_month').format(amount=format_money(total_increase, force_sign=True))}\n\n"
-                f"Die neuen Budgets sind sofort wirksam.\n"
-                f"Bereits angepasste Kategorien werden aus der Liste entfernt."
+                trf('auto.views_budget_adjustment_dialog.634_value_0_budget_s_wurden_erfolgreich_e65aecbd', value_0=(applied_count), value_1=(scope_text), value_2=(tr('dlg.dlg_increase_per_month').format(amount=format_money(total_increase, force_sign=True))))
             )
             # Dialog NICHT schliessen – stattdessen Tabelle neu laden ohne die bereits
             # angepassten Kategorien. So sieht der Nutzer direkt, was noch offen ist.

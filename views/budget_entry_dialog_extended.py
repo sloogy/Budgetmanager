@@ -79,7 +79,7 @@ class NewCategoryDialog(QDialog):
         layout.addWidget(info)
         
         # === Kategorie-Details ===
-        group = QGroupBox("Kategorie-Details")
+        group = QGroupBox(tr('auto.views_budget_entry_dialog_extended.82_kategorie_details_6ef68b34'))
         form = QFormLayout(group)
         
         # Name
@@ -87,12 +87,12 @@ class NewCategoryDialog(QDialog):
         form.addRow("Name:", self.name_edit)
         
         # Typ (read-only anzeigen)
-        typ_label = QLabel(f"<b>{typ}</b>")
+        typ_label = QLabel(trf('auto.views_budget_entry_dialog_extended.90_b_value_0_b_ee6c93f4', value_0=(typ)))
         form.addRow("Typ:", typ_label)
         
         # Parent-Kategorie
         self.parent_combo = QComboBox()
-        self.parent_combo.addItem("— Hauptkategorie (kein Parent) —", None)
+        self.parent_combo.addItem(tr('auto.views_budget_entry_dialog_extended.95_hauptkategorie_kein_parent_883e571a'), None)
         
         # Nur Kategorien des gleichen Typs als mögliche Parents
         for cat in existing_categories:
@@ -107,7 +107,7 @@ class NewCategoryDialog(QDialog):
         layout.addWidget(group)
         
         # === Flags ===
-        flags_group = QGroupBox("Eigenschaften")
+        flags_group = QGroupBox(tr('auto.views_budget_entry_dialog_extended.110_eigenschaften_902ad0b9'))
         flags_layout = QGridLayout(flags_group)
         
         self.chk_fix = QCheckBox(tr("tracking.title.fixcosts"))
@@ -137,7 +137,7 @@ class NewCategoryDialog(QDialog):
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         
-        self.btn_create = QPushButton("Kategorie erstellen")
+        self.btn_create = QPushButton(tr('auto.views_budget_entry_dialog_extended.140_kategorie_erstellen_d45dd95d'))
         self.btn_create.setDefault(True)
         btn_layout.addWidget(self.btn_create)
         
@@ -153,15 +153,15 @@ class NewCategoryDialog(QDialog):
     def _create_category(self) -> None:
         name = self.name_edit.text().strip()
         if not name:
-            QMessageBox.warning(self, "Hinweis", tr("account.bitte_einen_namen_eingeben"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("account.bitte_einen_namen_eingeben"))
             return
         
         # Prüfen ob Name bereits existiert
         for cat in self.existing_categories:
             if cat.name.lower() == name.lower():
                 QMessageBox.warning(
-                    self, "Fehler", 
-                    f"Eine Kategorie mit dem Namen '{name}' existiert bereits."
+                    self, tr('msg.error'), 
+                    trf('auto.views_budget_entry_dialog_extended.164_eine_kategorie_mit_dem_namen_value__2fba299b', value_0=(name))
                 )
                 return
         
@@ -181,7 +181,7 @@ class NewCategoryDialog(QDialog):
             )
             self.accept()
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Konnte Kategorie nicht erstellen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_budget_entry_dialog_extended.184_konnte_kategorie_nicht_erstellen_va_dce4d9f6', value_0=(e)))
     
     def get_created_name(self) -> str:
         return self.name_edit.text().strip()
@@ -217,20 +217,20 @@ class CategoryManagementWidget(QWidget):
         self.btn_manage = QToolButton()
         self.btn_manage.setText("")
         self.btn_manage.setIcon(get_icon("⚙️"))
-        self.btn_manage.setToolTip("Kategorie-Optionen")
+        self.btn_manage.setToolTip(tr('auto.views_budget_entry_dialog_extended.220_kategorie_optionen_e050bea2'))
         self.btn_manage.setPopupMode(QToolButton.InstantPopup)
         
         menu = QMenu(self.btn_manage)
         self.act_new = menu.addAction(tr("budget.ctx.new_category"))
-        self.act_new_sub = menu.addAction("Neue Unterkategorie…")
+        self.act_new_sub = menu.addAction(tr('auto.views_budget_entry_dialog_extended.225_neue_unterkategorie_e01e0b00'))
         self.act_new_sub.setIcon(get_icon("📂"))
         menu.addSeparator()
         self.act_rename = menu.addAction(tr("budget.ctx.rename"))
         self.act_delete = menu.addAction(tr("btn.loeschen_2"))
         menu.addSeparator()
-        self.act_toggle_fix = menu.addAction("Fixkosten umschalten")
+        self.act_toggle_fix = menu.addAction(tr('ctx.toggle_fix'))
         self.act_toggle_fix.setIcon(get_icon("📌"))
-        self.act_toggle_rec = menu.addAction("Wiederkehrend umschalten")
+        self.act_toggle_rec = menu.addAction(tr('ctx.toggle_recurring'))
         self.act_toggle_rec.setIcon(get_icon("🔁"))
         self.act_set_day = menu.addAction(tr("dlg.faelligkeitstag_setzen_1"))
         
@@ -310,8 +310,8 @@ class CategoryManagementWidget(QWidget):
     def _new_category(self) -> None:
         """Erstellt eine neue Hauptkategorie."""
         name, ok = QInputDialog.getText(
-            self, "Neue Kategorie", 
-            f"Name der neuen Kategorie ({self.typ}):"
+            self, tr('btn.new_category'), 
+            trf('auto.views_budget_entry_dialog_extended.314_name_der_neuen_kategorie_value_0_399f599a', value_0=(self.typ))
         )
         if not ok or not name.strip():
             return
@@ -330,7 +330,7 @@ class CategoryManagementWidget(QWidget):
             self.set_category(name)
             self.category_changed.emit()
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Konnte Kategorie nicht erstellen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_budget_entry_dialog_extended.333_konnte_kategorie_nicht_erstellen_va_12bb8446', value_0=(e)))
     
     def _new_subcategory(self) -> None:
         """Erstellt eine neue Unterkategorie."""
@@ -355,7 +355,7 @@ class CategoryManagementWidget(QWidget):
                 logger.debug("default_idx = items.index(parent_cat.name): %s", e)
         
         parent_name, ok = QInputDialog.getItem(
-            self, "Parent-Kategorie",
+            self, tr('auto.views_budget_entry_dialog_extended.358_parent_kategorie_23016e6b'),
             tr("dlg.unter_welcher_kategorie_soll"),
             items, default_idx, False
         )
@@ -372,7 +372,7 @@ class CategoryManagementWidget(QWidget):
         # Name der neuen Unterkategorie
         name, ok = QInputDialog.getText(
             self, tr("budget.title.new_subcategory"),
-            f"Name der neuen Unterkategorie unter '{parent_name}':"
+            trf('auto.views_budget_entry_dialog_extended.375_name_der_neuen_unterkategorie_unter_655e15ec', value_0=(parent_name))
         )
         if not ok or not name.strip():
             return
@@ -391,7 +391,7 @@ class CategoryManagementWidget(QWidget):
             self.set_category(name)
             self.category_changed.emit()
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Konnte Unterkategorie nicht erstellen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_budget_entry_dialog_extended.394_konnte_unterkategorie_nicht_erstell_10c56189', value_0=(e)))
     
     def _rename_category(self) -> None:
         """Benennt die ausgewählte Kategorie um."""
@@ -401,8 +401,8 @@ class CategoryManagementWidget(QWidget):
             return
         
         new_name, ok = QInputDialog.getText(
-            self, "Umbenennen",
-            f"Neuer Name für '{cat.name}':",
+            self, tr('auto.views_budget_entry_dialog_extended.404_umbenennen_6ad211f7'),
+            trf('auto.views_budget_entry_dialog_extended.405_neuer_name_fuer_value_0_ac7dc2c9', value_0=(cat.name)),
             text=cat.name
         )
         if not ok or not new_name.strip():
@@ -422,11 +422,10 @@ class CategoryManagementWidget(QWidget):
             self.category_changed.emit()
             QMessageBox.information(
                 self, "OK", 
-                f"Kategorie umbenannt: '{cat.name}' → '{new_name}'\n"
-                "Alle Budget- und Tracking-Einträge wurden aktualisiert."
+                trf('auto.views_budget_entry_dialog_extended.425_kategorie_umbenannt_value_0_value_1_ac33fb77', value_0=(cat.name), value_1=(new_name))
             )
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Umbenennen fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_budget_entry_dialog_extended.429_umbenennen_fehlgeschlagen_value_0_5f1ed952', value_0=(e)))
     
     def _delete_category(self) -> None:
         """Löscht die ausgewählte Kategorie."""
@@ -503,7 +502,7 @@ class CategoryManagementWidget(QWidget):
         
         day, ok = QInputDialog.getInt(
             self, tr("dlg.faelligkeitstag"),
-            f"Tag im Monat für '{cat.name}' (1-31):",
+            trf('auto.views_budget_entry_dialog_extended.506_tag_im_monat_fuer_value_0_1_31_1fcfbede', value_0=(cat.name)),
             cat.recurring_day, 1, 31
         )
         if not ok:
@@ -513,8 +512,7 @@ class CategoryManagementWidget(QWidget):
             self.cat_model.update_flags(cat.id, is_recurring=True, recurring_day=day)
             QMessageBox.information(
                 self, "OK", 
-                f"Fälligkeitstag für '{cat.name}' auf {day}. gesetzt.\n"
-                "(Wiederkehrend wurde automatisch aktiviert)"
+                trf('auto.views_budget_entry_dialog_extended.516_faelligkeitstag_fuer_value_0_auf_va_02c90616', value_0=(cat.name), value_1=(day))
             )
             self.category_changed.emit()
         except Exception as e:
@@ -613,11 +611,11 @@ class BudgetEntryDialogExtended(QDialog):
         
         # === Betrag ===
         self.amount = QLineEdit()
-        self.amount.setPlaceholderText("z.B. 1200.00")
+        self.amount.setPlaceholderText(tr('auto.views_budget_entry_dialog_extended.616_z_b_1200_00_ad178edd'))
         
         # === Modus ===
         self.mode = QComboBox()
-        self.mode.addItems(["Monat", "Alle", "Bereich"])
+        self.mode.addItems([tr('auto.views_budget_entry_dialog_extended.620_monat_88dd17e2'), tr('typ.Alle'), tr('auto.views_budget_entry_dialog_extended.620_bereich_8b22d123')])
         
         self.month = QComboBox()
         self.month.addItems(_get_months())
@@ -712,13 +710,13 @@ class BudgetEntryDialogExtended(QDialog):
         
         cat = self.category_widget.get_category()
         if not cat:
-            QMessageBox.warning(self, "Fehlt", tr("dlg.bitte_kategorie_auswaehleneingeben"))
+            QMessageBox.warning(self, tr('auto.views_budget_entry_dialog_extended.715_fehlt_2f708b3e'), tr("dlg.bitte_kategorie_auswaehleneingeben"))
             return
         
         try:
             amt = parse_amount(self.amount.text())
         except Exception:
-            QMessageBox.warning(self, "Hinweis", tr("dlg.betrag_ist_ungueltig"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.betrag_ist_ungueltig"))
             return
         
         # Ausgaben: negative Zahlen verhindern

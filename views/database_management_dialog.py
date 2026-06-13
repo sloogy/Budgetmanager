@@ -51,7 +51,7 @@ class DatabaseManagementDialog(QDialog):
         layout = QVBoxLayout(self)
         
         # Titel
-        title = QLabel("🗄️ Datenbank-Verwaltung")
+        title = QLabel(tr('auto.views_database_management_dialog.54_datenbank_verwaltung_de01b445'))
         title_font = QFont()
         title_font.setPointSize(14)
         title_font.setBold(True)
@@ -67,7 +67,7 @@ class DatabaseManagementDialog(QDialog):
         self.stats_text.setMaximumHeight(150)
         stats_layout.addWidget(self.stats_text)
         
-        refresh_btn = QPushButton("Aktualisieren")
+        refresh_btn = QPushButton(tr('btn.refresh'))
         refresh_btn.setIcon(get_icon("🔄"))
         refresh_btn.clicked.connect(self._load_statistics)
         stats_layout.addWidget(refresh_btn)
@@ -80,13 +80,12 @@ class DatabaseManagementDialog(QDialog):
         cleanup_layout = QVBoxLayout()
         
         cleanup_info = QLabel(
-            "Entfernt verwaiste Einträge, ungültige Daten und optimiert die Datenbank.\n"
-            "Diese Operation ist sicher und löscht keine wichtigen Daten."
+            tr('auto.views_database_management_dialog.83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4')
         )
         cleanup_info.setWordWrap(True)
         cleanup_layout.addWidget(cleanup_info)
         
-        cleanup_btn = QPushButton("🧹 Datenbank bereinigen")
+        cleanup_btn = QPushButton(tr('auto.views_database_management_dialog.89_datenbank_bereinigen_031c950d'))
         cleanup_btn.clicked.connect(self._cleanup_database)
         cleanup_layout.addWidget(cleanup_btn)
         
@@ -98,8 +97,7 @@ class DatabaseManagementDialog(QDialog):
         reset_layout = QVBoxLayout()
         
         reset_warning = QLabel(
-            "<b>ACHTUNG:</b> Diese Aktion löscht Daten!\n"
-            "Es wird automatisch ein Backup erstellt."
+            tr('auto.views_database_management_dialog.101_b_achtung_b_diese_aktion_loescht_da_28422052')
         )
         _c = ui_colors(self)
         reset_warning.setStyleSheet(f"color: {_c.negative};")
@@ -115,7 +113,7 @@ class DatabaseManagementDialog(QDialog):
         reset_layout.addWidget(self.radio_full)
         
         self.radio_partial = QRadioButton(
-            "Budget & Kategorien zurücksetzen (Buchungen behalten)"
+            tr('auto.views_database_management_dialog.118_budget_kategorien_zuruecksetzen_buc_e2fafa90')
         )
         self.radio_group.addButton(self.radio_partial)
         reset_layout.addWidget(self.radio_partial)
@@ -204,7 +202,7 @@ class DatabaseManagementDialog(QDialog):
                 QMessageBox.information(
                     self,
                     tr("msg.cleanup_success"),
-                    f"{message}\n\nDetails:\n{details}"
+                    trf('auto.views_database_management_dialog.207_value_0_details_value_1_c4c562a1', value_0=(message), value_1=(details))
                 )
                 self._load_statistics()
             else:

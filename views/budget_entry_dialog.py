@@ -99,10 +99,10 @@ class BudgetEntryDialog(QDialog):
         self._set_categories(categories)
 
         self.amount = QLineEdit()
-        self.amount.setPlaceholderText("z.B. 1200.00")
+        self.amount.setPlaceholderText(tr('auto.views_budget_entry_dialog.102_z_b_1200_00_d7c96b70'))
 
         self.mode = QComboBox()
-        self.mode.addItems(["Monat", "Alle", "Bereich"])
+        self.mode.addItems([tr('auto.views_budget_entry_dialog.105_monat_069d7526'), tr('typ.Alle'), tr('auto.views_budget_entry_dialog.105_bereich_1f8db464')])
 
         self.month = QComboBox()
         self.month.addItems(_get_months())
@@ -117,7 +117,7 @@ class BudgetEntryDialog(QDialog):
         self.only_if_empty.setChecked(False)
 
         # --- Neue Kategorie Sektion ---
-        self.new_category_group = QGroupBox("Neue Kategorie erstellen")
+        self.new_category_group = QGroupBox(tr('auto.views_budget_entry_dialog.120_neue_kategorie_erstellen_2cbb61c0'))
         self.new_category_group.setCheckable(True)
         self.new_category_group.setChecked(False)
         self.new_category_group.setVisible(False)
@@ -142,7 +142,7 @@ class BudgetEntryDialog(QDialog):
         # Kategorie-Flags
         flags_layout = QHBoxLayout()
         self.chk_is_fix = QCheckBox(tr("tracking.title.fixcosts"))
-        self.chk_is_fix.setToolTip("Diese Kategorie ist eine monatlich feste Ausgabe")
+        self.chk_is_fix.setToolTip(tr('auto.views_budget_entry_dialog.145_diese_kategorie_ist_eine_monatlich__584b29cb'))
         self.chk_is_recurring = QCheckBox(tr("lbl.recurring"))
         self.chk_is_recurring.setToolTip(tr("dlg.diese_kategorie_ist_eine"))
         flags_layout.addWidget(self.chk_is_fix)
@@ -287,7 +287,7 @@ class BudgetEntryDialog(QDialog):
             # Nur Hauptkategorien (ohne parent_id) als mögliche Parents anbieten
             for cat in categories:
                 if cat.parent_id is None:
-                    self.parent_category.addItem(f"  ↳ {cat.name}", cat.id)
+                    self.parent_category.addItem(trf('auto.views_budget_entry_dialog.290_value_0_b601d60d', value_0=(cat.name)), cat.id)
                     self._parent_categories.append((cat.id, cat.name))
                     self._category_ids[cat.name.lower()] = cat.id
                 else:
@@ -321,8 +321,7 @@ class BudgetEntryDialog(QDialog):
         if not exists and len(text) >= 2:
             self.new_category_group.setVisible(True)
             self.new_cat_info.setText(
-                f"💡 Die Kategorie \"{text}\" existiert noch nicht.\n"
-                f"Aktiviere diese Option, um sie direkt zu erstellen."
+                trf('auto.views_budget_entry_dialog.324_die_kategorie_value_0_existiert_noc_66c8701f', value_0=(text))
             )
         else:
             self.new_category_group.setVisible(False)
@@ -373,13 +372,13 @@ class BudgetEntryDialog(QDialog):
             cat = cat[2:]
         
         if not cat:
-            QMessageBox.warning(self, "Fehlt", tr("dlg.bitte_kategorie_auswaehleneingeben"))
+            QMessageBox.warning(self, tr('auto.views_budget_entry_dialog.376_fehlt_e088971c'), tr("dlg.bitte_kategorie_auswaehleneingeben"))
             return
         
         try:
             amt = parse_amount(self.amount.text())
         except Exception:
-            QMessageBox.warning(self, "Hinweis", tr("dlg.betrag_ist_ungueltig"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.betrag_ist_ungueltig"))
             return
 
         # Ausgaben: negative Zahlen verhindern
@@ -395,7 +394,7 @@ class BudgetEntryDialog(QDialog):
                 # Benutzer muss bestätigen, dass neue Kategorie erstellt werden soll
                 result = QMessageBox.question(
                     self, 
-                    "Neue Kategorie",
+                    tr('btn.new_category'),
                     f"Die Kategorie \"{cat}\" existiert noch nicht.\n\n" +
                     tr("btn.moechtest_du_sie_jetzt"),
                     QMessageBox.Yes | QMessageBox.No,

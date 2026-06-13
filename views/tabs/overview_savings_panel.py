@@ -217,7 +217,7 @@ class OverviewSavingsPanel(QWidget):
                     spent = self.savings.get_spent_amount(goal.id)
                     released_amt = getattr(goal, "released_amount", 0) or 0
                     if spent > 0:
-                        sp_item = QTableWidgetItem(f"-{format_chf(spent)}")
+                        sp_item = QTableWidgetItem(trf('auto.views_tabs_overview_savings_panel.220_value_0_20ee72be', value_0=(format_chf(spent))))
                         sp_item.setForeground(QColor(c.negative))
                         sp_item.setToolTip(
                             trf(

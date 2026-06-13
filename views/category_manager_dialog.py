@@ -31,6 +31,31 @@ from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 
 
+class _CategoryTreeWidget(QTreeWidget):
+    """Tree mit einfachem Drag & Drop für Kategorie-Ebenen.
+
+    Drop-Ziele:
+    - auf eine Kategorie: wird Unterkategorie dieser Kategorie
+    - auf einen Typ-Header: wird Hauptkategorie dieses Typs
+    """
+
+    def __init__(self, owner: "CategoryManagerDialog"):
+        super().__init__(owner)
+        self._owner = owner
+
+    def dropEvent(self, event):  # noqa: N802 (Qt naming)
+        pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+        target_item = self.itemAt(pos)
+        current_item = self.currentItem()
+        selected_items = [it for it in self.selectedItems() if it is not target_item]
+        if not selected_items and current_item is not None and current_item is not target_item:
+            selected_items = [current_item]
+        if self._owner._handle_category_tree_drop(selected_items, target_item):
+            event.acceptProposedAction()
+            return
+        event.ignore()
+
+
 class CategoryManagerDialog(QDialog):
     """
     Umfassender Kategorien-Manager-Dialog.
@@ -59,19 +84,19 @@ class CategoryManagerDialog(QDialog):
         # === Toolbar ===
         toolbar = QHBoxLayout()
         
-        self.btn_add = QPushButton("Neue Kategorie")
+        self.btn_add = QPushButton(tr("btn.new_category"))
         self.btn_add.setIcon(get_icon("➕"))
         self.btn_add.clicked.connect(self._add_category)
         toolbar.addWidget(self.btn_add)
         
-        self.btn_add_sub = QPushButton("Unterkategorie")
+        self.btn_add_sub = QPushButton(tr("btn.subcategory"))
         self.btn_add_sub.setIcon(get_icon("📂"))
         self.btn_add_sub.clicked.connect(self._add_subcategory)
         toolbar.addWidget(self.btn_add_sub)
         
         toolbar.addSpacing(20)
         
-        self.btn_rename = QPushButton("Umbenennen")
+        self.btn_rename = QPushButton(tr("ctx.rename"))
         self.btn_rename.setIcon(get_icon("✏️"))
         self.btn_rename.clicked.connect(self._rename_category)
         toolbar.addWidget(self.btn_rename)
@@ -86,20 +111,36 @@ class CategoryManagerDialog(QDialog):
         # Filter
         toolbar.addWidget(QLabel(tr("lbl.filter_lbl")))
         self.filter_combo = QComboBox()
-        self.filter_combo.addItems(["Alle", tr("kpi.expenses"), tr("kpi.income"), tr("typ.Ersparnisse"), 
-                                     "Nur Fixkosten", "Nur Wiederkehrend"])
-        self.filter_combo.currentTextChanged.connect(self._apply_filter)
+        self.filter_combo.addItem(tr("categories.filter_all"), tr('auto.views_category_manager_dialog.111_all_0aa3eab1'))
+        self.filter_combo.addItem(display_typ(TYP_EXPENSES), TYP_EXPENSES)
+        self.filter_combo.addItem(display_typ(TYP_INCOME), TYP_INCOME)
+        self.filter_combo.addItem(display_typ(TYP_SAVINGS), TYP_SAVINGS)
+        self.filter_combo.addItem(tr("categories.filter_fixcosts"), tr('auto.views_category_manager_dialog.115_fix_79f4d539'))
+        self.filter_combo.addItem(tr("categories.filter_recurring"), tr('auto.views_category_manager_dialog.116_recurring_c39ebe21'))
+        self.filter_combo.currentIndexChanged.connect(lambda _idx: self._apply_filter())
         toolbar.addWidget(self.filter_combo)
         
         layout.addLayout(toolbar)
+
+        drag_hint = QLabel(tr("catmgr.drag_hint"))
+        drag_hint.setWordWrap(True)
+        drag_hint.setStyleSheet("font-size: 12px;")
+        layout.addWidget(drag_hint)
         
         # === Hauptbereich: Splitter mit Tree und Details ===
         splitter = QSplitter(Qt.Horizontal)
         
         # Kategorie-Baum
-        self.tree = QTreeWidget()
-        self.tree.setHeaderLabels([tr("header.category"), "Typ", "Fix", "Wdh.", "Tag"])
+        self.tree = _CategoryTreeWidget(self)
+        self.tree.setHeaderLabels([tr("header.category"), tr("header.type"), tr("header.fix"), tr("header.recurring_short"), tr("header.day")])
         self.tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.tree.setDragEnabled(True)
+        self.tree.setAcceptDrops(True)
+        self.tree.viewport().setAcceptDrops(True)
+        self.tree.setDropIndicatorShown(True)
+        self.tree.setDragDropMode(QAbstractItemView.InternalMove)
+        self.tree.setDefaultDropAction(Qt.MoveAction)
+        self.tree.setToolTip(tr("catmgr.drag_hint"))
         self.tree.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._show_context_menu)
         self.tree.itemSelectionChanged.connect(self._on_selection_changed)
@@ -131,13 +172,13 @@ class CategoryManagerDialog(QDialog):
         # Fixkosten
         props_layout.addWidget(QLabel(tr("lbl.fixed_costs")), 0, 0)
         self.fix_combo = QComboBox()
-        self.fix_combo.addItems([tr("dlg.nicht_aendern"), "✓ Aktivieren", "✗ Deaktivieren"])
+        self.fix_combo.addItems([tr("dlg.nicht_aendern"), tr("categories.activate"), tr("categories.deactivate")])
         props_layout.addWidget(self.fix_combo, 0, 1)
         
         # Wiederkehrend
         props_layout.addWidget(QLabel(tr("lbl.recurring")), 1, 0)
         self.rec_combo = QComboBox()
-        self.rec_combo.addItems([tr("dlg.nicht_aendern"), "✓ Aktivieren", "✗ Deaktivieren"])
+        self.rec_combo.addItems([tr("dlg.nicht_aendern"), tr("categories.activate"), tr("categories.deactivate")])
         props_layout.addWidget(self.rec_combo, 1, 1)
         
         # Fälligkeitstag
@@ -146,7 +187,7 @@ class CategoryManagerDialog(QDialog):
         self.day_check = QCheckBox(tr("lbl.set_to"))
         self.day_spin = QSpinBox()
         self.day_spin.setRange(1, 31)
-        self.day_spin.setSuffix(". des Monats")
+        self.day_spin.setSuffix(tr("categories.day_suffix"))
         self.day_spin.setEnabled(False)
         self.day_check.toggled.connect(self.day_spin.setEnabled)
         day_layout.addWidget(self.day_check)
@@ -197,7 +238,7 @@ class CategoryManagerDialog(QDialog):
         footer.addWidget(self.status_label)
         footer.addStretch()
         
-        self.btn_refresh = QPushButton("Aktualisieren")
+        self.btn_refresh = QPushButton(tr("btn.refresh"))
         self.btn_refresh.setIcon(get_icon("🔄"))
         self.btn_refresh.clicked.connect(self._load_categories)
         footer.addWidget(self.btn_refresh)
@@ -214,9 +255,9 @@ class CategoryManagerDialog(QDialog):
         
         c = ui_colors(self)
         type_colors = {
-            tr("kpi.expenses"): QColor(c.type_color(tr("kpi.expenses"))),
-            tr("kpi.income"): QColor(c.type_color(tr("kpi.income"))),
-            tr("typ.Ersparnisse"): QColor(c.type_color(tr("typ.Ersparnisse")))
+            TYP_EXPENSES: QColor(c.type_color(display_typ(TYP_EXPENSES))),
+            TYP_INCOME: QColor(c.type_color(display_typ(TYP_INCOME))),
+            TYP_SAVINGS: QColor(c.type_color(display_typ(TYP_SAVINGS))),
         }
         
         total_count = 0
@@ -228,8 +269,9 @@ class CategoryManagerDialog(QDialog):
             
             # Typ als Root-Item
             type_item = QTreeWidgetItem(self.tree)
-            type_item.setText(0, f"{typ} ({len(cats)})")
+            type_item.setText(0, trf("categories.type_header_count", typ=display_typ(typ), count=len(cats)))
             type_item.setData(0, Qt.UserRole, {"type": "header", "typ": typ})
+            type_item.setFlags(type_item.flags() | Qt.ItemIsDropEnabled)
             type_item.setExpanded(True)
             
             # Styling für Typ-Header
@@ -250,11 +292,12 @@ class CategoryManagerDialog(QDialog):
             def add_category(cat: Category, parent_item: QTreeWidgetItem):
                 item = QTreeWidgetItem(parent_item)
                 item.setText(0, cat.name)
-                item.setText(1, typ)
+                item.setText(1, display_typ(typ))
                 item.setText(2, "✓" if cat.is_fix else "")
                 item.setText(3, "✓" if cat.is_recurring else "")
                 item.setText(4, str(cat.recurring_day) if cat.is_recurring else "")
                 
+                item.setFlags(item.flags() | Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
                 item.setData(0, Qt.UserRole, {
                     "type": "category",
                     "id": cat.id,
@@ -286,42 +329,47 @@ class CategoryManagerDialog(QDialog):
             # Kinder zählen
             total_count += len(cats) - len(root_cats)
         
-        self.status_label.setText(f"{total_count} Kategorien geladen")
-        self._apply_filter(self.filter_combo.currentText())
+        self.status_label.setText(trf("categories.loaded_count", count=total_count))
+        self._apply_filter()
     
-    def _apply_filter(self, filter_text: str) -> None:
-        """Wendet Filter auf die Kategorien an."""
+    def _apply_filter(self, _filter_text: str | None = None) -> None:
+        """Wendet Filter auf die Kategorien an.
+
+        Wichtig: Die Logik nutzt currentData(), nicht den übersetzten
+        Anzeigetext. Dadurch funktionieren Sprachwechsel ohne kaputte Filter.
+        """
+        filter_value = self.filter_combo.currentData() if hasattr(self, "filter_combo") else "all"
         for i in range(self.tree.topLevelItemCount()):
             type_item = self.tree.topLevelItem(i)
             data = type_item.data(0, Qt.UserRole) or {}
             typ = data.get("typ", "")
-            
-            # Typ-Filter
-            show_type = (filter_text == "Alle" or 
-                        filter_text == typ or
-                        filter_text in ["Nur Fixkosten", "Nur Wiederkehrend"])
+
+            show_type = (
+                filter_value == "all"
+                or filter_value == typ
+                or filter_value in ("fix", "recurring")
+            )
             type_item.setHidden(not show_type)
-            
+
             if show_type:
                 visible_children = 0
                 for j in range(type_item.childCount()):
                     child = type_item.child(j)
                     child_data = child.data(0, Qt.UserRole) or {}
-                    
+
                     show_child = True
-                    if filter_text == "Nur Fixkosten":
+                    if filter_value == "fix":
                         show_child = child_data.get("is_fix", False)
-                    elif filter_text == "Nur Wiederkehrend":
+                    elif filter_value == "recurring":
                         show_child = child_data.get("is_recurring", False)
-                    
+
                     child.setHidden(not show_child)
                     if show_child:
                         visible_children += 1
-                
-                # Typ verstecken wenn keine sichtbaren Kinder
-                if filter_text in ["Nur Fixkosten", "Nur Wiederkehrend"] and visible_children == 0:
+
+                if filter_value in ("fix", "recurring") and visible_children == 0:
                     type_item.setHidden(True)
-    
+
     def _get_selected_categories(self) -> list[dict]:
         """Gibt die ausgewählten Kategorien zurück."""
         selected = []
@@ -377,21 +425,27 @@ class CategoryManagerDialog(QDialog):
             return
         
         menu = QMenu(self)
-        
-        act_rename = menu.addAction("Umbenennen", self._rename_category)
+        cat = data
+
+        act_rename = menu.addAction(tr("ctx.rename"), self._rename_category)
         act_rename.setIcon(get_icon("✏️"))
         menu.addAction(tr("btn.unterkategorie_hinzufuegen"), self._add_subcategory)
         menu.addSeparator()
+
+        # Alternative zum Drag & Drop: Ebenen gezielt per Kontextmenü wechseln.
+        self._build_move_menu(menu, cat)
+        menu.addSeparator()
         
-        cat = data
         fix_text = tr("budget.ctx.fix_disable") if cat["is_fix"] else tr("budget.ctx.fix_enable")
         menu.addAction(fix_text, lambda: self._toggle_single_flag(cat["id"], "is_fix", not cat["is_fix"]))
         
         rec_text = tr("budget.ctx.rec_disable") if cat["is_recurring"] else tr("budget.ctx.rec_enable")
         menu.addAction(rec_text, lambda: self._toggle_single_flag(cat["id"], "is_recurring", not cat["is_recurring"]))
         
-        act_set_day = menu.addAction(f"Fälligkeitstag setzen… ({cat['recurring_day']}.)",
-                                     lambda: self._set_single_day(cat["id"]))
+        act_set_day = menu.addAction(
+            trf("categories.set_due_day_action", day=cat["recurring_day"]),
+            lambda: self._set_single_day(cat["id"]),
+        )
         act_set_day.setIcon(get_icon("📅"))
         
         menu.addSeparator()
@@ -399,6 +453,164 @@ class CategoryManagerDialog(QDialog):
         
         menu.exec(self.tree.viewport().mapToGlobal(pos))
     
+    def _is_descendant_id(self, typ: str, parent_id: int, possible_child_id: int) -> bool:
+        """True, wenn possible_child_id irgendwo unter parent_id hängt."""
+        all_cats = self.cat_model.list(typ)
+        child_map: dict[int, list[int]] = {}
+        for cat in all_cats:
+            if cat.parent_id is not None:
+                child_map.setdefault(int(cat.parent_id), []).append(int(cat.id))
+
+        stack = list(child_map.get(int(parent_id), []))
+        seen: set[int] = set()
+        while stack:
+            cur = stack.pop()
+            if cur in seen:
+                continue
+            if cur == int(possible_child_id):
+                return True
+            seen.add(cur)
+            stack.extend(child_map.get(cur, []))
+        return False
+
+    def _handle_category_tree_drop(self, dragged_items: list[QTreeWidgetItem], target_item: QTreeWidgetItem | None) -> bool:
+        """Verschiebt Kategorien per Drag & Drop auf eine neue Ebene."""
+        if target_item is None:
+            return False
+
+        target_data = target_item.data(0, Qt.UserRole) or {}
+        if target_data.get("type") == "header":
+            target_typ = target_data.get("typ")
+            new_parent_id = None
+            target_label = display_typ(target_typ)
+        elif target_data.get("type") == "category":
+            target_typ = target_data.get("typ")
+            new_parent_id = int(target_data.get("id"))
+            target_label = target_data.get("name", "")
+        else:
+            return False
+
+        dragged_data = []
+        seen_ids: set[int] = set()
+        for item in dragged_items:
+            data = item.data(0, Qt.UserRole) or {}
+            if data.get("type") != "category":
+                continue
+            cat_id = int(data.get("id"))
+            if cat_id not in seen_ids:
+                dragged_data.append(data)
+                seen_ids.add(cat_id)
+
+        if not dragged_data:
+            return False
+
+        for cat in dragged_data:
+            cat_id = int(cat["id"])
+            if cat.get("typ") != target_typ:
+                QMessageBox.warning(self, tr("dlg.hinweis"), tr("categories.drag_only_same_type"))
+                return False
+            if new_parent_id == cat_id:
+                QMessageBox.warning(self, tr("dlg.hinweis"), tr("categories.drag_not_onto_self"))
+                return False
+            if new_parent_id is not None and self._is_descendant_id(cat["typ"], cat_id, new_parent_id):
+                QMessageBox.warning(self, tr("dlg.hinweis"), tr("categories.drag_no_cycle"))
+                return False
+
+        changed = 0
+        try:
+            for cat in dragged_data:
+                current_parent_id = cat.get("parent_id")
+                if current_parent_id == new_parent_id:
+                    continue
+                self.cat_model.update_parent(int(cat["id"]), new_parent_id)
+                changed += 1
+        except Exception as e:
+            reason = str(e)
+            msg = tr(reason) if reason.startswith("catmgr.") else trf("categories.move_failed", e=e)
+            QMessageBox.critical(self, tr("msg.error"), msg)
+            return False
+
+        if changed:
+            self._load_categories()
+            self.categories_changed.emit()
+            self.status_label.setText(trf("categories.moved_count", count=changed, target=target_label))
+        return bool(changed)
+
+    def _reparent(self, cat_id: int, new_parent_id: int | None) -> None:
+        """Gemeinsame Logik für Kontextmenü und gezielte Ebenenwechsel."""
+        current = self.cat_model.get_by_id(cat_id)
+        if current is not None and current.parent_id == new_parent_id:
+            return
+
+        ok, reason = self.cat_model.can_reparent(cat_id, new_parent_id)
+        if not ok:
+            QMessageBox.warning(self, tr("catmgr.move_not_possible"), tr(reason))
+            return
+
+        try:
+            self.cat_model.update_parent(cat_id, new_parent_id)
+            self._load_categories()
+            self.categories_changed.emit()
+            self._select_category_by_id(cat_id)
+        except Exception as e:
+            reason = str(e)
+            msg = tr(reason) if reason.startswith("catmgr.") else trf("categories.move_failed", e=e)
+            QMessageBox.critical(self, tr("msg.error"), msg)
+
+    def _select_category_by_id(self, cat_id: int) -> None:
+        """Sucht das Tree-Item zur ID, selektiert es und scrollt dorthin."""
+        def walk(item: QTreeWidgetItem) -> bool:
+            for i in range(item.childCount()):
+                child = item.child(i)
+                data = child.data(0, Qt.UserRole) or {}
+                if data.get("type") == "category" and int(data.get("id", -1)) == int(cat_id):
+                    self.tree.setCurrentItem(child)
+                    self.tree.scrollToItem(child)
+                    return True
+                if walk(child):
+                    return True
+            return False
+
+        for i in range(self.tree.topLevelItemCount()):
+            if walk(self.tree.topLevelItem(i)):
+                break
+
+    def _promote_to_top(self, cat_id: int) -> None:
+        """Macht eine Unterkategorie zur Hauptkategorie."""
+        self._reparent(cat_id, None)
+
+    def _build_move_menu(self, menu: QMenu, cat: dict) -> None:
+        """Baut das Untermenü 'Verschieben unter…' mit gültigen Parent-Zielen."""
+        move_menu = menu.addMenu(tr("catmgr.move_under"))
+        move_menu.setIcon(get_icon("📦"))
+
+        cat_id = int(cat["id"])
+        typ = cat["typ"]
+        invalid = self.cat_model._descendant_ids(cat_id) | {cat_id}
+
+        if cat.get("parent_id"):
+            act_top = move_menu.addAction(tr("catmgr.move_to_top"))
+            act_top.setIcon(get_icon("⬆️"))
+            act_top.triggered.connect(lambda _=False, cid=cat_id: self._promote_to_top(cid))
+            move_menu.addSeparator()
+
+        candidates = [c for c in self.cat_model.list(typ) if c.id not in invalid]
+        if not candidates:
+            act_none = move_menu.addAction(tr("catmgr.move_no_targets"))
+            act_none.setEnabled(False)
+            return
+
+        for c in candidates:
+            label = self.cat_model.display_with_parent(typ, c.name)
+            act = move_menu.addAction(label)
+            act.triggered.connect(
+                lambda _=False, cid=cat_id, pid=int(c.id): self._reparent(cid, pid)
+            )
+
+    def _make_root_category(self, cat: dict) -> None:
+        """Macht eine Kategorie wieder zur Hauptkategorie."""
+        self._reparent(int(cat["id"]), None)
+
     def _toggle_single_flag(self, cat_id: int, flag: str, value: bool) -> None:
         """Schaltet ein einzelnes Flag um."""
         try:
@@ -412,7 +624,7 @@ class CategoryManagerDialog(QDialog):
         """Setzt den Fälligkeitstag für eine einzelne Kategorie."""
         day, ok = QInputDialog.getInt(
             self, tr("dlg.faelligkeitstag"),
-            "Tag im Monat (1-31):",
+            tr("categories.day_prompt"),
             1, 1, 31
         )
         if ok:
@@ -469,12 +681,12 @@ class CategoryManagerDialog(QDialog):
         if changed > 0:
             self._load_categories()
             self.categories_changed.emit()
-            self.status_label.setText(f"{changed} Kategorie(n) aktualisiert")
+            self.status_label.setText(trf("categories.updated_count", count=changed))
         
         if errors:
             QMessageBox.warning(
-                self, "Teilweise fehlgeschlagen",
-                "Fehler bei:\n" + "\n".join(errors[:10])
+                self, tr("categories.partial_failed_title"),
+                tr("categories.errors_at") + "\n" + "\n".join(errors[:10])
             )
     
     def _quick_set_flag(self, flag: str, value: bool) -> None:
@@ -496,24 +708,30 @@ class CategoryManagerDialog(QDialog):
             self._load_categories()
             self.categories_changed.emit()
             flag_name = tr("tracking.title.fixcosts") if flag == "is_fix" else tr("lbl.recurring")
-            status = "aktiviert" if value else "deaktiviert"
+            status = tr("categories.status_activated") if value else tr("categories.status_deactivated")
             self.status_label.setText(trf("dlg.flag_name_fuer_changed_kategorien", flag_name=flag_name, changed=changed, status=status))
     
     def _add_category(self) -> None:
         """Fügt eine neue Kategorie hinzu."""
         # Typ auswählen
-        typ, ok = QInputDialog.getItem(
-            self, "Neue Kategorie",
-            "Typ:",
-            [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS],
+        typ_options = [
+            (display_typ(TYP_EXPENSES), TYP_EXPENSES),
+            (display_typ(TYP_INCOME), TYP_INCOME),
+            (display_typ(TYP_SAVINGS), TYP_SAVINGS),
+        ]
+        typ_display, ok = QInputDialog.getItem(
+            self, tr("budget.ctx.new_category"),
+            tr("header.type"),
+            [label for label, _typ in typ_options],
             0, False
         )
         if not ok:
             return
+        typ = next((_typ for label, _typ in typ_options if label == typ_display), TYP_EXPENSES)
         
         name, ok = QInputDialog.getText(
-            self, "Neue Kategorie",
-            f"Name der neuen {typ}-Kategorie:"
+            self, tr("budget.ctx.new_category"),
+            trf("categories.new_category_name_prompt", typ=display_typ(typ))
         )
         if not ok or not name.strip():
             return
@@ -524,8 +742,8 @@ class CategoryManagerDialog(QDialog):
         for cat in self.cat_model.list(typ):
             if cat.name.lower() == name.lower():
                 QMessageBox.warning(
-                    self, "Fehler",
-                    f"Eine Kategorie '{name}' existiert bereits."
+                    self, tr("msg.error"),
+                    trf("categories.category_exists", name=name)
                 )
                 return
         
@@ -533,17 +751,17 @@ class CategoryManagerDialog(QDialog):
             self.cat_model.create(typ=typ, name=name)
             self._load_categories()
             self.categories_changed.emit()
-            self.status_label.setText(f"Kategorie '{name}' erstellt")
+            self.status_label.setText(trf("categories.created", name=name))
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Erstellen fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf("categories.create_failed", e=e))
     
     def _add_subcategory(self) -> None:
         """Fügt eine Unterkategorie zur ausgewählten Kategorie hinzu."""
         selected = self._get_selected_categories()
         if len(selected) != 1:
             QMessageBox.information(
-                self, "Hinweis",
-                "Bitte genau eine Kategorie als Parent auswählen."
+                self, tr("dlg.hinweis"),
+                tr("categories.select_exactly_one_parent")
             )
             return
         
@@ -551,7 +769,7 @@ class CategoryManagerDialog(QDialog):
         
         name, ok = QInputDialog.getText(
             self, tr("budget.title.new_subcategory"),
-            f"Name der neuen Unterkategorie unter '{parent['name']}':"
+            trf("categories.new_subcategory_name_prompt", parent=parent["name"])
         )
         if not ok or not name.strip():
             return
@@ -566,17 +784,17 @@ class CategoryManagerDialog(QDialog):
             )
             self._load_categories()
             self.categories_changed.emit()
-            self.status_label.setText(f"Unterkategorie '{name}' erstellt")
+            self.status_label.setText(trf("categories.subcategory_created", name=name))
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Erstellen fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf("categories.create_failed", e=e))
     
     def _rename_category(self) -> None:
         """Benennt die ausgewählte Kategorie um."""
         selected = self._get_selected_categories()
         if len(selected) != 1:
             QMessageBox.information(
-                self, "Hinweis",
-                "Bitte genau eine Kategorie zum Umbenennen auswählen."
+                self, tr("dlg.hinweis"),
+                tr("categories.select_exactly_one_rename")
             )
             return
         
@@ -584,7 +802,7 @@ class CategoryManagerDialog(QDialog):
         
         new_name, ok = QInputDialog.getText(
             self, tr("budget.title.rename_category"),
-            f"Neuer Name für '{cat['name']}':",
+            trf("categories.rename_prompt", name=cat["name"]),
             text=cat["name"]
         )
         if not ok or not new_name.strip():
@@ -598,8 +816,8 @@ class CategoryManagerDialog(QDialog):
         for c in self.cat_model.list(cat["typ"]):
             if c.name.lower() == new_name.lower() and c.id != cat["id"]:
                 QMessageBox.warning(
-                    self, "Fehler",
-                    f"Eine Kategorie '{new_name}' existiert bereits."
+                    self, tr("msg.error"),
+                    trf("categories.category_exists", name=new_name)
                 )
                 return
         
@@ -612,9 +830,9 @@ class CategoryManagerDialog(QDialog):
             )
             self._load_categories()
             self.categories_changed.emit()
-            self.status_label.setText(f"Kategorie umbenannt: '{cat['name']}' → '{new_name}'")
+            self.status_label.setText(trf("categories.renamed", old=cat["name"], new=new_name))
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Umbenennen fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf("categories.rename_failed", e=e))
     
     def _delete_categories(self) -> None:
         """Löscht die ausgewählten Kategorien."""
@@ -627,9 +845,9 @@ class CategoryManagerDialog(QDialog):
         if len(selected) > 10:
             names.append(trf("dlg.und_lenselected_10_weitere", count=len(selected) - 10))
         
-        msg = f"{len(selected)} Kategorie(n) wirklich löschen?\n\n"
+        msg = trf("categories.confirm_delete_count", count=len(selected)) + "\n\n"
         msg += "\n".join(f"  • {n}" for n in names)
-        msg += "\n\n⚠️ WARNUNG: Alle zugehörigen Budget- und Tracking-Einträge werden ebenfalls gelöscht!"
+        msg += "\n\n" + tr("categories.delete_with_entries_warning")
         
         if QMessageBox.question(self, tr("btn.loeschen_bestaetigen"), msg) != QMessageBox.Yes:
             return
@@ -663,6 +881,6 @@ class CategoryManagerDialog(QDialog):
         
         if errors:
             QMessageBox.warning(
-                self, "Teilweise fehlgeschlagen",
-                "Fehler bei:\n" + "\n".join(errors[:10])
+                self, tr("categories.partial_failed_title"),
+                tr("categories.errors_at") + "\n" + "\n".join(errors[:10])
             )

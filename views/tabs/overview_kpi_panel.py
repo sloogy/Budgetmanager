@@ -34,7 +34,7 @@ from PySide6.QtWidgets import (
 
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from model.budget_overview_model import BudgetOverviewModel
-from utils.i18n import tr, display_typ, db_typ_from_display
+from utils.i18n import tr, display_typ, db_typ_from_display, trf
 from utils.money import format_money as format_chf
 from views.ui_colors import ui_colors
 from views.tabs.overview_widgets import CompactKPICard, CompactProgressBar, CompactChart
@@ -343,7 +343,7 @@ class OverviewKpiPanel(QWidget):
 
         from utils.i18n import tr as _tr
         month_label = _tr("lbl.entire_year") if month_idx <= 0 else _tr(f"month_short.{month_idx}")
-        self.lbl_drilldown_title.setText(f"{typ_name} – {month_label} {year}")
+        self.lbl_drilldown_title.setText(trf('auto.views_tabs_overview_kpi_panel.346_value_0_value_1_value_2_294a97b0', value_0=(typ_name), value_1=(month_label), value_2=(year)))
 
         self.chart_drilldown_budget.create_grouped_bar_chart(
             categories=labels,

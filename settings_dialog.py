@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QDialog, QListWidget, QListWidgetItem, QStackedWidget, QDialogButtonBox,
     QVBoxLayout, QHBoxLayout, QGroupBox, QFormLayout, QLabel,
     QCheckBox, QComboBox, QSpinBox, QPushButton, QLineEdit,
-    QFileDialog, QMessageBox, QWidget, QApplication,
+    QFileDialog, QMessageBox, QWidget, QApplication, QScrollArea, QFrame, QSizePolicy,
     QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView,
     QKeySequenceEdit
 )
@@ -39,7 +39,14 @@ class SettingsDialog(QDialog):
                  encrypted_mode: bool = False, encrypted_session=None):
         super().__init__(parent)
         self.settings = settings
-        self.app_version = app_version or ""
+        if app_version:
+            self.app_version = app_version
+        else:
+            try:
+                from app_info import app_version_label
+                self.app_version = app_version_label()
+            except Exception:
+                self.app_version = ""
         self.encrypted_mode = encrypted_mode
         # Optional: EncryptedSession (damit manuelles Backup auch im verschlüsselten Modus funktioniert)
         self.encrypted_session = encrypted_session
@@ -138,12 +145,34 @@ class SettingsDialog(QDialog):
         lbl.setFont(f)
         return lbl
 
+    def _scroll_page(self, inner: QWidget) -> QScrollArea:
+        """Wrappt Einstellungsseiten, damit größere Schrift/Theme-Skalierung nichts abschneidet."""
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setWidget(inner)
+        return scroll
+
+    def _configure_form_layout(self, form: QFormLayout) -> None:
+        """Robuste Formular-Skalierung für längere deutsche Texte und HiDPI."""
+        form.setFieldGrowthPolicy(QFormLayout.ExpandingFieldsGrow)
+        form.setRowWrapPolicy(QFormLayout.WrapLongRows)
+        form.setLabelAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        form.setFormAlignment(Qt.AlignLeft | Qt.AlignTop)
+        form.setHorizontalSpacing(16)
+        form.setVerticalSpacing(10)
+
+    def _settings_field(self, widget: QWidget, min_width: int = 220) -> QWidget:
+        widget.setMinimumWidth(min_width)
+        widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        return widget
+
     def _build_page_general(self) -> QWidget:
         w = QWidget()
         lay = QVBoxLayout(w)
         lay.addWidget(self._title(tr("settings.general")))
 
-        gb_start = QGroupBox("Start & Bedienung")
+        gb_start = QGroupBox(tr('auto.settings_dialog.146_start_bedienung_809e5573'))
         vb = QVBoxLayout(gb_start)
         self.cb_show_onboarding = QCheckBox(tr("chk.show_onboarding"))
         self.cb_remember_last_tab = QCheckBox(tr("dlg.letzten_geoeffneten_reiter_merken"))
@@ -177,9 +206,10 @@ class SettingsDialog(QDialog):
     def _build_page_behavior(self) -> QWidget:
         w = QWidget()
         lay = QVBoxLayout(w)
+        lay.setSpacing(10)
         lay.addWidget(self._title(tr("settings.behavior")))
 
-        gb_workflow = QGroupBox("Eingabe & Workflow")
+        gb_workflow = QGroupBox(tr('auto.settings_dialog.182_eingabe_workflow_c2c724ba'))
         vb = QVBoxLayout(gb_workflow)
 
         # Bestehende App-Settings
@@ -199,9 +229,10 @@ class SettingsDialog(QDialog):
 
         gb_tracking = QGroupBox(tr("tab.tracking"))
         fl = QFormLayout(gb_tracking)
+        self._configure_form_layout(fl)
         self.cmb_recent_days = QComboBox()
         self.cmb_recent_days.addItems(["14", "30"])
-        fl.addRow("Schnellfilter „nur letzte … Tage“", self.cmb_recent_days)
+        fl.addRow(tr("settings.recent_days_filter"), self._settings_field(self.cmb_recent_days))
 
         # Wiederkehrend: Default-Tag
         self.cmb_recurring_day = QComboBox()
@@ -209,47 +240,39 @@ class SettingsDialog(QDialog):
             self.cmb_recurring_day.addItem(str(d), d)
         self.cmb_recurring_day.addItem(tr("settings.month_end"), 31)
         self.cmb_recurring_day.setToolTip(
-            "Bevorzugter Tag für neue wiederkehrende Kategorien/Buchungen.\n"
-            "Wird automatisch gesetzt, wenn du eine Kategorie als wiederkehrend markierst.\n"
-            "Monatsende = letzter Tag des Monats."
+            tr('auto.settings_dialog.212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5')
         )
-        fl.addRow("Bevorzugter Tag (wiederkehrend)", self.cmb_recurring_day)
+        fl.addRow(tr("settings.recurring_preferred_day"), self._settings_field(self.cmb_recurring_day))
         lay.addWidget(gb_tracking)
 
         # Budget-Übersicht
         gb_budget_ov = QGroupBox(tr("grp.budget_overview"))
         fl_bo = QFormLayout(gb_budget_ov)
+        self._configure_form_layout(fl_bo)
         self.sb_budget_suggestion_months = QSpinBox()
         self.sb_budget_suggestion_months.setRange(2, 12)
-        self.sb_budget_suggestion_months.setSuffix(" Monate")
+        self.sb_budget_suggestion_months.setSuffix(tr("settings.months_suffix"))
         self.sb_budget_suggestion_months.setToolTip(
-            "Mindestanzahl aufeinanderfolgender Monate mit gleichem Trend,\n"
-            "bevor ein Anpassungsvorschlag angezeigt wird."
+            tr('auto.settings_dialog.226_mindestanzahl_aufeinanderfolgender__c912895e')
         )
-        fl_bo.addRow(tr("dlg.ueberschussdefizitvorschlag_ab"), self.sb_budget_suggestion_months)
+        fl_bo.addRow(tr("dlg.ueberschussdefizitvorschlag_ab"), self._settings_field(self.sb_budget_suggestion_months, 180))
 
         self.cb_carryover_start = QComboBox()
         self.cb_carryover_start.addItems([
-            "Januar", "Februar", "März", "April", "Mai", "Juni",
-            "Juli", "August", tr("month.9"), "Oktober", tr("month.11"), tr("month.12")
+            tr('month.1'), tr('month.2'), tr('month.3'), tr('month.4'), tr('month.5'), tr('month.6'),
+            tr('month.7'), tr('month.8'), tr("month.9"), tr('month.10'), tr("month.11"), tr("month.12")
         ])
         self.cb_carryover_start.setToolTip(
-            "Ab welchem Monat soll der Übertrag kumuliert werden?\n"
-            "Beispiel: Ab März → Jan/Feb haben keinen Übertrag,\n"
-            "Kumulation beginnt erst ab März."
+            tr('auto.settings_dialog.237_ab_welchem_monat_soll_der_uebertrag_6ec46422')
         )
-        fl_bo.addRow("Kumulation Startmonat", self.cb_carryover_start)
+        fl_bo.addRow(tr("settings.carryover_start_month"), self._settings_field(self.cb_carryover_start))
 
         self.sb_carryover_start_year = QSpinBox()
         self.sb_carryover_start_year.setRange(2020, 2099)
         self.sb_carryover_start_year.setToolTip(
-            "Ab welchem Jahr soll der Übertrag kumuliert werden?\n"
-            "Der Übertrag wird jahresübergreifend mitgenommen.\n"
-            "Beispiel: Startjahr 2025, Startmonat März →\n"
-            "Kumulation beginnt ab März 2025 und zieht sich\n"
-            "über alle Folgejahre."
+            tr('auto.settings_dialog.246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac')
         )
-        fl_bo.addRow("Kumulation Startjahr", self.sb_carryover_start_year)
+        fl_bo.addRow(tr("settings.carryover_start_year"), self._settings_field(self.sb_carryover_start_year, 180))
 
         lay.addWidget(gb_budget_ov)
 
@@ -257,18 +280,14 @@ class SettingsDialog(QDialog):
         gb_expert = QGroupBox(tr("settings.expert_mode"))
         vb_expert = QVBoxLayout(gb_expert)
         
-        self.cb_show_categories_tab = QCheckBox("Separaten Kategorien-Tab anzeigen")
+        self.cb_show_categories_tab = QCheckBox(tr('auto.settings_dialog.260_separaten_kategorien_tab_anzeigen_e55079e5'))
         self.cb_show_categories_tab.setToolTip(
-            "Aktiviert den separaten Kategorien-Tab für erweiterte Kategorie-Verwaltung.\n\n"
-            "Standard: Deaktiviert – Kategorien werden direkt im Budget-Dialog erstellt und verwaltet.\n"
-            "Der separate Tab ist nützlich für Massenbearbeitung, Filter und erweiterte Optionen.\n\n"
-            "Änderung erfordert Neustart der Anwendung."
+            tr('auto.settings_dialog.262_aktiviert_den_separaten_kategorien__7db32e53')
         )
         vb_expert.addWidget(self.cb_show_categories_tab)
         
         hint = QLabel(
-            "<small><i>Hinweis: Kategorien können auch direkt im Budget-Dialog über das ⚙-Menü "
-            "erstellt und bearbeitet werden.</i></small>"
+            tr('auto.settings_dialog.270_small_i_hinweis_kategorien_koennen__5859fbbe')
         )
         hint.setWordWrap(True)
         vb_expert.addWidget(hint)
@@ -276,7 +295,7 @@ class SettingsDialog(QDialog):
         lay.addWidget(gb_expert)
 
         lay.addStretch(1)
-        return w
+        return self._scroll_page(w)
 
     def _build_page_appearance(self) -> QWidget:
         w = QWidget()
@@ -307,7 +326,7 @@ class SettingsDialog(QDialog):
         
         lay.addWidget(gb_theme)
 
-        gb_tables = QGroupBox("Tabellen & Listen")
+        gb_tables = QGroupBox(tr('auto.settings_dialog.310_tabellen_listen_d0cf90f1'))
         fl2 = QFormLayout(gb_tables)
         self.cmb_density = QComboBox()
         self.cmb_density.addItems([tr("settings.density_compact"), tr("settings.density_normal"), tr("settings.density_large")])
@@ -325,8 +344,7 @@ class SettingsDialog(QDialog):
         lay.addWidget(self._title(tr("dlg.shortcuts")))
 
         hint = QLabel(
-            "<i>Klicke auf ein Kürzel und drücke die gewünschte Tastenkombination. "
-            "Leere Felder deaktivieren das Kürzel.</i>"
+            tr('auto.settings_dialog.328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c')
         )
         hint.setWordWrap(True)
         lay.addWidget(hint)
@@ -335,7 +353,7 @@ class SettingsDialog(QDialog):
         self.tbl_shortcuts = QTableWidget()
         self.tbl_shortcuts.setColumnCount(4)
         self.tbl_shortcuts.setHorizontalHeaderLabels([
-            "Aktion", tr("header.shortcut_current"), tr("settings.standard"), "Gruppe"
+            tr('header.action'), tr("header.shortcut_current"), tr("settings.standard"), tr('header.group')
         ])
         self.tbl_shortcuts.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tbl_shortcuts.setAlternatingRowColors(True)
@@ -482,8 +500,8 @@ class SettingsDialog(QDialog):
 
         gb = QGroupBox(tr("grp.application"))
         fl = QFormLayout(gb)
-        self.lbl_app_name = QLabel("Budgetmanager")
-        self.lbl_version = QLabel(self.app_version or "(Version unbekannt)")
+        self.lbl_app_name = QLabel(tr('auto.settings_dialog.485_budgetmanager_11c4305b'))
+        self.lbl_version = QLabel(self.app_version or tr("settings_ui.version_unknown"))
         fl.addRow(tr("settings_ui.about_name"), self.lbl_app_name)
         fl.addRow(tr("settings_ui.about_version"), self.lbl_version)
         lay.addWidget(gb)
@@ -693,7 +711,7 @@ class SettingsDialog(QDialog):
             self,
             tr("dlg.datenbank_auswaehlen"),
             str(Path.home()),
-            "SQLite Datenbank (*.db *.sqlite *.sqlite3);;Alle Dateien (*)",
+            tr('auto.settings_dialog.696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4'),
         )
         if file_path:
             self.le_db_path.setText(file_path)
@@ -741,7 +759,7 @@ class SettingsDialog(QDialog):
                 src_db = resolve_in_app(self.settings.database_path)
 
             if not src_db.exists():
-                QMessageBox.warning(self, "Sicherung", trf("msg.db_nicht_gefunden", src_db=str(src_db)))
+                QMessageBox.warning(self, tr('settings.backup_group'), trf("msg.db_nicht_gefunden", src_db=str(src_db)))
                 return
 
             backup_dir = resolve_in_app(
@@ -773,8 +791,8 @@ class SettingsDialog(QDialog):
 
             QMessageBox.information(
                 self,
-                "Sicherung",
-                f"Backup erfolgreich erstellt:\n{backup_name}\n\nOrt: {backup_dir}",
+                tr('settings.backup_group'),
+                trf('auto.settings_dialog.777_backup_erfolgreich_erstellt_value_0_a8f58abf', value_0=(backup_name), value_1=(backup_dir)),
             )
 
             # Bereinigung prüfen
@@ -783,7 +801,7 @@ class SettingsDialog(QDialog):
         except Exception as exc:
             QMessageBox.critical(
                 self,
-                "Sicherung fehlgeschlagen",
+                tr('settings.backup_failed_title'),
                 trf("msg.backup_erstellen_fehler", exc=str(exc)),
             )
 

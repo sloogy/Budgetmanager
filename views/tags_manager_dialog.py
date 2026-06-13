@@ -42,8 +42,7 @@ class TagsManagerDialog(QDialog):
         
         # Info-Label
         info = QLabel(
-            "Tags ermöglichen eine zusätzliche Kategorisierung von Buchungen.\n"
-            "Sie können Tags erstellen, bearbeiten, löschen und zusammenführen."
+            tr('auto.views_tags_manager_dialog.45_tags_ermoeglichen_eine_zusaetzliche_115e8eae')
         )
         info.setWordWrap(True)
         layout.addWidget(info)
@@ -51,7 +50,7 @@ class TagsManagerDialog(QDialog):
         # Tabelle mit Tags
         self.table = QTableWidget()
         self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["Tag", "Farbe", "Anzahl Verwendungen", "Aktionen"])
+        self.table.setHorizontalHeaderLabels([tr('lbl.day'), tr('lbl.color'), tr('auto.views_tags_manager_dialog.54_anzahl_verwendungen_838041ae'), tr('auto.views_tags_manager_dialog.54_aktionen_3bb76da2')])
         self.table.horizontalHeader().setStretchLastSection(False)
         self.table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         self.table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Fixed)
@@ -70,13 +69,13 @@ class TagsManagerDialog(QDialog):
         # Button-Leiste
         btn_layout = QHBoxLayout()
         
-        self.btn_add = QPushButton("Neu")
+        self.btn_add = QPushButton(tr('btn.new_theme'))
         self.btn_add.setIcon(get_icon("➕"))
-        self.btn_add.setToolTip("Neues Tag erstellen")
+        self.btn_add.setToolTip(tr('auto.views_tags_manager_dialog.75_neues_tag_erstellen_08b57a81'))
         self.btn_add.clicked.connect(self._add_tag)
         btn_layout.addWidget(self.btn_add)
         
-        self.btn_edit = QPushButton("Bearbeiten")
+        self.btn_edit = QPushButton(tr('auto.views_tags_manager_dialog.79_bearbeiten_86a45c89'))
         self.btn_edit.setIcon(get_icon("✏️"))
         self.btn_edit.setToolTip(tr("dlg.ausgewaehltes_tag_bearbeiten"))
         self.btn_edit.clicked.connect(self._edit_tag)
@@ -96,9 +95,9 @@ class TagsManagerDialog(QDialog):
         self.btn_merge.clicked.connect(self._merge_tags)
         btn_layout.addWidget(self.btn_merge)
         
-        self.btn_stats = QPushButton("Statistiken")
+        self.btn_stats = QPushButton(tr('auto.views_tags_manager_dialog.99_statistiken_6940bacd'))
         self.btn_stats.setIcon(get_icon("📊"))
-        self.btn_stats.setToolTip("Tag-Statistiken anzeigen")
+        self.btn_stats.setToolTip(tr('auto.views_tags_manager_dialog.101_tag_statistiken_anzeigen_48ad4b4e'))
         self.btn_stats.clicked.connect(self._show_stats)
         btn_layout.addWidget(self.btn_stats)
         
@@ -121,7 +120,7 @@ class TagsManagerDialog(QDialog):
             return
         self.table.selectRow(row)
         menu = QMenu(self)
-        act_edit = menu.addAction("Bearbeiten…")
+        act_edit = menu.addAction(tr('btn.edit'))
         act_edit.setIcon(get_icon("✏️"))
         act_color = menu.addAction(tr("dlg.farbe_aendern_1"))
         menu.addSeparator()
@@ -165,7 +164,7 @@ class TagsManagerDialog(QDialog):
                     color_item.setForeground(QBrush(Qt.white))
                 color_item.setText(color)
             else:
-                color_item.setText("(keine)")
+                color_item.setText(tr('auto.views_tags_manager_dialog.168_keine_8f599208'))
             self.table.setItem(row, 1, color_item)
             
             # Anzahl Verwendungen
@@ -204,8 +203,8 @@ class TagsManagerDialog(QDialog):
         """Fügt ein neues Tag hinzu"""
         name, ok = QInputDialog.getText(
             self,
-            "Neues Tag",
-            "Tag-Name:",
+            tr('auto.views_tags_manager_dialog.207_neues_tag_ef65ca35'),
+            tr('auto.views_tags_manager_dialog.208_tag_name_3d6e24ad'),
             text=""
         )
         
@@ -218,8 +217,8 @@ class TagsManagerDialog(QDialog):
         if self._tag_name_exists(name):
             QMessageBox.warning(
                 self,
-                "Tag existiert",
-                f"Ein Tag mit dem Namen '{name}' existiert bereits."
+                tr('auto.views_tags_manager_dialog.221_tag_existiert_20291c3b'),
+                trf('auto.views_tags_manager_dialog.222_ein_tag_mit_dem_namen_value_0_exist_be543b1c', value_0=(name))
             )
             return
             
@@ -245,14 +244,14 @@ class TagsManagerDialog(QDialog):
             self._load_tags()
             QMessageBox.information(
                 self,
-                "Erfolg",
-                f"Tag '{name}' wurde erstellt."
+                tr('msg.success'),
+                trf('auto.views_tags_manager_dialog.249_tag_value_0_wurde_erstellt_3d280c8d', value_0=(name))
             )
         else:
             QMessageBox.warning(
                 self,
-                "Fehler",
-                "Tag konnte nicht erstellt werden."
+                tr('msg.error'),
+                tr('auto.views_tags_manager_dialog.255_tag_konnte_nicht_erstellt_werden_955e67d7')
             )
             
     def _edit_tag(self):
@@ -266,8 +265,8 @@ class TagsManagerDialog(QDialog):
         
         new_name, ok = QInputDialog.getText(
             self,
-            "Tag bearbeiten",
-            "Neuer Name:",
+            tr('auto.views_tags_manager_dialog.269_tag_bearbeiten_5fd01a35'),
+            tr('auto.views_tags_manager_dialog.270_neuer_name_ada4af32'),
             text=old_name
         )
         
@@ -280,8 +279,8 @@ class TagsManagerDialog(QDialog):
         if new_name != old_name and self._tag_name_exists(new_name):
             QMessageBox.warning(
                 self,
-                "Tag existiert",
-                f"Ein Tag mit dem Namen '{new_name}' existiert bereits."
+                tr('auto.views_tags_manager_dialog.283_tag_existiert_1725866c'),
+                trf('auto.views_tags_manager_dialog.284_ein_tag_mit_dem_namen_value_0_exist_126d57ed', value_0=(new_name))
             )
             return
             
@@ -292,14 +291,14 @@ class TagsManagerDialog(QDialog):
             self._load_tags()
             QMessageBox.information(
                 self,
-                "Erfolg",
-                f"Tag wurde umbenannt in '{new_name}'."
+                tr('msg.success'),
+                trf('auto.views_tags_manager_dialog.296_tag_wurde_umbenannt_in_value_0_a29907d3', value_0=(new_name))
             )
         else:
             QMessageBox.warning(
                 self,
-                "Fehler",
-                "Tag konnte nicht umbenannt werden."
+                tr('msg.error'),
+                tr('auto.views_tags_manager_dialog.302_tag_konnte_nicht_umbenannt_werden_a89177d2')
             )
             
     def _delete_tag(self):
@@ -345,14 +344,14 @@ class TagsManagerDialog(QDialog):
             self._load_tags()
             QMessageBox.information(
                 self,
-                "Erfolg",
-                f"Tag '{tag_name}' wurde gelöscht."
+                tr('msg.success'),
+                trf('auto.views_tags_manager_dialog.349_tag_value_0_wurde_geloescht_b148924f', value_0=(tag_name))
             )
         else:
             QMessageBox.warning(
                 self,
-                "Fehler",
-                "Tag konnte nicht gelöscht werden."
+                tr('msg.error'),
+                tr('auto.views_tags_manager_dialog.355_tag_konnte_nicht_geloescht_werden_8f83bd72')
             )
             
     def _change_color(self, tag_id: int):
@@ -387,8 +386,8 @@ class TagsManagerDialog(QDialog):
         else:
             QMessageBox.warning(
                 self,
-                "Fehler",
-                "Farbe konnte nicht gespeichert werden."
+                tr('msg.error'),
+                tr('auto.views_tags_manager_dialog.391_farbe_konnte_nicht_gespeichert_werd_124397e4')
             )
             
     def _merge_tags(self):
@@ -400,7 +399,7 @@ class TagsManagerDialog(QDialog):
             QMessageBox.information(
                 self,
                 tr("dlg.nicht_genug_tags"),
-                "Es müssen mindestens 2 Tags vorhanden sein zum Zusammenführen."
+                tr('auto.views_tags_manager_dialog.403_es_muessen_mindestens_2_tags_vorhan_656a7014')
             )
             return
             
@@ -414,8 +413,7 @@ class TagsManagerDialog(QDialog):
         layout = QVBoxLayout()
         
         info = QLabel(
-            "Wählen Sie die Tags aus, die zusammengeführt werden sollen.\n"
-            "Alle ausgewählten Tags werden in das Ziel-Tag überführt."
+            tr('auto.views_tags_manager_dialog.417_waehlen_sie_die_tags_aus_die_zusamm_8f9053ec')
         )
         info.setWordWrap(True)
         layout.addWidget(info)
@@ -456,7 +454,7 @@ class TagsManagerDialog(QDialog):
             QMessageBox.warning(
                 self,
                 tr("dlg.ungueltige_auswahl"),
-                "Ziel und Quelle dürfen nicht identisch sein."
+                tr('auto.views_tags_manager_dialog.459_ziel_und_quelle_duerfen_nicht_ident_8347b5bc')
             )
             return
             
@@ -467,14 +465,14 @@ class TagsManagerDialog(QDialog):
             self._load_tags()
             QMessageBox.information(
                 self,
-                "Erfolg",
-                "Tags wurden erfolgreich zusammengeführt."
+                tr('msg.success'),
+                tr('auto.views_tags_manager_dialog.471_tags_wurden_erfolgreich_zusammengef_c25182ec')
             )
         else:
             QMessageBox.warning(
                 self,
-                "Fehler",
-                "Tags konnten nicht zusammengeführt werden."
+                tr('msg.error'),
+                tr('auto.views_tags_manager_dialog.477_tags_konnten_nicht_zusammengefuehrt_5b23f4a0')
             )
             
     def _show_stats(self):
@@ -485,7 +483,7 @@ class TagsManagerDialog(QDialog):
             QMessageBox.information(
                 self,
                 tr("dlg.keine_statistiken"),
-                "Es sind noch keine Tags mit Buchungen vorhanden."
+                tr('auto.views_tags_manager_dialog.488_es_sind_noch_keine_tags_mit_buchung_502ddf34')
             )
             return
             
@@ -498,7 +496,7 @@ class TagsManagerDialog(QDialog):
         
         table = QTableWidget()
         table.setColumnCount(3)
-        table.setHorizontalHeaderLabels(["Tag", "Anzahl Buchungen", "Gesamtbetrag"])
+        table.setHorizontalHeaderLabels([tr('lbl.day'), tr('auto.views_tags_manager_dialog.501_anzahl_buchungen_d50207ae'), tr('auto.views_tags_manager_dialog.501_gesamtbetrag_034bb324')])
         table.horizontalHeader().setStretchLastSection(True)
         table.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
         

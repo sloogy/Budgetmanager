@@ -34,7 +34,7 @@ class ExportDialog(QDialog):
         layout = QVBoxLayout()
         
         # === FORMAT ===
-        format_group = QGroupBox("Export-Format")
+        format_group = QGroupBox(tr('auto.views_export_dialog.37_export_format_46cddde9'))
         format_layout = QVBoxLayout()
         
         self.format_group = QButtonGroup(self)
@@ -51,29 +51,29 @@ class ExportDialog(QDialog):
         layout.addWidget(format_group)
         
         # === DATENAUSWAHL ===
-        data_group = QGroupBox("Zu exportierende Daten")
+        data_group = QGroupBox(tr('auto.views_export_dialog.54_zu_exportierende_daten_263da15e'))
         data_layout = QVBoxLayout()
         
-        self.chk_tracking = QCheckBox("📊 Tracking-Daten (Transaktionen)")
+        self.chk_tracking = QCheckBox(tr('auto.views_export_dialog.57_tracking_daten_transaktionen_e754548e'))
         self.chk_tracking.setChecked(True)
         data_layout.addWidget(self.chk_tracking)
         
-        self.chk_budget = QCheckBox("💰 Budget-Daten")
+        self.chk_budget = QCheckBox(tr('auto.views_export_dialog.61_budget_daten_d0bbdcff'))
         self.chk_budget.setChecked(True)
         data_layout.addWidget(self.chk_budget)
         
-        self.chk_categories = QCheckBox("Kategorien")
+        self.chk_categories = QCheckBox(tr('tab.categories'))
         data_layout.addWidget(self.chk_categories)
         
         data_group.setLayout(data_layout)
         layout.addWidget(data_group)
         
         # === ZEITRAUM ===
-        period_group = QGroupBox("Zeitraum")
+        period_group = QGroupBox(tr('auto.views_export_dialog.72_zeitraum_91c1e2b4'))
         period_layout = QVBoxLayout()
         
         year_row = QHBoxLayout()
-        year_row.addWidget(QLabel("Jahr:"))
+        year_row.addWidget(QLabel(tr('lbl.year')))
         self.year_combo = QComboBox()
         self.year_combo.addItem(tr("lbl.all_years"), None)
         years = sorted(set(self.budget.years()) | set(self.tracking.years()))
@@ -91,7 +91,7 @@ class ExportDialog(QDialog):
         layout.addWidget(period_group)
         
         # === OPTIONEN ===
-        options_group = QGroupBox("Optionen")
+        options_group = QGroupBox(tr('auto.views_export_dialog.94_optionen_21208517'))
         options_layout = QVBoxLayout()
         
         self.chk_include_header = QCheckBox(tr("dlg.spaltenueberschriften_einfuegen"))
@@ -108,7 +108,7 @@ class ExportDialog(QDialog):
         # === BUTTONS ===
         btn_layout = QHBoxLayout()
         
-        self.btn_export = QPushButton("Exportieren...")
+        self.btn_export = QPushButton(tr('auto.views_export_dialog.111_exportieren_f9fcfb6d'))
         self.btn_export.setIcon(get_icon("📤"))
         self.btn_export.clicked.connect(self._do_export)
         btn_layout.addWidget(self.btn_export)
@@ -124,7 +124,7 @@ class ExportDialog(QDialog):
     def _do_export(self):
         """Führt den Export durch"""
         if not (self.chk_tracking.isChecked() or self.chk_budget.isChecked() or self.chk_categories.isChecked()):
-            QMessageBox.warning(self, "Hinweis", tr("dlg.bitte_mindestens_einen_datentyp"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.bitte_mindestens_einen_datentyp"))
             return
         
         # Dateiname vorschlagen
@@ -143,8 +143,8 @@ class ExportDialog(QDialog):
         # Speicherort wählen
         file_path, _ = QFileDialog.getSaveFileName(
             self,
-            "Export speichern unter",
-            f"{default_name}.{ext}",
+            tr('auto.views_export_dialog.146_export_speichern_unter_7108d72d'),
+            trf('auto.views_export_dialog.147_value_0_value_1_3c09bb8d', value_0=(default_name), value_1=(ext)),
             filter_str
         )
         

@@ -55,8 +55,7 @@ class UpdateDialog(QDialog):
         self._has_staged_update = False
 
         self.lbl_info = QLabel(
-            f"Aktuell installiert: <b>{app_version_label()}</b><br>"
-            "Updates werden nur bei Klick geprüft."
+            trf('auto.views_update_dialog.58_aktuell_installiert_b_value_0_b_br__6b5cab7b', value_0=(app_version_label()))
         )
         self.lbl_info.setTextFormat(Qt.RichText)
 
@@ -179,14 +178,14 @@ class UpdateDialog(QDialog):
         if not self._has_staged_update:
             QMessageBox.information(
                 self,
-                "Kein Update bereit",
+                tr('auto.views_update_dialog.182_kein_update_bereit_dffe0658'),
                 tr("msg.kein_staged_update"),
             )
             return
 
         if QMessageBox.question(
             self,
-            "Update installieren",
+            tr('auto.views_update_dialog.189_update_installieren_8d363062'),
             tr("msg.update_install_hinweis"),
         ) != QMessageBox.Yes:
             return
@@ -202,7 +201,7 @@ class UpdateDialog(QDialog):
             else:
                 QProcess.startDetached(cmd[0], cmd[1:])
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Updater konnte nicht gestartet werden:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_update_dialog.205_updater_konnte_nicht_gestartet_werd_e418fb58', value_0=(e)))
             return
 
         # App schließen

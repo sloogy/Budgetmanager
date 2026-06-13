@@ -69,7 +69,7 @@ class CategoryPropertiesDialog(QDialog):
         self.name_edit = QLineEdit()
         form.addRow("Name:", self.name_edit)
         
-        self.typ_label = QLabel(f"<b>{self.typ}</b>")
+        self.typ_label = QLabel(trf('auto.views_category_properties_dialog.72_b_value_0_b_dba5f175', value_0=(self.typ)))
         form.addRow("Typ:", self.typ_label)
         
         # Parent-Kategorie
@@ -89,15 +89,13 @@ class CategoryPropertiesDialog(QDialog):
         
         self.chk_fix = QCheckBox(tr("tracking.title.fixcosts"))
         self.chk_fix.setToolTip(
-            "Markiert diese Kategorie als Fixkosten.\n"
-            "Fixkosten werden in der Übersicht separat ausgewiesen."
+            tr('auto.views_category_properties_dialog.92_markiert_diese_kategorie_als_fixkos_36056c84')
         )
         flags_layout.addWidget(self.chk_fix, 0, 0)
         
         self.chk_recurring = QCheckBox(tr("lbl.recurring"))
         self.chk_recurring.setToolTip(
-            "Markiert diese Kategorie als wiederkehrende Ausgabe.\n"
-            "Wiederkehrende Kategorien können automatisch gebucht werden."
+            tr('auto.views_category_properties_dialog.99_markiert_diese_kategorie_als_wieder_6c7786cd')
         )
         flags_layout.addWidget(self.chk_recurring, 0, 1)
         
@@ -114,8 +112,7 @@ class CategoryPropertiesDialog(QDialog):
         
         # Hinweis
         hint = QLabel(
-            "<small><i>Tipp: Wenn du einen Fälligkeitstag setzt, wird "
-            "'Wiederkehrend' automatisch aktiviert.</i></small>"
+            tr('auto.views_category_properties_dialog.117_small_i_tipp_wenn_du_einen_faelligk_01c58f1d')
         )
         hint.setWordWrap(True)
         flags_layout.addWidget(hint, 2, 0, 1, 2)
@@ -134,7 +131,7 @@ class CategoryPropertiesDialog(QDialog):
         self.btn_cancel = QPushButton(tr("btn.cancel"))
         btn_layout.addWidget(self.btn_cancel)
         
-        self.btn_save = QPushButton("Speichern")
+        self.btn_save = QPushButton(tr('btn.save'))
         self.btn_save.setIcon(get_icon("💾"))
         self.btn_save.setDefault(True)
         btn_layout.addWidget(self.btn_save)
@@ -173,7 +170,7 @@ class CategoryPropertiesDialog(QDialog):
     def _save(self) -> None:
         new_name = self.name_edit.text().strip()
         if not new_name:
-            QMessageBox.warning(self, "Hinweis", tr("account.bitte_einen_namen_eingeben"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("account.bitte_einen_namen_eingeben"))
             return
         
         # Prüfen ob neuer Name bereits existiert (wenn umbenannt)
@@ -181,8 +178,8 @@ class CategoryPropertiesDialog(QDialog):
             for cat in self.cat_model.list(self.typ):
                 if cat.name.lower() == new_name.lower() and cat.id != self.category.id:
                     QMessageBox.warning(
-                        self, "Fehler",
-                        f"Eine Kategorie mit dem Namen '{new_name}' existiert bereits."
+                        self, tr('msg.error'),
+                        trf('auto.views_category_properties_dialog.185_eine_kategorie_mit_dem_namen_value__53b9f84f', value_0=(new_name))
                     )
                     return
         
@@ -217,7 +214,7 @@ class CategoryPropertiesDialog(QDialog):
             self.accept()
             
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Speichern fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_category_properties_dialog.220_speichern_fehlgeschlagen_value_0_3a729058', value_0=(e)))
     
     def _delete(self) -> None:
         # Prüfen ob Unterkategorien vorhanden
@@ -251,7 +248,7 @@ class CategoryPropertiesDialog(QDialog):
             self.accept()
             
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Löschen fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_category_properties_dialog.254_loeschen_fehlgeschlagen_value_0_833e313c', value_0=(e)))
 
 
 class BulkCategoryEditDialog(QDialog):
@@ -283,7 +280,7 @@ class BulkCategoryEditDialog(QDialog):
         self.list_widget = QListWidget()
         self.list_widget.setMaximumHeight(100)
         for name, typ in self.categories:
-            self.list_widget.addItem(f"{name} ({typ})")
+            self.list_widget.addItem(trf('auto.views_category_properties_dialog.286_value_0_value_1_90606f5a', value_0=(name), value_1=(typ)))
         layout.addWidget(self.list_widget)
         
         # Separator
@@ -298,12 +295,12 @@ class BulkCategoryEditDialog(QDialog):
         
         # Fixkosten
         self.fix_combo = QComboBox()
-        self.fix_combo.addItems([tr("dlg.nicht_aendern"), "✓ Aktivieren", "✗ Deaktivieren"])
+        self.fix_combo.addItems([tr("dlg.nicht_aendern"), tr('categories.activate'), tr('categories.deactivate')])
         form.addRow("Fixkosten:", self.fix_combo)
         
         # Wiederkehrend
         self.rec_combo = QComboBox()
-        self.rec_combo.addItems([tr("dlg.nicht_aendern"), "✓ Aktivieren", "✗ Deaktivieren"])
+        self.rec_combo.addItems([tr("dlg.nicht_aendern"), tr('categories.activate'), tr('categories.deactivate')])
         form.addRow("Wiederkehrend:", self.rec_combo)
         
         # Tag
@@ -322,8 +319,7 @@ class BulkCategoryEditDialog(QDialog):
         
         # Hinweis
         hint = QLabel(
-            "<small><i>Hinweis: Wenn du einen Fälligkeitstag setzt, wird "
-            "'Wiederkehrend' automatisch aktiviert.</i></small>"
+            tr('auto.views_category_properties_dialog.325_small_i_hinweis_wenn_du_einen_faell_5237905b')
         )
         hint.setWordWrap(True)
         layout.addWidget(hint)
@@ -347,8 +343,8 @@ class BulkCategoryEditDialog(QDialog):
         
         if fix_choice == 0 and rec_choice == 0 and not set_day:
             QMessageBox.information(
-                self, "Hinweis", 
-                "Keine Änderungen ausgewählt."
+                self, tr('dlg.hinweis'), 
+                tr('msg.no_changes_selected')
             )
             return
         
@@ -394,7 +390,7 @@ class BulkCategoryEditDialog(QDialog):
         if errors:
             msg += f"\n\nFehler bei:\n" + "\n".join(errors[:10])
         
-        QMessageBox.information(self, "Ergebnis", msg)
+        QMessageBox.information(self, tr('auto.views_category_properties_dialog.397_ergebnis_0d350353'), msg)
         
         if changed > 0:
             self.categories_updated.emit()
@@ -426,7 +422,7 @@ class QuickCategoryDialog(QDialog):
         
         # Name
         self.name_edit = QLineEdit(default_name)
-        self.name_edit.setPlaceholderText("z.B. Versicherung, Streaming, ...")
+        self.name_edit.setPlaceholderText(tr('auto.views_category_properties_dialog.429_z_b_versicherung_streaming_6d95c073'))
         form.addRow("Name:", self.name_edit)
         
         # Typ
@@ -470,7 +466,7 @@ class QuickCategoryDialog(QDialog):
         self.btn_cancel = QPushButton(tr("btn.cancel"))
         btn_layout.addWidget(self.btn_cancel)
         
-        self.btn_create = QPushButton("✓ Erstellen")
+        self.btn_create = QPushButton(tr('auto.views_category_properties_dialog.473_erstellen_482a728e'))
         self.btn_create.setDefault(True)
         btn_layout.addWidget(self.btn_create)
         
@@ -487,7 +483,7 @@ class QuickCategoryDialog(QDialog):
     def _update_parents(self, typ_display: str) -> None:
         typ = self.typ_combo.currentData() or db_typ_from_display(typ_display)
         self.parent_combo.clear()
-        self.parent_combo.addItem("— Hauptkategorie (kein Parent) —", None)
+        self.parent_combo.addItem(tr('auto.views_category_properties_dialog.490_hauptkategorie_kein_parent_90e59485'), None)
 
         for cat in self.cat_model.list(typ):
             indent = "  " if cat.parent_id else ""
@@ -496,7 +492,7 @@ class QuickCategoryDialog(QDialog):
     def _create(self) -> None:
         name = self.name_edit.text().strip()
         if not name:
-            QMessageBox.warning(self, "Hinweis", tr("account.bitte_einen_namen_eingeben"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("account.bitte_einen_namen_eingeben"))
             return
 
         typ = self.typ_combo.currentData() or db_typ_from_display(self.typ_combo.currentText())
@@ -505,8 +501,8 @@ class QuickCategoryDialog(QDialog):
         for cat in self.cat_model.list(typ):
             if cat.name.lower() == name.lower():
                 QMessageBox.warning(
-                    self, "Fehler",
-                    f"Eine Kategorie mit dem Namen '{name}' existiert bereits."
+                    self, tr('msg.error'),
+                    trf('auto.views_category_properties_dialog.509_eine_kategorie_mit_dem_namen_value__1f3513d0', value_0=(name))
                 )
                 return
         
@@ -527,7 +523,7 @@ class QuickCategoryDialog(QDialog):
             self.accept()
             
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Erstellen fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_category_properties_dialog.530_erstellen_fehlgeschlagen_value_0_bb0f3855', value_0=(e)))
     
     def get_created_name(self) -> str:
         return self.name_edit.text().strip()

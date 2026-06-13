@@ -51,7 +51,7 @@ class TrackerDialog(QDialog):
         self.cb_cat.setEnabled(False)
 
         self.ed_amount = QLineEdit()
-        self.ed_amount.setPlaceholderText("z.B. 12.50")
+        self.ed_amount.setPlaceholderText(tr('auto.views_tracker_dialog.54_z_b_12_50_7eb13fc1'))
 
         self.ed_details = QLineEdit()
 
@@ -159,15 +159,15 @@ class TrackerDialog(QDialog):
     def _validate_and_accept(self) -> None:
         typ = self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
         if not typ:
-            QMessageBox.warning(self, "Fehlt", tr("dlg.bitte_typ_auswaehlen"))
+            QMessageBox.warning(self, tr('auto.views_tracker_dialog.162_fehlt_fb898654'), tr("dlg.bitte_typ_auswaehlen"))
             return
         if not self.cb_cat.currentText():
-            QMessageBox.warning(self, "Fehlt", tr("dlg.bitte_kategorie_auswaehlen"))
+            QMessageBox.warning(self, tr('auto.views_tracker_dialog.165_fehlt_a7f19cb1'), tr("dlg.bitte_kategorie_auswaehlen"))
             return
         try:
             amt = parse_amount(self.ed_amount.text())
         except Exception:
-            QMessageBox.warning(self, "Hinweis", tr("dlg.betrag_ist_ungueltig"))
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.betrag_ist_ungueltig"))
             return
         if typ == TYP_EXPENSES and amt < 0:
             QMessageBox.warning(self, tr("dlg.nicht_erlaubt"), tr("dlg.bei_ausgaben_sind_negative"))

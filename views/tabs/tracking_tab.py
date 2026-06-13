@@ -53,7 +53,7 @@ class TrackingTab(QWidget):
         self.btn_clear_filters=QPushButton(tr("btn.reset_filters"))
 
         # Quick Filters
-        self.chk_recent=QCheckBox(f"Nur letzte {self.recent_days} Tage")
+        self.chk_recent=QCheckBox(trf('auto.views_tabs_tracking_tab.56_nur_letzte_value_0_tage_48196fae', value_0=(self.recent_days)))
         self.chk_recent.setChecked(False)
         
         # ===== ERWEITERTE FILTER =====
@@ -116,7 +116,7 @@ class TrackingTab(QWidget):
 
         # Tabelle
         self.table=QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels([tr("header.date"), tr("header.type"), tr("header.category"), currency_header(), tr("header.description"), "_id"])
+        self.table.setHorizontalHeaderLabels([tr("header.date"), tr("header.type"), tr("header.category"), currency_header(), tr("header.description"), tr('auto.views_tabs_tracking_tab.119_id_db302b9b')])
 
         # Accessibility: Header-Tooltips
         _hdr = self.table.horizontalHeader()
@@ -160,20 +160,20 @@ class TrackingTab(QWidget):
         
         # Zeile 1: Typ und Kategorie
         row1 = QHBoxLayout()
-        row1.addWidget(QLabel("Typ:"))
+        row1.addWidget(QLabel(tr('lbl.type')))
         row1.addWidget(self.filter_typ, 1)
         row1.addWidget(QLabel(tr("lbl.category")))
         row1.addWidget(self.filter_category, 2)
-        row1.addWidget(QLabel("Tag:"))
+        row1.addWidget(QLabel(tr('lbl.tag')))
         row1.addWidget(self.filter_tag, 1)
         filter_layout.addLayout(row1)
         
         # Zeile 2: Datumsfilter
         row2 = QHBoxLayout()
         row2.addWidget(self.chk_use_date_filter)
-        row2.addWidget(QLabel("Von:"))
+        row2.addWidget(QLabel(tr('lbl.from')))
         row2.addWidget(self.filter_date_from)
-        row2.addWidget(QLabel("Bis:"))
+        row2.addWidget(QLabel(tr('lbl.to')))
         row2.addWidget(self.filter_date_to)
         row2.addStretch(1)
         filter_layout.addLayout(row2)
@@ -181,9 +181,9 @@ class TrackingTab(QWidget):
         # Zeile 3: Betragsfilter
         row3 = QHBoxLayout()
         row3.addWidget(self.chk_use_amount_filter)
-        row3.addWidget(QLabel("Min:"))
+        row3.addWidget(QLabel(tr('lbl.min')))
         row3.addWidget(self.filter_min_amount)
-        row3.addWidget(QLabel("Max:"))
+        row3.addWidget(QLabel(tr('lbl.max')))
         row3.addWidget(self.filter_max_amount)
         row3.addStretch(1)
         filter_layout.addLayout(row3)
@@ -454,7 +454,7 @@ class TrackingTab(QWidget):
     def set_recent_days(self, days: int):
         """Setzt den Zeitraum für den Quick-Filter (nur 14 oder 30)."""
         self.recent_days = 30 if int(days) == 30 else 14
-        self.chk_recent.setText(f"Nur letzte {self.recent_days} Tage")
+        self.chk_recent.setText(trf('auto.views_tabs_tracking_tab.457_nur_letzte_value_0_tage_be9a083a', value_0=(self.recent_days)))
         # Wenn Quick-Filter aktiv ist, sofort neu laden
         if self.chk_recent.isChecked():
             self.refresh()
@@ -579,7 +579,7 @@ class TrackingTab(QWidget):
     def set_recent_days(self, days: int):
         """Setzt die Anzahl Tage für den Quick-Filter (nur 14 oder 30)."""
         self.recent_days = 30 if int(days) == 30 else 14
-        self.chk_recent.setText(f"Nur letzte {self.recent_days} Tage")
+        self.chk_recent.setText(trf('auto.views_tabs_tracking_tab.582_nur_letzte_value_0_tage_a8e14b8a', value_0=(self.recent_days)))
         # Wenn der Filter aktiv ist, direkt neu laden
         if self.chk_recent.isChecked():
             self.refresh()
@@ -679,10 +679,7 @@ class TrackingTab(QWidget):
             QMessageBox.information(
                 self,
                 tr("tracking.title.savings_consumption"),
-                f"Diese Buchung wird als Verbrauch vom freigegebenen Sparziel "
-                f"<b>«{goal_name}»</b> erfasst.\n\n"
-                f"Freigegebener Betrag: {format_money(conflict['current_amount'])}\n"
-                f"Entnahme: {format_money(abs_amount)}"
+                trf('auto.views_tabs_tracking_tab.682_diese_buchung_wird_als_verbrauch_vo_54220c3f', value_0=(goal_name), value_1=(format_money(conflict['current_amount'])), value_2=(format_money(abs_amount)))
             )
             return "withdrawal"
 

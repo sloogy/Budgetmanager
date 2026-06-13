@@ -142,13 +142,13 @@ class OverviewRightPanel(QWidget):
         form.addWidget(self.search_edit, 5, 1)
 
         # Betrag
-        form.addWidget(QLabel(f"Min {currency_header()}:"), 6, 0)
+        form.addWidget(QLabel(trf('auto.views_tabs_overview_right_panel.145_min_value_0_b5706b16', value_0=(currency_header()))), 6, 0)
         self.min_amount = QLineEdit()
         self.min_amount.setPlaceholderText(tr("overview.amount.min_placeholder"))
         self.min_amount.setValidator(QDoubleValidator(0.0, 1e12, 2, self))
         form.addWidget(self.min_amount, 6, 1)
 
-        form.addWidget(QLabel(f"Max {currency_header()}:"), 7, 0)
+        form.addWidget(QLabel(trf('auto.views_tabs_overview_right_panel.151_max_value_0_f4d06ed5', value_0=(currency_header()))), 7, 0)
         self.max_amount = QLineEdit()
         self.max_amount.setPlaceholderText(tr("overview.amount.max_placeholder"))
         self.max_amount.setValidator(QDoubleValidator(0.0, 1e12, 2, self))

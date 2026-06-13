@@ -37,10 +37,7 @@ class BudgetFillDialog(QDialog):
         root = QVBoxLayout(self)
 
         hint = QLabel(
-            "<b>Budget ausfüllen</b><br>"
-            "Trage deine Monatswerte direkt in die Tabelle ein (Doppelklick/F2). "
-            "Nutze <b>🌳 Baum</b> für Ein-/Ausklappen oder Pfad-Anzeige." \
-            "<br><small>Tipp: Speichere danach mit <b>Strg+S</b> oder unten mit \"Speichern &amp; Schließen\".</small>"
+            tr('auto.views_budget_fill_dialog.40_b_budget_ausfuellen_b_br_trage_dein_680d66fc')
         )
         hint.setTextFormat(Qt.RichText)
         hint.setWordWrap(True)
