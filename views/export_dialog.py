@@ -219,15 +219,17 @@ class ExportDialog(QDialog):
             if self.chk_categories.isChecked():
                 if self.chk_include_header.isChecked():
                     writer.writerow(["=== KATEGORIEN ==="])
-                    writer.writerow(["Typ", "Name", tr("tracking.title.fixcosts"), tr("lbl.recurring")])
-                
+                    writer.writerow(["Typ", "Hauptkategorie", "Unterkategorie",
+                                     "Fix (0/1)", "Wiederkehrend (0/1)", "Tag (1-31)"])
+
                 from model.category_model import CategoryModel
                 cats = CategoryModel(self.conn)
-                for typ in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
-                    for c in cats.list(typ):
-                        writer.writerow([
-                            typ,
-                            c.name,
-                            "Ja" if c.is_fix else "Nein",
-                            "Ja" if c.is_recurring else "Nein"
-                        ])
+                for typ in [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS]:
+                    for root in cats.build_tree(cats.list(typ)):
+                        rc = root["cat"]
+                        writer.writerow([typ, rc.name, "",
+                                         int(rc.is_fix), int(rc.is_recurring), int(rc.recurring_day)])
+                        for ch in root["children"]:
+                            cc = ch["cat"]
+                            writer.writerow([typ, rc.name, cc.name,
+                                             int(cc.is_fix), int(cc.is_recurring), int(cc.recurring_day)])

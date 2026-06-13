@@ -1,261 +1,132 @@
 {
   "_meta": {
-    "version": "1.0",
-    "description": "Musterdatenbank – Standard-Kategorien für den Budgetmanager First-Start",
+    "version": "2.0",
+    "description": "Standard-Kategorien (CH-Haushaltsvorlage mit Unterkategorien) für First-Start und Reset. Generisch, ohne persönliche Einträge.",
     "author": "BudgetManager Release-Tool",
-    "created": "2026-02-11"
+    "created": "2026-06-12"
   },
   "categories": [
     {
-      "typ": "Einkommen",
-      "name": "Lohn (Netto)",
-      "is_fix": false,
-      "is_recurring": true,
-      "recurring_day": 25,
-      "enabled": true,
+      "typ": "Einkommen", "name": "Lohn (Netto)",
+      "is_fix": false, "is_recurring": true, "recurring_day": 25, "enabled": true,
       "children": []
     },
     {
-      "typ": "Einkommen",
-      "name": "Nebenverdienst",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
+      "typ": "Einkommen", "name": "Nebenverdienst",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
       "children": []
     },
     {
-      "typ": "Einkommen",
-      "name": "Bonuszahlungen",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
+      "typ": "Einkommen", "name": "Bonuszahlungen",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
       "children": []
     },
     {
-      "typ": "Einkommen",
-      "name": "Sonstige Einnahmen",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
+      "typ": "Einkommen", "name": "Sonstige Einnahmen",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": []
+    },
+
+    {
+      "typ": "Ausgaben", "name": "Wohnen",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ausgaben", "name": "Miete/Hypothek", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Nebenkosten", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Strom & Gas", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ausgaben", "name": "Versicherungen",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ausgaben", "name": "Krankenkasse", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Haftpflicht", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Hausrat", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Rechtsschutz", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ausgaben", "name": "Kommunikation & Medien",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ausgaben", "name": "Telefon/Internet", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Mobilfunk", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Serafe (Radio/TV)", "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Streaming-Dienste", "is_fix": false, "is_recurring": true, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ausgaben", "name": "Mobilität",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ausgaben", "name": "ÖV (Abo/Billette)", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Benzin", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Auto-Unterhalt", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ausgaben", "name": "Lebenshaltung",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ausgaben", "name": "Lebensmittel", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Drogerie/Apotheke", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Kleidung", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ausgaben", "name": "Steuern",
+      "is_fix": true, "is_recurring": true, "recurring_day": 1, "enabled": true,
       "children": []
     },
     {
-      "typ": "Ausgaben",
-      "name": "Miete/Hypothek",
-      "is_fix": true,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
+      "typ": "Ausgaben", "name": "Freizeit",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ausgaben", "name": "Hobbys", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Restaurant/Café", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Sport/Fitness", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ausgaben", "name": "Sonstiges",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ausgaben", "name": "Geschenke", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Haustiere", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ausgaben", "name": "Diverses", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true }
+      ]
+    },
+
+    {
+      "typ": "Ersparnisse", "name": "Notgroschen",
+      "is_fix": false, "is_recurring": true, "recurring_day": 25, "enabled": true,
       "children": []
     },
     {
-      "typ": "Ausgaben",
-      "name": "Nebenkosten",
-      "is_fix": true,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
+      "typ": "Ersparnisse", "name": "Altersvorsorge",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ersparnisse", "name": "Säule 3a", "is_fix": false, "is_recurring": true, "recurring_day": 25, "enabled": true },
+        { "typ": "Ersparnisse", "name": "Freizügigkeit", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ersparnisse", "name": "Rücklagen",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
+      "children": [
+        { "typ": "Ersparnisse", "name": "Ferien", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true },
+        { "typ": "Ersparnisse", "name": "Anschaffungen", "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true }
+      ]
+    },
+    {
+      "typ": "Ersparnisse", "name": "Sparziele",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
       "children": []
     },
     {
-      "typ": "Ausgaben",
-      "name": "Strom & Gas",
-      "is_fix": true,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Krankenversicherung",
-      "is_fix": true,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Haftpflicht",
-      "is_fix": true,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Hausratversicherung",
-      "is_fix": true,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Telefon/Internet",
-      "is_fix": true,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Streaming-Dienste",
-      "is_fix": false,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Lebensmittel",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Drogerie/Apotheke",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Kleidung",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "ÖV/Benzin",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Auto-Unterhalt",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Restaurant/Café",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Hobbys",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Urlaub/Reisen",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Sport/Fitness",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Geschenke",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Haustiere",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": false,
-      "children": []
-    },
-    {
-      "typ": "Ausgaben",
-      "name": "Sonstiges",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ersparnisse",
-      "name": "Notgroschen",
-      "is_fix": false,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ersparnisse",
-      "name": "Altersvorsorge",
-      "is_fix": false,
-      "is_recurring": true,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ersparnisse",
-      "name": "Sparziele",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
-      "children": []
-    },
-    {
-      "typ": "Ersparnisse",
-      "name": "Investitionen",
-      "is_fix": false,
-      "is_recurring": false,
-      "recurring_day": 1,
-      "enabled": true,
+      "typ": "Ersparnisse", "name": "Investitionen",
+      "is_fix": false, "is_recurring": false, "recurring_day": 1, "enabled": true,
       "children": []
     }
   ]
