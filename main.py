@@ -196,9 +196,15 @@ def main() -> int:
         # vorhanden sind (z.B. nach Reset ohne vollständiges Settings-Löschen)
         if not settings.get("language_selected", False) or not user_model.has_users():
             from views.language_select_dialog import LanguageSelectDialog
-            lang_dlg = LanguageSelectDialog(current=settings.get("language", "de"))
+            lang_dlg = LanguageSelectDialog(
+                current=settings.get("language", "de"),
+                current_currency=settings.get("currency", "CHF"),
+                current_recurring_day=settings.get("recurring_preferred_day", 25),
+            )
             lang_dlg.exec()
             settings.set("language", lang_dlg.selected_code)
+            settings.set("currency", lang_dlg.selected_currency)
+            settings.set("recurring_preferred_day", int(lang_dlg.selected_recurring_day or 0))
             settings.set("language_selected", True)
             settings.save()
 

@@ -690,6 +690,8 @@ class MainWindow(QMainWindow):
         
         if hasattr(self.budget_tab, 'chk_ask_due'):
             self.budget_tab.chk_ask_due.setChecked(self.settings.ask_due)
+        if hasattr(self.budget_tab, 'set_category_drag_enabled'):
+            self.budget_tab.set_category_drag_enabled(bool(self.settings.get("budget_overview_drag_drop", True)))
 
         # Tracking-Tab
         if hasattr(self.tracking_tab, 'set_recent_days'):
@@ -904,6 +906,18 @@ class MainWindow(QMainWindow):
                     self.settings.set("budget_suggestion_months", int(new_settings.get("budget_suggestion_months") or 3))
                 except Exception:
                     self.settings.set("budget_suggestion_months", 3)
+
+            if "budget_overview_drag_drop" in new_settings:
+                enabled = bool(new_settings.get("budget_overview_drag_drop", True))
+                self.settings.set("budget_overview_drag_drop", enabled)
+                if hasattr(self, "budget_tab") and hasattr(self.budget_tab, "set_category_drag_enabled"):
+                    self.budget_tab.set_category_drag_enabled(enabled)
+
+            if "recurring_preferred_day" in new_settings:
+                try:
+                    self.settings.set("recurring_preferred_day", int(new_settings.get("recurring_preferred_day", 25)))
+                except Exception:
+                    self.settings.set("recurring_preferred_day", 25)
 
             # Budgetübersicht: Übertrag-Kumulation Start (Monat/Jahr)
             # BUGFIX: Diese Werte kamen zwar aus dem SettingsDialog, wurden aber nie persistiert.

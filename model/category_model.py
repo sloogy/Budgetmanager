@@ -45,7 +45,12 @@ class CategoryModel:
         # Reset verwenden jetzt dieselbe Quelle UND dieselbe Insert-Routine
         # (inkl. Unterkategorien via parent_id, v1.0.34).
         from model.default_categories import insert_default_categories
-        insert_default_categories(self.conn)
+        try:
+            from settings import Settings
+            preferred_day = int(Settings().get("recurring_preferred_day", 25) or 0)
+        except Exception:
+            preferred_day = 25
+        insert_default_categories(self.conn, recurring_day_override=preferred_day)
 
         # Markiere als geladen
         self.conn.execute(

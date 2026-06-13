@@ -97,7 +97,7 @@ class SettingsDialog(QDialog):
 
         for p in [self.page_general, self.page_behavior, self.page_appearance,
                   self.page_shortcuts, self.page_database, self.page_about]:
-            self.sw_pages.addWidget(p)
+            self.sw_pages.addWidget(self._scroll_page(p))
 
         self.lw_nav.currentRowChanged.connect(self.sw_pages.setCurrentIndex)
         self.lw_nav.setCurrentRow(0)
@@ -150,6 +150,8 @@ class SettingsDialog(QDialog):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setWidget(inner)
         return scroll
 
@@ -236,8 +238,9 @@ class SettingsDialog(QDialog):
 
         # Wiederkehrend: Default-Tag
         self.cmb_recurring_day = QComboBox()
+        self.cmb_recurring_day.addItem(tr("settings.no_preferred_day"), 0)
         for d in range(1, 29):
-            self.cmb_recurring_day.addItem(str(d), d)
+            self.cmb_recurring_day.addItem(trf("settings.day_of_month", day=d), d)
         self.cmb_recurring_day.addItem(tr("settings.month_end"), 31)
         self.cmb_recurring_day.setToolTip(
             tr('auto.settings_dialog.212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5')
@@ -249,13 +252,19 @@ class SettingsDialog(QDialog):
         gb_budget_ov = QGroupBox(tr("grp.budget_overview"))
         fl_bo = QFormLayout(gb_budget_ov)
         self._configure_form_layout(fl_bo)
-        self.sb_budget_suggestion_months = QSpinBox()
-        self.sb_budget_suggestion_months.setRange(2, 12)
-        self.sb_budget_suggestion_months.setSuffix(tr("settings.months_suffix"))
-        self.sb_budget_suggestion_months.setToolTip(
+        self.cmb_budget_suggestion_months = QComboBox()
+        for months in range(2, 13):
+            self.cmb_budget_suggestion_months.addItem(
+                trf("settings.months_count", count=months), months
+            )
+        self.cmb_budget_suggestion_months.setToolTip(
             tr('auto.settings_dialog.226_mindestanzahl_aufeinanderfolgender__c912895e')
         )
-        fl_bo.addRow(tr("dlg.ueberschussdefizitvorschlag_ab"), self._settings_field(self.sb_budget_suggestion_months, 180))
+        fl_bo.addRow(tr("dlg.ueberschussdefizitvorschlag_ab"), self._settings_field(self.cmb_budget_suggestion_months, 220))
+
+        self.cb_budget_overview_drag_drop = QCheckBox(tr("settings.budget_overview_drag_drop"))
+        self.cb_budget_overview_drag_drop.setToolTip(tr("settings.budget_overview_drag_drop_tip"))
+        fl_bo.addRow("", self.cb_budget_overview_drag_drop)
 
         self.cb_carryover_start = QComboBox()
         self.cb_carryover_start.addItems([
@@ -295,7 +304,7 @@ class SettingsDialog(QDialog):
         lay.addWidget(gb_expert)
 
         lay.addStretch(1)
-        return self._scroll_page(w)
+        return w
 
     def _build_page_appearance(self) -> QWidget:
         w = QWidget()
@@ -546,14 +555,23 @@ class SettingsDialog(QDialog):
         self.cmb_recent_days.setCurrentText(str(self.settings.recent_days))
 
         # Wiederkehrend: Default-Tag
-        pref_day = int(self.settings.get("recurring_preferred_day", 25) or 25)
+        try:
+            pref_day = int(self.settings.get("recurring_preferred_day", 25))
+        except Exception:
+            pref_day = 25
         idx = self.cmb_recurring_day.findData(pref_day)
         if idx < 0:
             idx = self.cmb_recurring_day.findData(25)
         self.cmb_recurring_day.setCurrentIndex(max(0, idx))
 
         # Budget-Übersicht
-        self.sb_budget_suggestion_months.setValue(int(self.settings.get("budget_suggestion_months", 3) or 3))
+        try:
+            suggestion_months = int(self.settings.get("budget_suggestion_months", 3) or 3)
+        except Exception:
+            suggestion_months = 3
+        idx_sug = self.cmb_budget_suggestion_months.findData(max(2, min(12, suggestion_months)))
+        self.cmb_budget_suggestion_months.setCurrentIndex(max(0, idx_sug))
+        self.cb_budget_overview_drag_drop.setChecked(bool(self.settings.get("budget_overview_drag_drop", True)))
         self.cb_carryover_start.setCurrentIndex(int(self.settings.get("carryover_start_month", 1) or 1) - 1)
         saved_year = int(self.settings.get("carryover_start_year", 0) or 0)
         if saved_year < 2020:
@@ -610,8 +628,9 @@ class SettingsDialog(QDialog):
             "ask_due": self.cb_ask_due.isChecked(),
             "refresh_on_start": self.cb_refresh_on_start.isChecked(),
             "recent_days": int(self.cmb_recent_days.currentText()),
-            "recurring_preferred_day": int(self.cmb_recurring_day.currentData() or 25),
-            "budget_suggestion_months": int(self.sb_budget_suggestion_months.value()),
+            "recurring_preferred_day": int(self.cmb_recurring_day.currentData() if self.cmb_recurring_day.currentData() is not None else 25),
+            "budget_suggestion_months": int(self.cmb_budget_suggestion_months.currentData() or 3),
+            "budget_overview_drag_drop": bool(self.cb_budget_overview_drag_drop.isChecked()),
             "carryover_start_month": self.cb_carryover_start.currentIndex() + 1,
             "carryover_start_year": self.sb_carryover_start_year.value(),
 

@@ -453,9 +453,10 @@ QMainWindow, QDialog, QWidget {{ background-color: {bg_app}; color: {text}; }}
 QLabel {{ color: {text}; }}
 QPushButton {{ background-color: {accent}; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; }}
 QPushButton:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
-QLineEdit, QTextEdit, QSpinBox, QDateEdit {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; border-radius: 4px; padding: 6px; }}
-QComboBox {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; border-radius: 4px; padding: 6px; min-height: 20px; }}
-QComboBox::drop-down {{ border: none; width: 20px; }}
+QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; border-radius: 4px; padding: 4px 8px; min-height: 22px; }}
+QComboBox {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; border-radius: 4px; padding: 4px 8px; min-height: 22px; }}
+QComboBox::drop-down {{ border: none; width: 22px; }}
+QSpinBox::up-button, QDoubleSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::down-button {{ width: 18px; }}
 QComboBox QAbstractItemView {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; selection-background-color: {dropdown_sel}; selection-color: {dropdown_sel_text}; }}
 QComboBox QAbstractItemView::item {{ padding: 6px; min-height: 24px; background-color: {dropdown_bg}; color: {dropdown_text}; }}
 QComboBox QAbstractItemView::item:selected {{ background-color: {dropdown_sel}; color: {dropdown_sel_text}; }}

@@ -731,7 +731,12 @@
     "recurring_preferred_day": "Jour préféré (récurrent)",
     "carryover_start_month": "Mois de début du cumul",
     "carryover_start_year": "Année de début du cumul",
-    "months_suffix": " mois"
+    "months_suffix": " mois",
+    "no_preferred_day": "Aucun jour préféré",
+    "day_of_month": "{day} du mois",
+    "months_count": "{count} mois",
+    "budget_overview_drag_drop": "Activer le glisser-déposer dans l’aperçu du budget",
+    "budget_overview_drag_drop_tip": "Permet de modifier la hiérarchie des catégories directement dans l’aperçu du budget : déposer sur une catégorie = sous-catégorie, déposer sur un en-tête de type = catégorie principale."
   },
   "radio": {
     "cat_manager": "Utiliser le gestionnaire de catégories (dans le programme)",
@@ -851,7 +856,10 @@
     "clean_start_title": "Démarrage propre",
     "reset_failed": "Échec de la réinitialisation :\n{e}",
     "backup_file_filter": "Fichiers de sauvegarde (*.db *.sqlite *.bak *.zip);;Tous les fichiers (*.*)",
-    "categories_file_filter": "Catégories (*.xlsx *.csv)"
+    "categories_file_filter": "Catégories (*.xlsx *.csv)",
+    "region_box": "Région et valeurs par défaut",
+    "region_hint": "Ces valeurs sont utilisées comme propositions et peuvent être modifiées plus tard dans les paramètres.",
+    "preferred_day_tip": "Jour par défaut optionnel pour les écritures récurrentes et les nouvelles catégories récurrentes."
   },
   "tip": {
     "carryover_start_month": "À partir de quel mois le report doit-il être cumulé ?",

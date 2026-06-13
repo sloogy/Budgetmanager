@@ -140,7 +140,7 @@ def load_default_categories() -> list[DefaultCategory]:
     return list(_FALLBACK)
 
 
-def insert_default_categories(conn) -> int:
+def insert_default_categories(conn, recurring_day_override: int | None = None) -> int:
     """Fügt die Default-Kategorien inkl. Unterkategorien in die DB ein.
 
     Gemeinsame Routine für Erststart (``ensure_defaults``) und Reset, damit beide
@@ -153,8 +153,18 @@ def insert_default_categories(conn) -> int:
       flache Top-Level-Einträge angelegt (kein Datenverlust).
 
     Gibt die Anzahl tatsächlich neu eingefügter Kategorien zurück.
+
+    Args:
+        recurring_day_override: Wenn 1..31, wird dieser Tag für alle wiederkehrenden
+            Default-Kategorien vorbefüllt. 0/None bedeutet: Vorlage unverändert nutzen.
     """
     tree = load_default_categories()
+    try:
+        recurring_day_override = int(recurring_day_override or 0)
+    except Exception:
+        recurring_day_override = 0
+    if recurring_day_override < 1 or recurring_day_override > 31:
+        recurring_day_override = 0
     cols = {r[1] for r in conn.execute("PRAGMA table_info(categories)").fetchall()}
     has_tree = {"parent_id", "sort_order", "funded_by_category_id"} <= cols
     has_flags = {"is_fix", "is_recurring", "recurring_day"} <= cols
@@ -170,13 +180,14 @@ def insert_default_categories(conn) -> int:
                 "(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
                 "VALUES(?,?,?,?,?,?,?,?)",
                 (dc.typ, dc.name, parent_id, int(dc.is_fix), int(dc.is_recurring),
-                 int(dc.recurring_day), None, sort_order),
+                 int(recurring_day_override if dc.is_recurring and recurring_day_override else dc.recurring_day), None, sort_order),
             )
         elif has_flags:
             cur.execute(
                 "INSERT OR IGNORE INTO categories(typ,name,is_fix,is_recurring,recurring_day) "
                 "VALUES(?,?,?,?,?)",
-                (dc.typ, dc.name, int(dc.is_fix), int(dc.is_recurring), int(dc.recurring_day)),
+                (dc.typ, dc.name, int(dc.is_fix), int(dc.is_recurring),
+                 int(recurring_day_override if dc.is_recurring and recurring_day_override else dc.recurring_day)),
             )
         else:
             cur.execute("INSERT OR IGNORE INTO categories(typ,name) VALUES(?,?)", (dc.typ, dc.name))

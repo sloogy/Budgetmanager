@@ -74,6 +74,14 @@ class CategoryManagerDialog(QDialog):
         self.setWindowTitle(tr("dlg.category_manager"))
         self.setModal(False)  # Nicht-modal für bessere UX
         self.setMinimumSize(900, 600)
+        # Fenster-Buttons: QDialog zeigt unter Windows sonst nur "Schließen".
+        # Minimieren/Maximieren ergänzen, damit das Fenster sich normal
+        # verkleinern/vergrößern lässt.
+        self.setWindowFlags(
+            self.windowFlags()
+            | Qt.WindowMinimizeButtonHint
+            | Qt.WindowMaximizeButtonHint
+        )
         
         self._build_ui()
         self._load_categories()
@@ -147,12 +155,19 @@ class CategoryManagerDialog(QDialog):
         self.tree.itemDoubleClicked.connect(self._on_double_click)
         
         # Spaltenbreiten
+        # WICHTIG: QTreeWidget hat per Default stretchLastSection=True. Das
+        # kollidiert mit "Spalte 0 = Stretch" (Kategorie-Spalte wird dann nicht
+        # korrekt gedehnt -> Text abgeschnitten, toter Header-Raum rechts).
+        # Daher zuerst abschalten, dann Spalte 0 als Füll-Spalte definieren.
         header = self.tree.header()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setStretchLastSection(False)
+        header.setMinimumSectionSize(40)
+        header.setSectionResizeMode(0, QHeaderView.Stretch)            # Kategorie füllt den Rest
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)   # Typ
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)   # Fix
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)   # Wdh.
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)   # Tag
+        self.tree.setMinimumWidth(360)
         
         splitter.addWidget(self.tree)
         
@@ -185,13 +200,11 @@ class CategoryManagerDialog(QDialog):
         props_layout.addWidget(QLabel(tr("dlg.faelligkeitstag_1")), 2, 0)
         day_layout = QHBoxLayout()
         self.day_check = QCheckBox(tr("lbl.set_to"))
-        self.day_spin = QSpinBox()
-        self.day_spin.setRange(1, 31)
-        self.day_spin.setSuffix(tr("categories.day_suffix"))
-        self.day_spin.setEnabled(False)
-        self.day_check.toggled.connect(self.day_spin.setEnabled)
+        self.day_combo = self._create_day_combo()
+        self.day_combo.setEnabled(False)
+        self.day_check.toggled.connect(self.day_combo.setEnabled)
         day_layout.addWidget(self.day_check)
-        day_layout.addWidget(self.day_spin)
+        day_layout.addWidget(self.day_combo)
         day_layout.addStretch()
         props_layout.addLayout(day_layout, 2, 1)
         
@@ -226,8 +239,14 @@ class CategoryManagerDialog(QDialog):
         details_layout.addWidget(quick_group)
         details_layout.addStretch()
         
+        details_widget.setMinimumWidth(280)
         splitter.addWidget(details_widget)
-        splitter.setSizes([600, 300])
+        # Beim Vergrößern soll der Kategorie-Baum den zusätzlichen Platz
+        # bekommen, nicht das Detail-Panel. Panels dürfen nicht kollabieren.
+        splitter.setChildrenCollapsible(False)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        splitter.setSizes([600, 320])
         
         layout.addWidget(splitter)
         
@@ -249,6 +268,26 @@ class CategoryManagerDialog(QDialog):
         
         layout.addLayout(footer)
     
+    def _create_day_combo(self) -> QComboBox:
+        """Dropdown für Fälligkeitstage: 1..28 + Monatsende."""
+        combo = QComboBox()
+        for day in range(1, 29):
+            combo.addItem(trf("settings.day_of_month", day=day), day)
+        combo.addItem(tr("settings.month_end"), 31)
+        return combo
+
+    def _set_day_combo_value(self, day: int) -> None:
+        idx = self.day_combo.findData(max(1, min(31, int(day or 1))))
+        if idx < 0:
+            idx = self.day_combo.findData(1)
+        self.day_combo.setCurrentIndex(max(0, idx))
+
+    def _current_day_combo_value(self) -> int:
+        try:
+            return int(self.day_combo.currentData() or 1)
+        except Exception:
+            return 1
+
     def _load_categories(self) -> None:
         """Lädt alle Kategorien in den Baum."""
         self.tree.clear()
@@ -397,7 +436,7 @@ class CategoryManagerDialog(QDialog):
             self.rec_combo.setCurrentIndex(1 if cat["is_recurring"] else 2)
             if cat["is_recurring"]:
                 self.day_check.setChecked(True)
-                self.day_spin.setValue(cat["recurring_day"])
+                self._set_day_combo_value(cat["recurring_day"])
             else:
                 self.day_check.setChecked(False)
         else:
@@ -622,12 +661,17 @@ class CategoryManagerDialog(QDialog):
     
     def _set_single_day(self, cat_id: int) -> None:
         """Setzt den Fälligkeitstag für eine einzelne Kategorie."""
-        day, ok = QInputDialog.getInt(
+        items = [(trf("settings.day_of_month", day=d), d) for d in range(1, 29)]
+        items.append((tr("settings.month_end"), 31))
+        text, ok = QInputDialog.getItem(
             self, tr("dlg.faelligkeitstag"),
             tr("categories.day_prompt"),
-            1, 1, 31
+            [label for label, _day in items],
+            0,
+            False,
         )
         if ok:
+            day = next((_day for label, _day in items if label == text), 1)
             try:
                 self.cat_model.update_flags(cat_id, is_recurring=True, recurring_day=day)
                 self._load_categories()
@@ -644,7 +688,7 @@ class CategoryManagerDialog(QDialog):
         fix_choice = self.fix_combo.currentIndex()
         rec_choice = self.rec_combo.currentIndex()
         set_day = self.day_check.isChecked()
-        day_val = self.day_spin.value()
+        day_val = self._current_day_combo_value()
         
         if fix_choice == 0 and rec_choice == 0 and not set_day:
             QMessageBox.information(self, tr("msg.info"), tr("msg.no_changes_selected"))

@@ -416,14 +416,19 @@ class CategoriesTab(QWidget):
             try:
                 for it in editable:
                     cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
-                    self.model.update_flags(cat_id, is_recurring=target)
+                    if target:
+                        pref = int(self.settings.get("recurring_preferred_day", 25) or 0)
+                        if pref > 0 and not (it.text(self.COL_DAY) or "").strip():
+                            pref = max(1, min(31, pref))
+                            self.model.update_flags(cat_id, is_recurring=True, recurring_day=pref)
+                            it.setText(self.COL_DAY, str(pref))
+                        else:
+                            self.model.update_flags(cat_id, is_recurring=True)
+                    else:
+                        self.model.update_flags(cat_id, is_recurring=False)
                     it.setCheckState(self.COL_REC, Qt.CheckState.Checked if target else Qt.CheckState.Unchecked)
                     if not target:
                         it.setText(self.COL_DAY, "")
-                    else:
-                        # wenn leer, default 1 anzeigen
-                        if not (it.text(self.COL_DAY) or "").strip():
-                            it.setText(self.COL_DAY, "1")
             finally:
                 self._set_loading(False)
             return
@@ -500,14 +505,17 @@ class CategoriesTab(QWidget):
                 if is_rec:
                     cur_day_txt = (item.text(self.COL_DAY) or "").strip()
                     if not cur_day_txt.isdigit():
-                        pref = int(self.settings.get("recurring_preferred_day", 25) or 25)
-                        pref = max(1, min(31, pref))
-                        self._set_loading(True)
-                        try:
-                            item.setText(self.COL_DAY, str(pref))
-                        finally:
-                            self._set_loading(False)
-                        self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec, recurring_day=pref)
+                        pref = int(self.settings.get("recurring_preferred_day", 25) or 0)
+                        if pref > 0:
+                            pref = max(1, min(31, pref))
+                            self._set_loading(True)
+                            try:
+                                item.setText(self.COL_DAY, str(pref))
+                            finally:
+                                self._set_loading(False)
+                            self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec, recurring_day=pref)
+                        else:
+                            self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec)
                     else:
                         self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec)
                 else:

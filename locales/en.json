@@ -731,7 +731,12 @@
     "recurring_preferred_day": "Preferred day (recurring)",
     "carryover_start_month": "Carry-over start month",
     "carryover_start_year": "Carry-over start year",
-    "months_suffix": " months"
+    "months_suffix": " months",
+    "no_preferred_day": "No preferred day",
+    "day_of_month": "{day} of the month",
+    "months_count": "{count} months",
+    "budget_overview_drag_drop": "Enable drag & drop in budget overview",
+    "budget_overview_drag_drop_tip": "Allows changing category hierarchy directly in the budget overview: drop onto a category to make it a subcategory, drop onto a type header to make it a main category."
   },
   "radio": {
     "cat_manager": "Use Category Manager (in app)",
@@ -851,7 +856,10 @@
     "clean_start_title": "Clean start",
     "reset_failed": "Reset failed:\n{e}",
     "backup_file_filter": "Backup files (*.db *.sqlite *.bak *.zip);;All files (*.*)",
-    "categories_file_filter": "Categories (*.xlsx *.csv)"
+    "categories_file_filter": "Categories (*.xlsx *.csv)",
+    "region_box": "Region & defaults",
+    "region_hint": "These values are used as suggestions and can be changed later in settings.",
+    "preferred_day_tip": "Optional default day for recurring bookings and new recurring categories."
   },
   "tip": {
     "carryover_start_month": "From which month should the carryover be accumulated?",

@@ -4,7 +4,9 @@ logger = logging.getLogger(__name__)
 
 from updater.common import (
     DEFAULT_MANIFEST_URL,
+    asset_is_zip,
     cache_zip_path,
+    current_exe_filename,
     detect_platform_key,
     download_file,
     enable_utf8_console,
@@ -67,22 +69,45 @@ def main() -> int:
 
     # Extract staging
     staging = staging_dir_for(remote)
-    if staging.exists():
+    if staging.exists() and any(staging.iterdir()):
         # schon staged
         print(f"✓ Bereits staged: {staging}")
     else:
         try:
-            safe_extract_zip(zip_path, staging)
-            root = find_staged_root(staging)
-            # Minimal sanity: muss irgendwas enthalten
-            any_file = next(root.rglob("*"), None)
-            if any_file is None:
-                print("❌ Staging leer – ZIP Inhalt unerwartet")
-                return 6
+            staging.mkdir(parents=True, exist_ok=True)
+            if asset_is_zip(asset.url, asset.asset_type):
+                # ── ZIP-Asset: sicher entpacken ──
+                safe_extract_zip(zip_path, staging)
+                root = find_staged_root(staging)
+                # Minimal sanity: muss irgendwas enthalten
+                any_file = next(root.rglob("*"), None)
+                if any_file is None:
+                    print("❌ Staging leer – ZIP Inhalt unerwartet")
+                    return 6
+            else:
+                # ── Rohe Binary (z.B. BudgetManager-windows.exe): NICHT
+                #    entpacken. Direkt unter dem Ziel-Dateinamen ablegen,
+                #    unter dem die App installiert ist (z.B. BudgetManager.exe).
+                import shutil
+
+                target_name = current_exe_filename()
+                target = staging / target_name
+                shutil.copy2(zip_path, target)
+                # Unter Linux: Ausführbar-Bit setzen (geht unter Windows ins Leere)
+                try:
+                    import os
+                    import stat
+
+                    mode = os.stat(target).st_mode
+                    os.chmod(target, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+                except Exception as e:
+                    logger.debug("chmod auf gestagete Binary fehlgeschlagen: %s", e)
+                print(f"✓ Binary gestaged als: {target.name}")
             write_staged_marker(remote, manifest, asset)
             print(f"✓ Staged: {staging}")
         except Exception as e:
-            print(f"❌ Entpacken fehlgeschlagen: {e}")
+            print(f"❌ Vorbereiten (Staging) fehlgeschlagen: {e}")
+            logger.exception("Staging fehlgeschlagen")
             return 6
 
     print("\nNächster Schritt:")

@@ -29,6 +29,7 @@ from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.money import get_symbol
 
 
 @dataclass
@@ -468,7 +469,7 @@ class SetupAssistantDialog(QDialog):
         spn.setRange(0.0, 999999.0)
         spn.setDecimals(2)
         spn.setSingleStep(50.0)
-        spn.setSuffix(" CHF")
+        spn.setSuffix(f" {get_symbol(str(self.settings.get('currency', 'CHF')))}")
         spn.setValue(float(value))
         return spn
 

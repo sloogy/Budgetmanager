@@ -195,19 +195,28 @@ class UpdateDialog(QDialog):
         self._append(f"\n$ {' '.join(cmd)}")
 
         try:
-            if getattr(sys, "frozen", False):
-                # PyInstaller: exe neu starten
-                QProcess.startDetached(cmd[0], cmd[1:])
-            else:
-                QProcess.startDetached(cmd[0], cmd[1:])
+            started = QProcess.startDetached(cmd[0], cmd[1:])
+            if not started:
+                raise RuntimeError("QProcess.startDetached lieferte False")
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf('auto.views_update_dialog.205_updater_konnte_nicht_gestartet_werd_e418fb58', value_0=(e)))
             return
 
-        # App schließen
+        # App vollständig beenden. Unter Windows MUSS der Prozess enden, damit
+        # der externe Helfer die gesperrte EXE ersetzen kann – sonst wartet er
+        # endlos. Wir schließen das Hauptfenster und beenden die Qt-App.
+        from PySide6.QtWidgets import QApplication
+
         if self.parent() is not None:
             try:
                 self.parent().close()
             except Exception as e:
                 logger.debug("self.parent().close(): %s", e)
         self.accept()
+
+        app = QApplication.instance()
+        if app is not None:
+            # quitOnLastWindowClosed greift evtl. nicht (Timer/Dialoge offen),
+            # daher explizit beenden.
+            from PySide6.QtCore import QTimer
+            QTimer.singleShot(0, app.quit)

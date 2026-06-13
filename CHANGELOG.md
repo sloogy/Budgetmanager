@@ -1,3 +1,94 @@
+# v1.0.42 — Install-Manager, Dropdowns und Budget-Drag&Drop
+
+- Install-/Erststartdialog fragt zusätzlich Währung und bevorzugten Monatstag ab.
+- Bei Sprachauswahl werden Währung und bevorzugter Tag sinnvoll vorbefüllt.
+- Option „Kein bevorzugter Tag“ ergänzt.
+- Einstellungen → Verhalten: Überschuss-/Defizit-Vorschlag jetzt als Dropdown.
+- Einstellungen → Verhalten: Drag & Drop in der Budgetübersicht ein-/ausschaltbar.
+- Kategorien-Manager: Fälligkeitstag jetzt als Dropdown statt Spinbox.
+- Budgetübersicht: Kategorien können per Drag & Drop umgehängt werden.
+
+# Version 1.0.41 - Kategorien-Manager: Fenster & Spaltenlayout (Windows)
+
+Datum: 13. Juni 2026
+
+## Behoben: Kategorien-Manager – Skalierung/Minimieren/Vergrößern fehlerhaft
+- **Fenster-Buttons:** Der nicht-modale Dialog zeigte unter Windows nur
+  „Schließen". Minimieren und Maximieren wurden über
+  `WindowMinimizeButtonHint` / `WindowMaximizeButtonHint` ergänzt – das Fenster
+  lässt sich jetzt normal verkleinern, maximieren und in der Größe ziehen.
+- **Abgeschnittene Kategorie-Spalte:** `QTreeWidget` hat per Default
+  `stretchLastSection=True`. In Kombination mit „Spalte 0 = Stretch" wurde die
+  Kategorie-Spalte nicht korrekt gedehnt – Namen wurden abgeschnitten
+  („Ausgabe…", „Steu…") und rechts blieb toter Header-Raum. Jetzt:
+  `setStretchLastSection(False)`, Spalte 0 füllt den verfügbaren Platz,
+  Mindest-Sektionsbreite gesetzt.
+- **Splitter-Verhalten:** Beim Vergrößern bekommt nun der Kategorie-Baum den
+  zusätzlichen Platz (Stretch-Faktoren), nicht das Detail-Panel. Panels können
+  nicht mehr auf 0 kollabieren; sinnvolle Mindestbreiten gesetzt.
+
+---
+
+
+
+Datum: 13. Juni 2026
+
+## Behoben (kritisch): Updater funktionierte unter Windows nicht
+Drei zusammenwirkende Ursachen wurden korrigiert:
+
+1. **Staging schlug fehl (rohes Asset wurde als ZIP behandelt).**
+   Das `latest.json` verweist für Windows/Linux auf eine *rohe Binary*
+   (`BudgetManager-windows.exe`), `check_update.py` rief aber unbedingt
+   `safe_extract_zip()` darauf auf → `BadZipFile` → Update brach beim
+   Vorbereiten ab. Jetzt unterscheidet der Updater anhand von Asset-Typ und
+   Dateiendung zwischen ZIP-Archiv (entpacken) und roher Binary (direkt
+   stagen).
+
+2. **EXE-Selbstsperre (Apply schlug fehl).**
+   Eine laufende `.exe` kann sich unter Windows nicht selbst überschreiben.
+   Der bisherige In-Process-Ansatz (`remove_paths` + `copy_new`) konnte die
+   gesperrte EXE nicht ersetzen – und verschluckte den Fehler durch
+   `ignore_errors=True` lautlos. Neu: ein externer Helfer-Batch wartet, bis
+   die App beendet ist, ersetzt dann per `robocopy` die Dateien, startet die
+   App neu und löscht sich selbst.
+
+3. **Namens-Mismatch.**
+   Release-Asset `BudgetManager-windows.exe` vs. installiert
+   `BudgetManager.exe`. Die heruntergeladene Binary wird jetzt beim Stagen
+   auf den korrekten Ziel-Dateinamen umbenannt.
+
+## Weitere Verbesserungen
+- Lautlose Fehler beseitigt: `remove_paths` protokolliert/meldet Fehler statt
+  sie zu ignorieren; Staging- und Apply-Schritte loggen Ausnahmen.
+- Linux/DEV: Single-Binary-Updates werden atomar via `os.replace()` ersetzt,
+  ohne den restlichen App-Ordner anzutasten (sicherer als bisher).
+- Sauberer App-Shutdown nach Update-Start, damit der Windows-Helfer nicht auf
+  eine hängende EXE wartet.
+
+---
+
+
+
+Datum: 13. Juni 2026
+
+## Ziel
+- 1.0.38 `merged_settings_fix` bleibt die Basis, weil sie den vollständigeren Kategorien-Manager, die vollständigeren i18n-Keys und die robustere Verhalten-Seite enthält.
+- Aus 1.0.39 wurden nur die sinnvollen Fixes übernommen, ohne Funktionen aus 1.0.38 zu verlieren.
+
+## Übernommen aus 1.0.39
+- Versionsnummer/Metadaten auf 1.0.39.
+- Installer-Version auf 1.0.39.
+- Alle Einstellungsseiten werden scrollbar eingebettet.
+- Theme-Fix gegen vertikal abgeschnittene Eingabefelder: `min-height` für Eingabefelder und feste SpinBox-Pfeilbreite.
+
+## Bewusst aus 1.0.38 behalten
+- Kategorie-Kontextmenü „Verschieben unter…“ inklusive „Zur Hauptkategorie machen“.
+- `CategoryModel.get_by_id()` und `CategoryModel.can_reparent()` mit i18n-Fehlerkeys.
+- Vollständigere Sprachdateien de/en/fr.
+- Verhalten-Seite mit `WrapLongRows`, Mindestbreiten und i18n-Labels.
+
+---
+
 # Version 1.0.38 - i18n Hardcoding Fix + Kategorie Drag & Drop
 
 Datum: 13. Juni 2026

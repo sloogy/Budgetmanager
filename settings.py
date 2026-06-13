@@ -44,7 +44,7 @@ class Settings:
 
             # Wiederkehrende Buchungen: bevorzugter Tag (Default), der beim Setzen von
             # "wiederkehrend" automatisch übernommen wird.
-            # 31 bedeutet "Monatsende".
+            # 0 bedeutet "kein bevorzugter Tag", 31 bedeutet "Monatsende".
             "recurring_preferred_day": 25,
             # Budget-Übersicht: Mindestanzahl aufeinanderfolgender Monate für Vorschläge
             # Budget-Vorschläge: Standard-Fenster (N Monate)
@@ -61,6 +61,8 @@ class Settings:
             "carryover_start_month": 1,
             # Budget-Übersicht: Ab welchem Jahr der Übertrag kumuliert wird (0 = aktuelles Jahr)
             "carryover_start_year": 0,
+            # Budget-Tabelle: Kategorien per Drag & Drop unter-/umhängen
+            "budget_overview_drag_drop": True,
             "window_width": 1280,
             "window_height": 800,
             "window_x": 100,  # X-Position des Fensters

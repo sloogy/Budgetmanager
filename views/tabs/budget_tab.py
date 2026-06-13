@@ -62,6 +62,33 @@ def _parse_cell_amount(text: str) -> float:
 
 
 
+class _BudgetDragTableWidget(QTableWidget):
+    """Budget-Tabelle mit optionalem Kategorie-Drag-&-Drop.
+
+    Die Tabelle bleibt eine normale Budget-Tabelle; Drop-Operationen werden nur
+    als Kategorie-Ebenenwechsel interpretiert:
+    - Drop auf Kategorie: wird Unterkategorie dieser Kategorie
+    - Drop auf Typ-Header: wird Hauptkategorie dieses Typs
+    """
+
+    def __init__(self, owner: "BudgetTab"):
+        super().__init__(owner)
+        self._owner = owner
+
+    def dropEvent(self, event):  # noqa: N802 (Qt naming)
+        if not getattr(self._owner, "_category_drag_enabled", False):
+            event.ignore()
+            return
+        pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
+        target_item = self.itemAt(pos)
+        target_row = target_item.row() if target_item is not None else -1
+        source_row = self.currentRow()
+        if self._owner._handle_budget_category_drop(source_row, target_row):
+            event.acceptProposedAction()
+            return
+        event.ignore()
+
+
 class BudgetTab(QWidget):
     """Budget-Tab mit Tree-Ansicht.
 
@@ -138,7 +165,8 @@ class BudgetTab(QWidget):
         self.lbl_overview.setToolTip(tr("budget.tip.overview"))
 
         # Bezeichnung + Fix + Wiederh. + Tag + 12 Monate + Total
-        self.table = QTableWidget(0, 17)
+        self.table = _BudgetDragTableWidget(self)
+        self.table.setColumnCount(17)
         self.table.setHorizontalHeaderLabels([tr("header.designation"), tr("header.fix"), tr("header.recurring_symbol"), tr("header.day")] + _months() + [tr("header.total")])
         
         # Spaltenbreiten optimieren
@@ -156,6 +184,12 @@ class BudgetTab(QWidget):
         self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed | QAbstractItemView.SelectedClicked)
+        self._category_drag_enabled = False
+        try:
+            from settings import Settings
+            self.set_category_drag_enabled(bool(Settings().get("budget_overview_drag_drop", True)))
+        except Exception:
+            self.set_category_drag_enabled(True)
 
         # Events
         self.table.itemChanged.connect(self._on_item_changed)
@@ -229,6 +263,96 @@ class BudgetTab(QWidget):
 
     def _is_all_filter(self) -> bool:
         return self._current_typ_db() == "Alle"
+
+    def set_category_drag_enabled(self, enabled: bool) -> None:
+        """Aktiviert/deaktiviert Kategorie-Drag-&-Drop in der Budget-Tabelle."""
+        self._category_drag_enabled = bool(enabled)
+        try:
+            self.table.setDragEnabled(bool(enabled))
+            self.table.setAcceptDrops(bool(enabled))
+            self.table.viewport().setAcceptDrops(bool(enabled))
+            self.table.setDropIndicatorShown(bool(enabled))
+            self.table.setDefaultDropAction(Qt.MoveAction)
+            self.table.setDragDropMode(
+                QAbstractItemView.InternalMove if enabled else QAbstractItemView.NoDragDrop
+            )
+        except Exception as e:
+            logger.debug("Budget Drag&Drop konnte nicht umgeschaltet werden: %s", e)
+
+    def _category_obj_from_row(self, row: int) -> Category | None:
+        """Liefert die Kategorie zu einer Tabellenzeile."""
+        if row < 0 or row >= self.table.rowCount():
+            return None
+        if self._is_total_row(row) or self._is_footer_row(row) or self._is_header_row(row):
+            return None
+        typ = self._row_typ(row)
+        cat_name = self._row_cat_real(row)
+        if not cat_name:
+            return None
+        for cat in self.cats.list(typ):
+            if cat.name == cat_name:
+                return cat
+        return None
+
+    def _handle_budget_category_drop(self, source_row: int, target_row: int) -> bool:
+        """Verschiebt eine Kategorie aus der Budgetübersicht per Drag & Drop."""
+        if not getattr(self, "_category_drag_enabled", False):
+            return False
+        if source_row < 0 or target_row < 0 or source_row == target_row:
+            return False
+        if self._is_total_row(source_row) or self._is_footer_row(source_row) or self._is_header_row(source_row):
+            return False
+        if self._is_footer_row(target_row) or self._is_total_row(target_row):
+            return False
+
+        source = self._category_obj_from_row(source_row)
+        if source is None:
+            return False
+
+        if self._is_header_row(target_row):
+            target_typ = self._row_typ(target_row)
+            new_parent_id = None
+            target_label = display_typ(target_typ)
+        else:
+            target = self._category_obj_from_row(target_row)
+            if target is None:
+                return False
+            target_typ = target.typ
+            new_parent_id = int(target.id)
+            target_label = target.name
+
+        if source.typ != target_typ:
+            QMessageBox.warning(self, tr("dlg.hinweis"), tr("categories.drag_only_same_type"))
+            return False
+        if new_parent_id == source.id:
+            QMessageBox.warning(self, tr("dlg.hinweis"), tr("categories.drag_not_onto_self"))
+            return False
+
+        ok, reason = self.cats.can_reparent(int(source.id), new_parent_id)
+        if not ok:
+            QMessageBox.warning(self, tr("catmgr.move_not_possible"), tr(reason))
+            return False
+        if source.parent_id == new_parent_id:
+            return False
+
+        try:
+            self.cats.update_parent(int(source.id), new_parent_id)
+        except Exception as e:
+            reason = str(e)
+            msg = tr(reason) if reason.startswith("catmgr.") else trf("categories.move_failed", e=e)
+            QMessageBox.critical(self, tr("msg.error"), msg)
+            return False
+
+        self.load()
+        self._focus_category_month(source.name, 1, typ=source.typ)
+        try:
+            self.window().statusBar().showMessage(
+                trf("categories.moved_count", count=1, target=target_label), 2500
+            )
+        except Exception:
+            pass
+        self.budget_data_changed.emit()
+        return True
 
     # --- Komfort: Enter -> nächste Zelle ---
     def eventFilter(self, obj, event):

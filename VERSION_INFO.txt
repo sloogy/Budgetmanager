@@ -1,66 +1,42 @@
-Budgetmanager Version 1.0.38
+Budgetmanager Version 1.0.42
 ===============================
 
 Datum: 13. Juni 2026
 
-NEU:
-----
-- Kategorien-Manager: Drag & Drop für Parent/Child-Ebenen
-  - auf Kategorie ziehen = wird Unterkategorie
-  - auf Typ-Header ziehen = wird Hauptkategorie
-- Kontextmenü: Unterkategorie direkt zur Hauptkategorie machen
+ZUSAMMENFÜHRUNG (vollständiger Merge):
+--------------------------------------
+Diese Version nutzt 1.0.38 merged_settings_fix als Basis, weil dieser Stand
+funktionsseitig kompletter war, und übernimmt aus 1.0.39 nur die sinnvollen
+Korrekturen.
 
-GEÄNDERT:
----------
-- i18n-Audit repariert: scannt jetzt relativ zum Projektroot und ist nicht mehr durch /mnt/data blind
-- Hardcodierte UI-Texte in Views/Dialogen auf i18n-Keys umgestellt
-- Kategorien-Filter nutzt interne Werte statt übersetztem sichtbarem Text
+ÜBERNOMMEN AUS 1.0.38 merged_settings_fix:
+------------------------------------------
+- vollständigerer Kategorien-Manager:
+  - Drag & Drop für Parent/Child-Ebenen
+  - Kontextmenü „Verschieben unter…“
+  - „Zur Hauptkategorie machen“
+  - Auswahl bleibt nach Verschieben erhalten
+- CategoryModel mit get_by_id() und can_reparent()
+- defensive Parent/Child-Validierung mit i18n-Fehlerkeys
+- vollständigere i18n-Dateien de/en/fr
+- Verhalten-Seite mit WrapLongRows und Mindestbreiten pro Eingabefeld
+- Einstellungen → Über liest die Version zuverlässig aus app_info.py
 
-FIXES:
-------
-
-ZUSÄTZLICH IN DIESEM MERGE-FIX:
+SINNVOLL ÜBERNOMMEN AUS 1.0.39:
 --------------------------------
-- 1.0.38-Versionen verglichen: category_drag_drop und category_drag_drop claude sind identisch; i18n_dragdrop_fixed wurde als Basis verwendet.
-- Kategorie-Ebenenwechsel zusammengeführt:
-  - Drag & Drop bleibt erhalten
-  - Rechtsklick-Menü „Verschieben unter…“ wieder ergänzt
-  - defensive Parent/Child-Validierung im CategoryModel ergänzt
-- Einstellungen → Über zeigt nun zuverlässig die App-Version aus app_info.py.
-- Einstellungen → Verhalten skaliert robuster:
-  - Scrollbereich für Verhalten-Seite
-  - Formular-Zeilen umbrechen bei langen Labels
-  - Eingabefelder bekommen Mindestbreiten
-  - sichtbare Texte dort sind i18n-Keys.
-
-- Fehlende i18n-Keys ergänzt
-- Audit meldet keine verdächtigen hardcoded UI-Strings mehr
-- Sprachdateien de/en/fr sind wieder key-komplett
-
-VORHERIGE VERSION 1.0.37:
--------------------------
-NEU:
-----
-- Setup-Assistent / Einführungsassistent (🧭 Erste Schritte im Hilfe-Menü)
-- Excel-Import/Export für Kategorien
-- Budget-Ausfüll-Dialog
-
-GEÄNDERT:
----------
-- Sortierung Budget-Tab: Budget-Saldo → Einkommen → Ausgaben → Ersparnisse
-- Budget-Saldo wird jetzt IMMER angezeigt (auch bei gefilterten Typen)
-- Auto-Save Checkbox wird jetzt korrekt mit Settings synchronisiert
-- closeEvent vereinfacht: Nur noch eine Frage beim Schließen
-- Störende "Gespeichert"-MessageBox entfernt (stilles Speichern)
-- Autofilter/Completer im Budget-Eingabedialog deaktiviert (nur manuelle Auswahl)
-- Einstellungen "Einführung beim Start anzeigen" mit Setup-Assistent verknüpft
+- Versionsnummer und Release-Metadaten auf 1.0.39 gesetzt
+- Installer-Version auf 1.0.39 synchronisiert
+- alle Einstellungsseiten werden in eine QScrollArea gelegt
+- Theme-Fix für vertikal abgeschnittene Eingabefelder:
+  - min-height für QLineEdit/QSpinBox/QDoubleSpinBox/QDateEdit/QComboBox
+  - feste Breite für SpinBox-Pfeile
 
 FIXES:
 ------
-
-- Undo/Redo: Dynamische Spaltenprüfung für alte Datenbanken (ts/timestamp Kompatibilität)
-- Sparziele-Undo: Korrigierte Betragsanpassung (nicht mehr pauschal neu berechnen)
-- Migration v7→v8: ts Spalte wird korrekt hinzugefügt
+- Einstellungen → Über zeigt nun „1.0.39 (13. Juni 2026)“.
+- Einstellungen → Verhalten skaliert robuster, ohne i18n-Keys zu verlieren.
+- Kategorie-Verschieben bleibt komfortabel per Drag & Drop und Kontextmenü möglich.
+- Das Datenmodell verhindert weiterhin Self-Parenting, Typ-Mischung und Zyklen.
 
 BASIS:
 ------

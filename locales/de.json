@@ -731,7 +731,12 @@
     "recurring_preferred_day": "Bevorzugter Tag (wiederkehrend)",
     "carryover_start_month": "Kumulation Startmonat",
     "carryover_start_year": "Kumulation Startjahr",
-    "months_suffix": " Monate"
+    "months_suffix": " Monate",
+    "no_preferred_day": "Kein bevorzugter Tag",
+    "day_of_month": "{day}. des Monats",
+    "months_count": "{count} Monate",
+    "budget_overview_drag_drop": "Drag & Drop in der Budgetübersicht aktivieren",
+    "budget_overview_drag_drop_tip": "Erlaubt das Umhängen von Kategorien direkt in der Budgetübersicht: auf Kategorie ziehen = Unterkategorie, auf Typ-Überschrift ziehen = Hauptkategorie."
   },
   "radio": {
     "cat_manager": "Kategorien-Manager verwenden (im Programm)",
@@ -851,7 +856,10 @@
     "clean_start_title": "Clean Start",
     "reset_failed": "Reset fehlgeschlagen:\n{e}",
     "backup_file_filter": "Backup-Dateien (*.db *.sqlite *.bak *.zip);;Alle Dateien (*.*)",
-    "categories_file_filter": "Kategorien (*.xlsx *.csv)"
+    "categories_file_filter": "Kategorien (*.xlsx *.csv)",
+    "region_box": "Region & Standards",
+    "region_hint": "Diese Werte werden als Vorschlag übernommen und können später in den Einstellungen geändert werden.",
+    "preferred_day_tip": "Optionaler Standardtag für wiederkehrende Buchungen und neue wiederkehrende Kategorien."
   },
   "tip": {
     "carryover_start_month": "Ab welchem Monat soll der Übertrag kumuliert werden?",

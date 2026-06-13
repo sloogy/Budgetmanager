@@ -1,11 +1,13 @@
 BudgetManager i18n Audit
 ========================
-Root: /mnt/data/bm_final
-Locales: /mnt/data/bm_final/locales
+Root: /mnt/data/BudgetManager_Source_1_0_39_complete
+Locales: /mnt/data/BudgetManager_Source_1_0_39_complete/locales
 
 [OK] Alle referenzierten Keys existieren in de.json
 
 [OK] en.json hat alle Keys von de.json
+
+[OK] fr.json hat alle Keys von de.json
 
 [INFO] 270 Key(s) in de.json wirken ungenutzt (kein tr()/trf() Treffer):
   - backup.restore_key_dialog_label
@@ -211,4 +213,3 @@ Locales: /mnt/data/bm_final/locales
   ... (+70 weitere)
 
 [OK] Keine verdächtigen hardcoded UI-Strings gefunden
-

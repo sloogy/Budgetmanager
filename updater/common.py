@@ -93,6 +93,41 @@ def detect_platform_key() -> str:
     return "linux"
 
 
+def is_windows() -> bool:
+    return sys.platform.startswith("win")
+
+
+def current_exe_filename() -> str:
+    """Dateiname, unter dem die App-Binary installiert ist bzw. starten soll.
+
+    - Frozen (PyInstaller): exakt der Name der laufenden EXE/Binary
+      (z.B. ``BudgetManager.exe`` auf Windows, ``BudgetManager`` auf Linux).
+    - DEV: plattform-typischer Default (nur als Fallback relevant).
+
+    Wichtig fürs Update: Das GitHub-Release liefert die Windows-Binary als
+    ``BudgetManager-windows.exe``, installiert ist sie aber als
+    ``BudgetManager.exe``. Beim Stagen benennen wir die heruntergeladene
+    Binary deshalb auf genau diesen Ziel-Namen um.
+    """
+    if _is_frozen():
+        return Path(sys.executable).name
+    return "BudgetManager.exe" if is_windows() else "BudgetManager"
+
+
+def asset_is_zip(asset_url: str, asset_type: str = "") -> bool:
+    """Entscheidet, ob ein Asset ein ZIP-Archiv ist (entpacken) oder eine
+    rohe Binary (direkt stagen).
+
+    Das Manifest kann verschiedene Typen liefern:
+      - ``portable-zip`` / URL endet auf ``.zip``  -> ZIP (entpacken)
+      - ``portable`` mit roher ``.exe``/Binary-URL -> KEIN ZIP (direkt stagen)
+    """
+    t = (asset_type or "").strip().lower()
+    if t.endswith("zip"):
+        return True
+    return asset_url.strip().lower().endswith(".zip")
+
+
 def read_current_version() -> str:
     """Liest die aktuelle Version aus app_info.APP_VERSION."""
     try:
