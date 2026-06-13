@@ -42,30 +42,13 @@ class CategoryModel:
         # Zentrale Quelle: data/default_categories.json (siehe model/default_categories.py).
         # Die frühere hardcodierte Liste (inkl. persönlicher Einträge und Tippfehler
         # wie "Nebenerweb"/"Rechtschutzz") wurde in v1.0.30 entfernt — Erststart und
-        # Reset verwenden jetzt dieselbe Quelle. Bestehende DBs sind nicht betroffen
-        # (defaults_loaded-Flag verhindert erneutes Einfügen).
-        from model.default_categories import load_default_categories
-        defaults_list = load_default_categories()
+        # Reset verwenden jetzt dieselbe Quelle UND dieselbe Insert-Routine
+        # (inkl. Unterkategorien via parent_id, v1.0.34).
+        from model.default_categories import insert_default_categories
+        insert_default_categories(self.conn)
 
-        cols = self._cols("categories")
-        cur=self.conn.cursor()
-        for dc in defaults_list:
-            typ, name, is_fix, is_rec, rec_day = dc.typ, dc.name, dc.is_fix, dc.is_recurring, dc.recurring_day
-            # v6+: parent_id/funded_by/sort_order existieren, bleiben aber NULL/0
-            if "parent_id" in cols and "sort_order" in cols and "funded_by_category_id" in cols:
-                cur.execute(
-                    "INSERT OR IGNORE INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
-                    "VALUES(?,?,?,?,?,?,?,?)",
-                    (typ, name, None, int(is_fix), int(is_rec), int(rec_day), None, 0),
-                )
-            else:
-                cur.execute(
-                    "INSERT OR IGNORE INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
-                    (typ, name, int(is_fix), int(is_rec), int(rec_day)),
-                )
-        
         # Markiere als geladen
-        cur.execute(
+        self.conn.execute(
             "INSERT OR REPLACE INTO system_flags(key, value) VALUES('defaults_loaded', 'true')"
         )
         self.conn.commit()

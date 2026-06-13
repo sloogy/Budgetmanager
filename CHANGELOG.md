@@ -5,6 +5,58 @@ Format basiert auf [Keep a Changelog](https://keepachangelog.com/de/1.0.0/).
 
 ---
 
+## [1.0.37] - 2026-06-13 — Setup-Assistent: Usability & i18n-Konsistenz
+
+### Schritt-Übersicht, Sperr-Hinweise und vollständige Übersetzbarkeit
+
+- **Neu: Schritt-Sidebar** links im Setup-Assistenten — zeigt alle Schritte mit Nummerierung, ✓ für abgeschlossene Schritte und Fettdruck für den aktuellen Schritt. Bereits besuchte Schritte sind **anklickbar** (direktes Zurückspringen), noch nicht erreichte sind ausgegraut. Der nicht gewählte Kategorien-Pfad (Manager vs. Excel-Import) wird in der Liste **ausgeblendet** und folgt live der Radio-Auswahl.
+- **Neu: Sperr-Hinweis** — wenn „Weiter" bei blockierenden Schritten deaktiviert ist, erscheint jetzt ein 🔒-Hinweis, der erklärt, *was* zuerst zu tun ist (Kategorien anlegen, Excel importieren, Budget-Fenster öffnen), statt nur einen toten Button zu zeigen.
+- **Fortschrittsanzeige** im Header zählt nur noch sichtbare Schritte („Schritt x von 10" statt x/11 inkl. verstecktem Branch).
+- **Bugfix**: Das `_finishing`-Flag wurde im Hide/Show-Context-Manager abgefragt, aber nie gesetzt — nach Klick auf „Fertig" konnte der Assistent kurz wieder aufpoppen, falls ein Kinddialog beteiligt war. Jetzt wird das Flag in `_finish()` gesetzt.
+- **i18n-Konsistenz**: Alle ~40 hardcodierten deutschen Strings im Setup-Assistenten (Buttons „Weiter →"/„Fertig", Seiten-Überschriften, Beschreibungstexte, Statusmeldungen, Fehlermeldungen, Dateifilter, MessageBox-Titel) laufen jetzt über `tr()`/`trf()`. Neue `setup.*`-Keys in **de/en/fr** ergänzt (je 40 Keys, alle drei Sprachen synchron bei 108 Setup-Keys). Schritt-Titel der Sidebar nutzen einheitliche `setup.nav_*`-Keys.
+
+---
+
+## [1.0.36] - 2026-06-12 — Setup-Assistent: Fenster-Layering-Fix
+
+- Der Setup-Assistent erzwingt nicht mehr `WindowStaysOnTopHint` — daraus geöffnete Dialoge (Kategorien-Manager, Budget-Fenster, Tracking) werden nicht mehr verdeckt.
+- Neuer Context-Manager `_setup_hidden_while_child_open()`: Der Assistent versteckt sich, solange ein Kinddialog offen ist, und kehrt danach automatisch in den Vordergrund zurück (an 5 Stellen eingesetzt).
+
+---
+
+## [1.0.35] - 2026-06-12 — CSV-Kategorien-Roundtrip mit Spaltenlösung
+
+### Kategorien per CSV exportieren, manuell bearbeiten, wieder importieren
+
+- **Neu**: Kategorien lassen sich als **CSV mit getrennten Spalten** exportieren und re-importieren — ohne die als unhandlich empfundene `›`-Pfadnotation in einer Spalte. Format:
+  `Typ, Hauptkategorie, Unterkategorie, Fix (0/1), Wiederkehrend (0/1), Tag (1-31)`.
+  Top-Level-Kategorie: Unterkategorie-Spalte leer. Unterkategorie: Hauptkategorie = Name der Elternkategorie.
+- **Setup-Assistent (Starter)**: Neuer Button „Vorlage als CSV exportieren"; der Import akzeptiert jetzt `*.xlsx` **und** `*.csv` (Dispatch nach Dateiendung).
+- **Robustheit**:
+  - Trennzeichen (`,` `;` Tab) wird automatisch erkannt (deutsches Excel nutzt oft `;`).
+  - UTF-8 mit BOM beim Schreiben → Umlaute öffnen in Excel korrekt.
+  - Namen mit Schrägstrich (`Miete/Hypothek`, `ÖV (Abo/Billette)`, `Serafe (Radio/TV)`) bleiben **ein** Blatt — der CSV-Splitter trennt nur am expliziten `›`-Marker, nicht an `/`. (Der xlsx-„Pfad"-Splitter trennt weiterhin auch an `/`, wie dort dokumentiert.)
+  - Tiefere Verschachtelung (>2 Ebenen) wird als Fallback `Kind › Enkel` in der Unterkategorie-Spalte ausgedrückt — kein Datenverlust.
+- **Aufräumen**: xlsx- und CSV-Import teilen sich jetzt eine **gemeinsame Kern-Routine** (`_apply_path`/`_ensure_category`) — keine doppelte Upsert-Logik mehr (gleiche Lehre wie beim Default-Kategorien-Fix). Elternknoten überschreiben dabei ihre Flags nicht mehr, wenn sie über eine eigene Zeile gesetzt wurden.
+- Der kombinierte CSV-Export (Export-Dialog, Tracking+Budget+Kategorien) nutzt im Kategorien-Block nun ebenfalls das Spaltenformat inkl. Tag.
+- Verifiziert (In-Memory-DB): voller Export→Import-Roundtrip identisch (44 Kategorien), idempotent, Slash-Namen intakt, Semikolon-CSV erkannt, 3-Ebenen-Fallback korrekt; xlsx-Import nach Refactor unverändert funktionsfähig.
+
+---
+
+## [1.0.34] - 2026-06-12 — Standard-Kategorien mit Unterkategorien
+
+### Vorab eingestellte Kategorien jetzt inkl. Unterkategorien
+
+- **Vorher**: Schema und `data/default_categories.json` kannten zwar ein `children`-Feld, aber der Loader `load_default_categories()` ignorierte es und beide Seeding-Pfade (Erststart `ensure_defaults`, Reset) fügten nur **flach** ein. Unterkategorien wurden also nie vorab angelegt.
+- **Jetzt**:
+  - `DefaultCategory` trägt `children`; der Loader parst Unterkategorien **rekursiv** (Kinder erben den `typ` des Eltern-Eintrags).
+  - Neue gemeinsame Routine `insert_default_categories(conn)` legt **Parent zuerst, dann Kinder mit `parent_id`** an. `INSERT OR IGNORE` macht sie idempotent; sie ist schema-tolerant (nutzt `parent_id`/`sort_order` nur, wenn vorhanden).
+  - **Erststart und Reset** nutzen jetzt dieselbe Routine — beide Pfade können nicht mehr auseinanderlaufen (die alte Doppel-Logik in `database_management_model.py` entfällt).
+  - `data/default_categories.json` ersetzt durch eine **saubere CH-Haushaltsvorlage** (ohne persönliche Namen): 17 Top-Level + 27 Unterkategorien (44 gesamt), gruppiert in Wohnen, Versicherungen, Kommunikation & Medien, Mobilität, Lebenshaltung, Freizeit, Sonstiges sowie Altersvorsorge/Rücklagen bei den Ersparnissen.
+- Verifiziert (In-Memory-DB): 44 Kategorien korrekt mit `parent_id` verknüpft, Typ-Konsistenz Eltern/Kind OK, idempotent (zweiter Lauf 0 neu), `build_tree` rendert die Hierarchie wie erwartet (Ausgaben 8 Top-Level / 23 Unterkategorien).
+
+---
+
 ## [1.0.33] - 2026-06-12 — Updater-Crash auf Windows-Konsole behoben
 
 ### UnicodeEncodeError bei `--check-update` / `--apply-update`

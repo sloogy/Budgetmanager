@@ -3,21 +3,30 @@ from __future__ import annotations
 import logging
 logger = logging.getLogger(__name__)
 from dataclasses import dataclass
+from contextlib import contextmanager
 from pathlib import Path
+from datetime import date
 import sqlite3
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QStackedWidget,
     QPushButton, QCheckBox, QRadioButton, QButtonGroup, QGroupBox,
-    QFileDialog, QMessageBox, QFrame
+    QFileDialog, QMessageBox, QFrame, QFormLayout, QSpinBox, QDoubleSpinBox,
+    QListWidget, QListWidgetItem
 )
 
-from views.category_excel_io import export_category_template_xlsx, import_categories_from_xlsx
+from views.category_excel_io import (
+    export_category_template_xlsx,
+    import_categories_from_xlsx,
+    export_category_template_csv,
+    import_categories_from_csv,
+)
 from views.budget_fill_dialog import BudgetFillDialog
 from model.category_model import CategoryModel
 from model.budget_model import BudgetModel
 from model.tracking_model import TrackingModel
+from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
@@ -28,6 +37,7 @@ class _Step:
     widget: QWidget
     on_enter: callable | None = None
     is_blocking: bool = False  # wenn True: Next nur, wenn self._step_done[idx] True ist
+    hint_key: str | None = None  # i18n-Key: erklärt, warum "Weiter" gesperrt ist
 
 
 class SetupAssistantDialog(QDialog):
@@ -58,10 +68,22 @@ class SetupAssistantDialog(QDialog):
 
         self.setWindowTitle(tr("dlg.setup_assistant"))
         self.setMinimumWidth(520)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        # Setup-Assistent bewusst NICHT "immer im Vordergrund" halten.
+        # Externe Dialoge wie Kategorien-Manager oder Budget-Fenster sollen
+        # normal davor liegen können und nicht vom Setup verdeckt werden.
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, False)
         self.setModal(False)
 
-        root = QVBoxLayout(self)
+        root = QHBoxLayout(self)
+
+        # ── Linke Seite: Schritt-Übersicht (Sidebar) ──────────────
+        self.step_list = QListWidget()
+        self.step_list.setFixedWidth(190)
+        self.step_list.setFocusPolicy(Qt.NoFocus)
+        self.step_list.itemClicked.connect(self._on_sidebar_clicked)
+
+        # ── Rechte Seite: Header, Seiten, Navigation ──────────────
+        right = QVBoxLayout()
 
         self.lbl_header = QLabel()
         self.lbl_header.setWordWrap(True)
@@ -69,10 +91,16 @@ class SetupAssistantDialog(QDialog):
 
         self.stack = QStackedWidget()
 
+        # Hinweis, warum "Weiter" gesperrt ist (nur sichtbar bei Blockern)
+        self.lbl_next_hint = QLabel()
+        self.lbl_next_hint.setWordWrap(True)
+        self.lbl_next_hint.setTextFormat(Qt.RichText)
+        self.lbl_next_hint.setVisible(False)
+
         nav = QHBoxLayout()
         self.btn_back = QPushButton(tr("setup.zurueck"))
-        self.btn_next = QPushButton("Weiter →")
-        self.btn_finish = QPushButton("Fertig")
+        self.btn_next = QPushButton(tr("setup.btn_next"))
+        self.btn_finish = QPushButton(tr("setup.btn_finish"))
         self.btn_finish.setVisible(False)
 
         self.btn_back.clicked.connect(self._go_back)
@@ -84,20 +112,31 @@ class SetupAssistantDialog(QDialog):
         nav.addWidget(self.btn_next)
         nav.addWidget(self.btn_finish)
 
-        root.addWidget(self.lbl_header)
-        root.addWidget(self._hline())
-        root.addWidget(self.stack, 1)
-        root.addWidget(self._hline())
-        root.addLayout(nav)
+        right.addWidget(self.lbl_header)
+        right.addWidget(self._hline())
+        right.addWidget(self.stack, 1)
+        right.addWidget(self._hline())
+        right.addWidget(self.lbl_next_hint)
+        right.addLayout(nav)
+
+        root.addWidget(self.step_list)
+        root.addLayout(right, 1)
 
         # Steps
         self.steps: list[_Step] = []
         self._step_done: list[bool] = []
+        self._visited: set[int] = set()
+        self._finishing: bool = False
 
         self._build_steps()
 
         for st in self.steps:
             self.stack.addWidget(st.widget)
+
+        self._build_sidebar()
+
+        # Branch-Sichtbarkeit (Kategorien-Manager vs. Excel-Import) live nachführen
+        self.rb_cat_manager.toggled.connect(lambda _: self._refresh_sidebar())
 
         self._set_step(0)
 
@@ -109,6 +148,90 @@ class SetupAssistantDialog(QDialog):
         line.setFrameShape(QFrame.HLine)
         line.setFrameShadow(QFrame.Sunken)
         return line
+
+    # ---------------------------------------------------------------------
+    # Sidebar (Schritt-Übersicht)
+    # ---------------------------------------------------------------------
+    # Indizes der beiden alternativen Kategorien-Schritte (Branch)
+    _IDX_CAT_MANAGER = 3
+    _IDX_CAT_EXCEL = 4
+
+    def _branch_hidden_idx(self) -> int:
+        """Index des aktuell NICHT gewählten Kategorien-Schritts."""
+        if getattr(self, "rb_cat_excel", None) is not None and self.rb_cat_excel.isChecked():
+            return self._IDX_CAT_MANAGER
+        return self._IDX_CAT_EXCEL
+
+    def _visible_indices(self) -> list[int]:
+        """Schritt-Indizes in Navigationsreihenfolge ohne den inaktiven Branch."""
+        hidden = self._branch_hidden_idx()
+        return [i for i in range(len(self.steps)) if i != hidden]
+
+    def _build_sidebar(self) -> None:
+        self.step_list.clear()
+        for i, st in enumerate(self.steps):
+            item = QListWidgetItem(st.title)
+            item.setData(Qt.UserRole, i)
+            self.step_list.addItem(item)
+        self._refresh_sidebar()
+
+    def _refresh_sidebar(self) -> None:
+        """Aktualisiert Haken, Hervorhebung, Branch-Sichtbarkeit und Klickbarkeit."""
+        cur = self._current_idx()
+        hidden = self._branch_hidden_idx()
+        visible = self._visible_indices()
+        for row in range(self.step_list.count()):
+            item = self.step_list.item(row)
+            idx = int(item.data(Qt.UserRole))
+            st = self.steps[idx]
+
+            item.setHidden(idx == hidden)
+
+            pos = (visible.index(idx) + 1) if idx in visible else 0
+            done = bool(self._step_done[idx]) and idx in self._visited
+            mark = "✓" if done else f"{pos}."
+            item.setText(f"{mark}  {st.title}")
+
+            f = item.font()
+            f.setBold(idx == cur)
+            item.setFont(f)
+
+            # Nur bereits besuchte Schritte sind anklickbar (Zurückspringen)
+            clickable = idx in self._visited and idx != cur
+            flags = Qt.ItemIsEnabled if clickable or idx == cur else Qt.NoItemFlags
+            item.setFlags(flags)
+
+        # Aktuellen Schritt in der Liste markieren (ohne Selektion zu erlauben)
+        for row in range(self.step_list.count()):
+            item = self.step_list.item(row)
+            if int(item.data(Qt.UserRole)) == cur:
+                self.step_list.setCurrentItem(item)
+                break
+
+    def _on_sidebar_clicked(self, item: QListWidgetItem) -> None:
+        idx = int(item.data(Qt.UserRole))
+        if idx in self._visited and idx != self._current_idx():
+            self._set_step(idx)
+
+    @contextmanager
+    def _setup_hidden_while_child_open(self):
+        """Versteckt den Setup-Assistenten kurz, solange ein Kinddialog offen ist.
+
+        Der Setup-Assistent ist ein Begleiter, nicht der eigentliche Arbeitsdialog.
+        Wenn daraus z. B. Kategorien-Manager, Budget-Fenster oder Tracking-Dialog
+        geöffnet werden, soll dieses Fenster nicht davor liegen und die Arbeit
+        verdecken. Nach dem Schließen des Kinddialogs erscheint der Assistent wieder.
+        """
+        was_visible = self.isVisible()
+        try:
+            if was_visible:
+                self.hide()
+            yield
+        finally:
+            if was_visible and not getattr(self, "_finishing", False):
+                self.show()
+                self.raise_()
+                self.activateWindow()
 
     def _mk_page(self, title: str, body_html: str) -> QWidget:
         w = QWidget()
@@ -133,6 +256,7 @@ class SetupAssistantDialog(QDialog):
         self._build_step_cat_method()
         self._build_step_cat_manager()
         self._build_step_cat_excel()
+        self._build_step_budget_starter()
         self._build_step_budget_load()
         self._build_step_budget_explain()
         self._build_step_tracking_first()
@@ -161,13 +285,13 @@ class SetupAssistantDialog(QDialog):
         lay.addWidget(self.cb_guided)
         lay.addWidget(self.cb_show_on_start)
         lay.addStretch(1)
-        self.steps.append(_Step("Startmodus", self.page_mode))
+        self.steps.append(_Step(tr("setup.nav_mode"), self.page_mode))
 
     def _build_step_db(self) -> None:
         """2) Datenbank-Check."""
         self.page_db = QWidget()
         lay = QVBoxLayout(self.page_db)
-        lay.addWidget(QLabel("<h3>2) Datenbank-Check</h3>"))
+        lay.addWidget(QLabel("<h3>" + tr("setup.step2_title") + "</h3>"))
         exists_txt = tr("setup.setup_db_exists") if self.db_existed_before else tr("setup.setup_db_not_exists")
         self.lbl_db = QLabel(
             f"<b>{tr('setup.setup_db_path')}:</b> {self.db_path}<br>"
@@ -192,25 +316,22 @@ class SetupAssistantDialog(QDialog):
         btn_row.addStretch()
         lay.addLayout(btn_row)
         lay.addStretch(1)
-        self.steps.append(_Step(tr("setup.setup_db_title"), self.page_db))
+        self.steps.append(_Step(tr("setup.nav_db"), self.page_db))
 
     def _build_step_cat_method(self) -> None:
         """3) Kategorien-Methode wählen."""
         self.page_cat_method = QWidget()
         lay = QVBoxLayout(self.page_cat_method)
-        lay.addWidget(QLabel("<h3>3) Kategorien anlegen</h3>"))
+        lay.addWidget(QLabel("<h3>" + tr("setup.step3_title") + "</h3>"))
         try:
             cnt = self._cat_model.count()
         except Exception:
             cnt = 0
-        hint = QLabel(
-            "Du kannst Kategorien direkt im <b>Kategorien-Manager</b> erstellen, oder über eine <b>Excel-Vorlage</b> importieren."
-            "<br><small>Beispiel-Pfad: Gesundheit \u203a Krankenkasse \u203a Prämie</small>"
-        )
+        hint = QLabel(tr("setup.cat_method_hint"))
         hint.setTextFormat(Qt.RichText)
         hint.setWordWrap(True)
         lay.addWidget(hint)
-        gb = QGroupBox("Methode")
+        gb = QGroupBox(tr("setup.cat_method_box"))
         vb = QVBoxLayout(gb)
         self.rb_cat_manager = QRadioButton(tr("radio.cat_manager"))
         self.rb_cat_excel = QRadioButton(tr("radio.cat_excel"))
@@ -225,13 +346,13 @@ class SetupAssistantDialog(QDialog):
             self.cb_clean_start.setToolTip(tr("setup.dein_budgettracking_enthaelt_bereits"))
         lay.addWidget(self.cb_clean_start)
         lay.addStretch(1)
-        self.steps.append(_Step("Kategorien Methode", self.page_cat_method))
+        self.steps.append(_Step(tr("setup.nav_cat_method"), self.page_cat_method))
 
     def _build_step_cat_manager(self) -> None:
         """4.1) Kategorien-Manager."""
         self.page_cat_manager = QWidget()
         lay = QVBoxLayout(self.page_cat_manager)
-        lay.addWidget(QLabel("<h3>4) Kategorien-Manager</h3>"))
+        lay.addWidget(QLabel("<h3>" + tr("setup.step4_cat_manager") + "</h3>"))
         desc = QLabel(tr("setup.klicke_auf_boeffnenb_lege"))
         desc.setTextFormat(Qt.RichText)
         desc.setWordWrap(True)
@@ -244,23 +365,24 @@ class SetupAssistantDialog(QDialog):
         self.lbl_cat_done_1.setWordWrap(True)
         lay.addWidget(self.lbl_cat_done_1)
         lay.addStretch(1)
-        self.steps.append(_Step(tr("dlg.category_manager"), self.page_cat_manager, is_blocking=True))
+        self.steps.append(_Step(tr("setup.nav_cat_manager"), self.page_cat_manager,
+                                is_blocking=True, hint_key="setup.hint_locked_cat_manager"))
 
     def _build_step_cat_excel(self) -> None:
         """4.2) Excel-Import."""
         self.page_cat_excel = QWidget()
         lay = QVBoxLayout(self.page_cat_excel)
-        lay.addWidget(QLabel("<h3>4) Excel-Import</h3>"))
-        desc = QLabel(
-            "1) Exportiere eine Excel-Vorlage, fülle sie aus, und importiere sie dann wieder.<br>"
-            "2) Danach öffnet sich zur Kontrolle automatisch der Kategorien-Manager."
-        )
+        lay.addWidget(QLabel("<h3>" + tr("setup.step4_excel") + "</h3>"))
+        desc = QLabel(tr("setup.excel_desc"))
         desc.setTextFormat(Qt.RichText)
         desc.setWordWrap(True)
         lay.addWidget(desc)
         self.btn_export_template = QPushButton(tr("setup.export_template"))
         self.btn_export_template.clicked.connect(self._export_template)
         lay.addWidget(self.btn_export_template)
+        self.btn_export_template_csv = QPushButton(tr("setup.export_template") + " (CSV)")
+        self.btn_export_template_csv.clicked.connect(self._export_template_csv)
+        lay.addWidget(self.btn_export_template_csv)
         self.btn_import_template = QPushButton(tr("setup.import_template"))
         self.btn_import_template.clicked.connect(self._import_from_excel)
         lay.addWidget(self.btn_import_template)
@@ -269,19 +391,93 @@ class SetupAssistantDialog(QDialog):
         self.lbl_cat_done_2.setWordWrap(True)
         lay.addWidget(self.lbl_cat_done_2)
         lay.addStretch(1)
-        self.steps.append(_Step("Excel-Import", self.page_cat_excel, is_blocking=True))
+        self.steps.append(_Step(tr("setup.nav_cat_excel"), self.page_cat_excel,
+                                is_blocking=True, hint_key="setup.hint_locked_cat_excel"))
+
+    def _build_step_budget_starter(self) -> None:
+        """5) Budget-Grundgerüst/Vorlage anlegen."""
+        self.page_budget_starter = QWidget()
+        lay = QVBoxLayout(self.page_budget_starter)
+        lay.addWidget(QLabel(tr("setup.budget_starter_title")))
+
+        desc = QLabel(tr("setup.budget_starter_desc"))
+        desc.setTextFormat(Qt.RichText)
+        desc.setWordWrap(True)
+        lay.addWidget(desc)
+
+        form = QFormLayout()
+        self.spin_budget_year = QSpinBox()
+        self.spin_budget_year.setRange(2000, 2100)
+        self.spin_budget_year.setValue(date.today().year)
+        form.addRow(tr("setup.budget_year"), self.spin_budget_year)
+
+        self.cb_seed_all_budget = QCheckBox(tr("setup.seed_all_budget_rows"))
+        self.cb_seed_all_budget.setChecked(True)
+        form.addRow("", self.cb_seed_all_budget)
+
+        self.cb_overwrite_budget = QCheckBox(tr("setup.overwrite_existing_budget"))
+        self.cb_overwrite_budget.setChecked(False)
+        form.addRow("", self.cb_overwrite_budget)
+        lay.addLayout(form)
+
+        amounts_box = QGroupBox(tr("setup.budget_quick_amounts"))
+        amounts = QFormLayout(amounts_box)
+
+        self.spn_income_salary = self._money_spin(0)
+        self.spn_exp_rent = self._money_spin(0)
+        self.spn_exp_health = self._money_spin(0)
+        self.spn_exp_groceries = self._money_spin(0)
+        self.spn_exp_taxes = self._money_spin(0)
+        self.spn_exp_phone = self._money_spin(0)
+        self.spn_exp_transport = self._money_spin(0)
+        self.spn_save_emergency = self._money_spin(0)
+        self.spn_save_vacation = self._money_spin(0)
+
+        amounts.addRow(tr("setup.amount_salary"), self.spn_income_salary)
+        amounts.addRow(tr("setup.amount_rent"), self.spn_exp_rent)
+        amounts.addRow(tr("setup.amount_health"), self.spn_exp_health)
+        amounts.addRow(tr("setup.amount_groceries"), self.spn_exp_groceries)
+        amounts.addRow(tr("setup.amount_taxes"), self.spn_exp_taxes)
+        amounts.addRow(tr("setup.amount_phone"), self.spn_exp_phone)
+        amounts.addRow(tr("setup.amount_transport"), self.spn_exp_transport)
+        amounts.addRow(tr("setup.amount_emergency"), self.spn_save_emergency)
+        amounts.addRow(tr("setup.amount_vacation"), self.spn_save_vacation)
+        lay.addWidget(amounts_box)
+
+        btn_row = QHBoxLayout()
+        self.btn_create_empty_budget_year = QPushButton(tr("setup.create_empty_budget_year"))
+        self.btn_create_empty_budget_year.clicked.connect(self._create_empty_budget_year)
+        self.btn_apply_budget_template = QPushButton(tr("setup.apply_budget_template"))
+        self.btn_apply_budget_template.clicked.connect(self._apply_budget_template)
+        btn_row.addWidget(self.btn_create_empty_budget_year)
+        btn_row.addWidget(self.btn_apply_budget_template)
+        btn_row.addStretch(1)
+        lay.addLayout(btn_row)
+
+        self.lbl_budget_starter_status = QLabel(tr("setup.budget_starter_status_idle"))
+        self.lbl_budget_starter_status.setTextFormat(Qt.RichText)
+        self.lbl_budget_starter_status.setWordWrap(True)
+        lay.addWidget(self.lbl_budget_starter_status)
+        lay.addStretch(1)
+
+        self.steps.append(_Step(tr("setup.nav_budget_starter"), self.page_budget_starter))
+
+    def _money_spin(self, value: float = 0.0) -> QDoubleSpinBox:
+        """Geldbetrag-Feld für den Setup-Assistenten."""
+        spn = QDoubleSpinBox()
+        spn.setRange(0.0, 999999.0)
+        spn.setDecimals(2)
+        spn.setSingleStep(50.0)
+        spn.setSuffix(" CHF")
+        spn.setValue(float(value))
+        return spn
 
     def _build_step_budget_load(self) -> None:
         """5) Budget-Fenster öffnen."""
         self.page_budget_load = QWidget()
         lay = QVBoxLayout(self.page_budget_load)
-        lay.addWidget(QLabel(tr("setup.h35_budget_ausfuellenh3")))
-        desc = QLabel(
-            "Der Budget-Tab wird jetzt als <b>eigenes Fenster</b> geöffnet, damit du ihn direkt ausfüllen kannst.<br><br>"
-            "• Kategorien werden aus der Datenbank geladen.<br>"
-            "• Du trägst Monatswerte in die Tabelle ein.<br>"
-            "• Danach schließt du das Budget-Fenster und klickst hier auf <b>Weiter</b>."
-        )
+        lay.addWidget(QLabel(tr("setup.h36_budget_ausfuellenh3")))
+        desc = QLabel(tr("setup.budget_load_desc"))
         desc.setTextFormat(Qt.RichText)
         desc.setWordWrap(True)
         lay.addWidget(desc)
@@ -293,34 +489,24 @@ class SetupAssistantDialog(QDialog):
         self.lbl_budget_done.setWordWrap(True)
         lay.addWidget(self.lbl_budget_done)
         lay.addStretch(1)
-        self.steps.append(_Step(tr("setup.budget_ausfuellen"), self.page_budget_load,
-                                on_enter=self._enter_budget_tab_and_open_budget_window_once, is_blocking=True))
+        self.steps.append(_Step(tr("setup.nav_budget_fill"), self.page_budget_load,
+                                on_enter=self._enter_budget_tab_and_open_budget_window_once,
+                                is_blocking=True, hint_key="setup.hint_locked_budget"))
 
     def _build_step_budget_explain(self) -> None:
         """6) Budget-Tab Erklärung."""
         self.page_budget_explain = self._mk_page(
             tr("setup.step6_title"),
-            "<b>6.1 Kategorien bearbeiten</b><br>"
-            "• Rechtsklick auf eine Zeile (oder ⚙/Dialog) → Umbenennen, Löschen, Flags setzen.<br><br>"
-            "<b>6.2 Budget setzen</b><br>"
-            "• In den Monatsspalten direkt Beträge in der gewählten Währung eintragen.<br>"
-            "• Total wird automatisch berechnet.<br><br>"
-            "<b>6.3 Tabelle erklärt</b><br>"
-            "• Spalte <b>⭐ Fix</b>: Fixkosten markieren (z. B. Miete).<br>"
-            "• Spalte <b>∞ Wiederkehrend</b>: wiederkehrende Buchung (z. B. Monatsabo).<br>"
-            "• Spalte <b>Tag</b>: Fälligkeitstag im Monat (1–31)."
+            tr("setup.budget_explain_body"),
         )
-        self.steps.append(_Step(tr("setup.budget_erklaerung"), self.page_budget_explain, on_enter=self._enter_budget_tab))
+        self.steps.append(_Step(tr("setup.nav_budget_explain"), self.page_budget_explain, on_enter=self._enter_budget_tab))
 
     def _build_step_tracking_first(self) -> None:
         """7) Tracking — erste Buchung."""
         self.page_tracking_first = QWidget()
         lay = QVBoxLayout(self.page_tracking_first)
-        lay.addWidget(QLabel("<h3>7) Tracking – erste Buchung</h3>"))
-        desc = QLabel(
-            "Im <b>Tracking</b> (Buchungen) erfasst du echte Zahlungen.<br>"
-            "Klicke auf <b>Erste Buchung hinzufügen</b> und speichere – oder überspringe den Test."
-        )
+        lay.addWidget(QLabel("<h3>" + tr("setup.step7_title") + "</h3>"))
+        desc = QLabel(tr("setup.tracking_first_desc"))
         desc.setTextFormat(Qt.RichText)
         desc.setWordWrap(True)
         lay.addWidget(desc)
@@ -328,22 +514,14 @@ class SetupAssistantDialog(QDialog):
         self.btn_add_first.clicked.connect(self._open_first_booking)
         lay.addWidget(self.btn_add_first)
         lay.addStretch(1)
-        self.steps.append(_Step("Tracking erste Buchung", self.page_tracking_first, on_enter=self._enter_tracking_tab))
+        self.steps.append(_Step(tr("setup.nav_tracking_first"), self.page_tracking_first, on_enter=self._enter_tracking_tab))
 
     def _build_step_tracking_fix(self) -> None:
         """8) Tracking — Fixkosten / Wiederkehrend."""
         self.page_tracking_fix = QWidget()
         lay = QVBoxLayout(self.page_tracking_fix)
-        lay.addWidget(QLabel("<h3>8) Tracking – Fixkosten / Wiederkehrend</h3>"))
-        desc = QLabel(
-            "<b>8.1 Fix/Wiederkehrend buchen</b><br>"
-            "Der Button <b>Fix/Wiederkehrend buchen…</b> erstellt Buchungen aus Kategorien, "
-            "die als ⭐ Fixkosten oder ∞ Wiederkehrend markiert sind.<br><br>"
-            "<b>Was passiert?</b><br>"
-            "• Es wird eine Liste vorbereitet.<br>"
-            "• Fixkosten übernehmen den Betrag aus dem Budget (wenn > 0).<br>"
-            "• Wiederkehrende (ohne Fixbetrag) können im Dialog angepasst werden."
-        )
+        lay.addWidget(QLabel("<h3>" + tr("setup.step8_title") + "</h3>"))
+        desc = QLabel(tr("setup.tracking_fix_desc"))
         desc.setTextFormat(Qt.RichText)
         desc.setWordWrap(True)
         lay.addWidget(desc)
@@ -351,20 +529,14 @@ class SetupAssistantDialog(QDialog):
         self.btn_open_fix.clicked.connect(self._open_fix_dialog)
         lay.addWidget(self.btn_open_fix)
         lay.addStretch(1)
-        self.steps.append(_Step("Tracking Fix", self.page_tracking_fix, on_enter=self._enter_tracking_tab))
+        self.steps.append(_Step(tr("setup.nav_tracking_fix"), self.page_tracking_fix, on_enter=self._enter_tracking_tab))
 
     def _build_step_finish(self) -> None:
         """Abschluss-Seite."""
         self.page_finish = QWidget()
         lay = QVBoxLayout(self.page_finish)
-        lay.addWidget(QLabel("<h3>Fertig ✅</h3>"))
-        done = QLabel(
-            "Du hast den Quick-Guide abgeschlossen.<br><br>"
-            "Tipps:<br>"
-            "• Kategorien-Pfad hilft überall (z. B. Gesundheit \u203a Krankenkasse \u203a Prämie).<br>"
-            "• Budget = Plan, Tracking = Realität.<br>"
-            "• Dashboard/Übersicht vergleicht Budget vs. Getracked."
-        )
+        lay.addWidget(QLabel("<h3>" + tr("setup.finished") + "</h3>"))
+        done = QLabel(tr("setup.finish_body"))
         done.setTextFormat(Qt.RichText)
         done.setWordWrap(True)
         lay.addWidget(done)
@@ -372,7 +544,7 @@ class SetupAssistantDialog(QDialog):
         self.cb_show_on_start_end.setChecked(False)
         lay.addWidget(self.cb_show_on_start_end)
         lay.addStretch(1)
-        self.steps.append(_Step("Fertig", self.page_finish))
+        self.steps.append(_Step(tr("setup.nav_finish"), self.page_finish))
 
     # ---------------------------------------------------------------------
     # Navigation
@@ -380,8 +552,16 @@ class SetupAssistantDialog(QDialog):
     def _set_step(self, idx: int) -> None:
         idx = max(0, min(idx, len(self.steps) - 1))
         self.stack.setCurrentIndex(idx)
+        self._visited.add(idx)
         st = self.steps[idx]
-        self.lbl_header.setText(f"<b>{st.title}</b> ({idx+1}/{len(self.steps)})")
+        visible = self._visible_indices()
+        pos = (visible.index(idx) + 1) if idx in visible else idx + 1
+        total = len(visible)
+        self.lbl_header.setText(
+            f"<b>{st.title}</b> &nbsp;<small>"
+            + trf("setup.progress_step_of", pos=pos, total=total)
+            + "</small>"
+        )
         if st.on_enter:
             try:
                 st.on_enter()
@@ -390,6 +570,7 @@ class SetupAssistantDialog(QDialog):
                 # Wizard must not crash UI
                 pass
         self._update_nav()
+        self._refresh_sidebar()
 
     def _current_idx(self) -> int:
         return int(self.stack.currentIndex())
@@ -410,12 +591,26 @@ class SetupAssistantDialog(QDialog):
             can_next = bool(self._step_done[idx])
         self.btn_next.setEnabled(can_next)
 
+        # Erklären, WARUM "Weiter" gesperrt ist – statt nur eines toten Buttons.
+        st = self.steps[idx]
+        if not can_next and not last:
+            hint = tr(st.hint_key) if st.hint_key else tr("setup.hint_locked_generic")
+            self.lbl_next_hint.setText(f"<small>🔒 {hint}</small>")
+            self.lbl_next_hint.setVisible(True)
+        else:
+            self.lbl_next_hint.setVisible(False)
+
     def _go_back(self) -> None:
         idx = self._current_idx()
 
         # handle branching back: from cat manager/excel to method page
         if idx in (3, 4):
             self._set_step(2)
+            return
+
+        # from budget starter go back to the selected category path
+        if idx == 5:
+            self._set_step(4 if self.rb_cat_excel.isChecked() else 3)
             return
 
         self._set_step(idx - 1)
@@ -437,7 +632,7 @@ class SetupAssistantDialog(QDialog):
             self._set_step(4 if self.rb_cat_excel.isChecked() else 3)
             return
 
-        # after cat pages -> budget load
+        # after category pages -> budget starter
         if idx in (3, 4):
             self._set_step(5)
             return
@@ -445,10 +640,13 @@ class SetupAssistantDialog(QDialog):
         self._set_step(idx + 1)
 
     def _finish(self) -> None:
+        # Verhindert, dass _setup_hidden_while_child_open() den Dialog
+        # nach dem Abschluss wieder anzeigt (Flag wurde bisher nie gesetzt).
+        self._finishing = True
         # mark completed and apply "show on start"
         self.settings.set("show_onboarding", bool(self.cb_show_on_start_end.isChecked()))
         self.settings.set("setup_completed", True)
-        QMessageBox.information(self, "OK", "Setup-Assistent abgeschlossen.")
+        QMessageBox.information(self, tr("msg.info"), tr("setup.finish_done_msg"))
         self.close()
 
 
@@ -501,14 +699,15 @@ class SetupAssistantDialog(QDialog):
     # ---------------------------------------------------------------------
     def _open_category_manager(self) -> None:
         try:
-            self.main_window._show_category_manager()
+            with self._setup_hidden_while_child_open():
+                self.main_window._show_category_manager()
             # manager is modal; when it closes, consider done if there is at least one category
             cnt = self._cat_model.count()
             if cnt <= 0:
-                QMessageBox.information(self, tr("msg.info"), "Noch keine Kategorien vorhanden. Du kannst trotzdem fortfahren.")
+                QMessageBox.information(self, tr("msg.info"), tr("setup.no_categories_yet"))
             self._cats_done = True
             self._step_done[3] = True
-            self.lbl_cat_done_1.setText("<small>✅ Kategorien-Manager abgeschlossen.</small>")
+            self.lbl_cat_done_1.setText(tr("setup.cat_manager_done"))
             self._update_nav()
             self.main_window._refresh_all_tabs()
         except Exception as e:
@@ -527,11 +726,30 @@ class SetupAssistantDialog(QDialog):
             export_category_template_xlsx(out)
             QMessageBox.information(
                 self,
-                "OK",
+                tr("msg.info"),
                 trf("msg.vorlage_gespeichert", out=out),
             )
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Export fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf("setup.export_failed", e=e))
+
+    def _export_template_csv(self) -> None:
+        try:
+            folder = QFileDialog.getExistingDirectory(
+                self,
+                tr("setup.ordner_waehlen_excelvorlage_speichern"),
+                str(Path.home()),
+            )
+            if not folder:
+                return
+            out = Path(folder) / "Budgetmanager_Kategorien_Template.csv"
+            export_category_template_csv(out)
+            QMessageBox.information(
+                self,
+                tr("msg.info"),
+                trf("msg.vorlage_gespeichert", out=out),
+            )
+        except Exception as e:
+            QMessageBox.critical(self, tr("msg.error"), trf("setup.export_failed", e=e))
 
     def _import_from_excel(self) -> None:
         try:
@@ -539,40 +757,43 @@ class SetupAssistantDialog(QDialog):
                 self,
                 tr("setup.kategorienexcel_auswaehlen"),
                 str(Path.home()),
-                "Excel (*.xlsx)",
+                tr("setup.categories_file_filter"),
             )
             if not file_path:
                 return
-            res = import_categories_from_xlsx(self.conn, Path(file_path))
-            msg = (
-                f"Import abgeschlossen.\n"
-                f"Eingefügt: {res.inserted}\n"
-                f"Aktualisiert: {res.updated}\n"
-                f"Übersprungen: {res.skipped}"
+            if Path(file_path).suffix.lower() == ".csv":
+                res = import_categories_from_csv(self.conn, Path(file_path))
+            else:
+                res = import_categories_from_xlsx(self.conn, Path(file_path))
+            msg = trf(
+                "setup.import_summary",
+                inserted=res.inserted, updated=res.updated, skipped=res.skipped,
             )
             if res.warnings:
-                msg += "\n\nWarnungen:\n- " + "\n- ".join(res.warnings[:12])
+                msg += "\n\n" + tr("setup.import_warnings") + "\n- " + "\n- ".join(res.warnings[:12])
                 if len(res.warnings) > 12:
-                    msg += f"\n… ({len(res.warnings)-12} weitere)"
-            QMessageBox.information(self, "OK", msg)
+                    msg += "\n" + trf("setup.import_more_warnings", n=len(res.warnings) - 12)
+            QMessageBox.information(self, tr("msg.info"), msg)
 
             # Kontrolle im Kategorien-Manager
-            QMessageBox.information(self, "Kontrolle", tr("setup.zur_kontrolle_oeffnet_sich"))
-            self.main_window._show_category_manager()
+            QMessageBox.information(self, tr("setup.kontrolle_title"), tr("setup.zur_kontrolle_oeffnet_sich"))
+            with self._setup_hidden_while_child_open():
+                self.main_window._show_category_manager()
 
             self._cats_done = True
             self._step_done[4] = True
-            self.lbl_cat_done_2.setText("<small>✅ Excel-Import abgeschlossen.</small>")
+            self.lbl_cat_done_2.setText(tr("setup.excel_import_done"))
             self._update_nav()
             self.main_window._refresh_all_tabs()
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Import fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf("setup.import_failed", e=e))
 
     def _open_first_booking(self) -> None:
         try:
             # tracking_tab.add() öffnet den Dialog und speichert bei OK
             if hasattr(self.main_window.tracking_tab, "add"):
-                self.main_window.tracking_tab.add()
+                with self._setup_hidden_while_child_open():
+                    self.main_window.tracking_tab.add()
                 self.main_window.tracking_tab.refresh()
             else:
                 QMessageBox.information(self, tr("msg.info"), tr("msg.setup_tracking_unavailable"))
@@ -582,11 +803,203 @@ class SetupAssistantDialog(QDialog):
     def _open_fix_dialog(self) -> None:
         try:
             if hasattr(self.main_window.tracking_tab, "add_fixcosts"):
-                self.main_window.tracking_tab.add_fixcosts()
+                with self._setup_hidden_while_child_open():
+                    self.main_window.tracking_tab.add_fixcosts()
             else:
                 QMessageBox.information(self, tr("msg.info"), tr("msg.setup_fixrecurring_unavailable"))
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("msg.setup_dialog_failed", e=e))
+
+    # ---------------------------------------------------------------------
+    # Budget starter helpers
+    # ---------------------------------------------------------------------
+
+    def _find_category_id(self, typ: str, name: str) -> int | None:
+        row = self.conn.execute(
+            "SELECT id FROM categories WHERE typ=? AND name=?",
+            (typ, name),
+        ).fetchone()
+        if not row:
+            return None
+        return int(row["id"] if hasattr(row, "keys") else row[0])
+
+    def _ensure_setup_category(
+        self,
+        typ: str,
+        name: str,
+        *,
+        is_fix: bool = False,
+        is_recurring: bool = False,
+        recurring_day: int = 1,
+        parent_name: str | None = None,
+        sort_order: int = 0,
+    ) -> int:
+        parent_id = None
+        if parent_name:
+            parent_id = self._find_category_id(typ, parent_name)
+            if parent_id is None:
+                self._cat_model.upsert(
+                    typ,
+                    parent_name,
+                    False,
+                    False,
+                    1,
+                    parent_id=None,
+                    sort_order=max(0, sort_order - 1),
+                )
+                parent_id = self._find_category_id(typ, parent_name)
+
+        self._cat_model.upsert(
+            typ,
+            name,
+            bool(is_fix),
+            bool(is_recurring),
+            int(recurring_day or 1),
+            parent_id=parent_id,
+            sort_order=int(sort_order),
+        )
+        cat_id = self._find_category_id(typ, name)
+        if cat_id is None:
+            raise RuntimeError(f"Kategorie konnte nicht angelegt werden: {typ} / {name}")
+        return cat_id
+
+    def _ensure_default_categories_for_budget_setup(self) -> None:
+        if self._cat_model.count() <= 0:
+            # Falls Kategorien gelöscht wurden, kann das alte defaults_loaded-Flag
+            # trotzdem noch gesetzt sein. Deshalb Flag zurücksetzen und dann Defaults laden.
+            self._cat_model.reset_defaults_flag()
+            self._cat_model.ensure_defaults()
+
+    def _seed_all_budget_rows_for_year(self, year: int) -> None:
+        """Legt für alle Kategorien 12 Monatszeilen mit 0 CHF an, ohne Werte zu überschreiben."""
+        self._ensure_default_categories_for_budget_setup()
+        by_typ: dict[str, list[str]] = {}
+        for cat in self._cat_model.list(None):
+            by_typ.setdefault(cat.typ, []).append(cat.name)
+        for typ, names in by_typ.items():
+            self._budget_model.seed_year_from_categories(int(year), typ, names, amount=0.0)
+
+    def _set_monthly_budget_amount(
+        self,
+        *,
+        year: int,
+        typ: str,
+        category: str,
+        amount: float,
+        overwrite: bool,
+    ) -> tuple[int, int]:
+        """Setzt einen Monatsbetrag für alle 12 Monate. Returns: (changed, skipped)."""
+        changed = 0
+        skipped = 0
+        amount = float(amount or 0.0)
+        if amount <= 0:
+            return changed, skipped
+
+        for month in range(1, 13):
+            row = self.conn.execute(
+                "SELECT amount FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
+                (int(year), int(month), typ, category),
+            ).fetchone()
+            existing = float(row["amount"] or 0.0) if row else 0.0
+            if row is not None and existing != 0.0 and not overwrite:
+                skipped += 1
+                continue
+            self._budget_model.set_amount(int(year), int(month), typ, category, amount)
+            changed += 1
+        return changed, skipped
+
+    def _create_empty_budget_year(self) -> None:
+        try:
+            year = int(self.spin_budget_year.value())
+            self._seed_all_budget_rows_for_year(year)
+            self.lbl_budget_starter_status.setText(
+                trf("setup.empty_budget_year_created", year=year)
+            )
+            if hasattr(self.main_window, "_refresh_all_tabs"):
+                self.main_window._refresh_all_tabs()
+        except Exception as e:
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.setup_budget_template_failed", e=e))
+
+    def _apply_budget_template(self) -> None:
+        """Erstellt ein einfaches Budget-Grundgerüst aus den Formularwerten."""
+        try:
+            year = int(self.spin_budget_year.value())
+            overwrite = bool(self.cb_overwrite_budget.isChecked())
+
+            self._ensure_default_categories_for_budget_setup()
+            if self.cb_seed_all_budget.isChecked():
+                self._seed_all_budget_rows_for_year(year)
+
+            # Sicherstellen, dass die wichtigsten Kategorien vorhanden sind.
+            self._ensure_setup_category(
+                TYP_INCOME, "Lohn (Netto)", is_recurring=True, recurring_day=25, sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_EXPENSES, "Miete/Hypothek", is_fix=True, is_recurring=True, recurring_day=1,
+                parent_name="Wohnen", sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_EXPENSES, "Krankenkasse", is_fix=True, is_recurring=True, recurring_day=1,
+                parent_name="Versicherungen", sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_EXPENSES, "Lebensmittel", parent_name="Lebenshaltung", sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_EXPENSES, "Steuern", is_fix=True, is_recurring=True, recurring_day=1, sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_EXPENSES, "Telefon/Internet", is_fix=True, is_recurring=True, recurring_day=1,
+                parent_name="Kommunikation & Medien", sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_EXPENSES, "ÖV (Abo/Billette)", parent_name="Mobilität", sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_SAVINGS, "Notgroschen", is_recurring=True, recurring_day=25, sort_order=0
+            )
+            self._ensure_setup_category(
+                TYP_SAVINGS, "Ferien", is_recurring=False, recurring_day=25, parent_name="Rücklagen", sort_order=0
+            )
+
+            mapping = [
+                (TYP_INCOME, "Lohn (Netto)", self.spn_income_salary.value()),
+                (TYP_EXPENSES, "Miete/Hypothek", self.spn_exp_rent.value()),
+                (TYP_EXPENSES, "Krankenkasse", self.spn_exp_health.value()),
+                (TYP_EXPENSES, "Lebensmittel", self.spn_exp_groceries.value()),
+                (TYP_EXPENSES, "Steuern", self.spn_exp_taxes.value()),
+                (TYP_EXPENSES, "Telefon/Internet", self.spn_exp_phone.value()),
+                (TYP_EXPENSES, "ÖV (Abo/Billette)", self.spn_exp_transport.value()),
+                (TYP_SAVINGS, "Notgroschen", self.spn_save_emergency.value()),
+                (TYP_SAVINGS, "Ferien", self.spn_save_vacation.value()),
+            ]
+
+            changed = 0
+            skipped = 0
+            filled_categories = 0
+            for typ, category, amount in mapping:
+                if float(amount or 0.0) <= 0:
+                    continue
+                c, s = self._set_monthly_budget_amount(
+                    year=year, typ=typ, category=category, amount=float(amount), overwrite=overwrite
+                )
+                changed += c
+                skipped += s
+                filled_categories += 1
+
+            self.lbl_budget_starter_status.setText(
+                trf(
+                    "setup.budget_template_applied",
+                    year=year,
+                    categories=filled_categories,
+                    changed=changed,
+                    skipped=skipped,
+                )
+            )
+            if hasattr(self.main_window, "_refresh_all_tabs"):
+                self.main_window._refresh_all_tabs()
+        except Exception as e:
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.setup_budget_template_failed", e=e))
 
     def _enter_budget_tab_and_open_budget_window_once(self) -> None:
         """Wechselt in den Budget-Tab und öffnet beim ersten Eintritt das Budget-Fenster."""
@@ -598,14 +1011,15 @@ class SetupAssistantDialog(QDialog):
         """Öffnet ein separates Budget-Fenster zum direkten Ausfüllen."""
         try:
             dlg = BudgetFillDialog(self.main_window, self.conn, title=tr("setup.budget_ausfuellen_setup"))
-            dlg.exec()
+            with self._setup_hidden_while_child_open():
+                dlg.exec()
 
             self._budget_opened_once = True
             self._budget_done = True
 
-            # Step-Index: 5 (nach Start/DB/Kat-Methode/Kat-Seiten)
-            if len(self._step_done) > 5:
-                self._step_done[5] = True
+            # Step-Index: 6 (nach Budget-Grundgerüst)
+            if len(self._step_done) > 6:
+                self._step_done[6] = True
 
             if hasattr(self, "lbl_budget_done"):
                 self.lbl_budget_done.setText(tr("setup.small_budgetfenster_wurde_geoeffnetsmall"))
@@ -631,7 +1045,7 @@ class SetupAssistantDialog(QDialog):
                 self,
                 tr("setup.setup_db_restore"),
                 "",
-                "Backup-Dateien (*.db *.sqlite *.bak *.zip);;Alle Dateien (*.*)"
+                tr("setup.backup_file_filter")
             )
             if not path:
                 return
@@ -687,11 +1101,11 @@ class SetupAssistantDialog(QDialog):
     def _reset_categories(self) -> None:
         try:
             if not self._is_safe_to_reset():
-                QMessageBox.warning(self, tr("setup.nicht_moeglich"), "Reset ist deaktiviert, weil bereits Daten vorhanden sind.")
+                QMessageBox.warning(self, tr("setup.nicht_moeglich"), tr("setup.dein_budgettracking_enthaelt_bereits"))
                 return
             if QMessageBox.question(
                 self,
-                "Clean Start",
+                tr("setup.clean_start_title"),
                 tr("setup.wirklich_alle_kategorien_loeschen"),
             ) != QMessageBox.Yes:
                 self.cb_clean_start.setChecked(False)
@@ -699,7 +1113,7 @@ class SetupAssistantDialog(QDialog):
 
             self._cat_model.delete_all()
             self.conn.commit()
-            QMessageBox.information(self, "OK", tr("setup.kategorien_wurden_geloescht"))
+            QMessageBox.information(self, tr("msg.info"), tr("setup.kategorien_wurden_geloescht"))
             self.main_window._refresh_all_tabs()
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), f"Reset fehlgeschlagen:\n{e}")
+            QMessageBox.critical(self, tr("msg.error"), trf("setup.reset_failed", e=e))

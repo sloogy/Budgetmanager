@@ -210,25 +210,9 @@ class DatabaseManagementModel:
         
         # Zentrale Quelle (v1.0.30): identisch mit Erststart (ensure_defaults),
         # damit Reset und Erststart dieselben Kategorien erzeugen.
-        from model.default_categories import load_default_categories
-
-        cols_cur = cursor.execute("PRAGMA table_info(categories)")
-        cols = {r[1] for r in cols_cur.fetchall()}
-        for dc in load_default_categories():
-            try:
-                if {"is_fix", "is_recurring", "recurring_day"} <= cols:
-                    cursor.execute(
-                        "INSERT INTO categories (typ, name, is_fix, is_recurring, recurring_day) "
-                        "VALUES (?, ?, ?, ?, ?)",
-                        (dc.typ, dc.name, int(dc.is_fix), int(dc.is_recurring), int(dc.recurring_day)),
-                    )
-                else:
-                    cursor.execute(
-                        "INSERT INTO categories (typ, name) VALUES (?, ?)",
-                        (dc.typ, dc.name),
-                    )
-            except sqlite3.IntegrityError:
-                logger.debug("_create_default_categories: %s/%s bereits vorhanden", dc.typ, dc.name)
+        # Ab v1.0.34: gemeinsame Insert-Routine inkl. Unterkategorien (parent_id).
+        from model.default_categories import insert_default_categories
+        insert_default_categories(cursor.connection)
 
         # Flag setzen, damit ensure_defaults() beim nächsten Start nicht
         # erneut einfügt (gleiche Quelle, aber konsistentes Verhalten).
