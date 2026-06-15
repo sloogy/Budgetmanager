@@ -7,7 +7,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Aktuelle Schema-Version
-CURRENT_VERSION = 11
+CURRENT_VERSION = 12
 def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
     """Gibt alle Spaltennamen einer Tabelle zurück"""
     try:
@@ -148,6 +148,10 @@ def migrate_all(conn: sqlite3.Connection, db_path: str = None, backup_dir: str =
     if old_version < 11:
         _migrate_v10_to_v11(conn)
         migrations_applied.append("v10→v11: suggestion_accepted (Vorschläge pro Monat nicht wiederholen)")
+
+    if old_version < 12:
+        _migrate_v11_to_v12(conn)
+        migrations_applied.append("v11→v12: Tracking-Quelle für manuell/automatisch")
 
     # Version setzen
     if migrations_applied:
@@ -364,6 +368,33 @@ def _migrate_v4_to_v5(conn: sqlite3.Connection) -> None:
     conn.execute("CREATE INDEX IF NOT EXISTS idx_recurring_active ON recurring_transactions(is_active, day_of_month);")
     
     conn.commit()
+
+
+def _migrate_v11_to_v12(conn: sqlite3.Connection) -> None:
+    """Migration v11 → v12: Tracking-Quelle markieren.
+
+    source:
+      - manual         = vom Nutzer erfasst/bearbeitet
+      - auto_fixcost   = aus Fixkosten/Wiederkehrend-buchen erzeugt
+      - auto_recurring = aus wiederkehrender Buchungsliste erzeugt
+
+    Die Spalte ist rückwärtskompatibel mit DEFAULT 'manual', damit alte
+    Datenbanken und alte INSERTs ohne source weiter funktionieren.
+    """
+    cols = _cols(conn, "tracking")
+    if "source" not in cols:
+        try:
+            conn.execute("ALTER TABLE tracking ADD COLUMN source TEXT NOT NULL DEFAULT 'manual'")
+        except sqlite3.OperationalError:
+            logger.debug("ALTER TABLE tracking ADD COLUMN source: Spalte bereits vorhanden")
+
+    try:
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_source_typ_cat ON tracking(source, typ, category)")
+    except Exception as e:
+        logger.debug("idx_tracking_source_typ_cat konnte nicht erstellt werden: %s", e)
+
+    conn.commit()
+
 
 def get_migration_info(conn: sqlite3.Connection) -> dict:
     """

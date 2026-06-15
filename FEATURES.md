@@ -1,193 +1,115 @@
-# Budgetmanager v0.4.8.0 — Vollständige Feature-Dokumentation
+# BudgetManager
 
-## Übersicht
+## Neu: Cockpit-Startseite
 
-Der Budgetmanager ist eine umfassende Desktop-Anwendung zur Verwaltung persönlicher Finanzen mit erweiterten Features für Budget-Planung, Tracking und Analyse. Entwickelt mit Python, PySide6 (Qt 6) und SQLite.
+Das Cockpit fasst die wichtigsten Punkte zusammen: Monatsstatus, Favoriten, aktive Sparziele, Budget-Ampel, offene Monatsbuchungen und letzte 10 Buchungen. Es ist bewusst kompakt und frei gestaltbar: Bereiche lassen sich im Cockpit oder unter `Ansicht → Anzeigen` ein-/ausblenden. Auch Hauptreiter können ausgeblendet werden, damit Einsteiger nicht von zu vielen Tabs erschlagen werden.
+ v2.0.11 — Feature-Übersicht
 
-**Aktuelle Version:** 1.0.0 (19. Februar 2026)  
-**Codebase:** ~28'500 Zeilen Python, 139+ Dateien, MVC-Architektur
+BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
----
+## Kernfunktionen
 
-## Implementierte Features
+### Budgetplanung
 
-### 1. Budget-Verwaltung ⭐
-- **17-Spalten Budget-Tabelle**: Monatlich oder jährlich planen
-- **Hierarchische Kategorien**: Haupt- und Unterkategorien mit Baumansicht
-- **Multi-Typ-Support**: Einkommen, Ausgaben, Ersparnisse
-- **Budget-Saldo**: Automatische Berechnung (Einkommen − Ausgaben − Ersparnisse)
-- **Jahr kopieren**: Budget von Jahr zu Jahr übernehmen (mit/ohne Beträge)
-- **Budget-Vorschläge**: Dynamische Anpassungsempfehlungen basierend auf historischen Daten
-- **Schutz**: Verhindert System-Kategorien wie "BUDGET-SALDO"
+- Jahresbudget mit 12 Monatswerten und Totalspalte.
+- Typen: Einkommen, Ausgaben, Ersparnisse.
+- Haupt- und Unterkategorien.
+- Fixkosten- und Wiederkehrend-Markierung.
+- Fälligkeitstag je Kategorie.
+- Budget-Saldo und Monats-/Jahresübersichten.
+- Budgetvorschläge auf Basis historischer Buchungen.
+- Optionales Drag & Drop in der Budgetübersicht zum Umhängen von Kategorien.
 
-### 2. Tracking (Buchungen) 📊
-- **Transaktionsverwaltung**: Erfassen, bearbeiten, löschen
-- **Filtern & Suchen**: Nach Datum, Typ, Kategorie, Betrag, Tags
-- **Schnelleingabe**: Dialog für häufige Buchungen (Strg+N)
-- **Batch-Import**: Excel/CSV-Import für Massenbuchungen
-- **Kontextmenü**: Rechtsklick für schnelle Aktionen
-- **Sortierung**: Alle Spalten sortierbar
+### Kategorien
 
-### 3. Wiederkehrende Transaktionen 🔄
-- **Automatische Buchungen**: Mit Soll-Buchungsdatum je Eintrag
-- **Flexibles Intervall**: Monatlich, quartalsweise, jährlich
-- **Fälligkeitsmanagement**: Status-Anzeige (überfällig/heute/bevorstehend)
-- **Direkt buchen**: Aus Übersicht heraus mit einem Klick
+- Kategorien-Manager mit Baumansicht.
+- Drag & Drop für Parent/Child-Ebenen.
+- Kontextmenü zum Verschieben, Umbenennen, Löschen und Zur-Hauptkategorie-Machen.
+- Schutz gegen Self-Parenting, Typ-Mischung und Zyklen.
+- Bulk-Bearbeitung für Fixkosten, Wiederkehrend und Fälligkeitstag.
+- Import/Export von Kategorien über Excel/CSV.
 
-### 4. Fixkosten-Management ⚡
-- **Monatsprüfung**: Automatische Prüfung ob in dem Monat schon gebucht
-- **Fehlende Buchungen**: Optionale Liste zum Anzeigen und Auswählen
-- **Schätzung**: Basierend auf Durchschnitt und Vorjahr
-- **Direktes Buchen**: Aus Liste heraus buchen mit einem Klick
-- **Auto-Erkennung**: Erkennt potenzielle Fixkosten automatisch
+### Tracking / Buchungen
 
-### 5. Budgetwarnungen ⚠️
-- **Überschreitungs-Alerts**: Warnung bei Budget-Überschreitung
-- **Prozentuale Schwellwerte**: Konfigurierbare Warnstufen (80%, 100%)
-- **Chronische Überschreiter**: Erkennung bei ≥3 Monaten
-- **Budget-Anpassungsvorschläge**: Detaillierte Empfehlungen mit Einkommens-Check
-- **Kategorien-spezifisch**: Individuelle Warnungen pro Kategorie
+- Buchungen erfassen, bearbeiten und löschen.
+- Filter nach Jahr, Monat, Zeitraum, Typ und Kategorie.
+- Schnellfilter für letzte 14/30 Tage.
+- Tags und Detailtexte.
+- Import/Export für Buchungen.
+- Direkte Buchung wiederkehrender Einträge.
 
-### 6. Tags & Labels 🏷️
-- **Flexible Kategorisierung**: Zusätzlich zu Hauptkategorien
-- **Multi-Tag-Support**: Mehrere Tags pro Buchung
-- **Farbige Tags**: Individuelle Farben wählbar
-- **Tag-Verwaltung**: Erstellen, umbenennen, löschen, zusammenführen
-- **Tag-Statistiken**: Auswertung nach Tags mit Nutzungszählung
+### Wiederkehrende Buchungen und Fixkosten
 
-### 7. Undo/Redo ↩️
-- **Änderungen rückgängig**: Strg+Z für Undo
-- **Wiederherstellen**: Strg+Shift+Z für Redo
-- **Persistenter Stack**: Überlebt Neustart (SQLite-basiert)
-- **Gruppen-Undo**: Zusammengehörige Operationen als Einheit
+- Fällige Buchungen erkennen.
+- Fixkosten aus Budgetwerten übernehmen.
+- Monatliches Fälligkeitsdatum inklusive Monatsende.
+- Optionaler bevorzugter Standard-Buchungstag.
+- Einstellung „kein bevorzugter Tag“ für manuelle Pflege.
 
-### 8. Favoriten ⭐
-- **Häufige Kategorien pinnen**: Rechtsklick → "Als Favorit markieren"
-- **Dashboard**: Eigener Dialog mit Budget-Auslastung und Fortschrittsbalken
-- **Schnellzugriff**: Favoriten prominent in der Übersicht
-- **Typ-übergreifend**: Für Einkommen, Ausgaben und Ersparnisse
+### Sparziele und Auswertungen
 
-### 9. Sparziele 💰
-- **Ziel definieren**: Name, Zielbetrag, Zieldatum, Priorität
-- **Fortschritt tracken**: Automatische Berechnung aus Ersparnisse-Buchungen
-- **Visualisierung**: Fortschrittsbalken mit Farbabstufung
-- **Entnahme/Freigabe**: Sparziel-Beträge teilweise freigeben
-- **Synchronisation**: Automatisch mit Tracking-Buchungen
+- Sparziele als eigener Bereich.
+- Übersicht über Budget vs. Ist-Buchungen.
+- Diagramme und Tabellen im Übersichtstab.
+- Verschiebbare/skalierbare Panels.
 
-### 10. Backup & Wiederherstellung 💾
-- **Manuelles Backup**: Jederzeit als ZIP-Archiv sichern
-- **Auto-Backup**: Vor kritischen Operationen (Reset, Restore)
-- **Wiederherstellung**: Aus Backup-Liste auswählen und restaurieren
-- **Backup-Verwaltung**: Liste mit Datum, Größe und Version
-- **Restore-Key**: Für Konto-Wiederherstellung
+### Einstellungen und Komfort
 
-### 11. Datenbank-Verwaltung 🗄️
-- **Statistiken**: DB-Größe, Anzahl Einträge, Schema-Version
-- **Bereinigung**: Entfernt verwaiste Einträge
-- **Reset**: Komplett oder partiell (Budget/Kategorien ohne Buchungen)
-- **Integritätsprüfung**: Validiert Datenbank-Konsistenz
-- **Optimierung**: VACUUM für Größenreduktion
+- Mehrsprachig: Deutsch, Englisch, Französisch.
+- Währung: CHF, EUR, USD, GBP.
+- Themes und Designprofile.
+- Tab-Layout und Fensterzustand werden gespeichert.
+- Backup/Restore inklusive Einstellungen.
+- Persistentes Undo/Redo.
+- Multi-Account-System mit Quick/PIN/Passwort-Modus.
 
-### 12. Erscheinungsmanager (Themes) 🎨
-- **24+ vordefinierte Themes**: Hell, Dunkel, Solarized, Nord, Dracula u.v.m.
-- **Theme-Editor**: Eigene Themes erstellen und bearbeiten
-- **JSON-Farbprofile**: Import/Export zum Teilen
-- **Live-Preview**: Sofortige Vorschau bei Änderungen
-- **Zentrales Farbsystem**: `ui_colors.py` für konsistente Darstellung
-- **Dark-Mode**: Vollständige Unterstützung über alle Dialoge
+## Neu in v2.0.11
 
-### 13. Windows-Installer 📦
-- **PyInstaller**: Standalone .exe
-- **Inno Setup**: Professioneller Installer mit Startmenü-Integration
-- **Build-Script**: `build_windows.py` für einfaches Packaging
-- **Deinstallation**: Saubere Entfernung
+- Versionsnummer und Release-Dateien auf `v2.0.11` konsolidiert.
+- Fixkosten/Wiederkehrend sauber getrennt:
+  - Fix + Wiederkehrend = echter fixer Monatsbetrag.
+  - Fix ohne Wiederholung = variable Rückstellung/Kostenblock, Betrag editierbar.
+  - Wiederkehrend ohne Fix = variable wiederkehrende Buchung, Betrag editierbar.
+- Fix-only und recurring-only werden erst abgeschlossen, wenn der Monatsbudgetbetrag erreicht ist.
+- Tracker-Picker gruppiert Kategorien übersichtlicher: Favoriten, häufig manuell gebucht, normale Buchungen, variable Fix-/Wiederkehrend-Gruppen und echte Fixkosten.
+- Fixkosten-Forecast geschützt: 0-Monate senken Fixkosten nicht allein; echte wiederholte Buchungen bleiben auswertbar.
+- Installer-/Erststart-Abfrage für Sprache, Währung und bevorzugten Buchungstag bleibt korrekt verdrahtet.
+- Robustes Settings-Laden mit Default-Merge für Teil-JSONs.
+- Budgetübersicht: Drag & Drop optional ein-/ausschaltbar.
+- Einstellungen → Verhalten: Dropdown für Budgetvorschlags-Fenster.
+- Kategorien-Manager: Dropdown für Fälligkeitstage.
+- Release-Paket bereinigt: keine AI-Arbeitsordner, keine lokalen Settings, keine veralteten Merge-/Analyseberichte.
 
-### 14. Update-Tool 🔄
-- **Version-Check**: Prüft auf neue Versionen (GitHub)
-- **Changelog**: Zeigt Änderungen der neuen Version
-- **Update-Benachrichtigung**: Optional beim Start
-- **Manifest-basiert**: Intelligentes Delta-Update
+## Technik
 
-### 15. Weitere Features
-- **Excel-Export**: Daten als .xlsx exportieren
-- **Diagramme**: Donut-Charts, Balkendiagramme, Fortschrittsbalken
-- **Globale Suche**: Durchsucht Buchungen, Kategorien, Budget (Strg+F)
-- **Tastenkürzel**: Umfangreiche Shortcuts (F1 für Übersicht)
-- **Multi-Jahr-Ansicht**: Jahresübergreifende Analysen
-- **Kategorie-Manager**: Umbenennen, Verschieben, Zusammenführen, Massenbearbeitung
-- **Setup-Assistent**: Geführte Ersteinrichtung
-- **Multi-User**: Benutzerverwaltung mit Quick/PIN/Passwort-Sicherheit
-
----
-
-## Technische Details
-
-### Architektur (MVC)
-- **Model**: `model/` — Datenbank-Zugriff, Business-Logik (14 Module)
-- **View**: `views/` — Qt-Dialoge und Tabs (30+ Dateien)
-- **Utils**: `utils/` — Hilfsfunktionen (Geldformatierung, i18n, Tabellen)
-- **Theme**: `theme_manager.py` + `views/ui_colors.py` — Zentrales Farbsystem
-
-### Datenbank
-- **SQLite** mit automatischen Migrationen (aktuell Schema v8)
-- **Backup vor Migration**: Sicherheit bei Updates
-- **Foreign Keys, Unique Constraints**: Datenintegrität
-
-### Code-Qualität (v0.4.6.0)
-- **0 hardcoded setStyleSheet-Farben** (von ~30) — alle Theme-aware
-- **4 absichtliche QColor("#")** (von ~50) — Kontrast/ColorPicker/Spezial
-- **Einheitliche PySide6-Enums**: Vollqualifiziert durchgängig
-- **Logger in allen View-Dateien**: Kein silent `except: pass`
-- **format_money()**: Konsistente Geldformatierung
-
-### Tastenkürzel (Auszug)
-| Kürzel | Aktion |
-|--------|--------|
-| Strg+N | Schnelleingabe |
-| F2 | Budget bearbeiten |
-| Insert | Neue Budget-Zeile |
-| Strg+F | Globale Suche |
-| Strg+E | Export |
-| Strg+Z | Undo |
-| Strg+Shift+Z | Redo |
-| F1 | Shortcut-Übersicht |
-
----
-
-## Installation
-
-### Voraussetzungen
 - Python 3.11+
-- PySide6
+- PySide6 / Qt 6
+- SQLite mit automatischen Migrationen
+- JSON-basierte i18n-Dateien unter `locales/`
+- Zentrale App-Version in `app_info.py`
+- GitHub-Actions-Build für Windows/Linux/Portable-ZIP
 
-### Entwicklung
+## Tests
+
 ```bash
-pip install PySide6
-python main.py
+python tools/sync_version.py --check
+python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+pytest tests/ -v
 ```
 
-### Windows
-1. Installer herunterladen
-2. Installer ausführen
-3. Installationsverzeichnis wählen
 
----
+## Übersicht: zusätzliche sinnvolle Graphen
 
-## Datenschutz & Sicherheit
-- **Lokal**: Alle Daten bleiben auf dem eigenen Gerät
-- **Keine Cloud**: Kein automatisches Hochladen
-- **Verschlüsselung**: Optionale Konto-Sicherheit (PIN/Passwort)
-- **Backup**: Empfohlen in sicheren Ordner
+- Monatsverlauf: Ausgaben Budget vs. gebucht.
+- Monatsbilanz: echte Bilanz vs. geplante Bilanz.
+- Top-Buchungen: größte Buchungen im gewählten Zeitraum.
 
----
+Ziel: Ausreißer und Trends erkennen, ohne die Übersicht zu überladen.
 
-## Versionsverlauf
+### Sparziele im Workflow
 
-| Version | Datum | Highlights |
-|---------|-------|------------|
-| 0.4.6.0 | 19.02.2026 | Architektur-Feinschliffe, MVC-Bereinigung, Import-Ordnung |
-| 0.4.5.0 | 17.02.2026 | UI-Konsistenz, Theme-Integration, Dark-Mode, Code-Qualität |
-| 0.4.4.0 | 16.02.2026 | Forecast/Suggestion-System (8 Bug-Fixes, 15/15 Tests) |
-| 0.3.7.1 | — | Hotfixes, Stabilitätsverbesserungen |
-| 0.3.6.x | — | Tags, Favoriten, Sparziele |
-| 0.2.x | — | Grundgerüst, Budget, Tracking |
+Sparziele sind jetzt klarer eingebettet: im Budget gibt es einen kleinen 🎯-Einstieg, im Tracking erscheint bei aktiven Zielen ein ausblendbares Panel mit Fortschrittsbalken und Doppelklick zum Ziel, und die Übersicht bleibt die Kontrollstelle.
+
+### Sicherer Start
+
+Auto-Speichern und Auto-Backup sind beim ersten Start aktiv.

@@ -189,15 +189,34 @@ class BudgetModel:
             self.undo.record_operation("budget", "DELETE", dict(r), None, group_id=group)
 
     def rename_category(self, typ:str, old_name:str, new_name:str) -> None:
-        # SCHUTZ: Neue Kategorie darf nicht reserviert sein
+        """Legacy-Kompatibilität: Kategorie-Rename zentral delegieren.
+
+        Früher aktualisierte diese Methode nur die Budget-Tabelle. Seit v2.0.1
+        muss Rename aber alle Kategorie-Referenzen mitschieben
+        (Tracking, Favoriten, Warnungen, wiederkehrende Buchungen usw.). Deshalb
+        delegiert auch dieser alte Einstiegspunkt an CategoryModel.
+        """
         if self._is_reserved_category(new_name):
             return
-        
+
+        row = self.conn.execute(
+            "SELECT id FROM categories WHERE typ=? AND name=?",
+            (typ, old_name),
+        ).fetchone()
+        if row is not None:
+            from model.category_model import CategoryModel
+            CategoryModel(self.conn).rename_and_cascade(
+                int(row["id"]), typ=typ, old_name=old_name, new_name=new_name
+            )
+            return
+
+        # Fallback für sehr alte/kaputte Datenbanken ohne Kategorie-Zeile:
+        # Budget-Referenzen wenigstens nicht liegen lassen. Neue Views sollen
+        # diesen Weg nicht mehr verwenden.
         rows = self.conn.execute(
             "SELECT * FROM budget WHERE typ=? AND category=?",
             (typ, old_name),
         ).fetchall()
-        # Undo/Redo: mehrere UPDATEs als eine Gruppe behandeln
         group = self.undo.new_group_id() if rows else None
 
         self.conn.execute(

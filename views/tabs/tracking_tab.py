@@ -10,7 +10,8 @@ from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox,
     QTableWidget, QTableWidgetItem, QAbstractItemView, QMessageBox, QDialog,
-    QComboBox, QLabel, QLineEdit, QDateEdit, QGroupBox, QDoubleSpinBox, QMenu
+    QComboBox, QLabel, QLineEdit, QDateEdit, QGroupBox, QDoubleSpinBox, QMenu,
+    QProgressBar, QHeaderView, QSizePolicy
 )
 
 from model.category_model import CategoryModel
@@ -19,6 +20,7 @@ from views.type_color_helper import apply_tracking_type_colors
 from views.delegates.badge_delegate import BadgeDelegate
 from model.tracking_model import TrackingModel
 from model.budget_model import BudgetModel
+from model.savings_goals_model import SavingsGoalsModel
 from views.tracker_dialog import TrackerDialog, TrackingInput
 from views.fixcost_dialog import FixcostDialog
 from views.missing_bookings_dialog import MissingBookingsDialog, PendingBooking
@@ -43,6 +45,7 @@ class TrackingTab(QWidget):
         self.model=TrackingModel(conn)
         self.budget=BudgetModel(conn)
         self.tags_model=TagsModel(conn)
+        self.savings_model=SavingsGoalsModel(conn)
 
         # Buttons
         self.btn_add=QPushButton(tr("btn.add") + "…")
@@ -113,6 +116,10 @@ class TrackingTab(QWidget):
         # Summen-Label
         self.lbl_summary = QLabel()
         self.lbl_summary.setStyleSheet("font-weight: bold; padding: 5px;")
+
+        # Kontext-Panel: aktive Sparziele nur dort anzeigen, wo sie beim Buchen relevant sind.
+        # Wenn keine aktiven Ziele existieren, bleibt der Bereich komplett ausgeblendet.
+        self.savings_panel = self._build_savings_panel()
 
         # Tabelle
         self.table=QTableWidget(0, 6)
@@ -201,6 +208,7 @@ class TrackingTab(QWidget):
         root=QVBoxLayout()
         root.addLayout(top)
         root.addWidget(filter_group)
+        root.addWidget(self.savings_panel)
         root.addWidget(self.lbl_summary)
         root.addWidget(self.table)
         self.setLayout(root)
@@ -228,6 +236,151 @@ class TrackingTab(QWidget):
         self.table.doubleClicked.connect(lambda _: self.edit())
 
         self.refresh()
+
+    def _build_savings_panel(self) -> QGroupBox:
+        """Kompakte Sparziel-Leiste für Buchungen/Tracking.
+
+        Designentscheidung:
+        - Nicht dauerhaft omnipräsent.
+        - Sichtbar nur, wenn aktive Ziele existieren.
+        - Doppelklick öffnet direkt das konkrete Sparziel.
+        """
+        panel = QGroupBox(tr("tracking.savings_panel.title"))
+        panel.setToolTip(tr("tracking.savings_panel.tooltip"))
+        layout = QVBoxLayout(panel)
+        layout.setSpacing(4)
+
+        header = QHBoxLayout()
+        self.lbl_savings_panel_hint = QLabel(tr("tracking.savings_panel.empty"))
+        self.lbl_savings_panel_hint.setWordWrap(True)
+        header.addWidget(self.lbl_savings_panel_hint, 1)
+        self.btn_manage_savings_goals = QPushButton(tr("tracking.savings_panel.manage"))
+        self.btn_manage_savings_goals.setToolTip(tr("tracking.savings_panel.manage_tip"))
+        self.btn_manage_savings_goals.clicked.connect(lambda: self._open_savings_goal(None))
+        header.addWidget(self.btn_manage_savings_goals)
+        layout.addLayout(header)
+
+        self.savings_table = QTableWidget(0, 4)
+        self.savings_table.setHorizontalHeaderLabels([
+            tr("tracking.savings_panel.goal"),
+            tr("tracking.savings_panel.progress"),
+            tr("tracking.savings_panel.remaining"),
+            tr("tracking.savings_panel.status"),
+        ])
+        self.savings_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.savings_table.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.savings_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.savings_table.verticalHeader().setVisible(False)
+        self.savings_table.setAlternatingRowColors(True)
+        self.savings_table.setMaximumHeight(150)
+        self.savings_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        header_view = self.savings_table.horizontalHeader()
+        header_view.setSectionResizeMode(0, QHeaderView.Stretch)
+        header_view.setSectionResizeMode(1, QHeaderView.Stretch)
+        header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header_view.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        self.savings_table.doubleClicked.connect(lambda _: self._open_selected_savings_goal())
+        layout.addWidget(self.savings_table)
+
+        panel.setVisible(False)
+        return panel
+
+    def _refresh_savings_panel(self) -> None:
+        """Aktive Sparziele im Tracking anzeigen; ohne aktive Ziele ausblenden."""
+        try:
+            goals = [g for g in self.savings_model.list_all() if not getattr(g, "is_completed", False)]
+        except Exception as exc:
+            logger.debug("Sparziele-Panel konnte nicht geladen werden: %s", exc)
+            goals = []
+
+        if not goals:
+            self.savings_panel.setVisible(False)
+            return
+
+        self.savings_panel.setVisible(True)
+        self.savings_table.setRowCount(0)
+        self.lbl_savings_panel_hint.setText(trf("tracking.savings_panel.hint", count=len(goals)))
+        colors = ui_colors(self)
+
+        for goal in goals:
+            row = self.savings_table.rowCount()
+            self.savings_table.insertRow(row)
+
+            name = f"{getattr(goal, 'status_icon', '')} {goal.name}".strip()
+            name_item = QTableWidgetItem(name)
+            name_item.setData(Qt.UserRole, goal.id)
+            tip_parts = []
+            if goal.category:
+                tip_parts.append(trf("tracking.savings_panel.tip_category", category=goal.category))
+            if goal.deadline:
+                tip_parts.append(trf("tracking.savings_panel.tip_deadline", deadline=goal.deadline))
+            tip_parts.append(tr("tracking.savings_panel.tip_open"))
+            name_item.setToolTip("\n".join(tip_parts))
+            self.savings_table.setItem(row, 0, name_item)
+
+            progress_value = max(0, min(100, int(getattr(goal, "progress_percent", 0))))
+            pw = QWidget()
+            pl = QHBoxLayout(pw)
+            pl.setContentsMargins(4, 2, 4, 2)
+            bar = QProgressBar()
+            bar.setRange(0, 100)
+            bar.setValue(progress_value)
+            bar.setFormat(f"{progress_value}%")
+            bar.setFixedHeight(18)
+            if progress_value >= 100:
+                chunk = colors.ok
+            elif progress_value >= 60:
+                chunk = colors.accent
+            elif progress_value >= 25:
+                chunk = colors.warning
+            else:
+                chunk = colors.negative
+            bar.setStyleSheet(f"""
+                QProgressBar {{
+                    border: 1px solid {colors.border};
+                    border-radius: 4px;
+                    text-align: center;
+                    background: {colors.bg_panel};
+                }}
+                QProgressBar::chunk {{
+                    background-color: {chunk};
+                    border-radius: 3px;
+                }}
+            """)
+            pl.addWidget(bar)
+            self.savings_table.setCellWidget(row, 1, pw)
+
+            remaining_item = QTableWidgetItem(format_money(getattr(goal, "remaining_amount", 0)))
+            remaining_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            self.savings_table.setItem(row, 2, remaining_item)
+
+            status_item = QTableWidgetItem(getattr(goal, "status_label", ""))
+            status_item.setTextAlignment(Qt.AlignCenter)
+            self.savings_table.setItem(row, 3, status_item)
+
+        self.savings_table.resizeRowsToContents()
+
+    def _selected_savings_goal_id(self) -> int | None:
+        row = self.savings_table.currentRow()
+        if row < 0:
+            return None
+        item = self.savings_table.item(row, 0)
+        if item is None:
+            return None
+        try:
+            value = item.data(Qt.UserRole)
+            return int(value) if value is not None else None
+        except Exception:
+            return None
+
+    def _open_selected_savings_goal(self) -> None:
+        self._open_savings_goal(self._selected_savings_goal_id())
+
+    def _open_savings_goal(self, goal_id: int | None = None) -> None:
+        from views.savings_goals_dialog import SavingsGoalsDialog
+        dialog = SavingsGoalsDialog(self.window(), self.conn, initial_goal_id=goal_id)
+        dialog.exec()
+        self._refresh_savings_panel()
 
     # --- i18n helper: Typ aus Filter (Anzeige -> DB) ---
     def _current_filter_typ_db(self) -> str:
@@ -542,6 +695,7 @@ class TrackingTab(QWidget):
         saldo = total_einkommen - total_ausgaben - total_ersparnisse
         summary_text = trf("tracking.summary", count=len(rows), income=format_money(total_einkommen), expenses=format_money(total_ausgaben), savings=format_money(total_ersparnisse), balance=format_money(saldo))
         self.lbl_summary.setText(summary_text)
+        self._refresh_savings_panel()
         # Typ- und Negativfarben anwenden (vom Theme Manager holen)
         type_colors = {}
         negative_color = None
@@ -706,41 +860,66 @@ class TrackingTab(QWidget):
         skipped_zero = 0
 
         last_day = calendar.monthrange(year, month)[1]
+        EPS = 1e-6
 
         for typ in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
             for cat in self.cats.list(typ):
                 if not (cat.is_fix or cat.is_recurring):
                     continue
 
-                amt = self.budget.get_amount(year, month, typ, cat.name)
+                budget_amt = float(self.budget.get_amount(year, month, typ, cat.name) or 0.0)
+                booked = float(self.model.get_month_total(year, month, typ, cat.name) or 0.0)
 
                 # Buchungsdatum: Tag aus Kategorie (falls gesetzt), sonst Monatsanfang
-                # (für Fixkosten genauso relevant wie für Wiederkehrend)
                 day = int(cat.recurring_day or 1) if (cat.is_recurring or cat.is_fix) else 1
                 if day < 1:
                     day = 1
                 if day > last_day:
                     day = last_day
-
                 d = date(year, month, day)
                 details = f"{month_name} - {cat.name}"
 
-                # Doppelte vermeiden: wenn schon in diesem Monat vorhanden -> überspringen
-                if self.model.exists_in_month(year=year, month=month, typ=typ, category=cat.name):
-                    skipped_existing += 1
-                    continue
+                both_flags = bool(cat.is_fix and cat.is_recurring)
+                single_flag = bool(cat.is_fix) ^ bool(cat.is_recurring)
 
-                # Fixkosten: Betrag muss > 0 sein (sonst macht Fixkosten-Buchung keinen Sinn)
-                if cat.is_fix:
-                    if abs(float(amt)) < 1e-9:
+                if both_flags:
+                    # Echte Fixkosten (fix UND wiederkehrend): fixer Betrag, einmal pro Monat.
+                    # "Abgeschlossen", sobald irgendeine Buchung existiert.
+                    if self.model.exists_in_month(year=year, month=month, typ=typ, category=cat.name):
+                        skipped_existing += 1
+                        continue
+                    if abs(budget_amt) < EPS:
                         skipped_zero += 1
                         continue
-                    fix_items.append(PendingBooking(d=d, typ=typ, category=cat.name, amount=float(amt), details=details))
+                    fix_items.append(PendingBooking(
+                        d=d, typ=typ, category=cat.name, amount=budget_amt, details=details,
+                        source="auto_fixcost", is_fix=True, is_recurring=True,
+                        budget=budget_amt, booked=booked))
                     continue
 
-                # Wiederkehrend, aber NICHT Fixkosten -> variabel: in Liste anzeigen (Betrag editierbar)
-                if cat.is_recurring and not cat.is_fix:
-                    recurring_items.append(PendingBooking(d=d, typ=typ, category=cat.name, amount=float(amt), details=details))
+                if single_flag:
+                    # Fix XOR wiederkehrend: NICHT als abgeschlossen werten, solange der
+                    # Budgetbetrag im Monat nicht erreicht ist. Buchbarer Betrag editierbar,
+                    # vorbelegt mit dem noch offenen Restbetrag.
+                    if abs(budget_amt) < EPS:
+                        # Kein Budget gesetzt -> bei Fix überspringen, bei Wiederkehrend
+                        # trotzdem editierbar anbieten (Betrag 0, User trägt ein).
+                        if cat.is_fix:
+                            skipped_zero += 1
+                            continue
+                        remaining = 0.0
+                    else:
+                        # Budget bereits erreicht? (Vorzeichen-unabhängig)
+                        if abs(booked) >= abs(budget_amt) - EPS:
+                            skipped_existing += 1
+                            continue
+                        remaining = budget_amt - booked
+
+                    src = "auto_fixcost" if cat.is_fix else "auto_recurring"
+                    recurring_items.append(PendingBooking(
+                        d=d, typ=typ, category=cat.name, amount=float(remaining), details=details,
+                        source=src, is_fix=bool(cat.is_fix), is_recurring=bool(cat.is_recurring),
+                        budget=budget_amt, booked=booked))
                     continue
 
         if not fix_items and not recurring_items:
@@ -789,7 +968,7 @@ class TrackingTab(QWidget):
             if abs(float(it.amount)) < 1e-9:
                 skipped_zero_book += 1
                 continue
-            self.model.add(it.d, it.typ, it.category, float(it.amount), it.details)
+            self.model.add(it.d, it.typ, it.category, float(it.amount), it.details, source=getattr(it, "source", "manual"))
             inserted += 1
 
         QMessageBox.information(

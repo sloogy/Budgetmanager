@@ -22,7 +22,7 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar,
     QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QSizePolicy,
+    QAbstractItemView, QSizePolicy, QMenu, QMessageBox
 )
 
 from model.savings_goals_model import SavingsGoalsModel
@@ -91,6 +91,8 @@ class OverviewSavingsPanel(QWidget):
         self.table.setMinimumHeight(160)
         self.table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.table.doubleClicked.connect(self._on_double_click)
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self._show_context_menu)
         layout.addWidget(self.table)
 
         # Zusammenfassung
@@ -256,6 +258,48 @@ class OverviewSavingsPanel(QWidget):
         self.table.resizeRowsToContents()
 
     # ── Interaktion ─────────────────────────────────────────────────────────
+
+    def _selected_goal_id(self) -> int | None:
+        row = self.table.currentRow()
+        if row < 0:
+            return None
+        item = self.table.item(row, 0)
+        if item is None:
+            return None
+        try:
+            val = item.data(Qt.UserRole)
+            return int(val) if val is not None else None
+        except Exception:
+            return None
+
+    def add(self) -> None:
+        self._open_savings_dialog()
+
+    def edit(self) -> None:
+        self._open_savings_dialog(initial_goal_id=self._selected_goal_id())
+
+    def delete(self) -> None:
+        # Sicherer Weg: Dialog öffnen statt still in der Tabelle löschen.
+        # Dort sind Status/Freigabe/Verbrauch sichtbar und die Löschlogik bleibt zentral.
+        self._open_savings_dialog(initial_goal_id=self._selected_goal_id())
+
+    def _show_context_menu(self, pos) -> None:
+        row = self.table.rowAt(pos.y())
+        if row >= 0:
+            self.table.selectRow(row)
+        menu = QMenu(self)
+        act_new = menu.addAction(tr("btn.neu_hinzufuegen"))
+        act_edit = menu.addAction(tr("btn.edit"))
+        act_delete = menu.addAction(tr("btn.delete"))
+        act_edit.setEnabled(self._selected_goal_id() is not None)
+        act_delete.setEnabled(self._selected_goal_id() is not None)
+        chosen = menu.exec(self.table.viewport().mapToGlobal(pos))
+        if chosen == act_new:
+            self.add()
+        elif chosen == act_edit:
+            self.edit()
+        elif chosen == act_delete:
+            self.delete()
 
     def _on_double_click(self, index) -> None:
         goal_id = None

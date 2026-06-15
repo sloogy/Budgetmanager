@@ -265,14 +265,19 @@ class BackupRestoreDialog(QDialog):
         if not item:
             QMessageBox.information(self, tr("msg.info"), tr("backup.select_backup"))
             return
-        
-        backup_path = Path(item.data(Qt.UserRole))
 
-        # Prüfen ob das Bundle Settings / users.json enthält
-        from model.restore_bundle import (
-            bundle_has_settings, extract_settings,
-            bundle_has_users, extract_users,
-        )
+        backup_path = Path(item.data(Qt.UserRole))
+        self.restore_external_path(backup_path)
+
+    def _ask_restore_options(self, backup_path: Path) -> tuple[bool, bool] | None:
+        """Fragt Restore-Bestätigung und optionale Zusatzdaten ab.
+
+        Returns:
+            (restore_settings, restore_users) oder None bei Abbruch.
+        """
+        backup_path = Path(backup_path)
+        from model.restore_bundle import bundle_has_settings, bundle_has_users
+
         is_bmr = backup_path.suffix.lower() == ".bmr"
         backup_has_settings = is_bmr and bundle_has_settings(backup_path)
         backup_has_users = is_bmr and bundle_has_users(backup_path)
@@ -288,13 +293,11 @@ class BackupRestoreDialog(QDialog):
             tr("dlg.restore_title"),
             tr("dlg.restore_warning") + hints,
             QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
+            QMessageBox.No,
         )
-
         if reply != QMessageBox.Yes:
-            return
+            return None
 
-        # Settings ebenfalls wiederherstellen?
         restore_settings = False
         if backup_has_settings:
             sr = QMessageBox.question(
@@ -302,11 +305,10 @@ class BackupRestoreDialog(QDialog):
                 tr("dlg.restore_settings_title"),
                 tr("dlg.restore_settings_question"),
                 QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
+                QMessageBox.Yes,
             )
-            restore_settings = (sr == QMessageBox.Yes)
+            restore_settings = sr == QMessageBox.Yes
 
-        # users.json ebenfalls wiederherstellen?
         restore_users = False
         if backup_has_users:
             ur = QMessageBox.question(
@@ -314,82 +316,32 @@ class BackupRestoreDialog(QDialog):
                 tr("dlg.restore_users_title"),
                 tr("dlg.restore_users_question"),
                 QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes
+                QMessageBox.Yes,
             )
-            restore_users = (ur == QMessageBox.Yes)
+            restore_users = ur == QMessageBox.Yes
 
-        try:
-            # Aktuelles Backup vor Restore (immer als .bmr, damit restorefähig)
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            self._create_bmr_backup(prefix=f"budgetmanager_before_restore_{timestamp}", note="Before Restore")
-            self._cleanup_safety_backups("budgetmanager_before_restore_*.bmr")
-            
-            # Legacy (File-DB): Restore erfolgt jetzt über die SQLite-Backup-API
-            # direkt IN die lebende Connection (siehe _restore_to_active).
-            # Die Connection darf daher NICHT geschlossen werden — sonst läuft
-            # die gesamte App danach auf einer toten Verbindung
-            # ("Cannot operate on a closed database").
-            # Encrypted (In-Memory): NICHT conn.close() – das würde die ganze App-DB killen.
-            if self.encrypted_session is None:
-                try:
-                    # Offene Transaktion beenden, damit backup() sauber starten kann
-                    self.conn.rollback()
-                except Exception as e:
-                    logger.debug("self.conn.rollback(): %s", e)
-            else:
-                # Nach Restore darf Auto-Save die neue .enc nicht wieder überschreiben.
-                try:
-                    self.encrypted_session.freeze()
-                except Exception as e:
-                    logger.debug("%s", e)
+        return restore_settings, restore_users
 
-            # Restore durchführen
-            self._restore_to_active(str(backup_path))
+    def restore_external_path(self, backup_path: str | Path) -> bool:
+        """Restore eines direkt ausgewählten Backups.
 
-            self.db_changed = True
+        Wird u.a. vom geführten Setup-Assistenten verwendet. Der Dialog muss dafür
+        nicht erst als Backup-Liste geöffnet werden. Gibt True zurück, wenn die DB
+        ersetzt wurde.
+        """
+        backup_path = Path(backup_path)
+        opts = self._ask_restore_options(backup_path)
+        if opts is None:
+            return False
+        restore_settings, restore_users = opts
+        before = self.db_changed
+        self._restore_from_path(
+            str(backup_path),
+            restore_settings=restore_settings,
+            restore_users=restore_users,
+        )
+        return bool(self.db_changed and not before or self.db_changed)
 
-            # Settings wiederherstellen (wenn gewünscht)
-            if restore_settings and backup_has_settings:
-                from model.app_paths import settings_path as get_settings_path
-                settings_restored = extract_settings(backup_path, get_settings_path())
-                if settings_restored:
-                    logger.info("Settings aus Backup wiederhergestellt")
-                else:
-                    logger.warning("Settings-Restore fehlgeschlagen")
-
-            # users.json wiederherstellen (wenn gewünscht)
-            if restore_users and backup_has_users:
-                from model.user_model import _users_file_path
-                users_restored = extract_users(backup_path, _users_file_path())
-                if users_restored:
-                    logger.info("users.json aus Backup wiederhergestellt")
-                else:
-                    logger.warning("users.json-Restore fehlgeschlagen")
-
-            # Klarer Flow: Neustart anbieten
-            self._post_restore_prompt()
-            self.accept()
-        except ValueError as e:
-            # Restore abgebrochen (z.B. kein/falscher Restore-Key) → Session wieder entsperren
-            if self.encrypted_session is not None:
-                try:
-                    self.encrypted_session.unfreeze()
-                except Exception as _ue:
-                    logger.debug("unfreeze after error failed: %s", _ue)
-            QMessageBox.warning(
-                self, tr("backup.restore_aborted_title"), trf("backup.restore_aborted", error=e)
-            )
-        except Exception as e:
-            if self.encrypted_session is not None:
-                try:
-                    self.encrypted_session.unfreeze()
-                except Exception as _ue:
-                    logger.debug("unfreeze after error failed: %s", _ue)
-            QMessageBox.critical(
-                self,
-                tr("msg.error"), trf("backup.restore_failed", error=e)
-            )
-    
     def export_backup(self):
         item = self.backup_list.currentItem()
         if not item:
@@ -467,8 +419,15 @@ class BackupRestoreDialog(QDialog):
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf('auto.views_backup_restore_dialog.468_import_fehlgeschlagen_value_0_fabf2450', value_0=(e)))
 
-    def _restore_from_path(self, backup_path: str):
-        """Interner Helper: Restore von einem beliebigen Pfad (aus Liste oder import)."""
+    def _restore_from_path(
+        self,
+        backup_path: str,
+        *,
+        restore_settings: bool = False,
+        restore_users: bool = False,
+    ) -> None:
+        """Interner Helper: Restore von einem beliebigen Pfad (aus Liste, Import oder Setup)."""
+        backup_path_obj = Path(backup_path)
         try:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             self._create_bmr_backup(prefix=f"budgetmanager_before_restore_{timestamp}", note="Before Restore")
@@ -487,8 +446,27 @@ class BackupRestoreDialog(QDialog):
                 except Exception as e:
                     logger.debug("%s", e)
 
-            self._restore_to_active(str(backup_path))
+            self._restore_to_active(str(backup_path_obj))
             self.db_changed = True
+
+            # Optionale Zusatzdaten aus .bmr wiederherstellen.
+            if backup_path_obj.suffix.lower() == BMR_EXT:
+                if restore_settings:
+                    from model.app_paths import settings_path as get_settings_path
+                    from model.restore_bundle import extract_settings
+                    if extract_settings(backup_path_obj, get_settings_path()):
+                        logger.info("Settings aus Backup wiederhergestellt")
+                    else:
+                        logger.warning("Settings-Restore fehlgeschlagen")
+
+                if restore_users:
+                    from model.user_model import _users_file_path
+                    from model.restore_bundle import extract_users
+                    if extract_users(backup_path_obj, _users_file_path()):
+                        logger.info("users.json aus Backup wiederhergestellt")
+                    else:
+                        logger.warning("users.json-Restore fehlgeschlagen")
+
             self._post_restore_prompt()
             self.accept()
         except ValueError as e:
@@ -508,6 +486,7 @@ class BackupRestoreDialog(QDialog):
                 except Exception as _ue:
                     logger.debug("unfreeze after error failed: %s", _ue)
             QMessageBox.critical(self, tr("msg.error"), trf("backup_restore.restore_failed", err=str(e)))
+
     def _ask_restore_key(self) -> str | None:
         """Fragt den Nutzer nach dem Restore-Key (Wiederherstellungscode).
 

@@ -100,7 +100,7 @@ class SavingsGoalsDialog(QDialog):
         
         # Info-Label
         info = QLabel(
-            tr('auto.views_savings_goals_dialog.105_lebenszyklus_b_sparend_b_b_freigege_b8234217')
+            tr('savings.workflow_hint')
         )
         info.setWordWrap(True)
         _c = ui_colors(self)

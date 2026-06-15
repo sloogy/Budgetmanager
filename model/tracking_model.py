@@ -24,6 +24,7 @@ class TrackingRow:
     category: str
     amount: float
     details: str
+    source: str = "manual"
     
     # Aliases für Kompatibilität mit verschiedenen Code-Teilen
     @property
@@ -58,13 +59,31 @@ class TrackingModel:
         self.conn = conn
         self.undo = UndoRedoModel(conn)
 
-    def add(self, d: date | str, typ: str, category: str, amount: float, details: str = "") -> None:
+    def _cols(self, table: str) -> set[str]:
+        try:
+            return {str(r[1]) for r in self.conn.execute(f"PRAGMA table_info({table})").fetchall()}
+        except Exception as e:
+            logger.debug("_cols(%s): %s", table, e)
+            return set()
+
+    def _has_source_col(self) -> bool:
+        return "source" in self._cols("tracking")
+
+    def add(self, d: date | str, typ: str, category: str, amount: float, details: str = "", source: str = "manual") -> None:
         # Atomare Transaktion: INSERT + Sparziel-Sync
+        source = (source or "manual").strip() or "manual"
         with db_transaction(self.conn):
-            cur = self.conn.execute(
-                "INSERT INTO tracking(date, typ, category, amount, details) VALUES(?,?,?,?,?)",
-                (_to_date_iso(d), typ, category, float(amount), details or ""),
-            )
+            if self._has_source_col():
+                cur = self.conn.execute(
+                    "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
+                    (_to_date_iso(d), typ, category, float(amount), details or "", source),
+                )
+            else:
+                # Fallback für sehr alte Datenbanken vor Migration.
+                cur = self.conn.execute(
+                    "INSERT INTO tracking(date, typ, category, amount, details) VALUES(?,?,?,?,?)",
+                    (_to_date_iso(d), typ, category, float(amount), details or ""),
+                )
             rid = int(cur.lastrowid)
             # Sparziel-Synchronisation innerhalb der Transaktion
             if typ == TYP_SAVINGS:
@@ -292,27 +311,95 @@ class TrackingModel:
             )
         return out
 
-    def category_usage_counts(self, typ: str | None = None) -> dict[str, int]:
-        """Zählt wie oft jede Kategorie gebucht wurde.
+    def category_usage_counts(self, typ: str | None = None, *, manual_only: bool = False) -> dict[str, int]:
+        """Zählt Buchungen je Kategorie.
 
         Args:
             typ: Optional – nur Buchungen dieses Typs zählen.
+            manual_only: True = automatische Fixkosten-/Wiederkehrend-Buchungen
+                nicht mitzählen. Für alte Datenbanken ohne ``tracking.source`` greift
+                zusätzlich eine konservative Detail-Heuristik.
 
         Returns:
-            Dict {Kategoriename: Anzahl}, absteigend nach Häufigkeit.
+            Dict {Kategoriename: Anzahl}, nach Häufigkeit absteigend aufgebaut.
         """
+        if not manual_only:
+            if typ:
+                cur = self.conn.execute(
+                    "SELECT category, COUNT(*) AS cnt FROM tracking "
+                    "WHERE typ = ? GROUP BY category ORDER BY cnt DESC",
+                    (typ,),
+                )
+            else:
+                cur = self.conn.execute(
+                    "SELECT category, COUNT(*) AS cnt FROM tracking "
+                    "GROUP BY category ORDER BY cnt DESC"
+                )
+            return {str(r[0]): int(r[1]) for r in cur.fetchall()}
+
+        source_expr = "COALESCE(t.source, 'manual')" if self._has_source_col() else "'manual'"
+        where = ["1=1"]
+        args: list[object] = []
         if typ:
-            cur = self.conn.execute(
-                "SELECT category, COUNT(*) AS cnt FROM tracking "
-                "WHERE typ = ? GROUP BY category ORDER BY cnt DESC",
-                (typ,),
-            )
-        else:
-            cur = self.conn.execute(
-                "SELECT category, COUNT(*) AS cnt FROM tracking "
-                "GROUP BY category ORDER BY cnt DESC"
-            )
-        return {str(r[0]): int(r[1]) for r in cur.fetchall()}
+            where.append("t.typ = ?")
+            args.append(typ)
+        cur = self.conn.execute(
+            f"""
+            SELECT
+                t.typ,
+                t.category,
+                COALESCE(t.details, '') AS details,
+                {source_expr} AS source,
+                COALESCE(c.is_fix, 0) AS is_fix,
+                COALESCE(c.is_recurring, 0) AS is_recurring
+            FROM tracking t
+            LEFT JOIN categories c
+              ON c.typ = t.typ AND c.name = t.category
+            WHERE {' AND '.join(where)}
+            """,
+            tuple(args),
+        )
+
+        counts: dict[str, int] = {}
+        for r in cur.fetchall():
+            category = str(r["category"] if isinstance(r, sqlite3.Row) else r[1])
+            details = str(r["details"] if isinstance(r, sqlite3.Row) else r[2])
+            source = str(r["source"] if isinstance(r, sqlite3.Row) else r[3])
+            is_fix = bool(r["is_fix"] if isinstance(r, sqlite3.Row) else r[4])
+            is_recurring = bool(r["is_recurring"] if isinstance(r, sqlite3.Row) else r[5])
+            if self._is_automatic_usage(details=details, category=category, source=source, is_flagged=(is_fix or is_recurring)):
+                continue
+            counts[category] = counts.get(category, 0) + 1
+
+        return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].casefold())))
+
+    @staticmethod
+    def _is_automatic_usage(*, details: str, category: str, source: str, is_flagged: bool) -> bool:
+        """Bestimmt, ob eine Buchung für Nutzungs-Ranking als automatisch gilt."""
+        src = (source or "manual").strip().lower()
+        if src.startswith("auto"):
+            return True
+
+        det = (details or "").strip()
+        if "Wiederkehrend (ID:" in det:
+            return True
+
+        # Altbestand hatte früher keine source-Spalte. Fixkosten/Wiederkehrend wurden
+        # mit exakt "Monat - Kategorie" erzeugt. Nur bei geflaggten Kategorien
+        # ausblenden, damit normale Kategorien mit leerer Bemerkung nicht verschwinden.
+        if not is_flagged or not det or not category:
+            return False
+        month_names = {
+            "januar", "februar", "märz", "maerz", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "dezember",
+            "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
+            "janvier", "février", "fevrier", "mars", "avril", "mai", "juin", "juillet", "août", "aout", "septembre", "octobre", "novembre", "décembre", "decembre",
+        }
+        low = det.casefold()
+        cat = category.strip().casefold()
+        if " - " not in low:
+            return False
+        prefix, suffix = low.split(" - ", 1)
+        return prefix.strip() in month_names and suffix.strip() == cat
 
 
     def last_n_by_abs_amount(self, n: int = 5) -> list[TrackingRow]:

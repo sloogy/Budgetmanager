@@ -16,22 +16,45 @@ class Settings:
         self.settings = self._load()
     
     def _load(self) -> dict[str, Any]:
-        """Lädt Einstellungen aus Datei"""
+        """Lädt Einstellungen aus Datei.
+
+        Wichtig für Installer/Portable-Builds:
+        Der Installer kann ein Teil-JSON schreiben (z.B. nur Sprache, Währung,
+        bevorzugter Buchungstag und Datenpfad). Geladene Werte werden deshalb
+        über die vollständigen Defaults gelegt. So fehlen keine neuen Keys wie
+        ``budget_overview_drag_drop`` und bestehende Nutzerwerte bleiben trotzdem
+        erhalten.
+        """
+        defaults = self._defaults()
         if self.settings_file.exists():
             try:
                 with open(self.settings_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    loaded = json.load(f)
+                if isinstance(loaded, dict):
+                    merged = {**defaults, **loaded}
+                    # Zahlformat aus alten Builds normalisieren (ch/eu/us sowie
+                    # swiss/german/french/anglo werden toleriert).
+                    try:
+                        from utils.money import normalize_number_format, CURRENCIES
+                        merged["number_format"] = normalize_number_format(merged.get("number_format"))
+                        cur = str(merged.get("currency", "CHF") or "CHF").upper()
+                        merged["currency"] = cur if cur in CURRENCIES else "CHF"
+                    except Exception as e:
+                        logger.debug("Regionseinstellungen konnten nicht normalisiert werden: %s", e)
+                    return merged
+                logger.error("Einstellungsdatei hat unerwartetes Format – nutze Defaults")
+                return defaults
             except Exception as e:
                 logger.error("Fehler beim Laden der Einstellungen: %s", e)
-                return self._defaults()
-        return self._defaults()
+                return defaults
+        return defaults
     
     def _defaults(self) -> dict[str, Any]:
         """Standard-Einstellungen"""
         from pathlib import Path
         return {
             "theme": "light",  # "light" oder "dark"
-            "auto_save": False,
+            "auto_save": True,
             "ask_due": True,
             "warn_delete": True,
             # In dieser Version wird der Budget-Warner zentral über "Extras" genutzt.
@@ -71,17 +94,43 @@ class Settings:
             "window_is_fullscreen": False,  # Fenster im Fullscreen?
             "last_budget_year": None,
             "last_overview_year": None,
-            "tab_order": [0, 1, 2, 3],  # Reihenfolge der Tabs (Budget, Kategorien, Tracking, Übersicht)
+            "tab_order": [5, 0, 1, 2, 3, 4],  # Reihenfolge der Tabs (Cockpit, Budget, Kategorien, Tracking, Übersicht, Sparziele)
             # Kategorien-Tab anzeigen (Experten-Modus)
             # False = Kategorien werden über Budget-Dialog verwaltet
             # True = Separater Kategorien-Tab sichtbar (Fallback/Experten)
             "show_categories_tab": False,
+            # Sichtbare Hauptreiter. Kategorien bleibt separat zusätzlich über show_categories_tab geschützt.
+            "tab_visibility": {
+                "cockpit": True,
+                "budget": True,
+                "categories": False,
+                "tracking": True,
+                "overview": True,
+                "savings": True,
+            },
+            # Cockpit: frei gestaltbare Bereiche.
+            "cockpit_visible_panels": {
+                "kpis": True,
+                "quick_actions": True,
+                "favorites": True,
+                "savings": True,
+                "warnings": True,
+                "missing": True,
+                "recent": True,
+            },
+            # Cockpit: Reihenfolge der Bereiche; im Cockpit-Dialog per Hoch/Runter änderbar.
+            "cockpit_panel_order": ["kpis", "quick_actions", "favorites", "savings", "warnings", "missing", "recent"],
             # Tab-Leiste Position und Sichtbarkeit
             "tab_position": "west",    # north / south / east / west
             "tab_bar_visible": True,   # Tab-Leiste anzeigen?
             # Datenbank und Backup Pfade
             "database_path": "data/budgetmanager.db",  # Portable Default (relativ zum Programmordner)
             "backup_directory": "data/backups",  # Portable Default (relativ zum Programmordner)
+
+            # AutoBackup: ab Erststart aktiv, damit neue Nutzer nicht ohne Sicherung arbeiten.
+            "auto_backup": True,
+            # 7 Tage = guter Kompromiss: Schutz ohne Backup-Flut.
+            "backup_days": 7,
 
             # AutoBackup: wie viele Auto-Backups sollen maximal behalten werden?
             "auto_backup_keep": 10,
@@ -98,6 +147,8 @@ class Settings:
             # Persistiert wird bevorzugt der Sprach-Code (de/en/fr/...)
             "language": "de",
             "currency": "CHF",
+            # Zahlenformat (Dezimal-/Tausendertrennung): swiss|german|french|anglo
+            "number_format": "swiss",
         }
     
     def save(self) -> None:
@@ -145,7 +196,7 @@ class Settings:
     
     @property
     def auto_save(self) -> bool:
-        return self.get("auto_save", False)
+        return self.get("auto_save", True)
     
     @auto_save.setter
     def auto_save(self, value: bool):
@@ -174,6 +225,22 @@ class Settings:
     @tab_order.setter
     def tab_order(self, value: list[int]):
         self.set("tab_order", value)
+
+    @property
+    def tab_visibility(self) -> dict:
+        return dict(self.get("tab_visibility", {}) or {})
+
+    @tab_visibility.setter
+    def tab_visibility(self, value: dict):
+        self.set("tab_visibility", dict(value or {}))
+
+    @property
+    def cockpit_visible_panels(self) -> dict:
+        return dict(self.get("cockpit_visible_panels", {}) or {})
+
+    @cockpit_visible_panels.setter
+    def cockpit_visible_panels(self, value: dict):
+        self.set("cockpit_visible_panels", dict(value or {}))
 
     @property
     def recent_days(self) -> int:
@@ -255,11 +322,40 @@ class Settings:
     @property
     def currency(self) -> str:
         """Aktive Währung (CHF, EUR, USD, GBP)."""
-        return self.get("currency", "CHF")
+        val = str(self.get("currency", "CHF") or "CHF").upper()
+        try:
+            from utils.money import CURRENCIES
+            return val if val in CURRENCIES else "CHF"
+        except Exception:
+            return val
 
     @currency.setter
     def currency(self, value: str):
-        self.set("currency", value)
+        val = str(value or "CHF").upper()
+        try:
+            from utils.money import CURRENCIES
+            val = val if val in CURRENCIES else "CHF"
+        except Exception:
+            pass
+        self.set("currency", val)
+
+    @property
+    def number_format(self) -> str:
+        """Aktives Zahlenformat (swiss, german, french, anglo)."""
+        try:
+            from utils.money import normalize_number_format
+            return normalize_number_format(self.get("number_format", "swiss"))
+        except Exception:
+            return self.get("number_format", "swiss")
+
+    @number_format.setter
+    def number_format(self, value: str):
+        try:
+            from utils.money import normalize_number_format
+            value = normalize_number_format(value)
+        except Exception:
+            pass
+        self.set("number_format", value)
 
     @property
     def language(self) -> str:

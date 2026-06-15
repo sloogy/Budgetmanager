@@ -195,11 +195,17 @@ class SettingsDialog(QDialog):
         fl.addRow(tr("settings.language"), self.cmb_language)
 
         self.cmb_currency = QComboBox()
-        from utils.money import CURRENCIES, CURRENCY_CODES
+        from utils.money import CURRENCIES, CURRENCY_CODES, NUMBER_FORMATS, NUMBER_FORMAT_CODES
         for code in CURRENCY_CODES:
             self.cmb_currency.addItem(CURRENCIES[code]["label"], code)
         self.cmb_currency.setToolTip(tr("settings.currency_tip"))
         fl.addRow(tr("settings.currency"), self.cmb_currency)
+
+        self.cmb_number_format = QComboBox()
+        for code in NUMBER_FORMAT_CODES:
+            self.cmb_number_format.addItem(NUMBER_FORMATS[code]["label"], code)
+        self.cmb_number_format.setToolTip(tr("settings.number_format_tip"))
+        fl.addRow(tr("settings.number_format"), self.cmb_number_format)
         lay.addWidget(gb_locale)
 
         lay.addStretch(1)
@@ -284,24 +290,6 @@ class SettingsDialog(QDialog):
         fl_bo.addRow(tr("settings.carryover_start_year"), self._settings_field(self.sb_carryover_start_year, 180))
 
         lay.addWidget(gb_budget_ov)
-
-        # Experten-Einstellungen
-        gb_expert = QGroupBox(tr("settings.expert_mode"))
-        vb_expert = QVBoxLayout(gb_expert)
-        
-        self.cb_show_categories_tab = QCheckBox(tr('auto.settings_dialog.260_separaten_kategorien_tab_anzeigen_e55079e5'))
-        self.cb_show_categories_tab.setToolTip(
-            tr('auto.settings_dialog.262_aktiviert_den_separaten_kategorien__7db32e53')
-        )
-        vb_expert.addWidget(self.cb_show_categories_tab)
-        
-        hint = QLabel(
-            tr('auto.settings_dialog.270_small_i_hinweis_kategorien_koennen__5859fbbe')
-        )
-        hint.setWordWrap(True)
-        vb_expert.addWidget(hint)
-        
-        lay.addWidget(gb_expert)
 
         lay.addStretch(1)
         return w
@@ -549,6 +537,11 @@ class SettingsDialog(QDialog):
                 self.cmb_currency.setCurrentIndex(i)
                 break
 
+        # Zahlenformat (swiss/german/french/anglo)
+        saved_numfmt = str(self.settings.get("number_format", "swiss"))
+        idx_nf = self.cmb_number_format.findData(saved_numfmt)
+        self.cmb_number_format.setCurrentIndex(max(0, idx_nf))
+
         # Verhalten (bestehend)
         self.cb_auto_save.setChecked(bool(self.settings.auto_save))
         self.cb_ask_due.setChecked(bool(self.settings.ask_due))
@@ -583,9 +576,6 @@ class SettingsDialog(QDialog):
         self.cb_warn_delete.setChecked(bool(self.settings.get("warn_delete", True)))
         self.cb_warn_budget_overrun.setChecked(bool(self.settings.get("warn_budget_overrun", True)))
 
-        # Experten-Modus
-        self.cb_show_categories_tab.setChecked(bool(self.settings.get("show_categories_tab", False)))
-
         # Darstellung
         theme = (self.settings.theme or "light").lower()
         # Hell/Dunkel Dropdown auf Settings spiegeln
@@ -606,8 +596,8 @@ class SettingsDialog(QDialog):
             self.le_db_path.setText(str(self.settings.database_path))
 
         # Backup (neue Keys)
-        self.cb_auto_backup.setChecked(bool(self.settings.get("auto_backup", False)))
-        self.sb_backup_days.setValue(int(self.settings.get("backup_days", 30)))
+        self.cb_auto_backup.setChecked(bool(self.settings.get("auto_backup", True)))
+        self.sb_backup_days.setValue(int(self.settings.get("backup_days", 7)))
         self.sb_backup_keep.setValue(int(self.settings.get("auto_backup_keep", 10) or 10))
         self.cb_auto_delete.setChecked(bool(self.settings.get("backup_auto_delete", False)))
         self._refresh_backup_status()
@@ -641,6 +631,7 @@ class SettingsDialog(QDialog):
             # Persistiere Code, nicht den Anzeigenamen (stabil bei Übersetzungen)
             "language": self.cmb_language.currentData() or self.cmb_language.currentText(),
             "currency": self.cmb_currency.currentData() or "CHF",
+            "number_format": self.cmb_number_format.currentData() or "swiss",
             "warn_delete": self.cb_warn_delete.isChecked(),
             "warn_budget_overrun": self.cb_warn_budget_overrun.isChecked(),
             "table_density": {"Kompakt": "Kompakt", "Normal": "Normal", "Groß": "Groß", tr("settings.density_compact"): "Kompakt", tr("settings.density_normal"): "Normal", tr("settings.density_large"): "Groß"}.get(self.cmb_density.currentText(), "Normal"),
@@ -650,8 +641,6 @@ class SettingsDialog(QDialog):
             "backup_days": int(self.sb_backup_days.value()),
             "auto_backup_keep": int(self.sb_backup_keep.value()),
             "backup_auto_delete": self.cb_auto_delete.isChecked(),
-            # Experten-Modus
-            "show_categories_tab": self.cb_show_categories_tab.isChecked(),
             # Tastenkürzel
             "shortcuts": self._get_shortcut_mapping(),
         }

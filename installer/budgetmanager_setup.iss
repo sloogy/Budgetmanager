@@ -11,7 +11,7 @@
 ; - PyInstaller EXE im dist/ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "1.0.42"
+#define MyAppVersion "2.0.12"
 #define MyAppPublisher "Christian"
 #define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"
@@ -64,8 +64,9 @@ Source: "data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs cre
 ; Theme-Profile (PFLICHT - ohne diese kein Theme-System)
 Source: "views\profiles\*"; DestDir: "{app}\views\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Standard-Settings (nur anlegen wenn noch nicht vorhanden)
-Source: "budgetmanager_settings.json"; DestDir: "{app}"; Flags: ignoreversion onlyifdoesntexist; Check: FileExists(ExpandConstant('{src}\budgetmanager_settings.json'))
+; Hinweis: budgetmanager_settings.json wird NICHT mehr aus [Files] kopiert.
+; Sie wird im [Code]-Abschnitt korrekt nach {app}\data\ geschrieben
+; (die App liest die Settings aus dem data-Ordner).
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
@@ -83,18 +84,103 @@ Type: filesandordirs; Name: "{localappdata}\BudgetManager"
 [Code]
 var
   DataDirPage: TInputDirWizardPage;
+  PrefsPage: TWizardPage;
+  CbLanguage: TNewComboBox;
+  CbCurrency: TNewComboBox;
+  CbDay: TNewComboBox;
+
+{ Backslashes und Anführungszeichen für gültiges JSON escapen. }
+function JsonEscape(const S: String): String;
+begin
+  Result := S;
+  StringChangeEx(Result, '\', '\\', True);
+  StringChangeEx(Result, '"', '\"', True);
+end;
+
+{ Beschriftung über einem Eingabefeld erzeugen. }
+procedure AddLabel(APage: TWizardPage; const ACaption: String; ATop: Integer);
+var
+  L: TNewStaticText;
+begin
+  L := TNewStaticText.Create(APage);
+  L.Parent := APage.Surface;
+  L.Top := ATop;
+  L.Left := 0;
+  L.AutoSize := True;
+  L.Caption := ACaption;
+end;
 
 procedure InitializeWizard;
+var
+  y: Integer;
+  i: Integer;
 begin
-  // Seite für Datenverzeichnis hinzufügen
+  { --- Seite 1: Datenverzeichnis (bestehend) --- }
   DataDirPage := CreateInputDirPage(wpSelectDir,
-    'Datenverzeichnis auswählen', 
+    'Datenverzeichnis auswählen',
     'Wo sollen Ihre BudgetManager-Daten gespeichert werden?',
     'Wählen Sie den Ordner, in dem Ihre Datenbank und Backups gespeichert werden sollen, und klicken Sie dann auf Weiter.' + #13#10#13#10 +
     'Hinweis: Dieses Verzeichnis wird NICHT bei der Deinstallation gelöscht.',
     False, '');
   DataDirPage.Add('');
   DataDirPage.Values[0] := ExpandConstant('{userdocs}\BudgetManager');
+
+  { --- Seite 2: BudgetManager-Grundeinstellungen --- }
+  PrefsPage := CreateCustomPage(DataDirPage.ID,
+    'BudgetManager-Einstellungen',
+    'Sprache, Währung und bevorzugter Buchungstag. Diese Werte werden beim ersten Start übernommen und können später jederzeit in den Einstellungen geändert werden.');
+
+  y := ScaleY(4);
+
+  { Sprache }
+  AddLabel(PrefsPage, 'Sprache:', y);
+  CbLanguage := TNewComboBox.Create(PrefsPage);
+  CbLanguage.Parent := PrefsPage.Surface;
+  CbLanguage.Style := csDropDownList;
+  CbLanguage.Top := y + ScaleY(16);
+  CbLanguage.Left := 0;
+  CbLanguage.Width := PrefsPage.SurfaceWidth;
+  CbLanguage.Items.Add('Deutsch');
+  CbLanguage.Items.Add('English');
+  CbLanguage.Items.Add('Français');
+  { Vorauswahl anhand der Installer-Sprache }
+  if ActiveLanguage = 'english' then
+    CbLanguage.ItemIndex := 1
+  else
+    CbLanguage.ItemIndex := 0;
+
+  y := y + ScaleY(52);
+
+  { Währung }
+  AddLabel(PrefsPage, 'Währung:', y);
+  CbCurrency := TNewComboBox.Create(PrefsPage);
+  CbCurrency.Parent := PrefsPage.Surface;
+  CbCurrency.Style := csDropDownList;
+  CbCurrency.Top := y + ScaleY(16);
+  CbCurrency.Left := 0;
+  CbCurrency.Width := PrefsPage.SurfaceWidth;
+  CbCurrency.Items.Add('CHF – Schweizer Franken');
+  CbCurrency.Items.Add('EUR – Euro');
+  CbCurrency.Items.Add('USD – US-Dollar');
+  CbCurrency.Items.Add('GBP – Britisches Pfund');
+  CbCurrency.ItemIndex := 0;
+
+  y := y + ScaleY(52);
+
+  { Bevorzugter Buchungstag (für wiederkehrende Buchungen) }
+  AddLabel(PrefsPage, 'Bevorzugter Tag für wiederkehrende Buchungen:', y);
+  CbDay := TNewComboBox.Create(PrefsPage);
+  CbDay.Parent := PrefsPage.Surface;
+  CbDay.Style := csDropDownList;
+  CbDay.Top := y + ScaleY(16);
+  CbDay.Left := 0;
+  CbDay.Width := PrefsPage.SurfaceWidth;
+  CbDay.Items.Add('Keiner (manuell festlegen)');
+  for i := 1 to 28 do
+    CbDay.Items.Add(IntToStr(i));
+  CbDay.Items.Add('Monatsende');
+  { Index 25 entspricht Tag 25 (Index 0 = Keiner, Index 1 = Tag 1, ...) }
+  CbDay.ItemIndex := 25;
 end;
 
 function GetDataDir(Param: String): String;
@@ -102,27 +188,68 @@ begin
   Result := DataDirPage.Values[0];
 end;
 
+{ Auswahl -> App-Sprachcode (de/en/fr) }
+function SelectedLanguageCode: String;
+begin
+  case CbLanguage.ItemIndex of
+    1: Result := 'en';
+    2: Result := 'fr';
+  else
+    Result := 'de';
+  end;
+end;
+
+{ Auswahl -> Währungscode (CHF/EUR/USD/GBP) }
+function SelectedCurrencyCode: String;
+begin
+  case CbCurrency.ItemIndex of
+    1: Result := 'EUR';
+    2: Result := 'USD';
+    3: Result := 'GBP';
+  else
+    Result := 'CHF';
+  end;
+end;
+
+{ Auswahl -> bevorzugter Tag: 0 = Keiner, 1..28, 31 = Monatsende }
+function SelectedPreferredDay: Integer;
+begin
+  if CbDay.ItemIndex = 0 then
+    Result := 0                                  { Keiner }
+  else if CbDay.ItemIndex = CbDay.Items.Count - 1 then
+    Result := 31                                 { Monatsende }
+  else
+    Result := CbDay.ItemIndex;                   { Index entspricht Tag 1..28 }
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
+  DataDir: String;
   SettingsFile: String;
-  SettingsContent: TArrayOfString;
-  I: Integer;
+  Json: String;
 begin
   if CurStep = ssPostInstall then
   begin
-    // Einstellungsdatei mit Datenverzeichnis erstellen/aktualisieren
-    SettingsFile := ExpandConstant('{app}\budgetmanager_settings.json');
-    
-    // Wenn Datei nicht existiert, Standard-Einstellungen schreiben
+    DataDir := DataDirPage.Values[0];
+
+    { Die App liest ihre Einstellungen aus {app}\data\budgetmanager_settings.json }
+    ForceDirectories(ExpandConstant('{app}\data'));
+    SettingsFile := ExpandConstant('{app}\data\budgetmanager_settings.json');
+
+    { Nur beim Erst-Setup schreiben – bestehende Nutzereinstellungen nicht überschreiben. }
     if not FileExists(SettingsFile) then
     begin
-      SaveStringToFile(SettingsFile, 
+      Json :=
         '{' + #13#10 +
-        '  "data_directory": "' + DataDirPage.Values[0] + '",' + #13#10 +
-        '  "backup_directory": "' + DataDirPage.Values[0] + '\Backups",' + #13#10 +
+        '  "language": "' + SelectedLanguageCode + '",' + #13#10 +
+        '  "language_selected": true,' + #13#10 +
+        '  "currency": "' + SelectedCurrencyCode + '",' + #13#10 +
+        '  "recurring_preferred_day": ' + IntToStr(SelectedPreferredDay) + ',' + #13#10 +
         '  "theme": "modern",' + #13#10 +
-        '  "language": "de"' + #13#10 +
-        '}', False);
+        '  "data_directory": "' + JsonEscape(DataDir) + '",' + #13#10 +
+        '  "backup_directory": "' + JsonEscape(DataDir + '\Backups') + '"' + #13#10 +
+        '}';
+      SaveStringToFile(SettingsFile, Json, False);
     end;
   end;
 end;

@@ -19,7 +19,8 @@ logger = logging.getLogger(__name__)
 
 SHORTCUT_DEFS: list[tuple[str, str, str, str]] = [
     # --- Allgemein ---
-    ("help",           "F1",           "Hilfe / Tastenkürzel anzeigen",  "Allgemein"),
+    ("help",           "F1",           "Hilfe / Wissensdatenbank öffnen", "Allgemein"),
+    ("shortcuts",      "Ctrl+F1",      "Tastenkürzel anzeigen",          "Allgemein"),
     ("refresh",        "F5",           "Aktuelle Ansicht aktualisieren", "Allgemein"),
     ("save",           "Ctrl+S",       "Budget speichern",               "Allgemein"),
     ("settings",       "Ctrl+,",       "Einstellungen öffnen",           "Allgemein"),

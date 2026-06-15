@@ -28,6 +28,11 @@ class PendingBooking:
     category: str
     amount: float
     details: str
+    source: str = "manual"
+    is_fix: bool = False
+    is_recurring: bool = False
+    budget: float = 0.0
+    booked: float = 0.0
 
 
 class MissingBookingsDialog(QDialog):

@@ -406,7 +406,7 @@ class OverviewTab(QWidget):
         # ── KPI-Panel ──
         try:
             self.kpi_panel.refresh_kpis(rows, budget_sums)
-            self.kpi_panel.refresh_charts(rows, year, month_idx)
+            self.kpi_panel.refresh_charts(rows, year, month_idx, date_from, date_to, budget_sums=budget_sums)
         except Exception as e:
             logger.warning("kpi_panel refresh: %s", e)
 

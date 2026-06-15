@@ -1,6 +1,14 @@
-Diese Release-Kopie wurde automatisch bereinigt:
-- __pycache__/ und *.pyc entfernt
-- budgetmanager.db entfernt (wird beim Start neu erstellt)
-- budgetmanager_settings.json entfernt (wird beim Start mit Defaults neu erstellt)
+BudgetManager v2.0.8 Clean Merge
+=================================
 
-Hinweis: Build-Skripte/Installer können noch Versions-/Icon-Themen enthalten (siehe Analyse im Chat).
+Dieses Paket basiert auf der bereinigten v1.0.42-Codebasis und übernimmt aus BudgetManager_Source_2_0_0 nur die sinnvollen Release-/Versionsbestandteile.
+
+Entfernt/nicht übernommen:
+- CLAUDE.md
+- _attic/
+- lokale budgetmanager_settings.json
+- data/i18n_audit_*.txt
+- alte Merge-/Analyse-/Bugfix-Berichte
+- veraltete Markdown-Dokumente mit alten Versionsständen
+
+Checks siehe README.md und docs/open-tasks.md.

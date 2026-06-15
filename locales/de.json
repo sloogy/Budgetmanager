@@ -48,7 +48,7 @@
     "budget_warnings": "&Budgetwarnungen prüfen...",
     "budget_warnings_tip": "Überschreitungen prüfen und Anpassungen vorschlagen (Strg+W)",
     "updates": "&Updates...",
-    "updates_tip": "Update prüfen/herunterladen (Ctrl+U)",
+    "updates_tip": "Update prüfen, herunterladen und installieren (Ctrl+U)",
     "export": "&Exportieren...",
     "export_tip": "Daten als CSV exportieren (Strg+E)",
     "backup": "&Backup & Wiederherstellen...",
@@ -87,7 +87,19 @@
     "paste": "&Einfügen",
     "redo": "&Wiederholen",
     "select_all": "Alles &auswählen",
-    "undo": "&Rückgängig"
+    "undo": "&Rückgängig",
+    "handbook": "&Handbuch...",
+    "handbook_tip": "Öffnet das durchsuchbare In-App-Handbuch mit allen Kernfunktionen.",
+    "knowledge_base": "HTML-Wissensdatenbank öffnen…",
+    "knowledge_base_tip": "Öffnet die vollständige lokale HTML-Hilfe im Browser.",
+    "help_mindmap": "Informations-Laufplan / Mindmap anzeigen…",
+    "help_mindmap_tip": "Öffnet die direkt anzeigbare Mindmap zur Programm-Orientierung.",
+    "show_restore_key": "Restore-Key anzeigen…",
+    "show_restore_key_tip": "Zeigt den Datenbank-/Restore-Key der aktuell geöffneten Datenbank an.",
+    "goto_savings": "Zu &Sparziele",
+    "goto_cockpit": "Zum Cockpit",
+    "show_tabs": "Reiter ein-/ausblenden",
+    "cockpit_panels": "Cockpit-Bereiche"
   },
   "tab": {
     "budget": "Budget",
@@ -103,7 +115,8 @@
     "chart_distribution": "📈 Verteilung",
     "filter": "🔍 Filter",
     "transactions": "📋 Transaktionen",
-    "budget_table": "Übersicht"
+    "budget_table": "Übersicht",
+    "cockpit": "Cockpit"
   },
   "btn": {
     "add": "Hinzufügen",
@@ -324,7 +337,11 @@
     "lbl_total": "{n} Einträge gesamt",
     "lbl_pending": "{n} anstehend",
     "saving": "Sparend",
-    "all_years": "Alle Jahre"
+    "all_years": "Alle Jahre",
+    "example_amount": "z. B. {amount}",
+    "amount_with_currency": "Betrag ({currency})",
+    "mode": "Modus:",
+    "parent_category": "Übergeordnete Kategorie:"
   },
   "month": {
     "1": "Januar",
@@ -586,7 +603,9 @@
     "restore_key_copy_note": "<br>📋 <b>Jetzt abschreiben oder kopieren!</b><br>Ohne Restore-Key und ohne Passwort/PIN sind deine Daten <b>unwiederbringlich verloren</b>.",
     "backup_includes_users": "Dieses Backup enthält Benutzerkonto-Daten (users.json).",
     "restore_users_title": "Benutzerkonten wiederherstellen?",
-    "restore_users_question": "Das Backup enthält Benutzerkonto-Daten (users.json).\n\nSollen die Benutzerkonten ebenfalls wiederhergestellt werden?\n\n(Empfohlen bei Neuinstallation oder neuem Gerät)"
+    "restore_users_question": "Das Backup enthält Benutzerkonto-Daten (users.json).\n\nSollen die Benutzerkonten ebenfalls wiederhergestellt werden?\n\n(Empfohlen bei Neuinstallation oder neuem Gerät)",
+    "create_account": "Konto einrichten",
+    "restore_key_intro_quick": "<b>Dein Restore-Key</b><br><br>Mit diesem Schlüssel kannst du deine verschlüsselte Datenbank wiederherstellen.<br><b style='color:{color}'>Jetzt notieren und sicher aufbewahren!</b>"
   },
   "msg": {
     "really_delete": "Wirklich löschen?",
@@ -658,7 +677,10 @@
     "recurring_status_changed": "Wiederkehrend für '{cat_name}' {status}.",
     "please_select_goal": "Bitte ein Ziel auswählen.",
     "only_active_goals_releasable": "Nur sparende Ziele können freigegeben werden.",
-    "setup_budget_template_failed": "Budget-Grundgerüst konnte nicht erstellt werden:\n{e}"
+    "setup_budget_template_failed": "Budget-Grundgerüst konnte nicht erstellt werden:\n{e}",
+    "help_opened": "Hilfe geöffnet: {path}",
+    "help_not_found": "Die lokale Hilfe wurde nicht gefunden. Prüfe, ob docs/help im Programmordner oder Bundle vorhanden ist.",
+    "app_already_running": "BudgetManager läuft bereits. Bitte benutze das vorhandene Fenster."
   },
   "chk": {
     "autosave": "Auto-Speichern",
@@ -736,7 +758,10 @@
     "day_of_month": "{day}. des Monats",
     "months_count": "{count} Monate",
     "budget_overview_drag_drop": "Drag & Drop in der Budgetübersicht aktivieren",
-    "budget_overview_drag_drop_tip": "Erlaubt das Umhängen von Kategorien direkt in der Budgetübersicht: auf Kategorie ziehen = Unterkategorie, auf Typ-Überschrift ziehen = Hauptkategorie."
+    "budget_overview_drag_drop_tip": "Erlaubt das Umhängen von Kategorien direkt in der Budgetübersicht: auf Kategorie ziehen = Unterkategorie, auf Typ-Überschrift ziehen = Hauptkategorie.",
+    "number_format": "Zahlenformat",
+    "number_format_tip": "Dezimal- und Tausendertrennzeichen für Geldbeträge.",
+    "auto_backup_default_note": "Auto-Speichern und Auto-Backup sind beim ersten Start aktiv. Du kannst beides in den Einstellungen ändern."
   },
   "radio": {
     "cat_manager": "Kategorien-Manager verwenden (im Programm)",
@@ -859,7 +884,17 @@
     "categories_file_filter": "Kategorien (*.xlsx *.csv)",
     "region_box": "Region & Standards",
     "region_hint": "Diese Werte werden als Vorschlag übernommen und können später in den Einstellungen geändert werden.",
-    "preferred_day_tip": "Optionaler Standardtag für wiederkehrende Buchungen und neue wiederkehrende Kategorien."
+    "preferred_day_tip": "Optionaler Standardtag für wiederkehrende Buchungen und neue wiederkehrende Kategorien.",
+    "nav_number_format": "Zahlenformat",
+    "numfmt_title": "Zahlenformat wählen",
+    "numfmt_intro": "Wie sollen Geldbeträge dargestellt werden? Wähle das Dezimal- und Tausendertrennzeichen, das du gewohnt bist. Du kannst das später jederzeit in den Einstellungen ändern.",
+    "numfmt_label": "Format",
+    "numfmt_preview": "Vorschau",
+    "budget_value_present": "<small>✓ Budgetwert erfasst – du kannst weiter.</small>",
+    "budget_value_missing": "<small>Bitte im Budget-Fenster mindestens einen Wert &gt; 0 eintragen, dann geht es weiter.</small>",
+    "tracking_entry_present": "<small>✓ Buchung erfasst – du kannst weiter.</small>",
+    "tracking_entry_missing": "<small>Bitte mindestens eine Buchung erfassen, dann geht es weiter.</small>",
+    "hint_locked_tracking": "Erfasse zuerst eine Buchung, um fortzufahren."
   },
   "tip": {
     "carryover_start_month": "Ab welchem Monat soll der Übertrag kumuliert werden?",
@@ -904,11 +939,17 @@
       "bo_filter": "Alle: Zeigt alle budgetierten Kategorien\nNur Abweichungen: Nur Kategorien mit Überschuss oder Defizit",
       "suggestions": "Anpassungsvorschläge anzeigen (bei dauerhaftem Überschuss/Defizit)",
       "refresh": "Daten aktualisieren (F5)",
-      "toggle_sidebar": "Seitenleiste ein-/ausblenden"
+      "toggle_sidebar": "Seitenleiste ein-/ausblenden",
+      "monthly_trend": "Zeigt, ob deine Ausgaben im Monatsverlauf zum Budget passen. Gut zum Erkennen von Ausreißern.",
+      "balance_trend": "Zeigt Einnahmen minus Ausgaben pro Monat im Vergleich zur geplanten Bilanz.",
+      "top_bookings": "Zeigt die größten Buchungen im gewählten Zeitraum. Gut zum Finden einzelner Ausreißer."
     },
     "subtab": {
       "categories": "📊 Kategorien",
-      "distribution": "📈 Verteilung"
+      "distribution": "📈 Verteilung",
+      "monthly_trend": "📉 Monatsverlauf",
+      "balance_trend": "📈 Monatsbilanz",
+      "top_bookings": "🏷 Top-Buchungen"
     },
     "count": {
       "transactions": "{n} Transaktionen",
@@ -985,12 +1026,14 @@
       "edit": "Budget bearbeiten…",
       "quick_add": "Schnelleingabe",
       "remove_row": "Budget-Zeile entfernen",
-      "delete_category_global": "Kategorie löschen (global)"
+      "delete_category_global": "Kategorie löschen (global)",
+      "savings_goals": "🎯 Sparziele"
     },
     "tip": {
       "tree": "Baum-Ansicht steuern (Ein-/Ausblenden, Ebenen, Auf-/Zuklappen)",
       "quick_add": "Schnell einen neuen Tracking-Eintrag erfassen (Ctrl+N)",
-      "overview": "Schnellübersicht zum aktuell gewählten Jahr/Typ (Jahrestotal und Monatsdurchschnitt)."
+      "overview": "Schnellübersicht zum aktuell gewählten Jahr/Typ (Jahrestotal und Monatsdurchschnitt).",
+      "savings_goals": "Sparziele gehören zur Budgetplanung: Zielbetrag planen, Fortschritt prüfen und später über Buchungen nutzen."
     },
     "chk": {
       "ask_due": "Beim Tippen nach Fälligkeit fragen"
@@ -1027,7 +1070,8 @@
       "create_failed": "Erstellen fehlgeschlagen:\n{error}",
       "parent_has_children": "Diese Kategorie hat Unterkategorien.\n\nDie Monatswerte sind die Summe (Kinder + Puffer).",
       "total_parent_readonly": "Total ist bei Parent-Kategorien schreibgeschützt.",
-      "no_categories_create_main": "Es gibt noch keine Kategorien. Bitte erst eine Hauptkategorie erstellen."
+      "no_categories_create_main": "Es gibt noch keine Kategorien. Bitte erst eine Hauptkategorie erstellen.",
+      "category_missing": "Die Kategorie wurde in der Datenbank nicht gefunden. Bitte Ansicht neu laden und erneut versuchen."
     },
     "title": {
       "rename_category": "Kategorie umbenennen",
@@ -1127,7 +1171,24 @@
     "btn": {
       "correction": "Korrektur (Tippfehler etc.)",
       "withdrawal": "Bezug (Geld entnehmen)"
-    }
+    },
+    "savings_panel": {
+      "title": "Aktive Sparziele",
+      "tooltip": "Zeigt aktive Sparziele nur im Buchungs-/Tracking-Kontext. Doppelklick öffnet das gewählte Sparziel.",
+      "empty": "Keine aktiven Sparziele.",
+      "hint": "{count} aktive Sparziel(e). Doppelklick öffnet das Ziel; Buchungen auf verknüpfte Ersparnis-Kategorien aktualisieren den Fortschritt.",
+      "manage": "Sparziele verwalten…",
+      "manage_tip": "Sparziel-Dialog öffnen",
+      "goal": "Sparziel",
+      "progress": "Fortschritt",
+      "remaining": "Rest",
+      "status": "Status",
+      "tip_category": "Kategorie: {category}",
+      "tip_deadline": "Zieldatum: {deadline}",
+      "tip_open": "Doppelklick: Sparziel öffnen"
+    },
+    "category_placeholder": "Kategorie suchen oder auswählen …",
+    "category_tip": "Favoriten stehen oben. Danach kommen normale Kategorien nach manueller Buchungshäufigkeit. Fix-/Wiederkehrend-Kategorien sind eigene Gruppen und werden nicht durch Autobuchungen hochsortiert."
   },
   "tab_ui": {
     "keine_daten": " (keine Daten)",
@@ -1182,7 +1243,7 @@
     "sicherheitsstufe_konnte_nicht_geaendert": "Sicherheitsstufe konnte nicht geändert werden.",
     "ungueltiger_restorekey": "Ungültiger Restore-Key.",
     "welchen_benutzer_loeschen": "Welchen Benutzer löschen?",
-    "zb_christian_kraemer": "z.B. Christian Krämer",
+    "zb_christian_kraemer": "z.B. Max Mustermann",
     "mode_label_wurde_erfolgreich_geaendert": "{mode_label} wurde erfolgreich geändert.",
     "userdisplay_name_wurde_geloescht": "«{name}» wurde gelöscht.",
     "aendere_dein_aktuelles_mode_label": "Ändere dein aktuelles {mode_label}.",
@@ -1199,7 +1260,8 @@
     "benutzer_loeschen": "🗑️ Benutzer löschen…",
     "pin_length": "PIN muss 4–8 Ziffern lang sein.",
     "password_min_length": "Passwort muss mindestens 4 Zeichen lang sein.",
-    "quick_login_failed": "Quick-Login fehlgeschlagen."
+    "quick_login_failed": "Quick-Login fehlgeschlagen.",
+    "quick_no_protection_warn": "⚠️ Ohne Passwort: Jede Person mit Zugriff auf deine Dateien kann deine Daten öffnen. Praktisch, aber ungeschützt."
   },
   "backup": {
     "btn_restore": "Backup wiederherstellen",
@@ -1255,7 +1317,8 @@
   "savings": {
     "msg": {
       "select_goal": "Bitte ein Ziel auswählen."
-    }
+    },
+    "workflow_hint": "💡 Roter Faden: Sparziel im Budget planen → im Tracking/Buchungen über Ersparnisse buchen → Fortschritt in Übersicht und Tracking prüfen → bei Erreichen freigeben → spätere Entnahmen als Verbrauch buchen → abschließen."
   },
   "export": {
     "success_title": "Export erfolgreich",
@@ -1293,7 +1356,40 @@
     "version_unknown": "(Version unbekannt)"
   },
   "update": {
-    "hint_staging": "Hinweis: 'Prüfen & herunterladen' lädt ein Update und legt es in 'updates/staging/' ab."
+    "hint_staging": "Hinweis: 'Prüfen & herunterladen' lädt ein Update und legt es in 'updates/staging/' ab.",
+    "installed": "Aktuell installiert: <b>{version}</b><br>Updates werden erst durch Klick gestartet.",
+    "state_ready": "Bereit. Klicke auf „Update jetzt ausführen“, um Prüfung, Download und Installation zu starten.",
+    "state_staged": "Update {version} ist vorbereitet und kann installiert werden.",
+    "close_after_no_update": "Fenster schließen, wenn kein Update verfügbar ist",
+    "btn_run": "🔄 Update jetzt ausführen",
+    "btn_apply_staged": "⚠️ Vorbereitetes Update installieren",
+    "hint_one_click": "Ablauf: 1) Version online prüfen  2) Update herunterladen  3) Integrität prüfen  4) Installation starten.",
+    "hint_windows": "Windows-Hinweis: Zum Ersetzen der EXE schließt sich die App. Danach öffnet sich ein kleines Update-Fenster und startet die App neu.",
+    "process_finished": "\nProzess beendet (Code {code}).",
+    "auto_apply_ready": "Update {version} wurde vorbereitet. Installation wird jetzt gestartet.",
+    "no_update_after_check": "Kein neueres Update gefunden. Es wird nichts installiert.",
+    "check_start": "\n=== Update prüfen, herunterladen und vorbereiten ===",
+    "no_staged_title": "Kein Update vorbereitet",
+    "no_staged_body": "Es ist kein neueres vorbereitetes Update vorhanden. Bitte zuerst „Update jetzt ausführen“ starten.",
+    "confirm_title": "Update installieren",
+    "confirm_body": "Update {version} ist bereit.\n\nDie App wird geschlossen, die Dateien werden ersetzt und BudgetManager startet danach neu.\n\nFortfahren?",
+    "apply_starting": "Installation wird gestartet. Die App schließt sich gleich.",
+    "apply_start_failed": "Update-Helfer konnte nicht gestartet werden:\n{error}",
+    "title": "Updates",
+    "current_version": "Aktuell installiert: <b>{version}</b>",
+    "status_checking": "Suche nach Updates …",
+    "status_available": "Update auf Version {version} verfügbar und vorbereitet.",
+    "status_uptodate": "Du verwendest bereits die neueste Version ({version}).",
+    "status_error": "Update-Prüfung fehlgeschlagen: {error}",
+    "status_check_failed": "Update-Prüfung nicht abgeschlossen (Code {code}). Bitte erneut versuchen.",
+    "status_applying": "Die App schließt sich jetzt. Das Update wird angewendet und die App anschließend neu gestartet …",
+    "show_details": "Details anzeigen",
+    "hide_details": "Details ausblenden",
+    "btn_check": "Erneut prüfen",
+    "btn_releases": "Release-Seite öffnen",
+    "btn_update_now": "Jetzt aktualisieren & neu starten",
+    "confirm_apply_title": "Update installieren?",
+    "confirm_apply_text": "Die Anwendung wird geschlossen, das Update angewendet und die App danach automatisch neu gestartet.\n\nJetzt fortfahren?"
   },
   "dbmgmt": {
     "stats_header": "📊 <b>Aktuelle Statistiken:</b><br><br>",
@@ -1382,7 +1478,19 @@
       "131": "Steuern",
       "132": "Freizeit",
       "133": "Rücklagen",
-      "134": "Ferien"
+      "134": "Ferien",
+      "135": "Wohnen",
+      "136": "Kommunikation & Medien",
+      "137": "Mobilfunk",
+      "138": "Serafe (Radio/TV)",
+      "139": "Mobilität",
+      "140": "ÖV (Abo/Billette)",
+      "141": "Benzin",
+      "142": "Lebenshaltung",
+      "143": "Diverses",
+      "144": "Säule 3a",
+      "145": "Freizügigkeit",
+      "146": "Anschaffungen"
     }
   },
   "search": {
@@ -1479,7 +1587,12 @@
   },
   "chart": {
     "top6_budget_vs_actual": "Top 6 – Budget vs. Gebucht",
-    "open_budgeted_amounts": "Offene budgetierte Beträge"
+    "open_budgeted_amounts": "Offene budgetierte Beträge",
+    "monthly_expenses_budget_actual": "Ausgaben: Budget vs. Gebucht pro Monat",
+    "monthly_balance": "Monatsbilanz: geplant vs. echt",
+    "planned_balance": "Geplante Bilanz",
+    "top_bookings_by_amount": "Top 5 Buchungen nach Betrag",
+    "amount": "Betrag"
   },
   "auto": {
     "main": {
@@ -1789,7 +1902,7 @@
       "153_ergebnisse_value_0_gefunden_b64f61d2": "Ergebnisse: {value_0} gefunden"
     },
     "views_recurring_bookings_dialog": {
-      "128_b_fixkosten_b_sind_fix_und_nicht_ed_38adb145": "<b>Fixkosten</b> sind fix und nicht editierbar. <b>Wiederkehrende</b> (ohne Fixkosten) sind variabel: Betrag anpassen und auswählen, was gebucht werden soll.",
+      "128_b_fixkosten_b_sind_fix_und_nicht_ed_38adb145": "Echte Fixkosten (fix + wiederkehrend) sind gesperrt. Einfache Fix- oder Wiederkehrend-Beträge sind editierbar; der Betrag ist mit dem offenen Restbetrag vorbelegt.",
       "137_span_style_color_value_0_ueberfaell_81b0f0f3": "💡 <span style='color:{value_0};'>Überfällige</span> Buchungen sind vorausgewählt. <span style='color:{value_1};'>Zukünftige</span> können manuell ausgewählt werden.",
       "169_art_e71cc758": "Art"
     },
@@ -1862,7 +1975,7 @@
     "password_placeholder": "Passwort eingeben…"
   },
   "catmgr": {
-    "drag_hint": "💡 Tipp: Kategorien per Drag-and-Drop umhängen — auf eine andere Kategorie ziehen macht sie zur Unterkategorie, auf den Typ-Kopf (z. B. Ausgaben) ziehen macht sie zur Hauptkategorie. Alternativ Rechtsklick → „Verschieben unter…“.",
+    "drag_hint": "💡 Tipp: Kategorien per Drag & Drop umsortieren — auf eine andere Kategorie ziehen = Unterkategorie, auf die Typ-Zeile (z. B. Ausgaben) ziehen = Hauptkategorie. Alternativ Rechtsklick → „Verschieben unter…“.",
     "move_under": "Verschieben unter…",
     "move_to_top": "Zur Hauptkategorie machen",
     "move_no_targets": "Keine gültigen Ziele",
@@ -1870,6 +1983,132 @@
     "move_err_self": "Eine Kategorie kann nicht unter sich selbst verschoben werden.",
     "move_err_type": "Kategorien können nur innerhalb desselben Typs verschoben werden.",
     "move_err_cycle": "Eine Kategorie kann nicht unter eine ihrer eigenen Unterkategorien verschoben werden.",
-    "move_err_missing": "Kategorie oder Ziel nicht gefunden."
+    "move_err_missing": "Kategorie oder Ziel nicht gefunden.",
+    "delete_err_reassign_target": "Bitte eine gültige Zielkategorie wählen.",
+    "delete_err_reassign_missing": "Die Zielkategorie wurde nicht gefunden."
+  },
+  "catdel": {
+    "title": "Kategorie löschen",
+    "header": "Kategorie «{category}» ({typ}) löschen",
+    "dependencies": "Betroffene Daten:",
+    "last_booking": "Letzte Buchung: {date}",
+    "no_dependencies": "Es hängen keine Buchungen oder weiteren Daten an dieser Kategorie.",
+    "children_promoted": "Hinweis: Unterkategorien werden nicht gelöscht, sondern zu Hauptkategorien hochgestuft.",
+    "opt_cascade": "Mit allen abhängigen Daten löschen (Buchungen, Budget, Favoriten …)",
+    "opt_reassign": "Abhängige Daten einer anderen Kategorie zuordnen:",
+    "no_targets": "Keine andere Kategorie gleichen Typs vorhanden.",
+    "btn_delete": "Löschen",
+    "dep_budget": "Budget",
+    "dep_tracking": "Buchungen",
+    "dep_warnings": "Warnungen",
+    "dep_favorites": "Favoriten",
+    "dep_recurring": "Wiederkehrend",
+    "dep_savings": "Sparziele",
+    "opt_cascade_all": "Alle zugehörigen Daten löschen (inkl. Sparziele)"
+  },
+  "copy": {
+    "src_year": "Quelljahr:",
+    "dst_year": "Zieljahr:",
+    "scope": "Bereich:"
+  },
+  "currency": {
+    "CHF": "CHF – Schweizer Franken",
+    "EUR": "EUR – Euro",
+    "USD": "USD – US-Dollar",
+    "GBP": "GBP – Britisches Pfund"
+  },
+  "number_format": {
+    "ch": "1'234.56 – Schweiz",
+    "eu": "1.234,56 – Europa",
+    "us": "1,234.56 – US/UK",
+    "swiss": "1'234.56  (Schweiz)",
+    "german": "1.234,56  (Deutschland/Österreich)",
+    "french": "1 234,56  (Frankreich)",
+    "anglo": "1,234.56  (US/UK)"
+  },
+  "category_delete": {
+    "title": "Kategorie sicher löschen",
+    "summary": "Ausgewählt: {count} Kategorie(n): {names}\n\nBetroffene Daten: {children} direkte Unterkategorie(n), {budget} Budget-Zeile(n), {tracking} Buchung(en), {favorites} Favorit(en), {warnings} Warnregel(n), {recurring} wiederkehrende Buchung(en), {goals} Sparziel(e).\nLetztes Buchungsdatum: {last}",
+    "more_names": " und {count} weitere",
+    "no_booking_date": "keine Buchung vorhanden",
+    "children_note": "Hinweis: Direkte Unterkategorien werden beim Löschen eine Ebene hochgezogen, nicht automatisch mitgelöscht.",
+    "choose_action": "Was soll mit den abhängigen Daten passieren?",
+    "option_until_last": "Buchungen/Budget bis zum letzten Buchungsdatum löschen (Sparziele behalten, Kategorie-Verknüpfung lösen)",
+    "option_reassign": "Alle abhängigen Daten einer anderen Kategorie desselben Typs zuordnen",
+    "option_delete_all": "Alle zugehörigen Daten unwiderruflich löschen",
+    "target_label": "Zielkategorie:",
+    "no_target": "Keine passende Zielkategorie verfügbar",
+    "target_is_deleted": "Die Zielkategorie darf nicht selbst gelöscht werden.",
+    "target_type_mismatch": "Zielkategorie und gelöschte Kategorie müssen denselben Typ haben."
+  },
+  "help": {
+    "window_title": "Handbuch – BudgetManager",
+    "search_placeholder": "Themen durchsuchen …",
+    "no_results": "Keine passenden Themen.",
+    "tip": {
+      "fixcost": "Fixkosten = fester, wiederkehrender Betrag. Wird bei „Fixkosten buchen“ automatisch aus dem Budget übernommen (Budget 0 = übersprungen) und in Budgetvorschlägen vor Senkungen durch 0-Monate geschützt. Mehr unter Hilfe → Handbuch.",
+      "recurring": "Wiederkehrend = regelmäßige Buchung mit Soll-Buchungstag. Beim Buchen prüft die App, ob der Monat schon erfasst ist; der Betrag kann in der Liste angepasst werden. Mehr unter Hilfe → Handbuch.",
+      "due_day": "Fälligkeitstag = bevorzugter Buchungstag im Monat. Bei Fix/Wiederkehrend buchen wird dieser Tag verwendet; falls der Monat kürzer ist, nimmt die App den letzten gültigen Monatstag."
+    },
+    "btn_show_key": "🔑 DB-Schlüssel / Restore-Key anzeigen",
+    "btn_open_mindmap": "🧭 Mindmap anzeigen"
+  },
+  "restore_key": {
+    "view_title": "DB-Schlüssel / Restore-Key",
+    "view_intro": "<b>Schlüssel der aktuell geöffneten Datenbank.</b><br>Du brauchst ihn, um deine verschlüsselte Datenbank wiederherzustellen.",
+    "view_note": "Bewahre den Schlüssel an einem sicheren Ort auf – getrennt von deinen Backups.",
+    "copied": "✓ In die Zwischenablage kopiert"
+  },
+  "cockpit": {
+    "title": "🏠 Cockpit",
+    "subtitle": "Alles Wichtige auf einen Blick – Details bleiben in den Fachreitern.",
+    "customize": "⚙ Cockpit gestalten",
+    "customize_tip": "Blendet Cockpit-Bereiche ein oder aus. Die Einstellung wird gespeichert.",
+    "refresh": "🔄 Aktualisieren",
+    "no_active_savings": "Keine aktiven Sparziele. Der Bereich wird automatisch ausgeblendet, wenn du ihn nicht brauchst.",
+    "open": "Öffnen",
+    "show_all": "Alle Cockpit-Bereiche einblenden",
+    "hide_tab_title": "Reiter ausblenden",
+    "keep_one_tab": "Mindestens ein Reiter muss sichtbar bleiben.",
+    "customize_title": "Cockpit gestalten",
+    "customize_intro": "Wähle aus, welche Bereiche sichtbar sind, und sortiere sie mit Hoch/Runter. So bleibt das Cockpit schlank, aber persönlich.",
+    "move_up": "↑ Hoch",
+    "move_down": "↓ Runter",
+    "reset_order": "Reihenfolge zurücksetzen"
+  },
+  "db": {
+    "created_title": "Datenbank erstellt",
+    "created_body": "Die Datenbank wurde vorbereitet und ist einsatzbereit.",
+    "updated_title": "Datenbank aktualisiert",
+    "updated_body": "Die Datenbank wurde auf die aktuelle Version aktualisiert.",
+    "backup_created": "Sicherheitskopie erstellt.",
+    "details": "Details",
+    "version_line": "v{old} → v{new}"
+  },
+  "keine_auswahl": "Keine Auswahl",
+  "picker": {
+    "group_favorites": "★ Favoriten",
+    "group_fixcosts": "Fixkosten",
+    "group_recurring": "Wiederkehrend",
+    "group_other": "Übrige",
+    "group_frequent_manual": "Häufig manuell gebucht",
+    "group_normal": "Normale Buchungen",
+    "group_variable_fix": "Fix / variabel",
+    "group_variable_recurring": "Wiederkehrend / variabel",
+    "group_real_fixcosts": "Echte Fixkosten"
+  },
+  "booking": {
+    "kind_real_fixed": "Echte Fixkosten",
+    "kind_variable_fixed": "Fix / variabel",
+    "kind_variable_recurring": "Wiederkehrend / variabel",
+    "kind_real_fixed_short": "Fix + Wied.",
+    "kind_variable_fixed_short": "Fix variabel",
+    "kind_variable_recurring_short": "Wied. variabel",
+    "btn_real_fixed_only": "Nur echte Fixkosten",
+    "status": {
+      "days": "{days} Tage",
+      "today": "Heute",
+      "in_days": "in {days} T."
+    }
   }
 }

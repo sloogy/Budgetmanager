@@ -49,9 +49,9 @@ class SortablePendingItem:
     
     @property
     def sort_key(self) -> tuple:
-        """Sortierung: 
+        """Sortierung:
         1. Fälligkeitsdatum
-        2. Fix+Wiederkehrend (0) vor nur Fix (1) vor nur Wiederkehrend (2)
+        2. Echte Fixkosten (fix+repeat) vor variablen Fix-/Wiederkehrend-Posten
         """
         if self.is_fix and self.is_recurring:
             priority = 0
@@ -93,20 +93,28 @@ class RecurringBookingsDialog(QDialog):
         self.setWindowTitle(title)
         self.setMinimumSize(950, 500)
 
-        # Items mit Sortierinformationen versehen
+        # Items mit Sortierinformationen versehen.
+        # Flags kommen jetzt direkt von der Buchung (PendingBooking.is_fix/is_recurring).
         self._items: list[SortablePendingItem] = []
-        
-        # Fix items (is_fix=True)
-        for it in fix_items:
-            # Prüfe ob auch wiederkehrend
-            is_recurring = any(r.category == it.category and r.typ == it.typ for r in recurring_items)
-            self._items.append(SortablePendingItem(it, "Fix", is_fix=True, is_recurring=is_recurring))
-        
-        # Recurring items (nur wenn nicht schon als Fix erfasst)
-        fix_cats = {(it.category, it.typ) for it in fix_items}
-        for it in recurring_items:
-            if (it.category, it.typ) not in fix_cats:
-                self._items.append(SortablePendingItem(it, tr("lbl.recurring"), is_fix=False, is_recurring=True))
+        seen: set[tuple[str, str]] = set()
+
+        def _kind_label(it) -> str:
+            f = bool(getattr(it, "is_fix", False))
+            r = bool(getattr(it, "is_recurring", False))
+            if f and r:
+                return tr("booking.kind_real_fixed")
+            if f:
+                return tr("booking.kind_variable_fixed")
+            return tr("booking.kind_variable_recurring")
+
+        for it in list(fix_items) + list(recurring_items):
+            key = (it.category, it.typ)
+            if key in seen:
+                continue
+            seen.add(key)
+            f = bool(getattr(it, "is_fix", False))
+            r = bool(getattr(it, "is_recurring", False))
+            self._items.append(SortablePendingItem(it, _kind_label(it), is_fix=f, is_recurring=r))
         
         # Nach sort_key sortieren
         self._items.sort(key=lambda x: x.sort_key)
@@ -196,7 +204,7 @@ class RecurringBookingsDialog(QDialog):
         self.btn_all = QPushButton(tr("btn.all"))
         self.btn_none = QPushButton(tr("btn.none"))
         self.btn_overdue_only = QPushButton(tr("dlg.nur_ueberfaellige"))
-        self.btn_fix_only = QPushButton(tr('chk.only_fixed'))
+        self.btn_fix_only = QPushButton(tr('booking.btn_real_fixed_only'))
         self.btn_ok = QPushButton(tr("btn.book"))
         self.btn_ok.setStyleSheet(f"""
             QPushButton {{
@@ -257,13 +265,13 @@ class RecurringBookingsDialog(QDialog):
         # Art (Fix / Wiederkehrend / Fix+Wiederkehrend)
         c = ui_colors(self)
         if item.is_fix and item.is_recurring:
-            art_text = "Fix + Wied."
+            art_text = tr("booking.kind_real_fixed_short")
             art_color = QColor(ui_colors(self).accent)  # Buchungsart-Akzent
         elif item.is_fix:
-            art_text = "Fix"
+            art_text = tr("booking.kind_variable_fixed_short")
             art_color = QColor(c.accent)
         else:
-            art_text = tr("lbl.recurring")
+            art_text = tr("booking.kind_variable_recurring_short")
             art_color = QColor(c.type_color(tr("typ.Ersparnisse")))
         
         art_item = QTableWidgetItem(art_text)
@@ -278,16 +286,16 @@ class RecurringBookingsDialog(QDialog):
         # Status
         if is_overdue:
             if days > 30:
-                status_text = f"⚠️ {days} Tage"
+                status_text = "⚠️ " + trf("booking.status.days", days=days)
                 status_color = QColor(c.danger)
             else:
-                status_text = f"🔴 {days} Tage"
+                status_text = "🔴 " + trf("booking.status.days", days=days)
                 status_color = QColor(c.negative)
         elif days == 0:
-            status_text = "📅 Heute"
+            status_text = "📅 " + tr("booking.status.today")
             status_color = QColor(c.warning)
         else:
-            status_text = f"🟢 in {-days} T."
+            status_text = "🟢 " + trf("booking.status.in_days", days=-days)
             status_color = QColor(c.ok)
 
         status_item = QTableWidgetItem(status_text)
@@ -303,10 +311,10 @@ class RecurringBookingsDialog(QDialog):
         # Kategorie
         self.table.setItem(r, 5, QTableWidgetItem(it.category))
 
-        # Betrag (editierbar nur für nicht-Fix)
+        # Betrag editierbar – nur echte Fixkosten (fix UND wiederkehrend) sind gesperrt
         amt = QTableWidgetItem(_fmt_chf(float(it.amount)))
         amt.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        if item.is_fix:
+        if item.is_fix and item.is_recurring:
             amt.setFlags(amt.flags() & ~Qt.ItemIsEditable)
         else:
             amt.setFlags(amt.flags() | Qt.ItemIsEditable)
@@ -365,11 +373,16 @@ class RecurringBookingsDialog(QDialog):
         self._update_status()
 
     def _accept_fix_only(self) -> None:
-        """Wählt nur Fixkosten aus und akzeptiert"""
+        """Bucht nur echte Fixkosten (fix UND wiederkehrend) ohne Betragsedit.
+
+        Fix-only Kategorien wie Franchise/Selbstbehalt bleiben bewusst außen vor:
+        sie sind variabel, müssen editierbar bleiben und sollen nicht durch den
+        Schnellbutton versehentlich mit dem Restbetrag gebucht werden.
+        """
         for r, item in enumerate(self._items):
             chk = self.table.item(r, 0)
             if chk is not None:
-                chk.setCheckState(Qt.Checked if item.is_fix else Qt.Unchecked)
+                chk.setCheckState(Qt.Checked if (item.is_fix and item.is_recurring) else Qt.Unchecked)
         self._update_status()
         self.accept()
 
@@ -397,6 +410,11 @@ class RecurringBookingsDialog(QDialog):
                     category=base.category,
                     amount=float(amt),
                     details=str(det or ""),
+                    source=getattr(base, "source", "manual"),
+                    is_fix=getattr(base, "is_fix", False),
+                    is_recurring=getattr(base, "is_recurring", False),
+                    budget=getattr(base, "budget", 0.0),
+                    booked=getattr(base, "booked", 0.0),
                 )
             )
         return out

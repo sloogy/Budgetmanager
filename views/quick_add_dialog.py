@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sqlite3
 from datetime import date
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QComboBox, QDoubleSpinBox, QDateEdit, QPushButton,
@@ -61,6 +62,13 @@ class QuickAddDialog(QDialog):
         cat_row.addWidget(QLabel(tr("lbl.category")))
         self.cat_combo = QComboBox()
         self.cat_combo.setEditable(True)
+        self.cat_combo.setInsertPolicy(QComboBox.NoInsert)
+        self.cat_combo.setMaxVisibleItems(18)
+        self.cat_combo.setToolTip(tr("tracking.category_tip"))
+        try:
+            self.cat_combo.lineEdit().setPlaceholderText(tr("tracking.category_placeholder"))
+        except Exception:
+            pass
         self._update_categories()
         cat_row.addWidget(self.cat_combo, 1)
         layout.addLayout(cat_row)
@@ -106,38 +114,51 @@ class QuickAddDialog(QDialog):
         # Enter = Speichern & Schließen
         self.amount_spin.setFocus()
     
+    def _category_pairs_structured(self, typ: str) -> list[tuple[str, str]]:
+        """Dropdown-Reihenfolge: Favoriten zuerst, danach manuelle Nutzungshäufigkeit."""
+        try:
+            return self.cats.list_for_tracking_dropdown(typ)
+        except Exception as e:
+            logger.debug("category dropdown order: %s", e)
+            try:
+                return self.cats.list_names_tree(typ)
+            except Exception:
+                return [(n, n) for n in self.cats.list_names(typ)]
+
     def _update_categories(self):
-        """Aktualisiert die Kategorien basierend auf dem Typ – sortiert nach Häufigkeit."""
+        """Aktualisiert Kategorien nach Typ – gruppiert (Favoriten/Fix/Wiederkehrend/Übrige),
+        baum- und häufigkeitssortiert, mit Suchfeld."""
         typ = self.typ_combo.currentData() or db_typ_from_display(self.typ_combo.currentText())
 
         current_data = self.cat_combo.currentData() or self.cat_combo.currentText().strip()
-        self.cat_combo.clear()
 
-        # Häufigkeit abfragen
-        freq = self.tracking.category_usage_counts(typ)
-
-        pairs: list[tuple[str, str]] = []
-        if hasattr(self.cats, "list_names_tree"):
+        try:
+            from views.category_picker import populate_grouped_combo
+            grouped = self.cats.list_for_tracking_dropdown_grouped(typ)
+            if grouped:
+                populate_grouped_combo(self.cat_combo, grouped)
+            else:
+                raise ValueError("leer")
+        except Exception as e:
+            logger.debug("gruppierter Picker, Fallback flach: %s", e)
+            self.cat_combo.clear()
+            for label, real in self._category_pairs_structured(typ):
+                self.cat_combo.addItem(label, real)
             try:
-                pairs = self.cats.list_names_tree(typ)
-            except Exception:
-                pairs = []
-        if not pairs:
-            pairs = [(n, n) for n in self.cats.list_names(typ)]
+                completer = self.cat_combo.completer()
+                completer.setCompletionMode(QCompleter.PopupCompletion)
+                completer.setFilterMode(Qt.MatchContains)
+                completer.setCaseSensitivity(Qt.CaseInsensitive)
+            except Exception as e2:
+                logger.debug("category completer: %s", e2)
 
-        # Sortierung: Häufigkeit absteigend, dann alphabetisch
-        pairs.sort(key=lambda p: (-freq.get(p[1], 0), p[1].lower()))
-
-        for label, real in pairs:
-            self.cat_combo.addItem(label.strip(), real)
-
-        # Vorherige Auswahl wiederherstellen
+        # Vorherige Auswahl wiederherstellen (über echte itemData)
         if current_data:
             for i in range(self.cat_combo.count()):
-                if self.cat_combo.itemData(i) == current_data or self.cat_combo.itemText(i).strip() == current_data:
+                if self.cat_combo.itemData(i) == current_data:
                     self.cat_combo.setCurrentIndex(i)
                     break
-    
+
     def _validate(self) -> bool:
         """Prüft ob alle Pflichtfelder ausgefüllt sind"""
         if not self.cat_combo.currentText().strip():
@@ -158,7 +179,8 @@ class QuickAddDialog(QDialog):
         d = self.date_edit.date().toPython()
         typ = self.typ_combo.currentData() or db_typ_from_display(self.typ_combo.currentText())
         typ = normalize_typ(typ)
-        category = (self.cat_combo.currentData() or self.cat_combo.currentText()).strip()
+        from views.category_picker import resolve_combo_category
+        category = resolve_combo_category(self.cat_combo)
         amount = self.amount_spin.value()
         details = self.details_edit.text().strip()
         

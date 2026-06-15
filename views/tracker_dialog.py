@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from datetime import date, datetime
 import sqlite3
 
+from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog, QFormLayout, QHBoxLayout, QPushButton, QComboBox,
-    QLineEdit, QDateEdit, QVBoxLayout, QMessageBox
+    QLineEdit, QDateEdit, QVBoxLayout, QMessageBox, QLabel, QCompleter
 )
 
 from model.category_model import CategoryModel
@@ -49,6 +50,14 @@ class TrackerDialog(QDialog):
 
         self.cb_cat = QComboBox()
         self.cb_cat.setEnabled(False)
+        self.cb_cat.setEditable(True)
+        self.cb_cat.setInsertPolicy(QComboBox.NoInsert)
+        self.cb_cat.setMaxVisibleItems(18)
+        self.cb_cat.setToolTip(tr("tracking.category_tip"))
+        try:
+            self.cb_cat.lineEdit().setPlaceholderText(tr("tracking.category_placeholder"))
+        except Exception:
+            pass
 
         self.ed_amount = QLineEdit()
         self.ed_amount.setPlaceholderText(tr('auto.views_tracker_dialog.54_z_b_12_50_7eb13fc1'))
@@ -59,11 +68,15 @@ class TrackerDialog(QDialog):
         self.btn_cancel = QPushButton(tr("btn.cancel"))
 
         form = QFormLayout()
-        form.addRow("Datum", self.ed_date)
-        form.addRow("Typ", self.cb_typ)
+        form.addRow(tr("header.date"), self.ed_date)
+        form.addRow(tr("lbl.type"), self.cb_typ)
         form.addRow(tr("header.category"), self.cb_cat)
+        self.lbl_cat_tip = QLabel(tr("tracking.category_tip"))
+        self.lbl_cat_tip.setWordWrap(True)
+        self.lbl_cat_tip.setStyleSheet("font-size: 11px; opacity: 0.75;")
+        form.addRow("", self.lbl_cat_tip)
         form.addRow(currency_header(), self.ed_amount)
-        form.addRow("Details", self.ed_details)
+        form.addRow(tr("lbl.lbl_details"), self.ed_details)
 
         btns = QHBoxLayout()
         btns.addStretch(1)
@@ -125,43 +138,63 @@ class TrackerDialog(QDialog):
                 combo.setCurrentIndex(i)
                 return
 
+    def _category_pairs_structured(self, typ: str) -> list[tuple[str, str]]:
+        """Dropdown-Reihenfolge: Favoriten zuerst, danach manuelle Nutzungshäufigkeit."""
+        try:
+            return self.cats.list_for_tracking_dropdown(typ)
+        except Exception as e:
+            logger.debug("category dropdown order: %s", e)
+            try:
+                return self.cats.list_names_tree(typ)
+            except Exception:
+                return [(n, n) for n in self.cats.list_names(typ)]
+
     def _fill_categories(self) -> None:
         typ = self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
         self.cb_cat.setEnabled(True)
-        self.cb_cat.clear()
+        current_data = self.cb_cat.currentData() or self.cb_cat.currentText().strip()
 
-        # Häufigkeit abfragen: wie oft wurde jede Kategorie dieses Typs gebucht?
-        freq: dict[str, int] = {}
         try:
-            freq = self._track.category_usage_counts(typ)
+            from views.category_picker import populate_grouped_combo
+            grouped = self.cats.list_for_tracking_dropdown_grouped(typ)
+            if grouped:
+                populate_grouped_combo(self.cb_cat, grouped)
+            else:
+                raise ValueError("leer")
         except Exception as e:
-            logger.debug("category_usage_counts: %s", e)
-
-        # Kategorien laden (flach oder tree)
-        pairs: list[tuple[str, str]] = []
-        if hasattr(self.cats, "list_names_tree"):
+            logger.debug("gruppierter Picker, Fallback flach: %s", e)
+            self.cb_cat.clear()
+            for label, real in self._category_pairs_structured(typ):
+                self.cb_cat.addItem(label, real)
             try:
-                pairs = self.cats.list_names_tree(typ)
-            except Exception:
-                pairs = []
-        if not pairs:
-            pairs = [(n, n) for n in self.cats.list_names(typ)]
+                completer = self.cb_cat.completer()
+                completer.setCompletionMode(QCompleter.PopupCompletion)
+                completer.setFilterMode(Qt.MatchContains)
+                completer.setCaseSensitivity(Qt.CaseInsensitive)
+            except Exception as e2:
+                logger.debug("category completer: %s", e2)
 
-        # Sortierung: Häufigkeit absteigend, dann alphabetisch
-        # Tree-Einrückung entfernen für saubere Frequenz-Sortierung
-        pairs.sort(key=lambda p: (-freq.get(p[1], 0), p[1].lower()))
-
-        for label, real in pairs:
-            # Einrückung entfernen (Frequenz-Sortierung macht Tree-Struktur sinnlos)
-            display = label.strip()
-            self.cb_cat.addItem(display, real)
+        # Vorherige Auswahl wiederherstellen (über echte itemData).
+        restored = False
+        if current_data:
+            for i in range(self.cb_cat.count()):
+                if self.cb_cat.itemData(i) == current_data:
+                    self.cb_cat.setCurrentIndex(i)
+                    restored = True
+                    break
+        if not restored:
+            # ersten echten Eintrag (kein Header) wählen
+            for i in range(self.cb_cat.count()):
+                if self.cb_cat.itemData(i) is not None:
+                    self.cb_cat.setCurrentIndex(i)
+                    break
 
     def _validate_and_accept(self) -> None:
         typ = self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
         if not typ:
             QMessageBox.warning(self, tr('auto.views_tracker_dialog.162_fehlt_fb898654'), tr("dlg.bitte_typ_auswaehlen"))
             return
-        if not self.cb_cat.currentText():
+        if not (self.cb_cat.currentData() or self.cb_cat.currentText().strip()):
             QMessageBox.warning(self, tr('auto.views_tracker_dialog.165_fehlt_a7f19cb1'), tr("dlg.bitte_kategorie_auswaehlen"))
             return
         try:
@@ -177,7 +210,8 @@ class TrackerDialog(QDialog):
     def get_input(self) -> TrackingInput:
         d = self.ed_date.date().toPython()
         typ = self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
-        cat = self.cb_cat.currentData() or self.cb_cat.currentText().strip()
+        from views.category_picker import resolve_combo_category
+        cat = resolve_combo_category(self.cb_cat)
         amt = parse_amount(self.ed_amount.text())
         details = self.ed_details.text() or ""
         return TrackingInput(d, typ, cat, float(amt), details)

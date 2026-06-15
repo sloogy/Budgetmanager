@@ -22,13 +22,14 @@ from PySide6.QtWidgets import (
     QLabel, QLineEdit, QCheckBox, QSpinBox, QComboBox, QPushButton,
     QGroupBox, QMessageBox, QDialogButtonBox, QTreeWidget, QTreeWidgetItem,
     QWidget, QFrame, QSplitter, QMenu, QInputDialog, QHeaderView,
-    QAbstractItemView
+    QAbstractItemView, QSizePolicy
 )
 
 from model.category_model import CategoryModel, Category
 from utils.icons import get_icon
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.i18n import tr, trf, display_typ, db_typ_from_display, tr_category_name
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from views.category_delete_dialog import ask_category_delete_decision
 
 
 class _CategoryTreeWidget(QTreeWidget):
@@ -88,6 +89,8 @@ class CategoryManagerDialog(QDialog):
     
     def _build_ui(self) -> None:
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(6)
         
         # === Toolbar ===
         toolbar = QHBoxLayout()
@@ -119,12 +122,12 @@ class CategoryManagerDialog(QDialog):
         # Filter
         toolbar.addWidget(QLabel(tr("lbl.filter_lbl")))
         self.filter_combo = QComboBox()
-        self.filter_combo.addItem(tr("categories.filter_all"), tr('auto.views_category_manager_dialog.111_all_0aa3eab1'))
+        self.filter_combo.addItem(tr("categories.filter_all"), "all")
         self.filter_combo.addItem(display_typ(TYP_EXPENSES), TYP_EXPENSES)
         self.filter_combo.addItem(display_typ(TYP_INCOME), TYP_INCOME)
         self.filter_combo.addItem(display_typ(TYP_SAVINGS), TYP_SAVINGS)
-        self.filter_combo.addItem(tr("categories.filter_fixcosts"), tr('auto.views_category_manager_dialog.115_fix_79f4d539'))
-        self.filter_combo.addItem(tr("categories.filter_recurring"), tr('auto.views_category_manager_dialog.116_recurring_c39ebe21'))
+        self.filter_combo.addItem(tr("categories.filter_fixcosts"), "fix")
+        self.filter_combo.addItem(tr("categories.filter_recurring"), "recurring")
         self.filter_combo.currentIndexChanged.connect(lambda _idx: self._apply_filter())
         toolbar.addWidget(self.filter_combo)
         
@@ -132,6 +135,8 @@ class CategoryManagerDialog(QDialog):
 
         drag_hint = QLabel(tr("catmgr.drag_hint"))
         drag_hint.setWordWrap(True)
+        drag_hint.setMaximumHeight(44)
+        drag_hint.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Maximum)
         drag_hint.setStyleSheet("font-size: 12px;")
         layout.addWidget(drag_hint)
         
@@ -188,12 +193,14 @@ class CategoryManagerDialog(QDialog):
         props_layout.addWidget(QLabel(tr("lbl.fixed_costs")), 0, 0)
         self.fix_combo = QComboBox()
         self.fix_combo.addItems([tr("dlg.nicht_aendern"), tr("categories.activate"), tr("categories.deactivate")])
+        self.fix_combo.setToolTip(tr("help.tip.fixcost"))
         props_layout.addWidget(self.fix_combo, 0, 1)
         
         # Wiederkehrend
         props_layout.addWidget(QLabel(tr("lbl.recurring")), 1, 0)
         self.rec_combo = QComboBox()
         self.rec_combo.addItems([tr("dlg.nicht_aendern"), tr("categories.activate"), tr("categories.deactivate")])
+        self.rec_combo.setToolTip(tr("help.tip.recurring"))
         props_layout.addWidget(self.rec_combo, 1, 1)
         
         # Fälligkeitstag
@@ -201,6 +208,7 @@ class CategoryManagerDialog(QDialog):
         day_layout = QHBoxLayout()
         self.day_check = QCheckBox(tr("lbl.set_to"))
         self.day_combo = self._create_day_combo()
+        self.day_combo.setToolTip(tr("help.tip.due_day"))
         self.day_combo.setEnabled(False)
         self.day_check.toggled.connect(self.day_combo.setEnabled)
         day_layout.addWidget(self.day_check)
@@ -221,10 +229,12 @@ class CategoryManagerDialog(QDialog):
         quick_layout = QVBoxLayout(quick_group)
         
         self.btn_all_fix = QPushButton(tr("ctx.set_all_fix_on"))
+        self.btn_all_fix.setToolTip(tr("help.tip.fixcost"))
         self.btn_all_fix.clicked.connect(lambda: self._quick_set_flag("is_fix", True))
         quick_layout.addWidget(self.btn_all_fix)
         
         self.btn_all_rec = QPushButton(tr("ctx.set_all_recurring_on"))
+        self.btn_all_rec.setToolTip(tr("help.tip.recurring"))
         self.btn_all_rec.clicked.connect(lambda: self._quick_set_flag("is_recurring", True))
         quick_layout.addWidget(self.btn_all_rec)
         
@@ -248,7 +258,7 @@ class CategoryManagerDialog(QDialog):
         splitter.setStretchFactor(1, 0)
         splitter.setSizes([600, 320])
         
-        layout.addWidget(splitter)
+        layout.addWidget(splitter, 1)
         
         # === Footer ===
         footer = QHBoxLayout()
@@ -330,7 +340,8 @@ class CategoryManagerDialog(QDialog):
             
             def add_category(cat: Category, parent_item: QTreeWidgetItem):
                 item = QTreeWidgetItem(parent_item)
-                item.setText(0, cat.name)
+                display_name = tr_category_name(cat.name)
+                item.setText(0, display_name)
                 item.setText(1, display_typ(typ))
                 item.setText(2, "✓" if cat.is_fix else "")
                 item.setText(3, "✓" if cat.is_recurring else "")
@@ -341,6 +352,7 @@ class CategoryManagerDialog(QDialog):
                     "type": "category",
                     "id": cat.id,
                     "name": cat.name,
+                    "display_name": display_name,
                     "typ": typ,
                     "is_fix": cat.is_fix,
                     "is_recurring": cat.is_recurring,
@@ -428,7 +440,7 @@ class CategoryManagerDialog(QDialog):
             self.btn_apply.setEnabled(False)
         elif count == 1:
             cat = selected[0]
-            self.selection_label.setText(trf("lbl.selected_category", name=cat['name'], typ=cat['typ']))
+            self.selection_label.setText(trf("lbl.selected_category", name=cat.get("display_name", cat["name"]), typ=display_typ(cat["typ"])))
             self.btn_apply.setEnabled(True)
             
             # Felder vorbelegen
@@ -525,7 +537,7 @@ class CategoryManagerDialog(QDialog):
         elif target_data.get("type") == "category":
             target_typ = target_data.get("typ")
             new_parent_id = int(target_data.get("id"))
-            target_label = target_data.get("name", "")
+            target_label = target_data.get("display_name", target_data.get("name", ""))
         else:
             return False
 
@@ -720,7 +732,7 @@ class CategoryManagerDialog(QDialog):
                     changed += 1
                     
             except Exception as e:
-                errors.append(f"{cat['name']}: {e}")
+                errors.append(f"{cat.get('display_name', cat['name'])}: {e}")
         
         if changed > 0:
             self._load_categories()
@@ -813,7 +825,7 @@ class CategoryManagerDialog(QDialog):
         
         name, ok = QInputDialog.getText(
             self, tr("budget.title.new_subcategory"),
-            trf("categories.new_subcategory_name_prompt", parent=parent["name"])
+            trf("categories.new_subcategory_name_prompt", parent=parent.get("display_name", parent["name"]))
         )
         if not ok or not name.strip():
             return
@@ -846,7 +858,7 @@ class CategoryManagerDialog(QDialog):
         
         new_name, ok = QInputDialog.getText(
             self, tr("budget.title.rename_category"),
-            trf("categories.rename_prompt", name=cat["name"]),
+            trf("categories.rename_prompt", name=cat.get("display_name", cat["name"])),
             text=cat["name"]
         )
         if not ok or not new_name.strip():
@@ -885,46 +897,24 @@ class CategoryManagerDialog(QDialog):
             QMessageBox.information(self, tr("msg.info"), tr("msg.no_categories_selected"))
             return
         
-        names = [c["name"] for c in selected[:10]]
-        if len(selected) > 10:
-            names.append(trf("dlg.und_lenselected_10_weitere", count=len(selected) - 10))
-        
-        msg = trf("categories.confirm_delete_count", count=len(selected)) + "\n\n"
-        msg += "\n".join(f"  • {n}" for n in names)
-        msg += "\n\n" + tr("categories.delete_with_entries_warning")
-        
-        if QMessageBox.question(self, tr("btn.loeschen_bestaetigen"), msg) != QMessageBox.Yes:
+        ids = sorted({int(c["id"]) for c in selected})
+        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=ids)
+        if decision is None:
             return
-        
-        deleted = 0
-        errors = []
-        
-        for cat in selected:
-            try:
-                # Alle Kinder sammeln
-                all_cats = self.cat_model.list(cat["typ"])
-                ids_to_delete = [cat["id"]]
-                
-                def collect_children(parent_id: int):
-                    for c in all_cats:
-                        if c.parent_id == parent_id:
-                            ids_to_delete.append(c.id)
-                            collect_children(c.id)
-                
-                collect_children(cat["id"])
-                
-                self.cat_model.delete_by_ids(ids_to_delete)
-                deleted += 1
-            except Exception as e:
-                errors.append(f"{cat['name']}: {e}")
-        
+
+        try:
+            result = self.cat_model.delete_categories_safely(
+                ids,
+                data_action=decision.action,
+                reassign_to_id=decision.reassign_to_id,
+                promote_children=True,
+            )
+        except Exception as e:
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.delete_failed", e=e))
+            return
+
+        deleted = int(result.get("deleted", 0) or 0)
         if deleted > 0:
             self._load_categories()
             self.categories_changed.emit()
             self.status_label.setText(trf("dlg.deleted_kategorien_geloescht", deleted=deleted))
-        
-        if errors:
-            QMessageBox.warning(
-                self, tr("categories.partial_failed_title"),
-                tr("categories.errors_at") + "\n" + "\n".join(errors[:10])
-            )

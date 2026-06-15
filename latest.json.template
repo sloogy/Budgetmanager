@@ -1,32 +1,32 @@
 {
   "app": "Budgetmanager",
   "channel": "stable",
-  "version": "1.0.42",
-  "release_tag": "v1.0.42",
+  "version": "2.0.12",
+  "release_tag": "v2.0.12",
   "assets": {
     "windows": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v1.0.42/BudgetManager-v1.0.42-portable.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.12/BudgetManager-v2.0.12-portable.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "linux": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v1.0.42/BudgetManager-v1.0.42-portable.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.12/BudgetManager-v2.0.12-portable.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "portable_zip": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v1.0.42/BudgetManager-v1.0.42-portable.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.12/BudgetManager-v2.0.12-portable.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "direct_windows_exe": {
       "type": "exe",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v1.0.42/BudgetManager-v1.0.42-windows.exe",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.12/BudgetManager-v2.0.12-windows.exe",
       "sha256": "PUT_SHA256_HERE"
     },
     "direct_linux_binary": {
       "type": "binary",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v1.0.42/BudgetManager-v1.0.42-linux",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.12/BudgetManager-v2.0.12-linux",
       "sha256": "PUT_SHA256_HERE"
     }
   }

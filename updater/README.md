@@ -15,12 +15,12 @@ Wenn du ein neues Release gebaut hast (portable ZIP), generierst du das Manifest
 
 ```bash
 python -m updater.generate_manifest \
-  --version 0.2.0.4 \
-  --release-tag v0.2.0.4 \
+  --version 2.0.9 \
+  --release-tag v2.0.9 \
   --channel stable \
   --windows-zip dist/BudgetManager_PORTABLE_WINDOWS.zip \
   --linux-zip dist/BudgetManager_PORTABLE_LINUX.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v0.2.0.4 \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.9 \
   --out latest.json
 ```
 

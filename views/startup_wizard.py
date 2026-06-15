@@ -269,27 +269,12 @@ class StartupWizard(QDialog):
         if not src_path:
             return
 
-        name = self.edt_name.text().strip()
-
-        # Quick-Account mit eingegebenem Namen erstellen (kein Passwort)
-        try:
-            user, _ = self.user_model.create_user(name, SECURITY_QUICK, "")
-        except (ValueError, ImportError) as e:
-            QMessageBox.critical(self, tr("msg.error"), str(e))
-            return
-
-        db_key = user.get_db_key("")
-
-        # Daten aus Backup einspielen (fragt ggf. nach Restore-Key)
-        try:
-            self._restore_into_user(Path(src_path), user, db_key)
-        except Exception as exc:
-            QMessageBox.critical(self, tr("msg.error"), trf("startup.import_failed", exc=str(exc)))
-            return
-
-        QMessageBox.information(self, tr("startup.import_title"), tr("startup.import_success"))
-        self.result = StartupResult(user=user, db_key=db_key)
-        self.accept()
+        # Import wird erst nach Wahl der Sicherheitsstufe ausgeführt.
+        # Vorher direkt einen Quick-User anzulegen war ein Dead-End: Bei falschem
+        # Restore-Key blieb ein leerer Benutzer/DB-Rest zurück und der nächste
+        # Start lief nicht mehr sauber als Erststart.
+        self._import_src_path = src_path
+        self._goto(self._PAGE_SECURITY)
 
     # ──────────────────────────────────────────────
     # Security section
@@ -364,9 +349,26 @@ class StartupWizard(QDialog):
 
         db_key = user.get_db_key(secret)
 
-        # Show restore key dialog (only for PIN / Password)
+        def _rollback_created_user() -> None:
+            try:
+                self.user_model.delete_user(user.username, delete_db=True)
+            except Exception as exc:
+                logger.warning("Rollback des neu erstellten Benutzers fehlgeschlagen: %s", exc)
+
+        # Restore-Key beim Erststart IMMER anzeigen – auch für Quick-User.
+        # Bei PIN/Passwort liefert create_user() den Key direkt; bei Quick wird
+        # er aus dem db_key abgeleitet (gleiches lesbares Format).
+        if not restore_key:
+            try:
+                from model.crypto import db_key_to_restore_key
+                restore_key = db_key_to_restore_key(db_key)
+            except Exception as exc:
+                logger.warning("Restore-Key für Quick-User konnte nicht abgeleitet werden: %s", exc)
+                restore_key = ""
+
         if restore_key:
             if not self._show_restore_key(restore_key, user):
+                _rollback_created_user()
                 return  # user closed dialog without confirming
 
         # Import / Restore if requested
@@ -374,6 +376,7 @@ class StartupWizard(QDialog):
             try:
                 self._restore_into_user(Path(self._import_src_path), user, db_key)
             except Exception as exc:
+                _rollback_created_user()
                 QMessageBox.critical(self, tr("msg.error"), trf("startup.import_failed", exc=str(exc)))
                 return
             QMessageBox.information(self, tr("startup.import_title"), tr("startup.import_success"))
@@ -389,7 +392,8 @@ class StartupWizard(QDialog):
         layout = QVBoxLayout(dlg)
 
         c = ui_colors(dlg)
-        layout.addWidget(QLabel(trf("dlg.restore_key_intro", color=c.negative)))
+        intro_key = "dlg.restore_key_intro_quick" if getattr(user, "is_quick", False) else "dlg.restore_key_intro"
+        layout.addWidget(QLabel(trf(intro_key, color=c.negative)))
 
         key_box = QTextEdit()
         key_box.setPlainText(key)
@@ -434,53 +438,181 @@ class StartupWizard(QDialog):
     # ──────────────────────────────────────────────
 
     def _restore_into_user(self, src: Path, user: User, db_key: bytes) -> None:
-        """Schreibt ein Backup in die DB-Datei des neu angelegten Users."""
+        """Schreibt ein Backup in die DB-Datei des neu angelegten Users.
+
+        Unterstützt:
+        - .db  → in den neuen Benutzer verschlüsseln
+        - .enc → direkt übernehmen, wenn der Key passt, sonst per Restore-Key
+        - .bmr → Bundle extrahieren; bei Quick-Backups kann der alte DB-Key aus
+                 der im Bundle enthaltenen users.json automatisch genutzt werden.
+        """
         src = Path(src)
         if not src.exists():
             raise FileNotFoundError(str(src))
 
-        # .bmr extrahieren
-        if src.suffix.lower() == ".bmr":
-            src = self._extract_bmr_to_temp(src)
+        bundle_path: Path | None = src if src.suffix.lower() == ".bmr" else None
+        extracted_tmp: Path | None = None
 
-        dest_enc = user.db_path
-        dest_enc.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if bundle_path is not None:
+                extracted_tmp = self._extract_bmr_to_temp(bundle_path)
+                src = extracted_tmp
 
-        if src.suffix.lower() == ".db":
-            self._import_db_to_enc(src, dest_enc, db_key, user.salt)
-            return
+            dest_enc = user.db_path
+            dest_enc.parent.mkdir(parents=True, exist_ok=True)
 
-        if src.suffix.lower() == ".enc":
-            from model.crypto import decrypt_db_from_file, encrypt_db_to_file, restore_key_to_db_key
-
-            try:
-                test = decrypt_db_from_file(src, db_key)
-                test.close()
-                dest_enc.write_bytes(src.read_bytes())
+            if src.suffix.lower() == ".db":
+                self._import_db_to_enc(src, dest_enc, db_key, user.salt)
                 return
-            except Exception as e:
-                logger.warning("DB-Kopie im StartupWizard fehlgeschlagen: %s", e)
 
-            last_exc: Exception | None = None
-            for attempt in range(3):
-                restore_key = self._ask_restore_key()
-                if not restore_key:
-                    raise ValueError(tr("startup.restore_aborted_no_key"))
+            if src.suffix.lower() == ".enc":
+                self._import_enc_to_user(
+                    src_enc=src,
+                    dest_enc=dest_enc,
+                    new_db_key=db_key,
+                    new_salt=user.salt,
+                    bundle_path=bundle_path,
+                )
+                return
+
+            raise ValueError(f"Unbekanntes Format: {src.name}")
+        finally:
+            if extracted_tmp is not None:
                 try:
-                    other_key = restore_key_to_db_key(restore_key)
-                    tmp_conn = decrypt_db_from_file(src, other_key)
-                    try:
-                        encrypt_db_to_file(tmp_conn, dest_enc, db_key, user.salt)
-                    finally:
-                        tmp_conn.close()
-                    return
-                except Exception as exc:
-                    last_exc = exc
-                    if attempt < 2:
-                        QMessageBox.warning(self, tr("msg.info"), trf('auto.views_startup_wizard.480_bitte_erneut_versuchen_value_0_2762b9bc', value_0=(exc)))
-            raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen", last_exc=str(last_exc)))
+                    extracted_tmp.unlink(missing_ok=True)
+                except Exception as e:
+                    logger.debug("Temporäre Restore-Datei konnte nicht gelöscht werden: %s", e)
 
-        raise ValueError(f"Unbekanntes Format: {src.name}")
+    def _import_enc_to_user(
+        self,
+        *,
+        src_enc: Path,
+        dest_enc: Path,
+        new_db_key: bytes,
+        new_salt: bytes,
+        bundle_path: Path | None = None,
+    ) -> None:
+        """Importiert eine verschlüsselte DB in den neu angelegten Benutzer."""
+        from model.crypto import decrypt_db_from_file, encrypt_db_to_file, restore_key_to_db_key
+
+        # 1) Backup passt bereits zum neu erstellten Benutzer-Key.
+        try:
+            test = decrypt_db_from_file(src_enc, new_db_key)
+            test.close()
+            dest_enc.write_bytes(src_enc.read_bytes())
+            return
+        except Exception as e:
+            logger.info("Import-DB ist nicht mit neuem Benutzer-Key lesbar: %s", e)
+
+        # 2) Wenn es ein .bmr mit users.json ist, Quick-Backups automatisch öffnen.
+        #    Das ist wichtig im Erststart: Quick-User haben zwar einen DB-Key in
+        #    users.json, aber der Nutzer hat oft keinen Restore-Key griffbereit.
+        for label, candidate_key in self._candidate_db_keys_from_bundle_users(bundle_path, src_enc):
+            try:
+                tmp_conn = decrypt_db_from_file(src_enc, candidate_key)
+                try:
+                    encrypt_db_to_file(tmp_conn, dest_enc, new_db_key, new_salt)
+                finally:
+                    tmp_conn.close()
+                logger.info("Import-DB über Bundle-users.json entschlüsselt (%s)", label)
+                return
+            except Exception as exc:
+                logger.debug("Bundle-Key-Kandidat nicht passend (%s): %s", label, exc)
+
+        # 3) Fallback: Restore-Key des alten Backups abfragen.
+        logger.info("Restore-Key wird abgefragt, da kein Bundle-Key passte.")
+        last_exc: Exception | None = None
+        for attempt in range(3):
+            restore_key = self._ask_restore_key()
+            if not restore_key:
+                raise ValueError(tr("startup.restore_aborted_no_key"))
+            try:
+                other_key = restore_key_to_db_key(restore_key)
+                tmp_conn = decrypt_db_from_file(src_enc, other_key)
+                try:
+                    encrypt_db_to_file(tmp_conn, dest_enc, new_db_key, new_salt)
+                finally:
+                    tmp_conn.close()
+                return
+            except Exception as exc:
+                last_exc = exc
+                if attempt < 2:
+                    QMessageBox.warning(
+                        self,
+                        tr("msg.info"),
+                        trf('auto.views_startup_wizard.480_bitte_erneut_versuchen_value_0_2762b9bc', value_0=(exc)),
+                    )
+        raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen", last_exc=str(last_exc)))
+
+    def _candidate_db_keys_from_bundle_users(
+        self,
+        bundle_path: Path | None,
+        src_enc: Path,
+    ) -> list[tuple[str, bytes]]:
+        """Liest mögliche alte DB-Keys aus users.json eines .bmr-Bundles.
+
+        Es werden nur Quick-User automatisch verwendet, weil deren DB-Key bewusst
+        lokal in users.json gespeichert ist. PIN/Passwort-User bleiben beim
+        Restore-Key-Fallback, damit kein Passwort geraten oder falsch abgefragt wird.
+        """
+        if bundle_path is None or Path(bundle_path).suffix.lower() != ".bmr":
+            return []
+
+        import json
+        import zipfile
+
+        try:
+            enc_salt_hex = src_enc.read_bytes()[:16].hex().lower()
+        except Exception:
+            enc_salt_hex = ""
+
+        try:
+            with zipfile.ZipFile(bundle_path, "r") as zf:
+                names = set(zf.namelist())
+                if "users.json" not in names:
+                    return []
+                users_data = json.loads(zf.read("users.json").decode("utf-8"))
+                manifest = {}
+                if "manifest.json" in names:
+                    try:
+                        manifest = json.loads(zf.read("manifest.json").decode("utf-8"))
+                    except Exception:
+                        manifest = {}
+        except Exception as exc:
+            logger.debug("users.json aus Bundle konnte nicht gelesen werden: %s", exc)
+            return []
+
+        users = list(users_data.get("users", []))
+        if not users:
+            return []
+
+        source_db_name = str(manifest.get("source_db_name") or manifest.get("source_db") or "").strip()
+
+        def score(entry: dict) -> int:
+            value = 0
+            if source_db_name and entry.get("db_filename") == source_db_name:
+                value += 100
+            if enc_salt_hex and str(entry.get("salt_hex", "")).lower() == enc_salt_hex:
+                value += 50
+            if len(users) == 1:
+                value += 10
+            return value
+
+        # Höchstbewertete Kandidaten zuerst; am Ende können mehrere Quick-Keys
+        # versucht werden. Ein falscher Key scheitert sauber beim Entschlüsseln.
+        ordered = sorted(users, key=score, reverse=True)
+        result: list[tuple[str, bytes]] = []
+        seen: set[str] = set()
+        for entry in ordered:
+            if entry.get("security") != SECURITY_QUICK:
+                continue
+            key = (entry.get("db_key_b64") or "").strip()
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            label = entry.get("display_name") or entry.get("username") or "Quick-User"
+            result.append((str(label), key.encode("ascii")))
+        return result
 
     def _import_db_to_enc(self, src_db: Path, dest_enc: Path, db_key: bytes, salt: bytes) -> None:
         import sqlite3

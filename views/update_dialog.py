@@ -1,12 +1,10 @@
-"""Update-Dialog (Portable).
+"""Geführter Update-Dialog (Portable / EXE-kompatibel).
 
-Ziele
-- Update-Check & Download aus der GUI (manuell)
-- Installieren über denselben Entry-Point wie die App (funktioniert auch im PyInstaller-Fall)
-
-Technik
-- `main.py --check-update` lädt + staged das Update
-- `main.py --apply-update` wendet es an (App muss geschlossen werden)
+Ablauf für den Nutzer:
+1. Dialog öffnen → Prüfung startet automatisch.
+2. Bei vorhandener neuer Version: Update wird heruntergeladen und vorbereitet.
+3. Ein Klick auf „Jetzt aktualisieren & neu starten“ schließt die App.
+4. Windows: sichtbares externes Update-Fenster ersetzt die Dateien und startet neu.
 """
 
 from __future__ import annotations
@@ -17,206 +15,211 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-from PySide6.QtCore import QProcess, Qt
+from PySide6.QtCore import QProcess, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
-    QPushButton,
-    QTextEdit,
     QLabel,
     QMessageBox,
-    QCheckBox,
+    QProgressBar,
+    QPushButton,
+    QTextEdit,
+    QVBoxLayout,
 )
 
-from app_info import app_version_label
-from updater.common import updates_dir
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from app_info import APP_VERSION, app_version_label
+from updater.common import clear_check_result, read_check_result
+from utils.i18n import tr, trf
+
+GITHUB_RELEASES_URL = "https://github.com/sloogy/Budgetmanager/releases/latest"
 
 
-def _entrypoint_cmd() -> list[str]:
-    """Baut einen Aufruf, der in DEV und im PyInstaller-Fall funktioniert."""
+def _entrypoint_cmd(module: str | None = None) -> list[str]:
+    """Baut einen Aufruf, der in DEV und im PyInstaller-Fall funktioniert.
+
+    DEV/Source: bewusst NICHT wieder ``main.py`` starten. Sonst erscheint im
+    Prozessmonitor ein weiterer ``python main.py`` und in budgetmanager.log ein
+    zweiter scheinbarer App-Start, obwohl nur der Updater-Check läuft. Das war
+    nach der Cockpit-Integration besonders verwirrend und wirkte wie eine
+    weitere Instanz.
+
+    PyInstaller/frozen: Die EXE ist der einzige Einstiegspunkt; dort bleiben die
+    bestehenden CLI-Flags erhalten.
+    """
     if getattr(sys, "frozen", False):
-        # PyInstaller: sys.executable ist die .exe
         return [sys.executable]
-    # DEV: python + main.py
-    root = Path(__file__).resolve().parents[1]
-    return [sys.executable, str(root / "main.py")]
+    mod = module or "updater.check_update"
+    return [sys.executable, "-m", mod]
 
 
 class UpdateDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(tr("dlg.update"))
-        self.setMinimumSize(760, 460)
+        self.setWindowTitle(tr("update.title"))
+        self.setMinimumSize(620, 430)
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
         self._proc: QProcess | None = None
-        self._has_staged_update = False
+        self._available = False
+        self._busy = False
 
-        self.lbl_info = QLabel(
-            trf('auto.views_update_dialog.58_aktuell_installiert_b_value_0_b_br__6b5cab7b', value_0=(app_version_label()))
-        )
+        root = QVBoxLayout(self)
+        root.setSpacing(10)
+
+        self.lbl_info = QLabel(trf("update.current_version", version=app_version_label()))
         self.lbl_info.setTextFormat(Qt.RichText)
+        self.lbl_info.setWordWrap(True)
+        root.addWidget(self.lbl_info)
+
+        self.lbl_status = QLabel(tr("update.status_checking"))
+        self.lbl_status.setWordWrap(True)
+        self.lbl_status.setStyleSheet("font-weight: 600;")
+        root.addWidget(self.lbl_status)
+
+        self.progress = QProgressBar()
+        self.progress.setRange(0, 0)
+        self.progress.setVisible(False)
+        root.addWidget(self.progress)
+
+        self.btn_details = QPushButton(tr("update.show_details"))
+        self.btn_details.setCheckable(True)
+        self.btn_details.setFlat(True)
+        self.btn_details.toggled.connect(self._toggle_details)
+        root.addWidget(self.btn_details, 0, Qt.AlignLeft)
 
         self.log = QTextEdit()
         self.log.setReadOnly(True)
+        self.log.setVisible(False)
+        self.log.setMaximumHeight(180)
+        root.addWidget(self.log)
 
-        self.chk_autoclose = QCheckBox(tr("btn.nach_erfolgreichem_download_schliessen"))
-        self.chk_autoclose.setChecked(False)
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
+        root.addWidget(line)
 
-        # Buttons
-        self.btn_check = QPushButton(tr("dlg.pruefen_herunterladen"))
-        self.btn_check.clicked.connect(self._check)
+        btn_row = QHBoxLayout()
+        self.btn_recheck = QPushButton(tr("update.btn_check"))
+        self.btn_recheck.clicked.connect(self._check)
+        btn_row.addWidget(self.btn_recheck)
 
-        self.btn_apply = QPushButton(tr("dlg.installieren_app_schliesst"))
-        self.btn_apply.clicked.connect(self._apply)
-        self.btn_apply.setEnabled(False)
+        self.btn_github = QPushButton(tr("update.btn_releases"))
+        self.btn_github.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_RELEASES_URL)))
+        btn_row.addWidget(self.btn_github)
 
-        self.btn_open_updates = QPushButton(tr("btn.updatesordner_oeffnen"))
-        self.btn_open_updates.clicked.connect(self._open_updates_folder)
+        btn_row.addStretch(1)
+
+        self.btn_update = QPushButton(tr("update.btn_update_now"))
+        self.btn_update.setDefault(True)
+        self.btn_update.setEnabled(False)
+        self.btn_update.clicked.connect(self._apply)
+        btn_row.addWidget(self.btn_update)
 
         self.btn_close = QPushButton(tr("btn.close"))
         self.btn_close.clicked.connect(self.reject)
+        btn_row.addWidget(self.btn_close)
 
-        # Layout
-        layout = QVBoxLayout()
-        layout.addWidget(self.lbl_info)
-        layout.addWidget(self.chk_autoclose)
-        layout.addWidget(self.log)
+        root.addLayout(btn_row)
+        self._append(tr("update.hint_windows"))
 
-        row = QHBoxLayout()
-        row.addWidget(self.btn_check)
-        row.addWidget(self.btn_apply)
-        row.addStretch(1)
-        row.addWidget(self.btn_open_updates)
-        row.addWidget(self.btn_close)
-        layout.addLayout(row)
-        self.setLayout(layout)
+        QTimer.singleShot(0, self._check)
 
-        # Initialer Hinweis
-        self._append(tr("update.hint_staging"))
-        self._append(tr("dlg.zum_installieren_muss_die"))
-        self._refresh_state_from_disk()
-
-    # --- UI helpers ---
     def _append(self, text: str) -> None:
-        self.log.append(text)
+        for line in str(text).splitlines():
+            self.log.append(line)
+
+    def _toggle_details(self, on: bool) -> None:
+        self.log.setVisible(on)
+        self.btn_details.setText(tr("update.hide_details") if on else tr("update.show_details"))
 
     def _set_busy(self, busy: bool) -> None:
-        self.btn_check.setEnabled(not busy)
-        self.btn_open_updates.setEnabled(not busy)
-        # Install ist nur möglich, wenn staged
-        self.btn_apply.setEnabled((not busy) and self._has_staged_update)
+        self._busy = busy
+        self.progress.setVisible(busy)
+        self.btn_recheck.setEnabled(not busy)
+        self.btn_update.setEnabled((not busy) and self._available)
+        self.btn_close.setEnabled(not busy)
 
-    def _refresh_state_from_disk(self) -> None:
-        # Wenn staging existiert (irgendein Unterordner), aktivieren wir Install.
-        staging_root = Path(updates_dir()) / "staging"
-        self._has_staged_update = staging_root.exists() and any(p.is_dir() for p in staging_root.iterdir())
-        self.btn_apply.setEnabled(self._has_staged_update)
-
-    def _open_updates_folder(self) -> None:
-        p = Path(updates_dir())
-        p.mkdir(parents=True, exist_ok=True)
-        QDesktopServices.openUrl(p.as_uri())
-
-    # --- Process handling ---
-    def _start_process(self, args: list[str]) -> None:
-        if self._proc is not None:
-            try:
-                self._proc.kill()
-            except Exception as e:
-                logger.debug("self._proc.kill(): %s", e)
-            self._proc = None
+    def _check(self) -> None:
+        if self._busy:
+            return
+        clear_check_result()
+        self._available = False
+        self.btn_update.setEnabled(False)
+        self.lbl_status.setText(tr("update.status_checking"))
+        self._append("$ " + " ".join(_entrypoint_cmd("updater.check_update") + ["--gui"]))
+        self._set_busy(True)
 
         self._proc = QProcess(self)
+        if not getattr(sys, "frozen", False):
+            self._proc.setWorkingDirectory(str(Path(__file__).resolve().parents[1]))
         self._proc.setProcessChannelMode(QProcess.MergedChannels)
-        self._proc.readyReadStandardOutput.connect(self._on_proc_output)
-        self._proc.finished.connect(self._on_proc_finished)
-
-        cmd = _entrypoint_cmd() + args
-        self._append(f"$ {' '.join(cmd)}")
-
-        # Windows: verhindert extra Konsole beim Start, wenn möglich
-        env = self._proc.processEnvironment()
-        # env bleibt default; nur placeholder (falls später nötig)
-        self._proc.setProcessEnvironment(env)
-
-        self._set_busy(True)
+        self._proc.readyReadStandardOutput.connect(self._on_output)
+        self._proc.finished.connect(self._on_check_finished)
+        cmd = _entrypoint_cmd("updater.check_update") + ["--gui"]
         self._proc.start(cmd[0], cmd[1:])
 
-    def _on_proc_output(self) -> None:
+    def _on_output(self) -> None:
         if not self._proc:
             return
         data = bytes(self._proc.readAllStandardOutput()).decode(errors="replace")
-        if not data:
-            return
-        # einfache Darstellung
-        for line in data.splitlines():
-            self._append(line)
+        if data:
+            self._append(data)
 
-        # grobe Heuristik: staged update -> Install button aktivieren
-        if "Staged:" in data or "Bereits staged" in data or "Update verfügbar" in data:
-            # nach dem Lauf prüfen wir auf Disk
-            pass
-
-    def _on_proc_finished(self, exit_code: int, _status) -> None:
-        self._append(f"\nProzess beendet (Code {exit_code}).")
-        self._refresh_state_from_disk()
+    def _on_check_finished(self, exit_code: int, _status) -> None:
+        self._proc = None
         self._set_busy(False)
-
-        if exit_code == 0 and self.chk_autoclose.isChecked():
-            self.accept()
-
-    # --- Actions ---
-    def _check(self) -> None:
-        self._append(tr("msg.update_pruefen"))
-        self._start_process(["--check-update"])
+        res = read_check_result()
+        remote = res.get("remote") or ""
+        if res.get("available") and res.get("staged"):
+            self._available = True
+            self.lbl_status.setText(trf("update.status_available", version=remote))
+            self.btn_update.setEnabled(True)
+            self.btn_update.setFocus()
+        elif res.get("error"):
+            self._available = False
+            self.lbl_status.setText(trf("update.status_error", error=res.get("error")))
+        elif res:
+            self._available = False
+            self.lbl_status.setText(trf("update.status_uptodate", version=res.get("current") or APP_VERSION))
+        else:
+            self._available = False
+            self.lbl_status.setText(trf("update.status_check_failed", code=exit_code))
 
     def _apply(self) -> None:
-        self._refresh_state_from_disk()
-        if not self._has_staged_update:
-            QMessageBox.information(
-                self,
-                tr('auto.views_update_dialog.182_kein_update_bereit_dffe0658'),
-                tr("msg.kein_staged_update"),
-            )
+        if not self._available:
             return
-
         if QMessageBox.question(
             self,
-            tr('auto.views_update_dialog.189_update_installieren_8d363062'),
-            tr("msg.update_install_hinweis"),
+            tr("update.confirm_apply_title"),
+            tr("update.confirm_apply_text"),
         ) != QMessageBox.Yes:
             return
 
-        # Updater in eigenem Prozess starten
-        cmd = _entrypoint_cmd() + ["--apply-update"]
-        self._append(f"\n$ {' '.join(cmd)}")
-
+        cmd = _entrypoint_cmd("updater.apply_update")
+        self._append("$ " + " ".join(cmd))
+        self._append(tr("update.status_applying"))
         try:
-            started = QProcess.startDetached(cmd[0], cmd[1:])
+            if getattr(sys, "frozen", False):
+                started = QProcess.startDetached(cmd[0], cmd[1:])
+            else:
+                started = QProcess.startDetached(cmd[0], cmd[1:], str(Path(__file__).resolve().parents[1]))
             if not started:
                 raise RuntimeError("QProcess.startDetached lieferte False")
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_update_dialog.205_updater_konnte_nicht_gestartet_werd_e418fb58', value_0=(e)))
+            QMessageBox.critical(self, tr("msg.error"), trf("update.apply_start_failed", error=str(e)))
             return
 
-        # App vollständig beenden. Unter Windows MUSS der Prozess enden, damit
-        # der externe Helfer die gesperrte EXE ersetzen kann – sonst wartet er
-        # endlos. Wir schließen das Hauptfenster und beenden die Qt-App.
-        from PySide6.QtWidgets import QApplication
+        clear_check_result()
+        self.lbl_status.setText(tr("update.status_applying"))
 
         if self.parent() is not None:
             try:
                 self.parent().close()
             except Exception as e:
-                logger.debug("self.parent().close(): %s", e)
+                logger.debug("parent().close(): %s", e)
         self.accept()
-
         app = QApplication.instance()
         if app is not None:
-            # quitOnLastWindowClosed greift evtl. nicht (Timer/Dialoge offen),
-            # daher explizit beenden.
-            from PySide6.QtCore import QTimer
             QTimer.singleShot(0, app.quit)

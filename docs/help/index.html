@@ -1,0 +1,1169 @@
+<!doctype html><meta charset="utf-8"><title>BudgetManager Hilfe</title><style>body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;line-height:1.55;max-width:1100px;margin:32px auto;padding:0 20px;color:#18202a}h1,h2,h3{color:#0b7285}pre{background:#f3f5f7;padding:12px;overflow:auto}code{font-family:ui-monospace,monospace}p{margin:.35rem 0}hr{border:0;border-top:1px solid #ddd;margin:2rem 0}</style><h1>BudgetManager Wissensdatenbank</h1>
+
+<h2>Cockpit / Startseite</h2>
+
+<p>Das Cockpit ist die ruhige Startseite: Es zeigt das Wichtigste, ohne die Fachreiter zu ersetzen. Es enthält Monatsstatus, Favoriten, aktive Sparziele, Budget-Ampel, offene Monatsbuchungen und die letzten 10 Buchungen.</p>
+
+<p>Warum Favoriten hier Sinn machen: Favoriten sind Kategorien, die du regelmäßig kontrollieren willst. Im Cockpit bleiben sie sichtbar, ohne dass du jedes Mal in Budget oder Übersicht suchen musst.</p>
+
+<p>Frei gestaltbar: Über `⚙ Cockpit gestalten` oder `Ansicht → Anzeigen → Cockpit-Bereiche` blendest du einzelne Cockpit-Karten ein oder aus. Über `Ansicht → Anzeigen → Reiter ein-/ausblenden` kannst du Hauptreiter ausblenden. Mindestens ein Reiter bleibt sichtbar, damit du dich nicht aussperrst.</p>
+
+<p>Empfohlener roter Faden: Cockpit öffnen → Warnungen/offene Buchungen prüfen → bei Bedarf Buchung erfassen oder Fixkosten buchen → Budget/Sparziele/Übersicht nur öffnen, wenn Details nötig sind.</p>
+
+<p> v2.0.11</p>
+
+<p>&gt; Direkt anzeigbare Mindmap: `docs/help/mindmap.html` (Browser) · Mermaid-Quelle: `docs/help/mindmap.mmd`.</p>
+
+
+<p>Stand: 14. Juni 2026  </p>
+<p>Gültig für: BudgetManager 2.0.11</p>
+
+<p>Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore.</p>
+
+<hr>
+
+<h2>0. Der wichtigste Ablauf in einem Satz</h2>
+
+<p>1. **Kategorien** sind deine Geld-Töpfe.  </p>
+<p>2. **Budget** ist dein Plan pro Monat.  </p>
+<p>3. **Tracking/Buchungen** sind echte Einträge.  </p>
+<p>4. **Übersicht** vergleicht Plan gegen Ist.  </p>
+<p>5. **Backup + Restore-Key** schützen deine Daten.</p>
+
+<p>&gt; Wichtig: Ein Budgetwert erzeugt keine Buchung. Buchungen entstehen manuell, über Schnelleingabe oder bewusst über Tracking → Fix/Wiederkehrend buchen….</p>
+
+<p>&gt; Standard ab v2.0.8 finalisiert: Auto-Speichern und Auto-Backup sind beim ersten Start eingeschaltet. Du arbeitest dadurch sicherer, auch wenn du das Programm einfach schließt.</p>
+
+<hr>
+
+<h2>1. Informations-Laufplan als Mindmap</h2>
+
+<h3>1.1 Mermaid-Mindmap</h3>
+
+<p>Diese Mindmap kann in Markdown-Programmen mit Mermaid-Unterstützung direkt angezeigt werden.</p>
+
+<pre><code>
+mindmap
+  root((BudgetManager))
+    Erststart
+      Sprache/Währung/Zahlenformat
+      Benutzerkonto
+        Quick
+        PIN
+        Passwort
+      Restore-Key
+        Beim ersten Start anzeigen
+        Extern sichern
+        In Hilfe über Restore-Key anzeigen auffindbar
+      Setup-Assistent
+        Datenbank prüfen
+        Kategorien prüfen
+        Budgetjahr anlegen
+        Erste Buchung
+        Fix/Wiederkehrend buchen
+    Kategorien
+      Kontotyp
+        Einnahmen
+        Ausgaben
+        Ersparnisse
+      Struktur
+        Hauptkategorie
+        Unterkategorie
+        Parent/Child
+      Merkmale
+        Fixkosten
+        Wiederkehrend
+        Fälligkeitstag
+        Favorit
+        Tags
+      Drag and Drop
+        Reihenfolge ändern
+        Unterkategorie verschieben
+        Zu Hauptkategorie machen
+        Nur gleicher Kontotyp erlaubt
+    Budget
+      Jahresbudget
+      Monatswerte
+      Gesamtspalte
+      Budget erfassen
+      Budget bearbeiten
+      Jahr kopieren
+      Zeilen aus Kategorien erzeugen
+      Auto-Save
+      Fälligkeit nachfragen
+    Tracking/Buchungen
+      Manuelle Buchung
+      Schnelleingabe
+      Fix/Wiederkehrend buchen
+      Wiederkehrende Buchungen prüfen
+      Filter
+        Konto/Typ
+        Kategorie
+        Datum
+        Betrag
+        Text
+        Tag
+      Bearbeiten/Löschen
+    Übersicht
+      Plan gegen Ist
+      Rest/Abweichung
+      Prozent
+      KPIs
+      Verlauf
+      letzte Buchungen
+      Budgetvorschläge
+      Sparziele-Panel
+    Sparziele
+      Budget Kontext Button
+      Aktive Ziele in Tracking
+      Zielbetrag
+      Kategorie Verknüpfung
+      Einzahlung als Buchung
+      Fortschrittsbalken
+      Sync mit Tracking
+      Freigeben
+      Entnahme als Verbrauch
+      Abschließen
+      Wieder öffnen
+    Extras
+      Favoriten-Dashboard
+      Tags
+      Globale Suche
+      Export
+      Updates
+      Datenbankverwaltung
+      Backup/Restore
+    Sicherheit
+      Datenordner
+      SQLite/verschlüsselte DB
+      users.json
+      Restore-Bundle .bmr
+      Restore-Key nie verlieren
+</code></pre>
+
+<h3>1.2 Praktischer Laufplan für Menschen</h3>
+
+<pre><code>
+Start
+  ↓
+Benutzer anlegen → Restore-Key notieren → Sprache/Währung prüfen
+  ↓
+Kategorien prüfen/ordnen → Fixkosten/Wiederkehrend/Fälligkeit setzen
+  ↓
+Budgetjahr anlegen → Monatswerte eintragen oder Jahr kopieren
+  ↓
+Monatsanfang: Fix/Wiederkehrend buchen…
+  ↓
+Alltag: Schnelleingabe oder Tracking manuell pflegen
+  ↓
+Wöchentlich/monatlich: Übersicht prüfen, Budgetvorschläge kontrollieren
+  ↓
+Vor großen Änderungen: Backup erstellen
+  ↓
+Bei Problemen: Hilfe → Wissensdatenbank / Restore-Key anzeigen / Backup &amp; Restore
+</code></pre>
+
+<hr>
+
+<h2>2. Erster Start: was du in welcher Reihenfolge tun solltest</h2>
+
+<h3>2.1 Benutzerkonto wählen</h3>
+
+<p>Beim ersten Start legst du ein Konto an. Es gibt drei Sicherheitsstufen:</p>
+
+<p>| Modus | Vorteil | Nachteil | Empfehlung |</p>
+<p>|---|---|---|---|</p>
+<p>| Quick | Sehr einfach, kein Passwort | Schutz nur gegen Versehen/Neugier | Für lokale Tests okay |</p>
+<p>| PIN | Schnell, aber geschützt | PIN + Restore-Key müssen gesichert sein | Guter Standard |</p>
+<p>| Passwort | Stärkster Schutz | Passwort + Restore-Key müssen gesichert sein | Für echte private Daten empfohlen |</p>
+
+<h3>2.2 Restore-Key / Datenbank-Key</h3>
+
+<p>Beim ersten Start zeigt BudgetManager den Restore-Key an. Dieser Schlüssel ist notwendig, wenn du eine verschlüsselte Datenbank oder ein Backup wiederherstellen musst und normale Anmeldung/Benutzerdaten nicht mehr reichen.</p>
+
+<p>Sichere den Restore-Key extern:</p>
+
+<p>• Passwortmanager, zum Beispiel Bitwarden.</p>
+<p>• Ausdruck in einem Ordner.</p>
+<p>• Verschlüsselte Notiz.</p>
+<p>• Nicht nur im gleichen BudgetManager-Ordner speichern.</p>
+
+<p>&gt; Ohne Restore-Key kann eine verschlüsselte Datenbank im Notfall unbrauchbar werden. Das ist bei echter Verschlüsselung normal und gewollt.</p>
+
+<h3>2.3 Restore-Key später wiederfinden</h3>
+
+<p>Im Programm:</p>
+
+<pre><code>
+Hilfe → Restore-Key anzeigen…
+</code></pre>
+
+<p>oder:</p>
+
+<pre><code>
+Konto → Konto verwalten → Restore-Key
+</code></pre>
+
+<p>Dort kannst du den Key anzeigen und kopieren.</p>
+
+<h3>2.4 Setup-Assistent</h3>
+
+<p>Der Setup-Assistent führt dich durch:</p>
+
+<p>1. Datenbank prüfen oder zurücksetzen.</p>
+<p>2. Kategorien prüfen.</p>
+<p>3. Budgetjahr anlegen.</p>
+<p>4. Erste Buchung erfassen.</p>
+<p>5. Fix/Wiederkehrend buchen.</p>
+
+<p>Du kannst ihn später erneut öffnen:</p>
+
+<pre><code>
+Hilfe → Setup-Assistent
+</code></pre>
+
+<hr>
+
+<h2>3. Datenbank, Datenordner und Backups</h2>
+
+<h3>3.1 Was wird gespeichert?</h3>
+
+<p>BudgetManager nutzt SQLite. Je nach Modus gibt es eine normale oder verschlüsselte Datenbank.</p>
+
+<p>Typische Daten:</p>
+
+<p>| Bereich | Inhalt |</p>
+<p>|---|---|</p>
+<p>| categories | Kategorien, Parent/Child, Fixkosten, Wiederkehrend, Fälligkeitstag |</p>
+<p>| budget | Budgetwerte pro Jahr, Monat, Typ und Kategorie |</p>
+<p>| tracking | echte Buchungen / Einnahmen / Ausgaben / Ersparnisse |</p>
+<p>| tags / entry_tags | Tags und Zuweisung zu Buchungen |</p>
+<p>| favorites | Favoriten für schnelle Orientierung |</p>
+<p>| savings_goals | Sparziele inklusive Status |</p>
+<p>| recurring_transactions | vorbereitete wiederkehrende Buchungslogik |</p>
+<p>| budget_warnings | Budgetwarnungen und Vorschläge |</p>
+<p>| system_flags | Schema-Version und interne Zustände |</p>
+<p>| undo_redo | Rückgängig/Wiederholen-Verlauf |</p>
+
+<h3>3.2 Datenordner öffnen</h3>
+
+<pre><code>
+Datei → Datenordner öffnen
+</code></pre>
+
+<p>Dort liegen Datenbank, Backups, Exporte und je nach Modus Benutzer-Metadaten.</p>
+
+<h3>3.3 Datenbank-Info</h3>
+
+<pre><code>
+Datei → Datenbank-Info
+</code></pre>
+
+<p>Zeigt dir unter anderem:</p>
+
+<p>• Datenbankpfad,</p>
+<p>• Tabellen,</p>
+<p>• Jahre mit Budget,</p>
+<p>• Jahre mit Tracking,</p>
+<p>• Anzahl Einträge.</p>
+
+<h3>3.4 Backup</h3>
+
+<pre><code>
+Extras → Backup &amp; Restore
+</code></pre>
+
+<p>Empfehlung: Backup erstellen vor:</p>
+
+<p>• Update,</p>
+<p>• Kategorien löschen,</p>
+<p>• Import,</p>
+<p>• Datenbank bereinigen,</p>
+<p>• großer Umstrukturierung per Drag &amp; Drop.</p>
+
+<h3>3.5 Restore-Bundle `.bmr`</h3>
+
+<p>`.bmr` ist das BudgetManager-Restore-Bundle. Es enthält die Datenbank für Wiederherstellung/Transport. Der Restore-Key wird bewusst nicht im Bundle gespeichert.</p>
+
+<hr>
+
+<h2>4. Kategorien: Grundstruktur</h2>
+
+<p>Kategorien sind die Grundstruktur des Programms. Jede Buchung und jedes Budget hängt an einer Kategorie.</p>
+
+<h3>4.1 Die drei Kontotypen</h3>
+
+<p>BudgetManager arbeitet mit mindestens drei Kontotypen:</p>
+
+<p>| Typ | Zweck | Beispiele |</p>
+<p>|---|---|---|</p>
+<p>| Einnahmen | Geld kommt rein | Lohn, Bonus, Verkauf |</p>
+<p>| Ausgaben | Geld geht raus | Miete, Lebensmittel, Krankenkasse |</p>
+<p>| Ersparnisse | Geld wird zurückgelegt | Notgroschen, Ferien, Steuern |</p>
+
+<h3>4.2 Hauptkategorie und Unterkategorie</h3>
+
+<p>Beispiel:</p>
+
+<pre><code>
+Ausgaben
+  Wohnen
+    Miete
+    Strom
+    Internet
+</code></pre>
+
+<p>`Wohnen` ist Parent/Hauptkategorie. `Miete`, `Strom`, `Internet` sind Child/Unterkategorien.</p>
+
+<h3>4.3 Wichtige Regeln</h3>
+
+<p>• Unterkategorien dürfen nur unter Kategorien desselben Typs hängen.</p>
+<p>• Einnahmen-Kategorien dürfen nicht unter Ausgaben landen.</p>
+<p>• Beim Löschen einer Parent-Kategorie werden Kinder hochgestuft, damit nichts verwaist.</p>
+<p>• Umbenennen läuft zentral und zieht Budget, Tracking, Favoriten, Warnungen, wiederkehrende Buchungen und Sparziele mit.</p>
+
+<hr>
+
+<h2>5. Fixkosten, Wiederkehrend und Fälligkeitstag</h2>
+
+<h3>5.1 Fixkosten-Häkchen</h3>
+
+<p>Fixkosten bedeutet: Diese Kategorie hat einen planbaren, eher festen Betrag.</p>
+
+<p>Beispiele:</p>
+
+<p>• Miete,</p>
+<p>• Krankenkasse,</p>
+<p>• Internet,</p>
+<p>• Leasing,</p>
+<p>• Versicherungen,</p>
+<p>• Abos mit fixem Preis.</p>
+
+<p>#### Das Fixkosten-Häkchen löst aus</p>
+
+<p>• Kategorie erscheint bei **Tracking → Fix/Wiederkehrend buchen…**.</p>
+<p>• Betrag kommt aus dem Budgetwert des gewählten Monats.</p>
+<p>• Buchungsdatum kommt vom Fälligkeitstag der Kategorie.</p>
+<p>• Ohne Fälligkeitstag wird der 1. des Monats genutzt.</p>
+<p>• Bemerkung wird sinnvoll vorbelegt, zum Beispiel `Juni - Miete`.</p>
+<p>• Bereits vorhandene Buchungen derselben Kategorie im Monat werden übersprungen.</p>
+<p>• Budgetwert `0` wird nicht gebucht.</p>
+<p>• Budgetvorschläge behandeln Fixkosten vorsichtiger.</p>
+
+<p>#### Das Fixkosten-Häkchen löst nicht aus</p>
+
+<p>• Keine automatische Zahlung.</p>
+<p>• Keine stille Buchung im Hintergrund.</p>
+<p>• Keine Buchung beim Programmstart.</p>
+<p>• Keine automatische Budgetänderung.</p>
+<p>• Keine Budgetsenkung nur wegen Monaten mit `0` Buchungen.</p>
+
+<h3>5.2 Wiederkehrend-Häkchen</h3>
+
+<p>Wiederkehrend bedeutet: Diese Kategorie kommt regelmäßig vor, der Betrag kann aber schwanken.</p>
+
+<p>Beispiele:</p>
+
+<p>• Lebensmittel,</p>
+<p>• Hobby,</p>
+<p>• Benzin,</p>
+<p>• Haushalt,</p>
+<p>• Kinderkosten.</p>
+
+<p>Wiederkehrende Kategorien können im Fix/Wiederkehrend-Dialog vorgeschlagen werden, bleiben aber eher flexibel.</p>
+
+<h3>5.3 Fixkosten und Wiederkehrend zusammen</h3>
+
+<p>Wenn eine Kategorie beides hat, gilt sie praktisch als regelmäßig und planbar. BudgetManager verhindert Doppelbuchungen.</p>
+
+<h3>5.4 Fälligkeitstag</h3>
+
+<p>Der Fälligkeitstag bestimmt den Buchungstag im Monat.</p>
+
+<p>Beispiele:</p>
+
+<p>| Fälligkeitstag | Ergebnis |</p>
+<p>|---|---|</p>
+<p>| 1 | Monatsanfang |</p>
+<p>| 15 | Monatsmitte |</p>
+<p>| 28 | Ende vieler Monate sicher |</p>
+<p>| 31 | In kurzen Monaten wird auf den Monatsletzten gekürzt |</p>
+<p>| leer/kein Tag | BudgetManager nutzt 1. des Monats |</p>
+
+<hr>
+
+<h2>6. Drag &amp; Drop: wo, wie, was</h2>
+
+<h3>6.1 Kategorien-Manager</h3>
+
+<pre><code>
+Extras → Kategorien verwalten
+</code></pre>
+
+<p>oder direkt im <b>Budget</b>-Tab. Der frühere separate Kategorien-Tab (Experten-Modus) wurde in v2.0.11 entfernt – Kategorien verwaltest du jetzt über den Kategorie-Manager (<b>Strg+K</b>) und den Budget-Tab.</p>
+
+<p>Mit Drag &amp; Drop kannst du:</p>
+
+<p>• Reihenfolge ändern,</p>
+<p>• Unterkategorie unter andere Hauptkategorie ziehen,</p>
+<p>• Kategorie zur Hauptkategorie machen,</p>
+<p>• Struktur übersichtlicher machen.</p>
+
+<p>Regeln:</p>
+
+<p>• Nur innerhalb desselben Kontotyps.</p>
+<p>• Keine Kategorie darf Kind von sich selbst werden.</p>
+<p>• Keine Kreise/Endlosschleifen in der Hierarchie.</p>
+<p>• Nach großen Änderungen speichern/übernehmen.</p>
+
+<h3>6.2 Budget-Reiter</h3>
+
+<p>Im Budget-Reiter ist Drag &amp; Drop für die Struktur/Ansicht gedacht, damit du Budgetpositionen besser organisieren kannst. Die fachliche Wahrheit bleibt die Kategorie-Struktur.</p>
+
+<p>Praktischer Ablauf:</p>
+
+<p>1. Kategorien grob im Kategorien-Manager ordnen.</p>
+<p>2. Budget-Reiter öffnen.</p>
+<p>3. Budgetjahr laden.</p>
+<p>4. Reihenfolge/Hierarchie prüfen.</p>
+<p>5. Budgetwerte eintragen.</p>
+<p>6. Speichern.</p>
+
+<h3>6.3 Tabs verschieben</h3>
+
+<p>Die Haupt-Reiter selbst sind verschiebbar. Damit kannst du deine Arbeitsreihenfolge anpassen, zum Beispiel:</p>
+
+<pre><code>
+Budget → Tracking → Übersicht → Kategorien → Sparziele
+</code></pre>
+
+<p>Zurücksetzen:</p>
+
+<pre><code>
+Extras → Tab-Reihenfolge zurücksetzen
+</code></pre>
+
+<hr>
+
+<h2>7. Budget-Reiter</h2>
+
+<p>Der Budget-Reiter ist dein Planungsbereich.</p>
+
+<h3>7.1 Filter</h3>
+
+<p>Du kannst nach Jahr und Typ/Konto filtern.</p>
+
+<p>• Jahr: bestimmtes Budgetjahr.</p>
+<p>• Typ/Konto: Einnahmen, Ausgaben, Ersparnisse.</p>
+
+<h3>7.2 Budget erfassen</h3>
+
+<pre><code>
+Budget → Budget erfassen
+</code></pre>
+
+<p>Nutzen:</p>
+
+<p>• neue Budgetwerte gezielt eintragen,</p>
+<p>• Kategorie wählen,</p>
+<p>• Monatsbeträge setzen,</p>
+<p>• neue Kategorie bei Bedarf erstellen.</p>
+
+<h3>7.3 Budget bearbeiten</h3>
+
+<pre><code>
+Budget → Budget bearbeiten
+</code></pre>
+
+<p>Nutzen:</p>
+
+<p>• bestehende Position ändern,</p>
+<p>• Monatswerte korrigieren,</p>
+<p>• Fix-/Wiederkehrend-Kontext beachten.</p>
+
+<h3>7.4 Zeilen aus Kategorien erzeugen</h3>
+
+<pre><code>
+Budget → Zeilen aus Kategorien erzeugen
+</code></pre>
+
+<p>Nutzen:</p>
+
+<p>• wenn Kategorien schon existieren,</p>
+<p>• aber im Budgetjahr noch keine Budgetzeilen stehen.</p>
+
+<h3>7.5 Jahr kopieren</h3>
+
+<pre><code>
+Budget → Jahr kopieren
+</code></pre>
+
+<p>Typischer Einsatz:</p>
+
+<p>• 2026 aus 2025 vorbereiten,</p>
+<p>• Kategorien übernehmen,</p>
+<p>• Beträge übernehmen oder leer/angepasst starten.</p>
+
+<h3>7.6 Gesamtspalte</h3>
+
+<p>Die Gesamtspalte zeigt Jahreswerte. Wenn du dort schreibst, kann BudgetManager den Betrag auf Monate verteilen. Bei Parent-Zeilen ist Vorsicht nötig: Parent-Zeilen sind Zusammenfassungen, echte Planwerte gehören in die Unterkategorien.</p>
+
+<h3>7.7 Autosave</h3>
+
+<p>Autosave speichert Änderungen automatisch. Für Anfänger ist es bequem; bei großen Umbauten kann man bewusst manuell speichern.</p>
+
+<h3>7.8 Fälligkeit nachfragen</h3>
+
+<p>Wenn aktiv, fragt BudgetManager bei passenden Änderungen nach einem Fälligkeitstag. Das ist nützlich bei Fixkosten.</p>
+
+<hr>
+
+<h2>8. Tracking / Buchungen</h2>
+
+<p>Tracking ist die Liste echter Buchungen.</p>
+
+<h3>8.1 Manuelle Buchung</h3>
+
+<pre><code>
+Tracking → Hinzufügen…
+</code></pre>
+
+<p>Felder:</p>
+
+<p>| Feld | Bedeutung |</p>
+<p>|---|---|</p>
+<p>| Datum | Wann war die Buchung? |</p>
+<p>| Betrag | Betrag in deiner Währung |</p>
+<p>| Konto/Typ | Einnahmen, Ausgaben oder Ersparnisse |</p>
+<p>| Kategorie | Nur Kategorien des gewählten Typs |</p>
+<p>| Bemerkung | Freitext, zum Beispiel Rechnung, Monat, Notiz |</p>
+<p>| Tags | optionale Schlagworte |</p>
+
+<h3>8.2 Speichern und weitere hinzufügen</h3>
+
+<p>In der Schnelleingabe/Tracking-Erfassung ist diese Arbeitsweise gedacht für mehrere Buchungen hintereinander. Die letzte Konto/Kategorie-Auswahl bleibt möglichst erhalten, damit du schneller buchen kannst.</p>
+
+<h3>8.3 Fix/Wiederkehrend buchen</h3>
+
+<pre><code>
+Tracking → Fix/Wiederkehrend buchen…
+</code></pre>
+
+<p>Ablauf:</p>
+
+<p>1. Buchungsmonat wählen.</p>
+<p>2. BudgetManager sammelt Kategorien mit Fixkosten/Wiederkehrend.</p>
+<p>3. Beträge werden aus Budget oder Vorschlagslogik übernommen.</p>
+<p>4. Bereits vorhandene Buchungen im Monat werden übersprungen.</p>
+<p>5. Du prüfst die Liste.</p>
+<p>6. Du bestätigst bewusst.</p>
+
+<h3>8.4 Filter im Tracking</h3>
+
+<p>Möglich sind Filter nach:</p>
+
+<p>• Konto/Typ,</p>
+<p>• Kategorie,</p>
+<p>• Datum,</p>
+<p>• Betrag,</p>
+<p>• Bemerkung/Text,</p>
+<p>• Tag,</p>
+<p>• nur letzte X Tage.</p>
+
+<h3>8.5 Bearbeiten und Löschen</h3>
+
+<p>Buchungen kannst du bearbeiten oder löschen. Nach Änderungen aktualisiere die Übersicht, falls sie nicht automatisch neu geladen wurde.</p>
+
+<hr>
+
+
+<h2>8A. Sparziele im roten Faden</h2>
+
+<p>Sparziele liegen bewusst zwischen Budget und Buchungen:</p>
+
+<pre><code>
+Budget = Plan: Ich will für etwas sparen.
+Tracking/Buchungen = Realität: Ich habe Geld auf dieses Ziel gelegt oder wieder entnommen.
+Übersicht = Kontrolle: Bin ich auf Kurs?
+</code></pre>
+
+<h3>Wo findest du Sparziele?</h3>
+
+<p>| Ort | Zweck | Sichtbarkeit |</p>
+<p>|---|---|---|</p>
+<p>| Budget → 🎯 Sparziele | Ziel planen, weil es zum Budget gehört | kleiner Button, nicht störend |</p>
+<p>| Tracking/Buchungen → Aktive Sparziele | Fortschritt beim Buchen sehen | nur sichtbar, wenn aktive Ziele existieren |</p>
+<p>| Übersicht → Sparziele | Monats-/Gesamtfortschritt kontrollieren | Teil der Auswertung |</p>
+<p>| Extras → Sparziele | vollständige Verwaltung | immer verfügbar |</p>
+<p>| Ansicht → Zu Sparziele | direkt zum Sparziel-Reiter springen | Tastatur/Navigation |</p>
+
+<h3>Workflow</h3>
+
+<p>1. **Sparziel anlegen** – Name, Zielbetrag, optional Zieldatum.</p>
+<p>2. **Kategorie verknüpfen** – idealerweise eine Kategorie unter *Ersparnisse*, z. B. `Notgroschen`.</p>
+<p>3. **Einzahlung buchen** – im Tracking als Typ *Ersparnisse* mit positiver Summe.</p>
+<p>4. **Fortschritt prüfen** – Tracking zeigt aktive Ziele kompakt mit Balken; Übersicht zeigt die Gesamtsicht.</p>
+<p>5. **Freigeben** – wenn das Ziel erreicht/verwendbar ist. Der Betrag wird eingefroren.</p>
+<p>6. **Entnahme buchen** – negative Ersparnisse-Buchung auf die Ziel-Kategorie wird als Verbrauch geprüft.</p>
+<p>7. **Abschließen** – wenn das Ziel erledigt oder verbraucht ist.</p>
+
+<p>Warum so? Dadurch bleibt das Budget sauber: Das Ziel ist geplant, aber echte Bewegungen entstehen erst durch Buchungen.</p>
+
+<h2>9. Übersicht / Dashboard</h2>
+
+<p>Die Übersicht beantwortet: Wie steht mein Plan im Vergleich zu meinen echten Buchungen?</p>
+
+<h3>9.1 Filter</h3>
+
+<p>| Filter | Bedeutung |</p>
+<p>|---|---|</p>
+<p>| Jahr | bestimmtes Jahr oder gesamter Zeitraum |</p>
+<p>| Monat | bestimmter Monat oder gesamtes Jahr |</p>
+<p>| Typ | Einnahmen/Ausgaben/Ersparnisse |</p>
+<p>| Kategorie | Detailauswertung |</p>
+<p>| Tags/Text/Betrag | Drilldown in Buchungen |</p>
+
+<h3>9.2 Plan gegen Ist</h3>
+
+<p>Typische Spalten:</p>
+
+<p>| Spalte | Bedeutung |</p>
+<p>|---|---|</p>
+<p>| Budget | geplanter Betrag |</p>
+<p>| Gebucht/Getracked | tatsächliche Buchungen |</p>
+<p>| Rest | Budget minus Buchungen |</p>
+<p>| Prozent | Verbrauch/Erfüllung in Prozent |</p>
+
+<h3>9.3 Diagramme in der Übersicht</h3>
+
+<p>Die Übersicht nutzt Diagramme nur dort, wo sie eine Entscheidung leichter machen. Zu viele Kreisdiagramme werden bewusst vermieden.</p>
+
+<p>| Diagramm | Wofür es gut ist | Wann du es nutzt |</p>
+<p>|---|---|---|</p>
+<p>| Übersicht / Donut | Schneller Plan-Ist-Status nach Einnahmen, Ausgaben und Ersparnissen | Monatscheck: Ist mein Budget grundsätzlich im Rahmen? |</p>
+<p>| Kategorien | Ausgabenanteile je Kategorie | Herausfinden, welche Kategorie den größten Anteil hat |</p>
+<p>| Verteilung | Einnahmen/Ausgaben/Ersparnisse im Verhältnis | Grober Gesamtblick auf Geldflüsse |</p>
+<p>| Monatsverlauf | Ausgaben: Budget vs. gebucht pro Monat | Erkennen, ob Ausgaben dauerhaft steigen oder nur ein Ausreißer vorliegt |</p>
+<p>| Monatsbilanz | Einnahmen minus Ausgaben, echt vs. geplant | Prüfen, ob am Monatsende genug übrig bleibt |</p>
+<p>| Top-Buchungen | Die 5 größten Buchungen im gewählten Zeitraum | Einzelne große Ausreißer schnell finden |</p>
+
+<p>Best Practice: Erst Monatsverlauf ansehen, dann bei Auffälligkeit in Top-Buchungen oder Kategorien nachsehen.</p>
+
+<h3>9.4 Letzte Buchungen und Verlauf</h3>
+
+<p>Die Übersicht zeigt aktuelle Bewegungen und Verlauf. Das hilft dir, schnell Ausreißer zu finden.</p>
+
+<h3>9.5 Budgetvorschläge</h3>
+
+<p>Budgetvorschläge sind Hinweise, keine Pflichtänderungen.</p>
+
+<p>Grundregel:</p>
+
+<p>• Flexible Kategorien dürfen aus Verhalten lernen.</p>
+<p>• Fixkosten werden konservativ behandelt.</p>
+<p>• `0` darf bei Fixkosten nie allein ein Senkungsgrund sein.</p>
+<p>• Es braucht echte Buchungsmonate mit Betrag größer 0.</p>
+
+<hr>
+
+<h2>10. Sparziele: wann, wie, wo</h2>
+
+<h3>10.1 Wo finde ich Sparziele?</h3>
+
+<pre><code>
+Reiter → Sparziele
+</code></pre>
+
+<p>oder:</p>
+
+<pre><code>
+Extras → Sparziele
+</code></pre>
+
+<h3>10.2 Wofür sind Sparziele?</h3>
+
+<p>Sparziele sind für Geld, das du bewusst zurücklegen möchtest.</p>
+
+<p>Beispiele:</p>
+
+<p>• Notgroschen,</p>
+<p>• Ferien,</p>
+<p>• Steuern,</p>
+<p>• Hochzeit,</p>
+<p>• neues Gerät,</p>
+<p>• Autoreparatur.</p>
+
+<h3>10.3 Ein Sparziel anlegen</h3>
+
+<p>Typische Felder:</p>
+
+<p>| Feld | Bedeutung |</p>
+<p>|---|---|</p>
+<p>| Name | Name des Ziels |</p>
+<p>| Zielbetrag | Was willst du erreichen? |</p>
+<p>| Aktueller Betrag | Was ist schon angespart? |</p>
+<p>| Deadline | optionales Zieldatum |</p>
+<p>| Kategorie | Verknüpfung mit Ersparnis-Kategorie |</p>
+<p>| Notizen | zusätzliche Erklärung |</p>
+
+<h3>10.4 Fortschritt hinzufügen</h3>
+
+<pre><code>
+Sparziele → Fortschritt hinzufügen
+</code></pre>
+
+<p>Erhöht den aktuellen Betrag des Sparziels.</p>
+
+<h3>10.5 Sync mit Tracking</h3>
+
+<p>Die Sync-Funktion kann Sparziel-Stände aus passenden Buchungen ableiten bzw. abgleichen. Sie ist besonders nützlich, wenn du Ersparnisse konsequent als Tracking-Buchungen erfasst.</p>
+
+<p>Empfohlene Praxis:</p>
+
+<p>1. Ersparnis-Kategorie erstellen, zum Beispiel `Hochzeit`.</p>
+<p>2. Sparziel mit dieser Kategorie verknüpfen.</p>
+<p>3. Sparbuchungen im Tracking mit Typ `Ersparnisse` erfassen.</p>
+<p>4. Sparziel synchronisieren.</p>
+
+<h3>10.6 Freigeben</h3>
+
+<p>Freigeben bedeutet: Geld aus dem Sparziel wird wieder verfügbar/verbraucht.</p>
+
+<p>Beispiel:</p>
+
+<p>• Du hast 1&#x27;000 CHF für Ferien angespart.</p>
+<p>• Die Ferien werden bezahlt.</p>
+<p>• Du gibst das Sparziel frei.</p>
+
+<h3>10.7 Abschließen</h3>
+
+<p>Abschließen bedeutet: Ziel ist erledigt. Es bleibt dokumentiert, wird aber nicht mehr als aktives Sparziel behandelt.</p>
+
+<h3>10.8 Wieder öffnen</h3>
+
+<p>Wenn ein Ziel fälschlich abgeschlossen wurde oder weiterlaufen soll, kannst du es wieder öffnen.</p>
+
+<hr>
+
+<h2>11. Favoriten: wofür ist das gut?</h2>
+
+<h3>11.1 Zweck</h3>
+
+<p>Favoriten sind Kategorien, die du besonders häufig brauchst. Sie helfen, wichtige Kategorien schneller zu sehen und im Dashboard hervorzuheben.</p>
+
+<p>Beispiele:</p>
+
+<p>• Lebensmittel,</p>
+<p>• Miete,</p>
+<p>• Lohn,</p>
+<p>• Krankenkasse,</p>
+<p>• Hochzeit,</p>
+<p>• Steuern.</p>
+
+<h3>11.2 Wo finde ich Favoriten?</h3>
+
+<pre><code>
+Extras → Favoriten
+</code></pre>
+
+<p>Shortcut:</p>
+
+<pre><code>
+F12
+</code></pre>
+
+<h3>11.3 Wann nutzen?</h3>
+
+<p>Nutze Favoriten für Kategorien, die du regelmäßig kontrollierst. Nicht jede Kategorie sollte Favorit sein, sonst verliert das Dashboard seinen Nutzen.</p>
+
+<p>Gute Regel:</p>
+
+<pre><code>
+Maximal 5–10 Favoriten pro Kontotyp
+</code></pre>
+
+<hr>
+
+<h2>12. Tags</h2>
+
+<p>Tags sind flexible Schlagworte zusätzlich zur Kategorie.</p>
+
+<p>Beispiele:</p>
+
+<p>• Urlaub,</p>
+<p>• Arzt,</p>
+<p>• Kind,</p>
+<p>• Rückerstattung,</p>
+<p>• Barzahlung,</p>
+<p>• Online,</p>
+<p>• Projekt Hochzeit.</p>
+
+<p>Kategorie beantwortet: Was ist es?  </p>
+<p>Tag beantwortet: In welchem Kontext steht es?</p>
+
+<p>Beispiel:</p>
+
+<pre><code>
+Kategorie: Lebensmittel
+Tag: Geburtstag
+</code></pre>
+
+<hr>
+
+<h2>13. Globale Suche</h2>
+
+<pre><code>
+Extras → Globale Suche
+</code></pre>
+
+<p>oder Shortcut:</p>
+
+<pre><code>
+Ctrl+F
+</code></pre>
+
+<p>Nutzen:</p>
+
+<p>• Buchungen finden,</p>
+<p>• Kategorien finden,</p>
+<p>• Bemerkungen durchsuchen,</p>
+<p>• schnell zum passenden Tab springen.</p>
+
+<hr>
+
+<h2>14. Schnelleingabe</h2>
+
+<pre><code>
+Extras → Schnelleingabe
+</code></pre>
+
+<p>oder Shortcut:</p>
+
+<pre><code>
+Ctrl+N
+</code></pre>
+
+<p>Gut für Alltag:</p>
+
+<p>• Einkauf erfassen,</p>
+<p>• Lohn erfassen,</p>
+<p>• kleine Ausgabe schnell buchen,</p>
+<p>• mehrere Buchungen nacheinander.</p>
+
+<hr>
+
+<h2>15. Export</h2>
+
+<pre><code>
+Extras → Export
+</code></pre>
+
+<p>Nutzen:</p>
+
+<p>• Daten extern sichern,</p>
+<p>• Auswertungen weitergeben,</p>
+<p>• Excel/CSV-Weiterverarbeitung,</p>
+<p>• Kontrollbericht erstellen.</p>
+
+<p>Vor großen Änderungen ist ein Backup wichtiger als Export, weil ein Backup für Wiederherstellung gedacht ist.</p>
+
+<hr>
+
+<h2>16. Datenbankverwaltung</h2>
+
+<pre><code>
+Extras → Datenbankverwaltung
+</code></pre>
+
+<p>Typische Funktionen:</p>
+
+<p>• Integrität prüfen,</p>
+<p>• Datenbank bereinigen,</p>
+<p>• Tabellenstatistiken ansehen,</p>
+<p>• Datenbank zurücksetzen.</p>
+
+<p>Vorsicht:</p>
+
+<p>• Vor Bereinigung oder Reset immer Backup erstellen.</p>
+<p>• Reset löscht Daten.</p>
+
+<hr>
+
+<h2>17. Updates</h2>
+
+<pre><code>
+Extras → Updates…
+</code></pre>
+
+<p>Ablauf:</p>
+
+<p>1. Update prüfen.</p>
+<p>2. Manifest/lates.json lesen.</p>
+<p>3. Download vorbereiten.</p>
+<p>4. Integrität prüfen.</p>
+<p>5. Update stagen.</p>
+<p>6. Installation starten.</p>
+
+<p>Unter Windows kann die laufende EXE sich nicht selbst überschreiben. Deshalb wird ein Helferprozess verwendet.</p>
+
+<hr>
+
+<h2>18. Einstellungen, Ansicht und Themes</h2>
+
+<h3>18.1 Einstellungen</h3>
+
+<pre><code>
+Datei → Einstellungen
+</code></pre>
+
+<p>Typische Bereiche:</p>
+
+<p>• Sprache,</p>
+<p>• Währung,</p>
+<p>• Zahlenformat,</p>
+<p>• Fensterverhalten,</p>
+<p>• Verhalten beim Speichern,</p>
+<p>• Übersicht-Anzeige,</p>
+<p>• Expertenfunktionen.</p>
+
+<h3>18.2 Ansicht</h3>
+
+<pre><code>
+Ansicht → …
+</code></pre>
+
+<p>Hier kannst du Tabs ein-/ausblenden, Tab-Position ändern und die Übersicht anpassen.</p>
+
+<h3>18.3 Themes</h3>
+
+<p>Themes ändern Farben und Lesbarkeit. Für Release wichtig: Keine Funktion darf nur über Farbe verständlich sein; Text/Icons müssen Bedeutung ebenfalls tragen.</p>
+
+<hr>
+
+<h2>19. Tastenkürzel</h2>
+
+<pre><code>
+Hilfe → Tastenkürzel
+</code></pre>
+
+<p>oder:</p>
+
+<pre><code>
+Ctrl+F1
+</code></pre>
+
+<p>Wichtige Kürzel:</p>
+
+<p>| Kürzel | Funktion |</p>
+<p>|---|---|</p>
+<p>| F1 | Wissensdatenbank |</p>
+<p>| Ctrl+F1 | Tastenkürzel |</p>
+<p>| Ctrl+S | Speichern |</p>
+<p>| Ctrl+N | Schnelleingabe |</p>
+<p>| Ctrl+F | Globale Suche |</p>
+<p>| Ctrl+K | Kategorien verwalten |</p>
+<p>| Ctrl+T | Tags verwalten |</p>
+<p>| Ctrl+U | Updates |</p>
+<p>| F12 | Favoriten |</p>
+<p>| F5 | Aktualisieren |</p>
+
+<hr>
+
+<h2>20. Kategorie löschen: sichere Entscheidung</h2>
+
+<p>Beim Löschen kann BudgetManager abhängig von Daten fragen, was passieren soll.</p>
+
+<p>Möglichkeiten:</p>
+
+<p>| Option | Bedeutung |</p>
+<p>|---|---|</p>
+<p>| Nur Kategorie entfernen | wenn keine abhängigen Daten existieren |</p>
+<p>| Daten löschen | Budget/Tracking/Favoriten etc. werden entfernt |</p>
+<p>| Bis letztes Buchungsdatum | historische Daten bleiben kontrolliert erhalten/werden berücksichtigt |</p>
+<p>| Umhängen | Daten werden einer anderen Kategorie zugeordnet |</p>
+<p>| Parent löschen | Kinder werden hochgestuft |</p>
+
+<p>Empfehlung: Wenn du unsicher bist, erst Backup erstellen, dann löschen.</p>
+
+<hr>
+
+<h2>21. Budget Buchungen Übersicht: Datenfluss verstehen</h2>
+
+<pre><code>
+Kategorie
+  ↓
+Budgetwert pro Monat
+  ↓
+Tracking-Buchung
+  ↓
+Übersicht rechnet Plan/Ist
+  ↓
+Budgetvorschlag oder Warnung
+</code></pre>
+
+<p>Beispiel:</p>
+
+<pre><code>
+Kategorie: Ausgaben → Lebensmittel
+Budget Juni: 400 CHF
+Tracking Juni: 450 CHF
+Übersicht: 50 CHF über Budget, 112.5 % genutzt
+</code></pre>
+
+<p>Bei Fixkosten:</p>
+
+<pre><code>
+Kategorie: Ausgaben → Miete, Fixkosten, Fälligkeit 1
+Budget Juni: 1410 CHF
+Tracking → Fix/Wiederkehrend buchen…
+Ergebnis: Buchung am 01.06., wenn noch keine Miete im Juni existiert
+</code></pre>
+
+<hr>
+
+<h2>22. Typische Stolperfallen</h2>
+
+<h3>22.1 „Ich habe Budget eingetragen, aber keine Buchung erscheint“</h3>
+
+<p>Richtig so. Budget ist nur Plan. Für Buchungen nutze Tracking oder Fix/Wiederkehrend buchen.</p>
+
+<h3>22.2 „Fixkosten wurden nicht gebucht“</h3>
+
+<p>Prüfe:</p>
+
+<p>• Fixkosten-Häkchen gesetzt?</p>
+<p>• Budgetwert im Monat größer 0?</p>
+<p>• Bereits Buchung in diesem Monat vorhanden?</p>
+<p>• Richtigen Monat gewählt?</p>
+<p>• Kategorie unter richtigem Typ?</p>
+
+<h3>22.3 „Der Tag im Fixkosten-Dialog wurde nicht benutzt“</h3>
+
+<p>Der Dialog wählt den Monat. Das echte Buchungsdatum kommt vom Fälligkeitstag der Kategorie.</p>
+
+<h3>22.4 „Budgetvorschlag senkt Fixkosten nicht wegen 0-Monaten“</h3>
+
+<p>Absicht. Bei Fixkosten darf `0` nie allein der Grund für eine Budgetsenkung sein.</p>
+
+<h3>22.5 „Ich finde Restore-Key nicht“</h3>
+
+<p>Nutze:</p>
+
+<pre><code>
+Hilfe → Restore-Key anzeigen…
+</code></pre>
+
+<p>oder:</p>
+
+<pre><code>
+Konto → Konto verwalten
+</code></pre>
+
+<h3>22.6 „Ich finde eine Funktion nicht“</h3>
+
+<p>Nutze:</p>
+
+<p>• F1 Wissensdatenbank,</p>
+<p>• Ctrl+F1 Tastenkürzel,</p>
+<p>• Extras-Menü,</p>
+<p>• Rechtsklick auf Tabellen,</p>
+<p>• Setup-Assistent erneut starten.</p>
+
+<hr>
+
+<h2>23. Best Practice für Anfänger</h2>
+
+<h3>Täglich</h3>
+
+<p>• Neue Buchungen kurz erfassen.</p>
+<p>• Schnelleingabe nutzen.</p>
+
+<h3>Wöchentlich</h3>
+
+<p>• Tracking filtern und prüfen.</p>
+<p>• Übersicht ansehen.</p>
+
+<h3>Monatlich</h3>
+
+<p>• Fix/Wiederkehrend buchen.</p>
+<p>• Budgetübersicht prüfen.</p>
+<p>• Sparziele aktualisieren.</p>
+<p>• Backup erstellen.</p>
+
+<h3>Vor Änderungen</h3>
+
+<p>• Backup erstellen.</p>
+<p>• Nur eine große Änderung auf einmal.</p>
+<p>• Danach Übersicht prüfen.</p>
+
+<hr>
+
+<h2>24. Mini-Lexikon</h2>
+
+<p>| Begriff | Bedeutung |</p>
+<p>|---|---|</p>
+<p>| Kategorie | Geldtopf, an dem Budget und Buchungen hängen |</p>
+<p>| Typ/Konto | Einnahmen, Ausgaben oder Ersparnisse |</p>
+<p>| Parent | Hauptkategorie |</p>
+<p>| Child | Unterkategorie |</p>
+<p>| Budget | geplanter Betrag |</p>
+<p>| Tracking | echte Buchungen |</p>
+<p>| Fixkosten | planbarer fester Betrag |</p>
+<p>| Wiederkehrend | regelmäßiger, ggf. variabler Eintrag |</p>
+<p>| Fälligkeitstag | vorgeschlagener Buchungstag im Monat |</p>
+<p>| Favorit | wichtige Kategorie für schnellen Zugriff |</p>
+<p>| Tag | flexibles Schlagwort |</p>
+<p>| Sparziel | Zielbetrag zum Ansparen |</p>
+<p>| Freigeben | angespartes Geld wieder verfügbar machen |</p>
+<p>| Abschließen | Sparziel als erledigt markieren |</p>
+<p>| Restore-Key | Notfallschlüssel für verschlüsselte DB/Backup |</p>
+<p>| `.bmr` | BudgetManager-Restore-Bundle |</p>
+<p>| Staging | vorbereitetes Update, noch nicht angewendet |</p>
+<p>| DAU-Test | Erstnutzer-Test ohne Spezialwissen |</p>
+<pre><code>
+
+---
+
+## Ergänzung v2.0.8 Cockpit-Bugfix 2
+
+### Erststart und Datenbankmeldung
+
+Beim ersten Start zeigt BudgetManager nur noch eine einfache Erfolgsmeldung **„Datenbank erstellt“**. Die technischen Migrationsdetails bleiben über den Detailbereich erreichbar, sollen Einsteiger aber nicht mehr erschlagen.
+
+Die Sprachwahl übersetzt ihre Regionseinstellungen jetzt live. Wenn du English oder Français auswählst, werden Währung, Zahlenformat, bevorzugter Tag und Hinweistext direkt in dieser Sprache angezeigt.
+
+### Kategorieauswahl in Tracking und Schnelleingabe
+
+Die Kategorieauswahl ist jetzt bewusst nach **Hauptkategorie → Unterkategorie** gruppiert. Sie wird nicht mehr automatisch nach Nutzungshäufigkeit umsortiert, weil das bei vielen Kategorien den roten Faden zerstört.
+
+Best Practice:
+
+1. Zuerst den Typ wählen: Einnahmen, Ausgaben oder Ersparnisse.
+2. Dann Kategorie suchen oder aus der gruppierten Liste wählen.
+3. Tippen filtert die Liste nach enthaltenem Text.
+
+Ein späteres Nutzungsranking ist sinnvoll, sollte aber als eigene Option kommen, damit die Baumstruktur nicht verloren geht.
+
+### Diagrammfarben
+
+Diagramme verwenden jetzt den Kontotyp als Grundfarbe:
+
+- Einnahmen: grün
+- Ausgaben: rot
+- Ersparnisse: blau
+
+Bei Top-Buchungen erkennt man dadurch sofort, ob ein großer Balken Einkommen, Ausgabe oder Ersparnis ist.
+<section id="cockpit-sortieren">
+<h2>Cockpit gestalten: sichtbar und sortierbar</h2>
+<p>Über <b>⚙ Cockpit gestalten</b> kannst du Bereiche ein- und ausblenden und die Reihenfolge mit Hoch/Runter ändern. So bleibt das Cockpit schlank und trotzdem persönlich.</p>
+<p>Ein Rechtsklick auf freie Flächen zeigt die passenden Aktionen aus dem Menü <b>Bearbeiten</b>. Tabellen behalten ihre eigenen Spezialmenüs.</p>
+</section>
+<section id="zahltag-finanzmonat">
+<h2>Zahltag am 25.: Kalender-Monat oder Finanz-Monat?</h2>
+<p>Wenn der Lohn am 25. kommt, ist dieses Geld praktisch meist für den folgenden Lebensmonat gedacht. BudgetManager wertet aktuell bewusst nach Kalender-Monaten aus. Der bevorzugte Tag für wiederkehrende Buchungen steuert Fälligkeiten, ist aber noch keine vollständige Budgetperiode 25.–24.</p>
+<p>Eine echte Zahltags-Budgetperiode sollte später als eigene Einstellung umgesetzt werden, damit Cockpit, Budget-Ampel, Fixkosten und Exporte dieselbe Logik verwenden.</p>
+</section>
+
+<hr>
+<h2>Ergänzung v2.0.11 – Aufgeräumt</h2>
+<p>Der separate <b>Kategorien-Tab (Experten-Modus)</b> wurde entfernt, da redundant. Kategorienverwaltung läuft jetzt über den <b>Kategorie-Manager</b> (Strg+K, Menü Extras) und direkt im <b>Budget</b>-Tab (inkl. Drag &amp; Drop). Die zugehörige Einstellung „separaten Kategorien-Tab anzeigen“ entfällt.</p>

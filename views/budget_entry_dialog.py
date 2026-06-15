@@ -3,7 +3,7 @@ Budget-Erfassungs-Dialog
 ========================
 Dialog zum Erfassen und Bearbeiten von Budget-Einträgen.
 
-Version: 0.2.2.1 - Mit integrierter Kategorien-Erstellung
+Version: 2.0.9 - Mit integrierter Kategorien-Erstellung
 - Neue Kategorien können direkt beim Budget-Erfassen erstellt werden
 - Wahlweise als Hauptkategorie oder Unterkategorie
 - Kategorien-Eigenschaften (Fixkosten, Wiederkehrend) direkt setzen
@@ -142,9 +142,9 @@ class BudgetEntryDialog(QDialog):
         # Kategorie-Flags
         flags_layout = QHBoxLayout()
         self.chk_is_fix = QCheckBox(tr("tracking.title.fixcosts"))
-        self.chk_is_fix.setToolTip(tr('auto.views_budget_entry_dialog.145_diese_kategorie_ist_eine_monatlich__584b29cb'))
+        self.chk_is_fix.setToolTip(tr("help.tip.fixcost"))
         self.chk_is_recurring = QCheckBox(tr("lbl.recurring"))
-        self.chk_is_recurring.setToolTip(tr("dlg.diese_kategorie_ist_eine"))
+        self.chk_is_recurring.setToolTip(tr("help.tip.recurring"))
         flags_layout.addWidget(self.chk_is_fix)
         flags_layout.addWidget(self.chk_is_recurring)
         flags_layout.addStretch()

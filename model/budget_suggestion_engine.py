@@ -21,6 +21,20 @@ v0.4.4.0 – Fixes:
 - BUG-FIX: require_same_sign_ratio Standard von 1.0 auf 0.7 gesenkt;
   zuvor wurde jeder einzelne Ausreisser-Monat zum Blocker.
 - BUG-FIX: Ersparnisse werden jetzt ebenfalls mit abs() abgesichert.
+
+v0.4.5.0 – Fixkosten-/0-Monats-Schutz:
+- REGEL: 0 darf bei Fixkosten/wiederkehrenden Kategorien nie allein
+  einen senkenden Budgetvorschlag auslösen. Fehlende Buchung ist ein
+  Hinweis-Thema, aber kein Budgetänderungsbeweis.
+- Fixkosten können inkrementell/lumpy sein (z.B. quartalsweise, jährlich
+  oder in Raten). Darum werden bei Fixkosten nur echte Buchungsmonate
+  (> 0) für Budgetänderungen ausgewertet. 0-Monate werden ignoriert.
+- Für Fixkosten braucht es mindestens 3 echte Buchungsmonate, bevor ein
+  Vorschlag entsteht. Wiederholte echte Überschreitung darf also weiterhin
+  eine Erhöhung auslösen.
+- Flexible Kategorien dürfen 0-Buchungen weiter als Teil eines wiederholten
+  Musters verwenden (z.B. Hobby 40 CHF, Ist 20/30/0/...).
+- Mindeständerung wird nach Rundung nochmals geprüft.
 """
 
 from __future__ import annotations
@@ -85,6 +99,9 @@ class BudgetSuggestionEngine:
         # Inkompletten aktuellen Monat einbeziehen?
         # Standard=False → nur abgeschlossene Monate analysieren
         use_current_month: bool = False,
+        # Fixkosten-/wiederkehrende Kategorien schützen:
+        # 0-Monate dürfen dort keine Senkung beweisen.
+        respect_fixed_costs: bool = True,
     ) -> Optional[SuggestionResult]:
         """Berechnet einen Vorschlag für eine Kategorie.
 
@@ -99,6 +116,10 @@ class BudgetSuggestionEngine:
                                      zeigen müssen (0.7 = 70%)
             use_current_month: False = aktueller Monat wird übersprungen
                                (empfohlen, da unvollständig)
+            respect_fixed_costs: True = Kategorien mit is_fix=1 oder
+                               is_recurring=1 werden geschützt. 0-Monate
+                               werden dort für Budgetänderungen ignoriert;
+                               es braucht wiederholte echte Buchungen.
         """
         if months_back <= 0:
             return None
@@ -116,6 +137,12 @@ class BudgetSuggestionEngine:
             except Exception:
                 floor = float(floor_abs)
 
+        # Kategorie-Flags bestimmen. In BudgetManager gibt es bereits
+        # is_fix/is_recurring; damit brauchen wir für den Release-Fix kein
+        # neues DB-Schema.
+        is_fix, is_recurring = self._get_category_flags(typ, category)
+        fixed_like = bool(respect_fixed_costs) and (not self._is_income(typ)) and (is_fix or is_recurring)
+
         # ── Startmonat für die Analyse bestimmen ──
         # Bei use_current_month=False starten wir einen Monat VOR dem Zielmonat,
         # damit der (ggf. unvollständige) aktuelle Monat nicht einfliesst.
@@ -131,8 +158,26 @@ class BudgetSuggestionEngine:
         if len(deviations) < months_back:
             return None
 
+        # ── Fixkosten-/0-Monats-Schutz ──
+        # Bei Fixkosten/wiederkehrenden Kategorien bedeutet "0 gebucht" nicht
+        # automatisch "Budget zu hoch". Es kann auch heissen: Buchung fehlt,
+        # Zahlung kommt später, Jahres-/Quartalsrechnung oder Importlücke.
+        # Deshalb werden 0-Monate für Budgetänderungen ignoriert. Nur echte
+        # Buchungsmonate dürfen dort einen Vorschlag auslösen. So bleiben
+        # inkrementelle/lumpy Fixkosten möglich, ohne dass 0-Monate senken.
+        if fixed_like:
+            deviations = self._get_deviations_window(
+                typ, category, analysis_year, analysis_month, months_back, active_only=True
+            )
+            if len(deviations) < min(3, months_back):
+                return None
+            # Zero-Reduction für Fixkosten hart deaktivieren.
+            enable_zero_reduction = False
+
         # ── 0-Buchungen-Handling ──
-        if enable_zero_reduction and (not self._is_income(typ)):
+        # Nur flexible Kategorien dürfen wegen wiederholten 0-Monaten reduziert
+        # werden. Fixkosten/Rückstellungen sind oben geschützt.
+        if enable_zero_reduction and (not self._is_income(typ)) and (not fixed_like):
             active_months = self._count_active_months(
                 typ, category, analysis_year, analysis_month, months_back
             )
@@ -194,8 +239,12 @@ class BudgetSuggestionEngine:
                 suggested = max(float(floor), float(suggested))
             delta = suggested - current_budget
 
-        # Nochmals prüfen nach Rundung (Rundung kann delta auf 0 bringen)
+        # Nochmals prüfen nach Rundung. Rundung kann delta auf 0 bringen oder
+        # künstlich eine zu kleine Änderung erzeugen. Gleiche Schwelle wie vor
+        # der Rundung, damit 10-CHF-Rauschen nicht als Vorschlag erscheint.
         if abs(delta) < 0.01:
+            return None
+        if abs(delta) < float(min_abs_change) and abs(delta) < (current_budget * float(min_pct_change)):
             return None
 
         # Streak
@@ -258,6 +307,44 @@ class BudgetSuggestionEngine:
             suggested_budget=float(suggested),
             delta=float(delta),
         )
+
+    # ------------------------------------------------------------
+    # Kategorie-Flags
+    # ------------------------------------------------------------
+    def _get_category_flags(self, typ: str, category: str) -> Tuple[bool, bool]:
+        """Liest (is_fix, is_recurring) robust aus categories.
+
+        Bestandsdatenbanken oder Tests können ältere Schemas haben. Dann wird
+        sicher auf (False, False) zurückgefallen.
+        """
+        try:
+            cols = {
+                row[1]
+                for row in self.conn.execute("PRAGMA table_info(categories)").fetchall()
+            }
+            if not {"typ", "name", "is_fix", "is_recurring"}.issubset(cols):
+                return (False, False)
+            row = self.conn.execute(
+                "SELECT is_fix, is_recurring FROM categories WHERE typ=? AND name=?",
+                (typ, category),
+            ).fetchone()
+            if not row:
+                return (False, False)
+
+            def _as_bool(value) -> bool:
+                if value is None:
+                    return False
+                if isinstance(value, str):
+                    return value.strip().lower() in {"1", "true", "yes", "ja"}
+                try:
+                    return bool(int(value))
+                except (TypeError, ValueError):
+                    return bool(value)
+
+            return (_as_bool(row[0]), _as_bool(row[1]))
+        except Exception:
+            logger.exception("Kategorie-Flags konnten nicht gelesen werden: %s/%s", typ, category)
+            return (False, False)
 
     # ------------------------------------------------------------
     # Zähler
@@ -349,6 +436,7 @@ class BudgetSuggestionEngine:
 
     def _get_deviations_window(
         self, typ: str, category: str, year: int, month: int, months_back: int,
+        active_only: bool = False,
     ) -> List[float]:
         """Sammelt die letzten N Abweichungs-Datenpunkte.
 
@@ -357,6 +445,9 @@ class BudgetSuggestionEngine:
         Scan geht weiter zurück – bis zu ``months_back * 3`` Monate maximal.
         So reicht ein einzelner Monat ohne Budget nicht aus, um die gesamte
         Analyse zu blockieren.
+
+        active_only=True: Monate ohne Buchung werden übersprungen. Das wird
+        für Fixkosten genutzt, damit 0-Buchungen keine Senkung beweisen.
         """
         out: List[float] = []
         base = date(year, month, 1)
@@ -369,6 +460,8 @@ class BudgetSuggestionEngine:
             if b is None or b <= 0:
                 continue  # Lücke → überspringen, weiter suchen
             a = self._get_spent_amount(d.year, d.month, typ, category)
+            if active_only and abs(float(a)) <= 0.000001:
+                continue
             if self._is_income(typ):
                 dev = a - float(b)
             else:

@@ -276,3 +276,45 @@ def backup_current_zip(backup_dir: Path, label: str, exclude_names: Tuple[str, .
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         _zip_add_dir(zf, root, arc_base=Path(root.name), exclude_names=exclude_names)
     return out
+
+
+# ──────────────────────────────────────────────────────────────────────────
+# Strukturiertes Check-Ergebnis (für GUI statt Konsolen-Text-Parsing)
+# ──────────────────────────────────────────────────────────────────────────
+def check_result_path() -> Path:
+    return updates_dir() / "last_check.json"
+
+
+def write_check_result(data: dict) -> None:
+    """Schreibt das Ergebnis einer Update-Prüfung als JSON für den Update-Dialog."""
+    from datetime import datetime
+    payload = dict(data)
+    payload.setdefault("checked_at", datetime.now().isoformat(timespec="seconds"))
+    try:
+        check_result_path().write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as e:
+        logger.debug("Update-Check-Ergebnis konnte nicht geschrieben werden: %s", e)
+
+
+def read_check_result() -> dict:
+    """Liest das letzte Update-Prüfergebnis oder gibt {} zurück."""
+    p = check_result_path()
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def clear_check_result() -> None:
+    try:
+        p = check_result_path()
+        if p.exists():
+            p.unlink()
+    except Exception as e:
+        logger.debug("Update-Check-Ergebnis konnte nicht gelöscht werden: %s", e)

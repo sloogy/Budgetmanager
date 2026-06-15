@@ -8,6 +8,7 @@ Verantwortlich für:
 - Diagramm-Tab mit Drill-Down (Nested Donut + Bar Chart)
 - Kategorien-Pie-Chart
 - Typ-Verteilungs-Chart
+- Sinnvolle Zusatzgraphen: Monatsverlauf, Monatsbilanz, Top-Buchungen
 
 Schnittstelle zu OverviewTab:
     panel = OverviewKpiPanel(budget_overview_model, parent=self)
@@ -72,7 +73,7 @@ class OverviewKpiPanel(QWidget):
         self.card_income   = CompactKPICard(tr("kpi.income"),   format_chf(0), "💰", c.type_color(TYP_INCOME))
         self.card_expenses = CompactKPICard(tr("kpi.expenses"), format_chf(0), "💸", c.type_color(TYP_EXPENSES))
         self.card_balance  = CompactKPICard(tr("lbl.bilanz"),           format_chf(0), "📊", c.type_color(TYP_SAVINGS))
-        self.card_savings  = CompactKPICard(tr("kpi.savings"),  format_chf(0), "🏦", c.accent)
+        self.card_savings  = CompactKPICard(tr("kpi.savings"),  format_chf(0), "🏦", c.type_color(TYP_SAVINGS))
 
         self.card_income.clicked.connect(lambda: self.kpi_clicked.emit(TYP_INCOME))
         self.card_expenses.clicked.connect(lambda: self.kpi_clicked.emit(TYP_EXPENSES))
@@ -84,18 +85,21 @@ class OverviewKpiPanel(QWidget):
         layout.addWidget(self.kpi_widget)
 
         # ── Progress Bars ──
-        self.pb_income   = CompactProgressBar(tr("kpi.income"),   1000)
-        self.pb_expenses = CompactProgressBar(tr("kpi.expenses"), 1000)
-        self.pb_savings  = CompactProgressBar(tr("kpi.savings"),  1000)
+        self.pb_income   = CompactProgressBar(tr("kpi.income"),   1000, typ_key=TYP_INCOME)
+        self.pb_expenses = CompactProgressBar(tr("kpi.expenses"), 1000, typ_key=TYP_EXPENSES)
+        self.pb_savings  = CompactProgressBar(tr("kpi.savings"),  1000, typ_key=TYP_SAVINGS)
         layout.addWidget(self.pb_income)
         layout.addWidget(self.pb_expenses)
         layout.addWidget(self.pb_savings)
 
         # ── Chart Tabs ──
         self.chart_tabs = QTabWidget()
-        self.chart_tabs.addTab(self._build_donut_tab(),  tr("tab.chart_overview"))
-        self.chart_tabs.addTab(self._build_cat_tab(),    tr("overview.subtab.categories"))
-        self.chart_tabs.addTab(self._build_typ_tab(),    tr("overview.subtab.distribution"))
+        self.chart_tabs.addTab(self._build_donut_tab(),        tr("tab.chart_overview"))
+        self.chart_tabs.addTab(self._build_cat_tab(),          tr("overview.subtab.categories"))
+        self.chart_tabs.addTab(self._build_typ_tab(),          tr("overview.subtab.distribution"))
+        self.chart_tabs.addTab(self._build_monthly_trend_tab(), tr("overview.subtab.monthly_trend"))
+        self.chart_tabs.addTab(self._build_balance_trend_tab(), tr("overview.subtab.balance_trend"))
+        self.chart_tabs.addTab(self._build_top_bookings_tab(),  tr("overview.subtab.top_bookings"))
         layout.addWidget(self.chart_tabs)
         layout.addStretch()
 
@@ -165,6 +169,40 @@ class OverviewKpiPanel(QWidget):
         l.addWidget(self.chart_types)
         return w
 
+    def _build_monthly_trend_tab(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        self.chart_monthly_expenses = CompactChart()
+        self.chart_monthly_expenses.setMinimumHeight(260)
+        self.chart_monthly_expenses.setMaximumHeight(420)
+        self.chart_monthly_expenses.setToolTip(tr("overview.tip.monthly_trend"))
+        l.addWidget(self.chart_monthly_expenses)
+        return w
+
+    def _build_balance_trend_tab(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        self.chart_monthly_balance = CompactChart()
+        self.chart_monthly_balance.setMinimumHeight(260)
+        self.chart_monthly_balance.setMaximumHeight(420)
+        self.chart_monthly_balance.setToolTip(tr("overview.tip.balance_trend"))
+        l.addWidget(self.chart_monthly_balance)
+        return w
+
+    def _build_top_bookings_tab(self) -> QWidget:
+        w = QWidget()
+        l = QVBoxLayout(w)
+        l.setContentsMargins(0, 0, 0, 0)
+        self.chart_top_bookings = CompactChart()
+        self.chart_top_bookings.setMinimumHeight(260)
+        self.chart_top_bookings.setMaximumHeight(420)
+        self.chart_top_bookings.setToolTip(tr("overview.tip.top_bookings"))
+        l.addWidget(self.chart_top_bookings)
+        return w
+
+    # ── Daten laden ─────────────────────────────────────────────────────────
     # ── Daten laden ─────────────────────────────────────────────────────────
 
     def refresh_kpis(self, rows: list, budget_sums: dict[str, float]) -> None:
@@ -188,7 +226,57 @@ class OverviewKpiPanel(QWidget):
         self.pb_expenses.set_values(total_expenses, b_expenses)
         self.pb_savings.set_values(total_savings, b_savings)
 
-    def refresh_charts(self, rows: list, year: int, month_idx: int) -> None:
+    def _month_pairs_for_chart(self, year: int, month_idx: int, date_from: date | None, date_to: date | None) -> list[tuple[int, int]]:
+        """Monatsliste für Verlaufsdiagramme.
+
+        Jahr/Monat-Auswahl: immer voller Jahreskontext, bei Monatsauswahl
+        trotzdem 12 Monate, weil der Verlauf sonst keinen Nutzen hätte.
+        Benutzerdefinierte/rollierende Bereiche: Monate im gewählten Bereich.
+        """
+        if date_from is None or date_to is None:
+            return [(year, m) for m in range(1, 13)]
+
+        # Reiner Jahr/Monat-Fall: voller Jahresverlauf.
+        if date_from == date(year, 1, 1) and date_to == date(year, 12, 31):
+            return [(year, m) for m in range(1, 13)]
+        if month_idx > 0 and date_from.year == year and date_to.year == year and date_from.month == month_idx and date_to.month == month_idx:
+            return [(year, m) for m in range(1, 13)]
+
+        pairs: list[tuple[int, int]] = []
+        y, m = date_from.year, date_from.month
+        end_y, end_m = date_to.year, date_to.month
+        while (y, m) <= (end_y, end_m):
+            pairs.append((y, m))
+            if m == 12:
+                y += 1
+                m = 1
+            else:
+                m += 1
+
+        # Lesbarkeit: maximal 24 Monate im Chart, sonst wird die Achse unbrauchbar.
+        return pairs[-24:] if len(pairs) > 24 else pairs
+
+    def _month_label_for_chart(self, year: int, month: int, all_pairs: list[tuple[int, int]]) -> str:
+        label = tr(f"month_short.{month}")
+        years = {y for y, _m in all_pairs}
+        return f"{label} {year}" if len(years) > 1 else label
+
+    def _monthly_amount(self, table: str, year: int, month: int, typ: str) -> float:
+        if table == "budget":
+            return float(self.budget_overview.budget_sum(year, month, typ))
+        start = f"{year:04d}-{month:02d}-01"
+        if month == 12:
+            end = f"{year + 1:04d}-01-01"
+        else:
+            end = f"{year:04d}-{month + 1:02d}-01"
+        row = self.budget_overview.conn.execute(
+            "SELECT COALESCE(SUM(amount), 0) FROM tracking WHERE date >= ? AND date < ? AND typ = ?",
+            (start, end, typ),
+        ).fetchone()
+        val = float(row[0] or 0.0) if row else 0.0
+        return abs(val) if typ == TYP_EXPENSES else val
+
+    def refresh_charts(self, rows: list, year: int, month_idx: int, date_from: date | None = None, date_to: date | None = None, budget_sums: dict | None = None) -> None:
         """Charts neu zeichnen."""
         self.chart_overview_stack.setCurrentIndex(0)
 
@@ -198,19 +286,28 @@ class OverviewKpiPanel(QWidget):
         expense_actual  = sum(abs(r.amount) for r in rows if _norm(r.typ) == TYP_EXPENSES)
         savings_actual  = sum(r.amount for r in rows if _norm(r.typ) == TYP_SAVINGS)
 
-        # Budget-Daten
+        # Budget-Daten — bereichsbezogen.
+        # Wird budget_sums (über die Monate des gewählten Zeitraums summiert)
+        # übergeben, nutzen wir das. So passt das Donut-Budget zum tatsächlich
+        # gewählten Zeitraum (auch bei rollierenden Bereichen wie 7/30/90 Tagen)
+        # und ist konsistent mit der KPI-Leiste. Fallback: alte month_idx-Logik.
         income_budget = expense_budget = savings_budget = 0.0
-        try:
-            if month_idx == 0:
-                income_budget  = sum(self.budget_overview.budget_sum(year, m, TYP_INCOME)   for m in range(1, 13))
-                expense_budget = sum(self.budget_overview.budget_sum(year, m, TYP_EXPENSES) for m in range(1, 13))
-                savings_budget = sum(self.budget_overview.budget_sum(year, m, TYP_SAVINGS)  for m in range(1, 13))
-            else:
-                income_budget  = self.budget_overview.budget_sum(year, month_idx, TYP_INCOME)
-                expense_budget = self.budget_overview.budget_sum(year, month_idx, TYP_EXPENSES)
-                savings_budget = self.budget_overview.budget_sum(year, month_idx, TYP_SAVINGS)
-        except Exception as e:
-            logger.debug("budget_sum: %s", e)
+        if budget_sums is not None:
+            income_budget  = float(budget_sums.get(TYP_INCOME, 0.0))
+            expense_budget = float(budget_sums.get(TYP_EXPENSES, 0.0))
+            savings_budget = float(budget_sums.get(TYP_SAVINGS, 0.0))
+        else:
+            try:
+                if month_idx == 0:
+                    income_budget  = sum(self.budget_overview.budget_sum(year, m, TYP_INCOME)   for m in range(1, 13))
+                    expense_budget = sum(self.budget_overview.budget_sum(year, m, TYP_EXPENSES) for m in range(1, 13))
+                    savings_budget = sum(self.budget_overview.budget_sum(year, m, TYP_SAVINGS)  for m in range(1, 13))
+                else:
+                    income_budget  = self.budget_overview.budget_sum(year, month_idx, TYP_INCOME)
+                    expense_budget = self.budget_overview.budget_sum(year, month_idx, TYP_EXPENSES)
+                    savings_budget = self.budget_overview.budget_sum(year, month_idx, TYP_SAVINGS)
+            except Exception as e:
+                logger.debug("budget_sum: %s", e)
 
         income_open  = max(0, income_budget  - income_actual)
         expense_open = max(0, expense_budget - expense_actual)
@@ -267,12 +364,20 @@ class OverviewKpiPanel(QWidget):
 
         self.chart_overview_donut.create_nested_donut(ring_data)
 
-        # Kategorien-Pie (Ausgaben)
+        # Kategorien-Pie (Ausgaben) – farblich am Kontotyp orientiert.
+        # Einnahmen=grün, Ausgaben=rot, Ersparnisse=blau. Da dieser Tab
+        # Ausgaben zeigt, bleiben alle Ausgaben-Kategorien konsistent rot.
         cat_data: dict[str, float] = {}
+        cat_colors: dict[str, str] = {}
         for r in rows:
             if _norm(r.typ) == TYP_EXPENSES:
                 cat_data[r.category] = cat_data.get(r.category, 0) + abs(r.amount)
-        self.chart_categories.create_pie_chart(cat_data, tr("tab_ui.ausgaben_nach_kategorie"))
+                cat_colors[r.category] = _cc.type_color(TYP_EXPENSES)
+        self.chart_categories.create_pie_chart(
+            cat_data,
+            tr("tab_ui.ausgaben_nach_kategorie"),
+            color_map=cat_colors,
+        )
 
         # Typ-Verteilung – Display-Keys damit chart_types.slice_clicked
         # einen übersetzten String emittiert den db_typ_from_display() versteht
@@ -292,9 +397,65 @@ class OverviewKpiPanel(QWidget):
             color_map=type_colors,
         )
 
+        # Sinnvolle Zusatzgraphen: Verlauf statt weitere Kreisdiagramme.
+        self._refresh_monthly_trend_charts(rows, year, month_idx, date_from, date_to)
+
         # Drill-Down Daten für spätere Nutzung cachen
         self._last_year = year
         self._last_month_idx = month_idx
+
+    def _refresh_monthly_trend_charts(self, rows: list, year: int, month_idx: int, date_from: date | None, date_to: date | None) -> None:
+        pairs = self._month_pairs_for_chart(year, month_idx, date_from, date_to)
+        labels = [self._month_label_for_chart(y, m, pairs) for y, m in pairs]
+        c = ui_colors(self)
+
+        expense_actual = [self._monthly_amount("tracking", y, m, TYP_EXPENSES) for y, m in pairs]
+        expense_budget = [self._monthly_amount("budget", y, m, TYP_EXPENSES) for y, m in pairs]
+        self.chart_monthly_expenses.create_line_chart(
+            labels,
+            [
+                {"label": tr("lbl.gebucht"), "values": expense_actual, "color": c.budget_chart_colors(TYP_EXPENSES)["gebucht"]},
+                {"label": tr("header.budget"), "values": expense_budget, "color": c.budget_chart_colors(TYP_EXPENSES)["budget"]},
+            ],
+            tr("chart.monthly_expenses_budget_actual"),
+        )
+
+        balance_actual = []
+        balance_budget = []
+        for y, m in pairs:
+            inc_actual = self._monthly_amount("tracking", y, m, TYP_INCOME)
+            exp_actual = self._monthly_amount("tracking", y, m, TYP_EXPENSES)
+            inc_budget = self._monthly_amount("budget", y, m, TYP_INCOME)
+            exp_budget = self._monthly_amount("budget", y, m, TYP_EXPENSES)
+            balance_actual.append(inc_actual - exp_actual)
+            balance_budget.append(inc_budget - exp_budget)
+
+        self.chart_monthly_balance.create_line_chart(
+            labels,
+            [
+                {"label": tr("lbl.bilanz"), "values": balance_actual, "color": c.amount_color(sum(balance_actual))},
+                {"label": tr("chart.planned_balance"), "values": balance_budget, "color": c.text_dim},
+            ],
+            tr("chart.monthly_balance"),
+        )
+
+        # Top-Buchungen: pro Kategorie aggregieren (z.B. mehrere Lohn-Buchungen
+        # im Zeitraum werden zu EINEM Balken summiert), dann die größten 5 zeigen.
+        from model.overview_aggregation import aggregate_top_bookings
+        top_items = aggregate_top_bookings(rows, top_n=5)
+        top_bars = []
+        for (typ_db, cat), total in top_items:
+            label = cat if len(cat) <= 22 else cat[:21] + "…"
+            top_bars.append({
+                "label": label,
+                "value": total,
+                "color": c.type_color(typ_db),
+            })
+
+        self.chart_top_bookings.create_colored_bar_chart(
+            bars=top_bars,
+            title=tr("chart.top_bookings_by_amount"),
+        )
 
     # ── Drill-Down ──────────────────────────────────────────────────────────
 

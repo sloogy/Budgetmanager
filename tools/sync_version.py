@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
-"""Synchronisiert die Versionsnummer aus app_info.py in alle abhängigen Dateien.
+"""Synchronisiert die Versionsnummer aus app_info.py in Release-Dateien.
 
-Einzige Versionsquelle: app_info.py (APP_VERSION, APP_RELEASE_DATE)
+Einzige manuelle Versionsquelle: app_info.py (APP_VERSION, APP_RELEASE_DATE)
 
-Aktualisiert:
-    - version.json                       (Update-Manifest)
-    - VERSION_INFO.txt                   (nur Kopfzeile + Datum)
-    - installer/budgetmanager_setup.iss  (#define MyAppVersion)
+Aktualisiert/prueft:
+    - version.json
+    - VERSION_INFO.txt (Kopfzeile + Datum)
+    - installer/budgetmanager_setup.iss (#define MyAppVersion)
+    - latest.json.template
+    - docs/latest.json.template
 
-Aufruf (aus dem Projekt-Root):
-    python tools/sync_version.py            # synchronisieren
-    python tools/sync_version.py --check    # nur prüfen (Exit-Code 1 bei Abweichung)
-
-Der --check Modus ist für CI gedacht (GitHub Actions), damit ein Release mit
-inkonsistenten Versionen gar nicht erst gebaut wird.
+Aufruf aus dem Projekt-Root:
+    python tools/sync_version.py
+    python tools/sync_version.py --check
 """
 from __future__ import annotations
 
@@ -26,6 +25,44 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app_info import APP_NAME, APP_VERSION, APP_RELEASE_DATE  # noqa: E402
+
+
+def _latest_template_data() -> dict:
+    tag = f"v{APP_VERSION}"
+    base = f"https://github.com/sloogy/Budgetmanager/releases/download/{tag}"
+    return {
+        "app": APP_NAME,
+        "channel": "stable",
+        "version": APP_VERSION,
+        "release_tag": tag,
+        "assets": {
+            "windows": {
+                "type": "portable-zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable.zip",
+                "sha256": "PUT_SHA256_HERE",
+            },
+            "linux": {
+                "type": "portable-zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable.zip",
+                "sha256": "PUT_SHA256_HERE",
+            },
+            "portable_zip": {
+                "type": "portable-zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable.zip",
+                "sha256": "PUT_SHA256_HERE",
+            },
+            "direct_windows_exe": {
+                "type": "exe",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-windows.exe",
+                "sha256": "PUT_SHA256_HERE",
+            },
+            "direct_linux_binary": {
+                "type": "binary",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-linux",
+                "sha256": "PUT_SHA256_HERE",
+            },
+        },
+    }
 
 
 def sync_version_json(check: bool) -> bool:
@@ -53,14 +90,17 @@ def sync_version_info_txt(check: bool) -> bool:
     if not lines:
         return True
     expected_head = f"{APP_NAME} Version {APP_VERSION}\n"
-    ok = lines[0] == expected_head or lines[0].rstrip("\n") == expected_head.rstrip("\n")
-    if check or ok:
-        return ok
-    lines[0] = expected_head
-    for i, line in enumerate(lines[:8]):
-        if line.startswith("Datum:"):
-            lines[i] = f"Datum: {APP_RELEASE_DATE}\n"
-            break
+    ok = lines[0].rstrip("\n") == expected_head.rstrip("\n")
+    date_ok = any(line.strip() == f"Datum: {APP_RELEASE_DATE}" for line in lines[:10])
+    if check:
+        return ok and date_ok
+    if not ok:
+        lines[0] = expected_head
+    if not date_ok:
+        for i, line in enumerate(lines[:10]):
+            if line.startswith("Datum:"):
+                lines[i] = f"Datum: {APP_RELEASE_DATE}\n"
+                break
     p.write_text("".join(lines), encoding="utf-8")
     return True
 
@@ -82,12 +122,29 @@ def sync_installer(check: bool) -> bool:
     return True
 
 
+def sync_latest_template(rel_path: str, check: bool) -> bool:
+    p = ROOT / rel_path
+    expected = _latest_template_data()
+    try:
+        current = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    except Exception:
+        current = {}
+    ok = current == expected
+    if check or ok:
+        return ok
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(expected, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
 def main() -> int:
     check = "--check" in sys.argv
     results = {
         "version.json": sync_version_json(check),
         "VERSION_INFO.txt": sync_version_info_txt(check),
         "installer/budgetmanager_setup.iss": sync_installer(check),
+        "latest.json.template": sync_latest_template("latest.json.template", check),
+        "docs/latest.json.template": sync_latest_template("docs/latest.json.template", check),
     }
     if check:
         bad = [name for name, ok in results.items() if not ok]

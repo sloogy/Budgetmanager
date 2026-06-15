@@ -40,17 +40,16 @@ ROLE_COLLAPSED = Qt.UserRole + 5     # bool (für Baum-Zuklappen)
 ROLE_TYP = Qt.UserRole + 10         # str (bereits im alten Code genutzt)
 
 
-from utils.money import parse_money
+from utils.money import parse_money, format_short
 from views.ui_colors import ui_colors
+from views.category_delete_dialog import ask_category_delete_decision
 
 def parse_amount(text: str) -> float:
     return parse_money(text)
 
 
 def fmt_amount(val: float) -> str:
-    if abs(val) < 1e-9:
-        return "0.00"
-    return f"{val:.2f}"
+    return format_short(float(val or 0.0))
 
 
 def _parse_cell_amount(text: str) -> float:
@@ -105,6 +104,8 @@ class BudgetTab(QWidget):
     quick_add_requested = Signal()
     # Signal: Budget-Daten wurden gespeichert (autosave oder manuell)
     budget_data_changed = Signal()
+    # Signal: Kontextueller Einstieg in Sparziele (Budget gehört zum Plan)
+    savings_goals_requested = Signal()
 
     def __init__(self, conn: sqlite3.Connection):
         super().__init__()
@@ -150,6 +151,12 @@ class BudgetTab(QWidget):
         # Schnelleingabe-Button
         self.btn_quick_add = QPushButton(tr("budget.btn.quick_add"))
         self.btn_quick_add.setToolTip(tr("budget.tip.quick_add"))
+
+        # Sparziele sind Budget-Planung + spätere Buchungslogik.
+        # Darum gibt es hier einen kleinen Einstieg, ohne den Budget-Tab zu überladen.
+        self.btn_savings_goals = QPushButton(tr("budget.btn.savings_goals"))
+        self.btn_savings_goals.setIcon(get_icon("🎯"))
+        self.btn_savings_goals.setToolTip(tr("budget.tip.savings_goals"))
 
         self.btn_remove_budgetrow = QPushButton(tr("budget.btn.remove_row"))
         self.btn_remove_category = QPushButton(tr("budget.btn.delete_category_global"))
@@ -219,6 +226,7 @@ class BudgetTab(QWidget):
         top.addWidget(self.chk_autosave)
         top.addStretch(1)
         top.addWidget(self.btn_quick_add)  # Schnelleingabe
+        top.addWidget(self.btn_savings_goals)  # Sparziele im Budget-Kontext
         top.addWidget(self.btn_entry)  # Budget erfassen
         top.addWidget(self.btn_edit)   # Budget bearbeiten
         top.addWidget(self.btn_remove_category)  # Kategorie löschen
@@ -251,6 +259,7 @@ class BudgetTab(QWidget):
         self.btn_remove_budgetrow.clicked.connect(self.remove_budget_row)
         self.btn_remove_category.clicked.connect(self.delete_category_global)
         self.btn_quick_add.clicked.connect(self.quick_add_requested.emit)
+        self.btn_savings_goals.clicked.connect(self.savings_goals_requested.emit)
 
         self.load()
 
@@ -295,21 +304,39 @@ class BudgetTab(QWidget):
         return None
 
     def _handle_budget_category_drop(self, source_row: int, target_row: int) -> bool:
-        """Verschiebt eine Kategorie aus der Budgetübersicht per Drag & Drop."""
+        """Verschiebt eine Kategorie aus der Budgetübersicht per Drag & Drop.
+
+        Ziel-Logik:
+        - Drop auf Kategorie: wird Unterkategorie dieser Kategorie.
+        - Drop auf Typ-Header: wird Hauptkategorie dieses Typs.
+        - Drop in freie Tabellenfläche / unter die letzte Zeile: wird wieder
+          Hauptkategorie im eigenen Typ. Das schliesst die Lücke "aus Parent
+          rausziehen" besonders im Einzeltab ohne sichtbaren Typ-Header.
+        """
         if not getattr(self, "_category_drag_enabled", False):
             return False
-        if source_row < 0 or target_row < 0 or source_row == target_row:
+        if source_row < 0 or source_row >= self.table.rowCount():
+            return False
+        if source_row == target_row:
             return False
         if self._is_total_row(source_row) or self._is_footer_row(source_row) or self._is_header_row(source_row):
-            return False
-        if self._is_footer_row(target_row) or self._is_total_row(target_row):
             return False
 
         source = self._category_obj_from_row(source_row)
         if source is None:
             return False
 
-        if self._is_header_row(target_row):
+        # Kein konkretes Ziel getroffen: Kategorie auf oberste Ebene heben.
+        # QTableWidget liefert target_row=-1, wenn unterhalb/zwischen leere Bereiche
+        # gedroppt wird. Das ist für Anwender der naheliegendste Weg aus einem
+        # Parent heraus.
+        if target_row < 0 or target_row >= self.table.rowCount():
+            target_typ = source.typ
+            new_parent_id = None
+            target_label = display_typ(source.typ)
+        elif self._is_footer_row(target_row) or self._is_total_row(target_row):
+            return False
+        elif self._is_header_row(target_row):
             target_typ = self._row_typ(target_row)
             new_parent_id = None
             target_label = display_typ(target_typ)
@@ -346,9 +373,11 @@ class BudgetTab(QWidget):
         self.load()
         self._focus_category_month(source.name, 1, typ=source.typ)
         try:
-            self.window().statusBar().showMessage(
-                trf("categories.moved_count", count=1, target=target_label), 2500
-            )
+            if new_parent_id is None:
+                msg = trf("categories.moved_to_root", name=source.name)
+            else:
+                msg = trf("categories.moved_count", count=1, target=target_label)
+            self.window().statusBar().showMessage(msg, 2500)
         except Exception:
             pass
         self.budget_data_changed.emit()
@@ -877,7 +906,7 @@ class BudgetTab(QWidget):
                         it.setData(ROLE_TYP, t)
                         if has_children:
                             ch_names = direct_children_by_name.get(name, [])
-                            lines = [f"{tr('budget.tooltip.puffer')}:  {max(0.0, own_val):.2f}", _SEP]
+                            lines = [f"{tr('budget.tooltip.puffer')}:  {fmt_amount(max(0.0, own_val))}", _SEP]
                             for ch in ch_names:
                                 ch_v = float(totals_by_name.get(ch, {}).get(m, 0.0))
                                 lines.append(f"  {tr_category_name(ch)}:  {fmt_amount(ch_v)}")
@@ -898,7 +927,7 @@ class BudgetTab(QWidget):
                     if has_children:
                         ch_names = direct_children_by_name.get(name, [])
                         _puffer_year = max(0.0, row_buf_total)
-                        tot_lines = [f"{tr('budget.tooltip.puffer')}:  {_puffer_year:.2f}", _SEP]
+                        tot_lines = [f"{tr('budget.tooltip.puffer')}:  {fmt_amount(_puffer_year)}", _SEP]
                         for ch in ch_names:
                             ch_year = sum(float(totals_by_name.get(ch, {}).get(mm, 0.0)) for mm in range(1, 13))
                             tot_lines.append(f"  {tr_category_name(ch)}:  {fmt_amount(ch_year)}")
@@ -978,7 +1007,7 @@ class BudgetTab(QWidget):
         children_sum = sum(v for _, v in children)
         total_val = puffer_val + children_sum
         sep = "─" * 28
-        lines = [f"{tr('budget.tooltip.puffer')}:  {puffer_val:.2f}", sep]
+        lines = [f"{tr('budget.tooltip.puffer')}:  {fmt_amount(puffer_val)}", sep]
         for ch_name, ch_val in children:
             lines.append(f"  {ch_name}:  {fmt_amount(ch_val)}")
         lines += [sep, f"{tr('budget.tooltip.children_sum')}:  {fmt_amount(children_sum)}"]
@@ -1668,19 +1697,40 @@ class BudgetTab(QWidget):
         self.load()
 
     def delete_category_global(self):
+        """Kategorie global sicher löschen.
+
+        Der alte Code löschte zuerst Budget-Zeilen und danach die Kategorie mit
+        einer Default-Logik. Dadurch wurden die neuen Optionen (umhängen / alle
+        Daten löschen / bis letztes Buchungsdatum) umgangen. Deshalb läuft auch
+        dieser Button nun über den zentralen Kategorie-Löschdialog und
+        CategoryModel.delete_category_safely().
+        """
         sel = self._selected_category()
         if not sel:
             QMessageBox.information(self, tr("msg.info"), tr("budget.msg.select_category_row"))
             return
         typ, cat = sel
 
-        msg = tr("budget.msg.delete_global_warn_1") + trf("budget.msg.delete_global_warn_2", cat=cat, typ=display_typ(typ))
-
-        if QMessageBox.question(self, tr("budget.title.delete_category"), msg) != QMessageBox.Yes:
+        cat_obj = next((c for c in self.cats.list(typ) if c.name == cat), None)
+        if cat_obj is None:
+            QMessageBox.warning(self, tr("msg.warning"), tr("budget.msg.category_missing"))
             return
 
-        self.budget.delete_category_all_years(typ, cat)
-        self.cats.delete(typ, cat)
+        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=[cat_obj.id])
+        if decision is None:
+            return
+
+        try:
+            self.cats.delete_category_safely(
+                cat_obj.id,
+                data_action=decision.action,
+                reassign_to_id=decision.reassign_to_id,
+                promote_children=True,
+            )
+        except Exception as e:
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.delete_failed", e=e))
+            return
+
         self.load()
 
     def copy_year_dialog(self):
@@ -1754,10 +1804,14 @@ class BudgetTab(QWidget):
             act_toggle_rec = menu.addAction(rec_text)
             
             act_set_day = menu.addAction(trf("budget.ctx.set_due_day", day=cat_obj.recurring_day))
+            act_make_root = None
+            if cat_obj.parent_id is not None:
+                act_make_root = menu.addAction(tr("categories.make_root"))
         else:
             act_toggle_fix = None
             act_toggle_rec = None
             act_set_day = None
+            act_make_root = None
         
         menu.addSeparator()
         
@@ -1813,6 +1867,8 @@ class BudgetTab(QWidget):
             self._toggle_category_recurring(cat_obj)
         elif action == act_set_day and cat_obj:
             self._set_category_day(cat_obj)
+        elif action == act_make_root and cat_obj:
+            self._make_category_root(cat_obj)
         elif action == act_new:
             self._create_new_category(typ)
         elif action == act_new_sub:
@@ -1826,6 +1882,28 @@ class BudgetTab(QWidget):
         elif action == act_copy_row:
             self._copy_row_to_all_months(row)
     
+    def _make_category_root(self, cat_obj: Category) -> None:
+        """Hebt eine Unterkategorie in der Budgetübersicht auf die oberste Ebene."""
+        try:
+            if cat_obj.parent_id is None:
+                return
+            ok, reason = self.cats.can_reparent(int(cat_obj.id), None)
+            if not ok:
+                QMessageBox.warning(self, tr("catmgr.move_not_possible"), tr(reason))
+                return
+            self.cats.update_parent(int(cat_obj.id), None)
+            self.load()
+            self._focus_category_month(cat_obj.name, 1, typ=cat_obj.typ)
+            try:
+                self.window().statusBar().showMessage(
+                    trf("categories.moved_to_root", name=cat_obj.name), 2500
+                )
+            except Exception:
+                pass
+            self.budget_data_changed.emit()
+        except Exception as e:
+            QMessageBox.critical(self, tr("msg.error"), trf("categories.move_failed", e=e))
+
     def _edit_category_properties(self, cat_name: str, typ: str) -> None:
         """Öffnet den Eigenschaften-Dialog für eine Kategorie."""
         dlg = CategoryPropertiesDialog(
@@ -1993,20 +2071,19 @@ class BudgetTab(QWidget):
                 if parent and parent.name == cat:
                     children.append(c.name)
         
-        msg = trf("budget.msg.delete_category_confirm", category=cat) + "\n\n"
-        msg += tr("budget.msg.delete_category_warning")
-        
-        if children:
-            msg += "\n\n" + tr("budget.msg.delete_category_also_sub") + "\n"
-            msg += "\n".join(f"  • {n}" for n in children[:10])
-            if len(children) > 10:
-                msg += f"\n  ... und {len(children) - 10} weitere"
-        
-        if QMessageBox.question(self, tr("budget.title.delete_category"), msg) != QMessageBox.Yes:
+        if not cat_obj:
             return
-        
-        self.budget.delete_category_all_years(typ, cat)
-        self.cats.delete(typ, cat)
+
+        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=[cat_obj.id])
+        if decision is None:
+            return
+
+        self.cats.delete_category_safely(
+            cat_obj.id,
+            data_action=decision.action,
+            reassign_to_id=decision.reassign_to_id,
+            promote_children=True,
+        )
         self.load()
     
     def _copy_row_to_all_months(self, row: int) -> None:
@@ -2039,7 +2116,7 @@ class BudgetTab(QWidget):
         self.load()
         QMessageBox.information(
             self, "OK",
-            trf("budget.msg.copied_to_all_months", value=f"{first_val:.2f}")
+            trf("budget.msg.copied_to_all_months", value=fmt_amount(first_val))
         )
     
     def _add_favorite(self, typ: str, category: str) -> None:

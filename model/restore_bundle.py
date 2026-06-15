@@ -32,6 +32,7 @@ class BundleManifest:
     db_file: str
     encryption: str  # "enc" | "db"
     sha256: str
+    source_db_name: str = ""  # Originaldateiname, z.B. christian.enc
     note: str = ""
     has_settings: bool = False  # True wenn settings.json im Bundle
     has_users: bool = False     # True wenn users.json im Bundle
@@ -92,6 +93,7 @@ def create_bundle(*,
         db_file=db_file,
         encryption=enc,
         sha256=sha,
+        source_db_name=source_db.name,
         note=note or "",
         has_settings=has_settings,
         has_users=has_users,

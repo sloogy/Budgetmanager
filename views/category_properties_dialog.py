@@ -24,6 +24,7 @@ from utils.icons import get_icon
 
 import logging
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from views.category_delete_dialog import ask_category_delete_decision
 logger = logging.getLogger(__name__)
 
 class CategoryPropertiesDialog(QDialog):
@@ -67,10 +68,10 @@ class CategoryPropertiesDialog(QDialog):
         form = QFormLayout(basic_group)
         
         self.name_edit = QLineEdit()
-        form.addRow("Name:", self.name_edit)
+        form.addRow(tr("lbl.name"), self.name_edit)
         
         self.typ_label = QLabel(trf('auto.views_category_properties_dialog.72_b_value_0_b_dba5f175', value_0=(self.typ)))
-        form.addRow("Typ:", self.typ_label)
+        form.addRow(tr("header.type"), self.typ_label)
         
         # Parent-Kategorie
         self.parent_combo = QComboBox()
@@ -79,7 +80,7 @@ class CategoryPropertiesDialog(QDialog):
             if cat.id != self.category.id:  # Sich selbst nicht als Parent erlauben
                 indent = "  " if cat.parent_id else ""
                 self.parent_combo.addItem(f"{indent}{cat.name}", cat.id)
-        form.addRow("Parent:", self.parent_combo)
+        form.addRow(tr("lbl.parent_category"), self.parent_combo)
         
         layout.addWidget(basic_group)
         
@@ -88,15 +89,11 @@ class CategoryPropertiesDialog(QDialog):
         flags_layout = QGridLayout(flags_group)
         
         self.chk_fix = QCheckBox(tr("tracking.title.fixcosts"))
-        self.chk_fix.setToolTip(
-            tr('auto.views_category_properties_dialog.92_markiert_diese_kategorie_als_fixkos_36056c84')
-        )
+        self.chk_fix.setToolTip(tr("help.tip.fixcost"))
         flags_layout.addWidget(self.chk_fix, 0, 0)
         
         self.chk_recurring = QCheckBox(tr("lbl.recurring"))
-        self.chk_recurring.setToolTip(
-            tr('auto.views_category_properties_dialog.99_markiert_diese_kategorie_als_wieder_6c7786cd')
-        )
+        self.chk_recurring.setToolTip(tr("help.tip.recurring"))
         flags_layout.addWidget(self.chk_recurring, 0, 1)
         
         # Tag im Monat
@@ -217,36 +214,20 @@ class CategoryPropertiesDialog(QDialog):
             QMessageBox.critical(self, tr("msg.error"), trf('auto.views_category_properties_dialog.220_speichern_fehlgeschlagen_value_0_3a729058', value_0=(e)))
     
     def _delete(self) -> None:
-        # Prüfen ob Unterkategorien vorhanden
-        all_cats = self.cat_model.list(self.typ)
-        children = [c for c in all_cats if c.parent_id == self.category.id]
-        
-        msg = f"Kategorie '{self.category.name}' wirklich löschen?"
-        if children:
-            child_names = ", ".join(c.name for c in children[:5])
-            if len(children) > 5:
-                child_names += f" und {len(children) - 5} weitere"
-            msg += f"\n\n⚠️ WARNUNG: {len(children)} Unterkategorie(n) werden ebenfalls gelöscht:\n{child_names}"
-        
-        if QMessageBox.question(self, tr("btn.loeschen_bestaetigen"), msg) != QMessageBox.Yes:
+        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=[self.category.id])
+        if decision is None:
             return
-        
+
         try:
-            # IDs zum Löschen sammeln (inkl. Kinder)
-            ids_to_delete = [self.category.id]
-            
-            def collect_children(parent_id: int):
-                for c in all_cats:
-                    if c.parent_id == parent_id:
-                        ids_to_delete.append(c.id)
-                        collect_children(c.id)
-            
-            collect_children(self.category.id)
-            
-            self.cat_model.delete_by_ids(ids_to_delete)
+            self.cat_model.delete_category_safely(
+                self.category.id,
+                data_action=decision.action,
+                reassign_to_id=decision.reassign_to_id,
+                promote_children=True,
+            )
             self.category_updated.emit()
             self.accept()
-            
+
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf('auto.views_category_properties_dialog.254_loeschen_fehlgeschlagen_value_0_833e313c', value_0=(e)))
 
@@ -296,12 +277,12 @@ class BulkCategoryEditDialog(QDialog):
         # Fixkosten
         self.fix_combo = QComboBox()
         self.fix_combo.addItems([tr("dlg.nicht_aendern"), tr('categories.activate'), tr('categories.deactivate')])
-        form.addRow("Fixkosten:", self.fix_combo)
+        form.addRow(tr("tracking.title.fixcosts"), self.fix_combo)
         
         # Wiederkehrend
         self.rec_combo = QComboBox()
         self.rec_combo.addItems([tr("dlg.nicht_aendern"), tr('categories.activate'), tr('categories.deactivate')])
-        form.addRow("Wiederkehrend:", self.rec_combo)
+        form.addRow(tr("lbl.recurring"), self.rec_combo)
         
         # Tag
         day_layout = QHBoxLayout()
@@ -423,7 +404,7 @@ class QuickCategoryDialog(QDialog):
         # Name
         self.name_edit = QLineEdit(default_name)
         self.name_edit.setPlaceholderText(tr('auto.views_category_properties_dialog.429_z_b_versicherung_streaming_6d95c073'))
-        form.addRow("Name:", self.name_edit)
+        form.addRow(tr("lbl.name"), self.name_edit)
         
         # Typ
         from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
@@ -437,11 +418,11 @@ class QuickCategoryDialog(QDialog):
             _idx = self.typ_combo.findText(default_typ)
         if _idx >= 0:
             self.typ_combo.setCurrentIndex(_idx)
-        form.addRow("Typ:", self.typ_combo)
+        form.addRow(tr("header.type"), self.typ_combo)
         
         # Parent (dynamisch basierend auf Typ)
         self.parent_combo = QComboBox()
-        form.addRow("Parent:", self.parent_combo)
+        form.addRow(tr("lbl.parent_category"), self.parent_combo)
         
         layout.addLayout(form)
         
@@ -453,7 +434,9 @@ class QuickCategoryDialog(QDialog):
         # Quick-Flags
         flags_layout = QHBoxLayout()
         self.chk_fix = QCheckBox(tr("tracking.title.fixcosts"))
+        self.chk_fix.setToolTip(tr("help.tip.fixcost"))
         self.chk_recurring = QCheckBox(tr("lbl.recurring"))
+        self.chk_recurring.setToolTip(tr("help.tip.recurring"))
         flags_layout.addWidget(self.chk_fix)
         flags_layout.addWidget(self.chk_recurring)
         flags_layout.addStretch()

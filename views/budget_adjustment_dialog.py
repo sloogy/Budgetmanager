@@ -521,9 +521,12 @@ class BudgetAdjustmentDialog(QDialog):
             html += "<li>🟡 <strong>Hinweis:</strong> Gelegentliche Überschreitungen sind normal. "
             html += tr("dlg.dlg_structural_changes") + "</li>"
         
-        # Spezifische Tipps basierend auf Kategorien
-        max_exceedance = max(exceedances, key=lambda x: x.percent_used)
-        if max_exceedance.percent_used >= 150:
+        # Spezifische Tipps basierend auf aktuellen Überschreitungen.
+        # Regression v2.0.8: Der Dialog kann reine Verlaufsvorschläge enthalten,
+        # ohne dass im aktuellen Monat eine echte Überschreitung vorliegt.
+        # Dann ist ``exceedances`` leer und max([]) darf nicht crashen.
+        max_exceedance = max(exceeded_cats, key=lambda x: x.percent_used) if exceeded_cats else None
+        if max_exceedance is not None and max_exceedance.percent_used >= 150:
             html += f"<li>💰 Die Kategorie <strong>{max_exceedance.category}</strong> wurde um "
             html += f"{max_exceedance.percent_used:.0f}% überschritten. "
             html += "Überprüfen Sie, ob hier unerwartete Ausgaben aufgetreten sind.</li>"

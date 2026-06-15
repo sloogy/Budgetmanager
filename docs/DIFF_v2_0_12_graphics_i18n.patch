@@ -1,0 +1,1014 @@
+diff -ruN bm_analysis_2012_orig/BudgetManager_Source_2_0_12/locales/de.json bm_analysis_2012/BudgetManager_Source_2_0_12/locales/de.json
+--- bm_analysis_2012_orig/BudgetManager_Source_2_0_12/locales/de.json	2026-06-15 00:07:11.000000000 +0000
++++ bm_analysis_2012/BudgetManager_Source_2_0_12/locales/de.json	2026-06-15 02:17:03.525114325 +0000
+@@ -2104,6 +2104,11 @@
+     "kind_real_fixed_short": "Fix + Wied.",
+     "kind_variable_fixed_short": "Fix variabel",
+     "kind_variable_recurring_short": "Wied. variabel",
+-    "btn_real_fixed_only": "Nur echte Fixkosten"
++    "btn_real_fixed_only": "Nur echte Fixkosten",
++    "status": {
++      "days": "{days} Tage",
++      "today": "Heute",
++      "in_days": "in {days} T."
++    }
+   }
+-}
+\ No newline at end of file
++}
+diff -ruN bm_analysis_2012_orig/BudgetManager_Source_2_0_12/locales/en.json bm_analysis_2012/BudgetManager_Source_2_0_12/locales/en.json
+--- bm_analysis_2012_orig/BudgetManager_Source_2_0_12/locales/en.json	2026-06-15 00:07:11.000000000 +0000
++++ bm_analysis_2012/BudgetManager_Source_2_0_12/locales/en.json	2026-06-15 02:17:03.528889320 +0000
+@@ -454,8 +454,8 @@
+     "wurde_importiert": " was imported!",
+     "die_anwendung_muss_danach": "(The application must be restarted afterwards.)",
+     "die_tagzuweisungen_werden_entfernt": "(The tag assignments are removed; the transactions are kept.)",
+-    "keine_profile_vorhanden": "(Keine Profile vorhanden)",
+-    "keine_passenden_profile": "(Keine passenden Profile)",
++    "keine_profile_vorhanden": "(No profiles available)",
++    "keine_passenden_profile": "(No matching profiles)",
+     "tipp_eigene_themes_koennen": "(Tip: Custom themes can be deleted.)",
+     "und_lenselected_10_weitere": "... and {count} more",
+     "b_existiert_noch_nicht": "</b> does not exist yet.",
+@@ -503,7 +503,7 @@
+     "kategorie_nicht_gefunden": "Category not found",
+     "keine_auswahl": "No selection",
+     "keine_kategorie": "No category",
+-    "keine_statistiken": "Keine Statistiken",
++    "keine_statistiken": "No statistics",
+     "letzten_geoeffneten_reiter_merken": "Remember last opened tab",
+     "loeschvorgaenge_bestaetigen_lassen": "Confirm deletion operations",
+     "mehrere_tags_zu_einem": "Merge multiple tags into one",
+@@ -544,7 +544,7 @@
+     "uebergeordnet": "Parent:",
+     "uebernehmen": "Apply",
+     "ueberschussdefizitvorschlag_ab": "Surplus/deficit suggestion from",
+-    "keine_hauptkategorie": "— Keine (Hauptkategorie) —",
++    "keine_hauptkategorie": "— None (main category) —",
+     "nicht_aendern": "— Do not change —",
+     "zuruecksetzen_1": "↺ Reset",
+     "datenbank_zuruecksetzen_1": "⚠️ Reset database",
+@@ -1200,7 +1200,7 @@
+     "bitte_zuerst_kategorien_auswaehlen_1": "Please select categories first.",
+     "bitte_zuerst_eine_kategorie": "Please select a category first.",
+     "erhoehungen": "Increases:",
+-    "keine_flags": "Keine Flags",
++    "keine_flags": "No flags",
+     "keine_offenen_betraege": "No open amounts",
+     "name_der_unterkategorie_typ": "Name of the subcategory ({typ}):",
+     "name_der_neuen_kategorie": "Name of the new category ({typ}):",
+@@ -1231,7 +1231,7 @@
+     "geloescht": "Deleted",
+     "hier_kannst_du_deinen": "Here you can change your display name.",
+     "kein_restorekey_verfuegbar": "No restore key available.",
+-    "keine_benutzer_vorhanden": "Keine Benutzer vorhanden.",
++    "keine_benutzer_vorhanden": "No users available.",
+     "kopieren_nicht_moeglich": "Copying not possible.",
+     "maximaler_schutz_mit_passwort": "Maximum protection with a password.",
+     "name_konnte_nicht_gespeichert": "The name could not be saved.",
+@@ -1601,46 +1601,46 @@
+       "411_budgetmanager_konnte_nicht_gestarte_8ae862ce": "Budgetmanager could not be started:\n\n{value_0}\n\nSee budgetmanager.log for details."
+     },
+     "settings_dialog": {
+-      "146_start_bedienung_809e5573": "Start & Bedienung",
+-      "182_eingabe_workflow_c2c724ba": "Eingabe & Workflow",
++      "146_start_bedienung_809e5573": "Start & Operation",
++      "182_eingabe_workflow_c2c724ba": "Input & Workflow",
+       "212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5": "Preferred day for new recurring categories/transactions.\nSet automatically when you mark a category as recurring.\nEnd of month = last day of the month.",
+       "226_mindestanzahl_aufeinanderfolgender__c912895e": "Minimum number of consecutive months with the same trend\nbefore an adjustment suggestion is shown.",
+       "237_ab_welchem_monat_soll_der_uebertrag_6ec46422": "From which month should the carry-over be accumulated?\nExample: From March → Jan/Feb have no carry-over,\naccumulation starts only in March.",
+       "246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac": "From which year should the carry-over be accumulated?\nThe carry-over is carried across years.\nExample: Start year 2025, start month March →\naccumulation begins in March 2025 and continues\nacross all following years.",
+-      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Separaten Kategorien-Tab anzeigen",
++      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Show separate categories tab",
+       "262_aktiviert_den_separaten_kategorien__7db32e53": "Enables the separate Categories tab for advanced category management.\n\nDefault: Disabled – categories are created and managed directly in the budget dialog.\nThe separate tab is useful for bulk editing, filters and advanced options.\n\nChanging this requires a restart of the application.",
+       "270_small_i_hinweis_kategorien_koennen__5859fbbe": "<small><i>Note: Categories can also be created and edited directly in the budget dialog via the ⚙ menu.</i></small>",
+-      "310_tabellen_listen_d0cf90f1": "Tabellen & Listen",
++      "310_tabellen_listen_d0cf90f1": "Tables & Lists",
+       "328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c": "<i>Click a shortcut and press the desired key combination. Empty fields disable the shortcut.</i>",
+       "485_budgetmanager_11c4305b": "Budgetmanager",
+-      "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "SQLite Datenbank (*.db *.sqlite *.sqlite3);;Alle Dateien (*)",
+-      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Backup erfolgreich erstellt:\n{value_0}\n\nOrt: {value_1}"
++      "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "SQLite database (*.db *.sqlite *.sqlite3);;All files (*)",
++      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Backup created successfully:\n{value_0}\n\nLocation: {value_1}"
+     },
+     "views_budget_entry_dialog_extended": {
+       "82_kategorie_details_6ef68b34": "Category details",
+       "90_b_value_0_b_ee6c93f4": "<b>{value_0}</b>",
+       "95_hauptkategorie_kein_parent_883e571a": "— Main category (no parent) —",
+-      "110_eigenschaften_902ad0b9": "Eigenschaften",
++      "110_eigenschaften_902ad0b9": "Properties",
+       "140_kategorie_erstellen_d45dd95d": "Create category",
+       "164_eine_kategorie_mit_dem_namen_value__2fba299b": "A category named '{value_0}' already exists.",
+       "184_konnte_kategorie_nicht_erstellen_va_dce4d9f6": "Could not create category:\n{value_0}",
+       "220_kategorie_optionen_e050bea2": "Category options",
+-      "225_neue_unterkategorie_e01e0b00": "Neue Unterkategorie…",
++      "225_neue_unterkategorie_e01e0b00": "New subcategory…",
+       "314_name_der_neuen_kategorie_value_0_399f599a": "Name of the new category ({value_0}):",
+       "333_konnte_kategorie_nicht_erstellen_va_12bb8446": "Could not create category:\n{value_0}",
+       "358_parent_kategorie_23016e6b": "Parent category",
+       "375_name_der_neuen_unterkategorie_unter_655e15ec": "Name of the new subcategory under '{value_0}':",
+       "394_konnte_unterkategorie_nicht_erstell_10c56189": "Could not create subcategory:\n{value_0}",
+-      "404_umbenennen_6ad211f7": "Umbenennen",
++      "404_umbenennen_6ad211f7": "Rename",
+       "405_neuer_name_fuer_value_0_ac7dc2c9": "New name for '{value_0}':",
+       "425_kategorie_umbenannt_value_0_value_1_ac33fb77": "Category renamed: '{value_0}' → '{value_1}'\nAll budget and tracking entries were updated.",
+-      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Umbenennen fehlgeschlagen:\n{value_0}",
++      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Rename failed:\n{value_0}",
+       "506_tag_im_monat_fuer_value_0_1_31_1fcfbede": "Day of month for '{value_0}' (1-31):",
+       "516_faelligkeitstag_fuer_value_0_auf_va_02c90616": "Due day for '{value_0}' set to the {value_1}.\n(Recurring was enabled automatically)",
+       "616_z_b_1200_00_ad178edd": "z.B. 1200.00",
+-      "620_monat_88dd17e2": "Monat",
++      "620_monat_88dd17e2": "Month",
+       "620_bereich_8b22d123": "Bereich",
+-      "715_fehlt_2f708b3e": "Fehlt"
++      "715_fehlt_2f708b3e": "Missing"
+     },
+     "views_language_select_dialog": {
+       "22_language_sprache_langue_cec30925": "Language / Sprache / Langue",
+@@ -1648,9 +1648,9 @@
+       "57_ok_6128635b": "✓  OK"
+     },
+     "views_database_management_dialog": {
+-      "54_datenbank_verwaltung_de01b445": "🗄️ Datenbank-Verwaltung",
++      "54_datenbank_verwaltung_de01b445": "🗄️ Database Management",
+       "83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4": "Removes orphaned entries, invalid data and optimises the database.\nThis operation is safe and does not delete important data.",
+-      "89_datenbank_bereinigen_031c950d": "🧹 Datenbank bereinigen",
++      "89_datenbank_bereinigen_031c950d": "🧹 Clean database",
+       "101_b_achtung_b_diese_aktion_loescht_da_28422052": "<b>CAUTION:</b> This action deletes data!\nA backup is created automatically.",
+       "118_budget_kategorien_zuruecksetzen_buc_e2fafa90": "Reset budget & categories (keep transactions)",
+       "207_value_0_details_value_1_c4c562a1": "{value_0}\n\nDetails:\n{value_1}"
+@@ -1667,43 +1667,43 @@
+       "54_zu_exportierende_daten_263da15e": "Data to export",
+       "57_tracking_daten_transaktionen_e754548e": "📊 Tracking data (transactions)",
+       "61_budget_daten_d0bbdcff": "💰 Budget data",
+-      "72_zeitraum_91c1e2b4": "Zeitraum",
++      "72_zeitraum_91c1e2b4": "Period",
+       "94_optionen_21208517": "Optionen",
+-      "111_exportieren_f9fcfb6d": "Exportieren...",
+-      "146_export_speichern_unter_7108d72d": "Export speichern unter",
++      "111_exportieren_f9fcfb6d": "Export...",
++      "146_export_speichern_unter_7108d72d": "Save export as",
+       "147_value_0_value_1_3c09bb8d": "{value_0}.{value_1}"
+     },
+     "views_account_management_dialog": {
+       "58_value_0_ce49c534": "👤 {value_0}",
+-      "78_profil_a112e8f0": "Profil",
+-      "80_passwort_pin_2e7b87ff": "Passwort / PIN",
+-      "123_namen_speichern_3c32107f": "Namen speichern",
++      "78_profil_a112e8f0": "Profile",
++      "80_passwort_pin_2e7b87ff": "Password / PIN",
++      "123_namen_speichern_3c32107f": "Save name",
+       "145_info_80dc0679": "Info",
+       "151_value_0_3a8da07a": "👤 {value_0}",
+-      "153_gespeichert_1672f513": "Gespeichert",
++      "153_gespeichert_1672f513": "Saved",
+       "172_dein_konto_hat_aktuell_b_keinen_pas_1282d8ba": "⚡ Your account currently has <b>no password protection</b>.\n\nTo set a password or PIN, first change\nthe security level in the «🔒 Security level» tab.\n\n<b>Important:</b> Even without a password there is a <b>restore key</b>. You can use it to reopen an encrypted backup.",
+       "186_b_nur_an_einem_sicheren_ort_speiche_b5321905": "⚠️ <b>Store only in a safe place.</b>\nLosing the PIN or restore key = the database can no longer be decrypted.",
+-      "237_aktuelles_value_0_eingeben_53722645": "Aktuelles {value_0} eingeben",
++      "237_aktuelles_value_0_eingeben_53722645": "Enter current {value_0}",
+       "257_value_0_wiederholen_679c9574": "{value_0} wiederholen",
+       "360_wechsle_die_sicherheitsstufe_deines_f6de7988": "Change the security level of your account.\nThe database is preserved.",
+-      "378_neue_sicherheitsstufe_3f613920": "Neue Sicherheitsstufe",
++      "378_neue_sicherheitsstufe_3f613920": "New security level",
+       "385_schneller_zugriff_ohne_eingabe_schu_5c56399c": "Quick access without input.\nProtects against mistakes — not against losing the USB drive.",
+-      "415_aktuelles_passwort_38b1f100": "Aktuelles Passwort:",
+-      "427_neues_passwort_d5fba2a0": "Neues Passwort:",
++      "415_aktuelles_passwort_38b1f100": "Current password:",
++      "427_neues_passwort_d5fba2a0": "New password:",
+       "513_quick_modus_entfernt_den_passwortsc_84601067": "⚠️ Quick mode removes the password protection!\nAnyone with access to your files can open the data.",
+       "525_value_0_oder_restore_key_verlieren__81330d27": "⚠️ Losing the {value_0} or restore key = the database is lost forever!",
+-      "538_aktuelle_stufe_5d6746d9": "(Aktuelle Stufe)",
+-      "542_wechseln_zu_value_0_c4af1f8b": "Wechseln zu: {value_0}",
++      "538_aktuelle_stufe_5d6746d9": "(Current level)",
++      "542_wechseln_zu_value_0_c4af1f8b": "Switch to: {value_0}",
+       "558_info_c90436c3": "Info",
+-      "606_schutz_entfernen_0233ca15": "Schutz entfernen",
++      "606_schutz_entfernen_0233ca15": "Remove protection",
+       "634_value_0_value_1_erstellt_value_2_08181f59": "{value_0} {value_1}  •  Erstellt: {value_2}",
+       "653_sicherheitsstufe_geaendert_zu_value_de978174": "Security level changed to «{value_0}».",
+       "692_b_wichtig_b_dein_restore_key_hat_si_aa706b0f": "⚠️ <b>IMPORTANT:</b> Your restore key has changed!<br>Note this key down safely — it is your emergency access.<br>Without this key and without password/PIN, your data is <b>lost</b>!",
+-      "705_dein_neuer_restore_key_0417e1e7": "Dein neuer Restore-Key:",
+-      "720_in_zwischenablage_kopieren_a988f8aa": "In Zwischenablage kopieren",
++      "705_dein_neuer_restore_key_0417e1e7": "Your new restore key:",
++      "720_in_zwischenablage_kopieren_a988f8aa": "Copy to clipboard",
+       "736_ich_habe_den_key_notiert_9961ef11": "I have written down the key",
+-      "754_kopiert_833acc01": "Kopiert!",
+-      "757_in_zwischenablage_kopieren_a4a61e69": "In Zwischenablage kopieren"
++      "754_kopiert_833acc01": "Copied!",
++      "757_in_zwischenablage_kopieren_a4a61e69": "Copy to clipboard"
+     },
+     "views_budget_adjustment_dialog": {
+       "366_value_0_e619e83b": "{value_0}%",
+@@ -1722,18 +1722,18 @@
+     },
+     "views_tracker_dialog": {
+       "54_z_b_12_50_7eb13fc1": "z.B. 12.50",
+-      "162_fehlt_fb898654": "Fehlt",
+-      "165_fehlt_a7f19cb1": "Fehlt"
++      "162_fehlt_fb898654": "Missing",
++      "165_fehlt_a7f19cb1": "Missing"
+     },
+     "views_budget_entry_dialog": {
+       "102_z_b_1200_00_d7c96b70": "z.B. 1200.00",
+-      "105_monat_069d7526": "Monat",
++      "105_monat_069d7526": "Month",
+       "105_bereich_1f8db464": "Bereich",
+       "120_neue_kategorie_erstellen_2cbb61c0": "Create new category",
+       "145_diese_kategorie_ist_eine_monatlich__584b29cb": "This category is a fixed monthly expense",
+       "290_value_0_b601d60d": "  ↳ {value_0}",
+       "324_die_kategorie_value_0_existiert_noc_66c8701f": "💡 The category \"{value_0}\" does not exist yet.\nEnable this option to create it directly.",
+-      "376_fehlt_e088971c": "Fehlt"
++      "376_fehlt_e088971c": "Missing"
+     },
+     "views_main_window": {
+       "100_update_81ab2a4e": "Update",
+@@ -1742,14 +1742,14 @@
+       "682_datenordner_6efcd047": "Datenordner",
+       "1037_undo_918f0844": "↩️ &Undo",
+       "1043_redo_2dcd731a": "↪️ &Redo",
+-      "1064_bearbeiten_4fc85ded": "&Bearbeiten...",
++      "1064_bearbeiten_4fc85ded": "&Edit...",
+       "1083_budget_erfassen_d622e1c6": "Budget &erfassen...",
+       "1089_budget_bearbeiten_45efb7d1": "Budget &bearbeiten...",
+-      "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Zeilen aus &Kategorien erzeugen",
+-      "1103_jahr_kopieren_a5365b5b": "Jahr &kopieren...",
+-      "1111_budget_zeile_entfernen_2116ca10": "Budget-&Zeile entfernen",
+-      "1125_neue_hauptkategorie_4edd9c24": "Neue &Hauptkategorie...",
+-      "1131_neue_unterkategorie_51ea953c": "Neue &Unterkategorie...",
++      "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Create rows from &categories",
++      "1103_jahr_kopieren_a5365b5b": "&Copy year...",
++      "1111_budget_zeile_entfernen_2116ca10": "Remove budget &row",
++      "1125_neue_hauptkategorie_4edd9c24": "New &main category...",
++      "1131_neue_unterkategorie_51ea953c": "New &subcategory...",
+       "1144_massenbearbeitung_aa0c33a1": "&Massenbearbeitung...",
+       "1156_fixkosten_buchen_61d1976c": "&Fixkosten buchen...",
+       "1166_daten_aktualisieren_6e5a0ee6": "&Refresh data",
+@@ -1759,57 +1759,57 @@
+       "1615_value_0_value_1_value_2_81323b29": "{value_0} {value_1} — {value_2}",
+       "1625_value_0_value_1_value_2_1999fbaa": "{value_0} — {value_1} {value_2}",
+       "1629_value_0_value_1_value_2_943d4260": "{value_0} {value_1} — {value_2}",
+-      "1788_neustart_erforderlich_288778eb": "Neustart erforderlich",
++      "1788_neustart_erforderlich_288778eb": "Restart required",
+       "1789_bitte_starten_sie_die_anwendung_neu_e67d74c9": "Please restart the application to apply the changes."
+     },
+     "views_savings_goals_dialog": {
+-      "42_bearbeiten_ba02fd7d": "Bearbeiten",
++      "42_bearbeiten_ba02fd7d": "Edit",
+       "47_sync_0d895102": "Sync",
+-      "51_abschliessen_dfbbbdb2": "Abschliessen",
++      "51_abschliessen_dfbbbdb2": "Complete",
+       "58_sparziel_freigeben_der_aktuelle_sta_cc2b88a8": "Release savings goal: The current balance is frozen.\nFrom then on, expenses can be booked against this goal.",
+       "62_sparziel_abschliessen_wird_archivie_010ae566": "Complete savings goal: It is archived and marked as done.",
+       "65_sparziel_wieder_zum_sparen_oeffnen__a747e4b3": "Reopen savings goal for saving.\nThe released status is reset.",
+-      "75_ziel_value_0_4affdb3b": "Ziel ({value_0})",
+-      "75_aktuell_value_0_30c65ab2": "Aktuell ({value_0})",
+-      "76_restbetrag_86038dcb": "Restbetrag",
+-      "77_verbraucht_f5ec0888": "Verbraucht",
++      "75_ziel_value_0_4affdb3b": "Goal ({value_0})",
++      "75_aktuell_value_0_30c65ab2": "Current ({value_0})",
++      "76_restbetrag_86038dcb": "Remaining amount",
++      "77_verbraucht_f5ec0888": "Consumed",
+       "105_lebenszyklus_b_sparend_b_b_freigege_b8234217": "💡 Lifecycle: <b>Saving</b> → <b>Released</b> (withdrawals possible) → <b>Completed</b> (archive)",
+-      "161_freigeben_a27ef668": "Freigeben…",
+-      "164_abschliessen_786dc795": "Abschliessen…",
++      "161_freigeben_a27ef668": "Release…",
++      "164_abschliessen_786dc795": "Complete…",
+       "282_value_0_f11eb723": "-{value_0}",
+       "350_sparziel_value_0_wirklich_loeschen_a0a55e23": "Really delete savings goal «{value_0}»?",
+       "378_dieses_sparziel_ist_mit_keiner_kate_b42a28db": "This savings goal is not linked to any category.",
+-      "386_synchronisiert_2f5168bf": "Synchronisiert",
++      "386_synchronisiert_2f5168bf": "Synchronized",
+       "387_sparziel_value_0_wurde_mit_tracking_3a7d4952": "Savings goal «{value_0}» has been synchronised with tracking.\n\nCategory: {value_1}\nBefore: {value_2}\nAfter: {value_3}\nDifference: {value_4}",
+-      "409_sparziel_freigeben_adf2825a": "Sparziel freigeben",
++      "409_sparziel_freigeben_adf2825a": "Release savings goal",
+       "410_sparziel_value_0_freigeben_aktuelle_7e8d5f78": "Release savings goal «{value_0}»?\n\nCurrent balance: {value_1}\nTarget: {value_2}\n\nThe current balance ({value_3}) will be frozen.\nFrom then on, negative transactions are recorded as withdrawals.\n\nContinue?",
+       "425_sparziel_value_0_wurde_freigegeben__f6d8c79d": "Savings goal «{value_0}» has been released.\n\nFrozen amount: {value_1}\nYou can now book expenses against this goal.",
+-      "444_sparziel_abschliessen_81af1e70": "Sparziel abschliessen",
++      "444_sparziel_abschliessen_81af1e70": "Complete savings goal",
+       "465_sparziel_value_0_wieder_zum_sparen__1510830d": "Reopen savings goal «{value_0}» for saving?\n\nThe released status and the frozen amount will be reset.\nContinue?",
+-      "506_keine_8218b1ac": "(Keine)",
++      "506_keine_8218b1ac": "(None)",
+       "516_value_0_value_1_e61189ab": "{value_0} / {value_1}",
+       "519_value_0_value_1_016e0b40": "{value_0} / {value_1}",
+       "560_i_small_tipp_wenn_eine_kategorie_au_ddfbcc66": "<i><small>💡 Tip: When a category is selected, progress is automatically synchronised with savings transactions of that category.</small></i>",
+-      "612_aktuell_value_0_05ac9b67": "Aktuell: {value_0}",
+-      "613_ziel_value_0_3aea07af": "Ziel: {value_0}",
+-      "614_restbetrag_value_0_711be043": "Restbetrag: {value_0}",
++      "612_aktuell_value_0_05ac9b67": "Current: {value_0}",
++      "613_ziel_value_0_3aea07af": "Goal: {value_0}",
++      "614_restbetrag_value_0_711be043": "Remaining amount: {value_0}",
+       "616_status_freigegeben_eingef_value_0_6728eed9": "Status: 🔓 Freigegeben (eingef. {value_0})"
+     },
+     "views_theme_editor_dialog": {
+-      "103_hell_66974dd7": "hell",
+-      "103_dunkel_b0351793": "dunkel",
+-      "297_neues_theme_7b9881d9": "Neues Theme",
+-      "297_theme_name_e4293a7f": "Theme-Name:",
+-      "316_theme_duplizieren_610b8173": "Theme duplizieren",
+-      "317_neuer_name_771ef819": "Neuer Name:",
++      "103_hell_66974dd7": "light",
++      "103_dunkel_b0351793": "dark",
++      "297_neues_theme_7b9881d9": "New theme",
++      "297_theme_name_e4293a7f": "Theme name:",
++      "316_theme_duplizieren_610b8173": "Duplicate theme",
++      "317_neuer_name_771ef819": "New name:",
+       "318_value_0_kopie_7305d694": "{value_0} (Kopie)",
+-      "388_theme_importieren_3afd6b46": "Theme importieren",
++      "388_theme_importieren_3afd6b46": "Import theme",
+       "388_json_json_90618946": "JSON (*.json)",
+-      "403_name_existiert_4dd02b77": "Name existiert",
+-      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Theme-Name existiert bereits. Neuer Name:",
++      "403_name_existiert_4dd02b77": "Name exists",
++      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Theme name already exists. New name:",
+       "405_value_0_import_6030fc3e": "{value_0} (Import)",
+       "418_import_fehlgeschlagen_value_0_17d04026": "Import fehlgeschlagen:\n{value_0}",
+-      "426_theme_exportieren_30cdc637": "Theme exportieren",
++      "426_theme_exportieren_30cdc637": "Export theme",
+       "427_value_0_json_05d9a4f0": "{value_0}.json",
+       "428_json_json_7142e86c": "JSON (*.json)",
+       "444_export_fehlgeschlagen_value_0_b3ec54e6": "Export fehlgeschlagen:\n{value_0}"
+@@ -1819,7 +1819,7 @@
+       "54_anzahl_verwendungen_838041ae": "Anzahl Verwendungen",
+       "54_aktionen_3bb76da2": "Aktionen",
+       "75_neues_tag_erstellen_08b57a81": "Create new tag",
+-      "79_bearbeiten_86a45c89": "Bearbeiten",
++      "79_bearbeiten_86a45c89": "Edit",
+       "99_statistiken_6940bacd": "Statistiken",
+       "101_tag_statistiken_anzeigen_48ad4b4e": "Show tag statistics",
+       "168_keine_8f599208": "(keine)",
+@@ -1830,7 +1830,7 @@
+       "249_tag_value_0_wurde_erstellt_3d280c8d": "Tag '{value_0}' was created.",
+       "255_tag_konnte_nicht_erstellt_werden_955e67d7": "The tag could not be created.",
+       "269_tag_bearbeiten_5fd01a35": "Edit tag",
+-      "270_neuer_name_ada4af32": "Neuer Name:",
++      "270_neuer_name_ada4af32": "New name:",
+       "283_tag_existiert_1725866c": "Tag exists",
+       "284_ein_tag_mit_dem_namen_value_0_exist_126d57ed": "A tag named '{value_0}' already exists.",
+       "296_tag_wurde_umbenannt_in_value_0_a29907d3": "Tag was renamed to '{value_0}'.",
+@@ -1844,7 +1844,7 @@
+       "471_tags_wurden_erfolgreich_zusammengef_c25182ec": "Tags were merged successfully.",
+       "477_tags_konnten_nicht_zusammengefuehrt_5b23f4a0": "The tags could not be merged.",
+       "488_es_sind_noch_keine_tags_mit_buchung_502ddf34": "There are no tags with transactions yet.",
+-      "501_anzahl_buchungen_d50207ae": "Anzahl Buchungen",
++      "501_anzahl_buchungen_d50207ae": "Number of bookings",
+       "501_gesamtbetrag_034bb324": "Gesamtbetrag"
+     },
+     "views_shortcuts_dialog": {
+@@ -1856,7 +1856,7 @@
+       "415_export_fehlgeschlagen_value_0_208f6ca9": "Export fehlgeschlagen:\n{value_0}",
+       "468_import_fehlgeschlagen_value_0_fabf2450": "Import fehlgeschlagen:\n{value_0}",
+       "706_datenbank_wurde_wiederhergestellt_v_442b01cf": "Database has been restored.\n\n{value_0}Active DB:\n{value_1}\n\nThe data is active immediately — no restart required.",
+-      "722_neustart_erforderlich_5f2fbae8": "Neustart erforderlich",
++      "722_neustart_erforderlich_5f2fbae8": "Restart required",
+       "811_datenbank_wurde_zurueckgesetzt_back_48960617": "Database has been reset.\n\nBackup created: budgetmanager_before_reset_{value_0}.bmr\n\nPlease restart the application.",
+       "820_reset_fehlgeschlagen_value_0_9b562dab": "Reset fehlgeschlagen:\n{value_0}",
+       "830_notfall_reset_31e1b16e": "🆘 NOTFALL-RESET",
+@@ -1872,9 +1872,9 @@
+       "472_noch_kein_benutzer_eingerichtet_ers_0a15a1a4": "No user set up yet.\n\nCreate a user to get started.",
+       "499_starten_00906f67": "Starten",
+       "520_anmelden_e04d6ff2": "Anmelden",
+-      "531_restore_key_verwenden_3cecdcdd": "Restore-Key verwenden",
++      "531_restore_key_verwenden_3cecdcdd": "Use restore key",
+       "568_anmelden_2adc1609": "Anmelden",
+-      "579_restore_key_verwenden_3077a331": "Restore-Key verwenden",
++      "579_restore_key_verwenden_3077a331": "Use restore key",
+       "599_starten_3071b86d": "Starten",
+       "608_anmelden_da7d6295": "Anmelden",
+       "645_anmelden_08c3b10b": "Anmelden",
+@@ -1886,7 +1886,7 @@
+       "99_markiert_diese_kategorie_als_wieder_6c7786cd": "Marks this category as a recurring expense.\nRecurring categories can be booked automatically.",
+       "117_small_i_tipp_wenn_du_einen_faelligk_01c58f1d": "<small><i>Tip: If you set a due day, 'Recurring' is enabled automatically.</i></small>",
+       "185_eine_kategorie_mit_dem_namen_value__53b9f84f": "A category named '{value_0}' already exists.",
+-      "220_speichern_fehlgeschlagen_value_0_3a729058": "Speichern fehlgeschlagen:\n{value_0}",
++      "220_speichern_fehlgeschlagen_value_0_3a729058": "Saving failed:\n{value_0}",
+       "254_loeschen_fehlgeschlagen_value_0_833e313c": "Deletion failed:\n{value_0}",
+       "286_value_0_value_1_90606f5a": "{value_0} ({value_1})",
+       "325_small_i_hinweis_wenn_du_einen_faell_5237905b": "<small><i>Note: If you set a due day, 'Recurring' is enabled automatically.</i></small>",
+@@ -1926,11 +1926,11 @@
+       "536_b_value_0_i_value_1_r_value_2_25a9e209": "B: {value_0}\nI: {value_1}\nR: {value_2}"
+     },
+     "views_tabs_categories_tab": {
+-      "68_neu_hauptkategorie_d317a531": "Neu (Hauptkategorie)",
+-      "69_neu_unterkategorie_577581bc": "Neu (Unterkategorie)",
+-      "344_neu_hauptkategorie_852d2884": "Neu (Hauptkategorie)",
+-      "346_neu_unterkategorie_18e330b2": "Neu (Unterkategorie)",
+-      "349_umbenennen_4ad27303": "Umbenennen",
++      "68_neu_hauptkategorie_d317a531": "New (main category)",
++      "69_neu_unterkategorie_577581bc": "New (subcategory)",
++      "344_neu_hauptkategorie_852d2884": "New (main category)",
++      "346_neu_unterkategorie_18e330b2": "New (subcategory)",
++      "349_umbenennen_4ad27303": "Rename",
+       "647_setzen_ja_f86a5233": "Setzen: Ja",
+       "647_setzen_nein_60c1ccf6": "Setzen: Nein",
+       "651_setzen_ja_63aa1520": "Setzen: Ja",
+@@ -1964,10 +1964,10 @@
+       "2124_baum_ausblenden_pfad_anzeigen_508ded75": "Baum ausblenden (Pfad anzeigen)"
+     },
+     "views_tabs_tracking_tab": {
+-      "56_nur_letzte_value_0_tage_48196fae": "Nur letzte {value_0} Tage",
++      "56_nur_letzte_value_0_tage_48196fae": "Last {value_0} days only",
+       "119_id_db302b9b": "_id",
+-      "457_nur_letzte_value_0_tage_be9a083a": "Nur letzte {value_0} Tage",
+-      "582_nur_letzte_value_0_tage_a8e14b8a": "Nur letzte {value_0} Tage",
++      "457_nur_letzte_value_0_tage_be9a083a": "Last {value_0} days only",
++      "582_nur_letzte_value_0_tage_a8e14b8a": "Last {value_0} days only",
+       "682_diese_buchung_wird_als_verbrauch_vo_54220c3f": "This transaction is recorded as a withdrawal from the released savings goal <b>«{value_0}»</b>.\n\nReleased amount: {value_1}\nWithdrawal: {value_2}"
+     }
+   },
+@@ -2104,6 +2104,11 @@
+     "kind_real_fixed_short": "Fixed + rec.",
+     "kind_variable_fixed_short": "Fixed variable",
+     "kind_variable_recurring_short": "Rec. variable",
+-    "btn_real_fixed_only": "Only true fixed costs"
++    "btn_real_fixed_only": "Only true fixed costs",
++    "status": {
++      "days": "{days} days",
++      "today": "Today",
++      "in_days": "in {days} d"
++    }
+   }
+-}
+\ No newline at end of file
++}
+diff -ruN bm_analysis_2012_orig/BudgetManager_Source_2_0_12/locales/fr.json bm_analysis_2012/BudgetManager_Source_2_0_12/locales/fr.json
+--- bm_analysis_2012_orig/BudgetManager_Source_2_0_12/locales/fr.json	2026-06-15 00:07:11.000000000 +0000
++++ bm_analysis_2012/BudgetManager_Source_2_0_12/locales/fr.json	2026-06-15 02:17:03.533878074 +0000
+@@ -454,8 +454,8 @@
+     "wurde_importiert": " a été importé !",
+     "die_anwendung_muss_danach": "(L'application doit ensuite être redémarrée.)",
+     "die_tagzuweisungen_werden_entfernt": "(Les affectations d'étiquettes sont supprimées, les transactions sont conservées.)",
+-    "keine_profile_vorhanden": "(Keine Profile vorhanden)",
+-    "keine_passenden_profile": "(Keine passenden Profile)",
++    "keine_profile_vorhanden": "(Aucun profil disponible)",
++    "keine_passenden_profile": "(Aucun profil correspondant)",
+     "tipp_eigene_themes_koennen": "(Conseil : les thèmes personnalisés peuvent être supprimés.)",
+     "und_lenselected_10_weitere": "... et {count} autres",
+     "b_existiert_noch_nicht": "</b> n'existe pas encore.",
+@@ -503,7 +503,7 @@
+     "kategorie_nicht_gefunden": "Catégorie introuvable",
+     "keine_auswahl": "Aucune sélection",
+     "keine_kategorie": "Aucune catégorie",
+-    "keine_statistiken": "Keine Statistiken",
++    "keine_statistiken": "Aucune statistique",
+     "letzten_geoeffneten_reiter_merken": "Mémoriser le dernier onglet ouvert",
+     "loeschvorgaenge_bestaetigen_lassen": "Confirmer les opérations de suppression",
+     "mehrere_tags_zu_einem": "Fusionner plusieurs tags en un",
+@@ -544,7 +544,7 @@
+     "uebergeordnet": "Parent :",
+     "uebernehmen": "Appliquer",
+     "ueberschussdefizitvorschlag_ab": "Suggestion de surplus/déficit à partir de",
+-    "keine_hauptkategorie": "— Keine (Hauptkategorie) —",
++    "keine_hauptkategorie": "— Aucune (catégorie principale) —",
+     "nicht_aendern": "— Ne pas modifier —",
+     "zuruecksetzen_1": "↺ Réinitialiser",
+     "datenbank_zuruecksetzen_1": "⚠️ Réinitialiser la base de données",
+@@ -1200,7 +1200,7 @@
+     "bitte_zuerst_kategorien_auswaehlen_1": "Veuillez d'abord sélectionner des catégories.",
+     "bitte_zuerst_eine_kategorie": "Veuillez d'abord sélectionner une catégorie.",
+     "erhoehungen": "Augmentations :",
+-    "keine_flags": "Keine Flags",
++    "keine_flags": "Aucun indicateur",
+     "keine_offenen_betraege": "Aucun montant ouvert",
+     "name_der_unterkategorie_typ": "Nom de la sous-catégorie ({typ}) :",
+     "name_der_neuen_kategorie": "Nom de la nouvelle catégorie ({typ}) :",
+@@ -1231,7 +1231,7 @@
+     "geloescht": "Supprimé",
+     "hier_kannst_du_deinen": "Vous pouvez modifier votre nom d'affichage ici.",
+     "kein_restorekey_verfuegbar": "Aucune clé de restauration disponible.",
+-    "keine_benutzer_vorhanden": "Keine Benutzer vorhanden.",
++    "keine_benutzer_vorhanden": "Aucun utilisateur disponible.",
+     "kopieren_nicht_moeglich": "Copie impossible.",
+     "maximaler_schutz_mit_passwort": "Protection maximale avec mot de passe.",
+     "name_konnte_nicht_gespeichert": "Le nom n'a pas pu être enregistré.",
+@@ -1601,46 +1601,46 @@
+       "411_budgetmanager_konnte_nicht_gestarte_8ae862ce": "Budgetmanager n'a pas pu démarrer :\n\n{value_0}\n\nVoir budgetmanager.log pour plus de détails."
+     },
+     "settings_dialog": {
+-      "146_start_bedienung_809e5573": "Start & Bedienung",
+-      "182_eingabe_workflow_c2c724ba": "Eingabe & Workflow",
++      "146_start_bedienung_809e5573": "Démarrage & Utilisation",
++      "182_eingabe_workflow_c2c724ba": "Saisie & Flux de travail",
+       "212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5": "Jour préféré pour les nouvelles catégories/transactions récurrentes.\nDéfini automatiquement lorsque vous marquez une catégorie comme récurrente.\nFin de mois = dernier jour du mois.",
+       "226_mindestanzahl_aufeinanderfolgender__c912895e": "Nombre minimal de mois consécutifs avec la même tendance\navant qu'une suggestion d'ajustement ne soit affichée.",
+       "237_ab_welchem_monat_soll_der_uebertrag_6ec46422": "À partir de quel mois le report doit-il être cumulé ?\nExemple : à partir de mars → janv./févr. n'ont pas de report,\nle cumul ne commence qu'en mars.",
+       "246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac": "À partir de quelle année le report doit-il être cumulé ?\nLe report est transféré d'une année à l'autre.\nExemple : année de début 2025, mois de début mars →\nle cumul commence en mars 2025 et se poursuit\nsur toutes les années suivantes.",
+-      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Separaten Kategorien-Tab anzeigen",
++      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Afficher un onglet Catégories séparé",
+       "262_aktiviert_den_separaten_kategorien__7db32e53": "Active l'onglet Catégories distinct pour une gestion avancée des catégories.\n\nPar défaut : désactivé – les catégories sont créées et gérées directement dans la boîte de dialogue du budget.\nL'onglet distinct est utile pour l'édition en masse, les filtres et les options avancées.\n\nLa modification nécessite un redémarrage de l'application.",
+       "270_small_i_hinweis_kategorien_koennen__5859fbbe": "<small><i>Remarque : les catégories peuvent aussi être créées et modifiées directement dans la boîte de dialogue du budget via le menu ⚙.</i></small>",
+-      "310_tabellen_listen_d0cf90f1": "Tabellen & Listen",
++      "310_tabellen_listen_d0cf90f1": "Tableaux & Listes",
+       "328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c": "<i>Cliquez sur un raccourci et appuyez sur la combinaison de touches souhaitée. Les champs vides désactivent le raccourci.</i>",
+       "485_budgetmanager_11c4305b": "Budgetmanager",
+-      "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "SQLite Datenbank (*.db *.sqlite *.sqlite3);;Alle Dateien (*)",
+-      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Backup erfolgreich erstellt:\n{value_0}\n\nOrt: {value_1}"
++      "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "Base de données SQLite (*.db *.sqlite *.sqlite3);;Tous les fichiers (*)",
++      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Sauvegarde créée avec succès :\n{value_0}\n\nEmplacement : {value_1}"
+     },
+     "views_budget_entry_dialog_extended": {
+       "82_kategorie_details_6ef68b34": "Détails de la catégorie",
+       "90_b_value_0_b_ee6c93f4": "<b>{value_0}</b>",
+       "95_hauptkategorie_kein_parent_883e571a": "— Catégorie principale (sans parent) —",
+-      "110_eigenschaften_902ad0b9": "Eigenschaften",
++      "110_eigenschaften_902ad0b9": "Propriétés",
+       "140_kategorie_erstellen_d45dd95d": "Créer une catégorie",
+       "164_eine_kategorie_mit_dem_namen_value__2fba299b": "Une catégorie nommée « {value_0} » existe déjà.",
+       "184_konnte_kategorie_nicht_erstellen_va_dce4d9f6": "Impossible de créer la catégorie :\n{value_0}",
+       "220_kategorie_optionen_e050bea2": "Options de catégorie",
+-      "225_neue_unterkategorie_e01e0b00": "Neue Unterkategorie…",
++      "225_neue_unterkategorie_e01e0b00": "Nouvelle sous-catégorie…",
+       "314_name_der_neuen_kategorie_value_0_399f599a": "Nom de la nouvelle catégorie ({value_0}) :",
+       "333_konnte_kategorie_nicht_erstellen_va_12bb8446": "Impossible de créer la catégorie :\n{value_0}",
+       "358_parent_kategorie_23016e6b": "Catégorie parente",
+       "375_name_der_neuen_unterkategorie_unter_655e15ec": "Nom de la nouvelle sous-catégorie sous « {value_0} » :",
+       "394_konnte_unterkategorie_nicht_erstell_10c56189": "Impossible de créer la sous-catégorie :\n{value_0}",
+-      "404_umbenennen_6ad211f7": "Umbenennen",
++      "404_umbenennen_6ad211f7": "Renommer",
+       "405_neuer_name_fuer_value_0_ac7dc2c9": "Nouveau nom pour « {value_0} » :",
+       "425_kategorie_umbenannt_value_0_value_1_ac33fb77": "Catégorie renommée : « {value_0} » → « {value_1} »\nToutes les entrées de budget et de suivi ont été mises à jour.",
+-      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Umbenennen fehlgeschlagen:\n{value_0}",
++      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Échec du renommage :\n{value_0}",
+       "506_tag_im_monat_fuer_value_0_1_31_1fcfbede": "Jour du mois pour « {value_0} » (1-31) :",
+       "516_faelligkeitstag_fuer_value_0_auf_va_02c90616": "Jour d'échéance pour « {value_0} » fixé au {value_1}.\n(Récurrent a été activé automatiquement)",
+       "616_z_b_1200_00_ad178edd": "z.B. 1200.00",
+-      "620_monat_88dd17e2": "Monat",
++      "620_monat_88dd17e2": "Mois",
+       "620_bereich_8b22d123": "Bereich",
+-      "715_fehlt_2f708b3e": "Fehlt"
++      "715_fehlt_2f708b3e": "Manquant"
+     },
+     "views_language_select_dialog": {
+       "22_language_sprache_langue_cec30925": "Language / Sprache / Langue",
+@@ -1648,9 +1648,9 @@
+       "57_ok_6128635b": "✓  OK"
+     },
+     "views_database_management_dialog": {
+-      "54_datenbank_verwaltung_de01b445": "🗄️ Datenbank-Verwaltung",
++      "54_datenbank_verwaltung_de01b445": "🗄️ Gestion de la base de données",
+       "83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4": "Supprime les entrées orphelines, les données invalides et optimise la base de données.\nCette opération est sûre et ne supprime aucune donnée importante.",
+-      "89_datenbank_bereinigen_031c950d": "🧹 Datenbank bereinigen",
++      "89_datenbank_bereinigen_031c950d": "🧹 Nettoyer la base de données",
+       "101_b_achtung_b_diese_aktion_loescht_da_28422052": "<b>ATTENTION :</b> cette action supprime des données !\nUne sauvegarde est créée automatiquement.",
+       "118_budget_kategorien_zuruecksetzen_buc_e2fafa90": "Réinitialiser le budget et les catégories (conserver les transactions)",
+       "207_value_0_details_value_1_c4c562a1": "{value_0}\n\nDetails:\n{value_1}"
+@@ -1667,43 +1667,43 @@
+       "54_zu_exportierende_daten_263da15e": "Données à exporter",
+       "57_tracking_daten_transaktionen_e754548e": "📊 Données de suivi (transactions)",
+       "61_budget_daten_d0bbdcff": "💰 Données de budget",
+-      "72_zeitraum_91c1e2b4": "Zeitraum",
++      "72_zeitraum_91c1e2b4": "Période",
+       "94_optionen_21208517": "Optionen",
+-      "111_exportieren_f9fcfb6d": "Exportieren...",
+-      "146_export_speichern_unter_7108d72d": "Export speichern unter",
++      "111_exportieren_f9fcfb6d": "Exporter...",
++      "146_export_speichern_unter_7108d72d": "Enregistrer l’export sous",
+       "147_value_0_value_1_3c09bb8d": "{value_0}.{value_1}"
+     },
+     "views_account_management_dialog": {
+       "58_value_0_ce49c534": "👤 {value_0}",
+       "78_profil_a112e8f0": "Profil",
+-      "80_passwort_pin_2e7b87ff": "Passwort / PIN",
+-      "123_namen_speichern_3c32107f": "Namen speichern",
++      "80_passwort_pin_2e7b87ff": "Mot de passe / PIN",
++      "123_namen_speichern_3c32107f": "Enregistrer le nom",
+       "145_info_80dc0679": "Info",
+       "151_value_0_3a8da07a": "👤 {value_0}",
+-      "153_gespeichert_1672f513": "Gespeichert",
++      "153_gespeichert_1672f513": "Enregistré",
+       "172_dein_konto_hat_aktuell_b_keinen_pas_1282d8ba": "⚡ Votre compte n'a actuellement <b>aucune protection par mot de passe</b>.\n\nPour définir un mot de passe ou un PIN, changez d'abord\nle niveau de sécurité dans l'onglet « 🔒 Niveau de sécurité ».\n\n<b>Important :</b> même sans mot de passe, il existe une <b>clé de restauration</b>. Elle vous permet de rouvrir une sauvegarde chiffrée.",
+       "186_b_nur_an_einem_sicheren_ort_speiche_b5321905": "⚠️ <b>Conservez-la uniquement dans un endroit sûr.</b>\nPerdre le PIN ou la clé de restauration = la base de données ne peut plus être déchiffrée.",
+-      "237_aktuelles_value_0_eingeben_53722645": "Aktuelles {value_0} eingeben",
++      "237_aktuelles_value_0_eingeben_53722645": "Saisir le {value_0} actuel",
+       "257_value_0_wiederholen_679c9574": "{value_0} wiederholen",
+       "360_wechsle_die_sicherheitsstufe_deines_f6de7988": "Modifiez le niveau de sécurité de votre compte.\nLa base de données est conservée.",
+-      "378_neue_sicherheitsstufe_3f613920": "Neue Sicherheitsstufe",
++      "378_neue_sicherheitsstufe_3f613920": "Nouveau niveau de sécurité",
+       "385_schneller_zugriff_ohne_eingabe_schu_5c56399c": "Accès rapide sans saisie.\nProtège contre les erreurs — pas en cas de perte de la clé USB.",
+-      "415_aktuelles_passwort_38b1f100": "Aktuelles Passwort:",
+-      "427_neues_passwort_d5fba2a0": "Neues Passwort:",
++      "415_aktuelles_passwort_38b1f100": "Mot de passe actuel :",
++      "427_neues_passwort_d5fba2a0": "Nouveau mot de passe :",
+       "513_quick_modus_entfernt_den_passwortsc_84601067": "⚠️ Le mode rapide supprime la protection par mot de passe !\nToute personne ayant accès à vos fichiers peut ouvrir les données.",
+       "525_value_0_oder_restore_key_verlieren__81330d27": "⚠️ Perdre le {value_0} ou la clé de restauration = base de données perdue à jamais !",
+-      "538_aktuelle_stufe_5d6746d9": "(Aktuelle Stufe)",
+-      "542_wechseln_zu_value_0_c4af1f8b": "Wechseln zu: {value_0}",
++      "538_aktuelle_stufe_5d6746d9": "(Niveau actuel)",
++      "542_wechseln_zu_value_0_c4af1f8b": "Passer à : {value_0}",
+       "558_info_c90436c3": "Info",
+-      "606_schutz_entfernen_0233ca15": "Schutz entfernen",
++      "606_schutz_entfernen_0233ca15": "Supprimer la protection",
+       "634_value_0_value_1_erstellt_value_2_08181f59": "{value_0} {value_1}  •  Erstellt: {value_2}",
+       "653_sicherheitsstufe_geaendert_zu_value_de978174": "Niveau de sécurité changé en « {value_0} ».",
+       "692_b_wichtig_b_dein_restore_key_hat_si_aa706b0f": "⚠️ <b>IMPORTANT :</b> votre clé de restauration a changé !<br>Notez cette clé en lieu sûr — c'est votre accès d'urgence.<br>Sans cette clé et sans mot de passe/PIN, vos données sont <b>perdues</b> !",
+-      "705_dein_neuer_restore_key_0417e1e7": "Dein neuer Restore-Key:",
+-      "720_in_zwischenablage_kopieren_a988f8aa": "In Zwischenablage kopieren",
++      "705_dein_neuer_restore_key_0417e1e7": "Votre nouvelle clé de récupération :",
++      "720_in_zwischenablage_kopieren_a988f8aa": "Copier dans le presse-papiers",
+       "736_ich_habe_den_key_notiert_9961ef11": "J'ai noté la clé",
+-      "754_kopiert_833acc01": "Kopiert!",
+-      "757_in_zwischenablage_kopieren_a4a61e69": "In Zwischenablage kopieren"
++      "754_kopiert_833acc01": "Copié !",
++      "757_in_zwischenablage_kopieren_a4a61e69": "Copier dans le presse-papiers"
+     },
+     "views_budget_adjustment_dialog": {
+       "366_value_0_e619e83b": "{value_0}%",
+@@ -1722,18 +1722,18 @@
+     },
+     "views_tracker_dialog": {
+       "54_z_b_12_50_7eb13fc1": "z.B. 12.50",
+-      "162_fehlt_fb898654": "Fehlt",
+-      "165_fehlt_a7f19cb1": "Fehlt"
++      "162_fehlt_fb898654": "Manquant",
++      "165_fehlt_a7f19cb1": "Manquant"
+     },
+     "views_budget_entry_dialog": {
+       "102_z_b_1200_00_d7c96b70": "z.B. 1200.00",
+-      "105_monat_069d7526": "Monat",
++      "105_monat_069d7526": "Mois",
+       "105_bereich_1f8db464": "Bereich",
+       "120_neue_kategorie_erstellen_2cbb61c0": "Créer une nouvelle catégorie",
+       "145_diese_kategorie_ist_eine_monatlich__584b29cb": "Cette catégorie est une dépense mensuelle fixe",
+       "290_value_0_b601d60d": "  ↳ {value_0}",
+       "324_die_kategorie_value_0_existiert_noc_66c8701f": "💡 La catégorie « {value_0} » n'existe pas encore.\nActivez cette option pour la créer directement.",
+-      "376_fehlt_e088971c": "Fehlt"
++      "376_fehlt_e088971c": "Manquant"
+     },
+     "views_main_window": {
+       "100_update_81ab2a4e": "Update",
+@@ -1742,14 +1742,14 @@
+       "682_datenordner_6efcd047": "Datenordner",
+       "1037_undo_918f0844": "↩️ &Undo",
+       "1043_redo_2dcd731a": "↪️ &Redo",
+-      "1064_bearbeiten_4fc85ded": "&Bearbeiten...",
++      "1064_bearbeiten_4fc85ded": "&Modifier...",
+       "1083_budget_erfassen_d622e1c6": "Budget &erfassen...",
+       "1089_budget_bearbeiten_45efb7d1": "Budget &bearbeiten...",
+-      "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Zeilen aus &Kategorien erzeugen",
+-      "1103_jahr_kopieren_a5365b5b": "Jahr &kopieren...",
+-      "1111_budget_zeile_entfernen_2116ca10": "Budget-&Zeile entfernen",
+-      "1125_neue_hauptkategorie_4edd9c24": "Neue &Hauptkategorie...",
+-      "1131_neue_unterkategorie_51ea953c": "Neue &Unterkategorie...",
++      "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Créer des lignes depuis les &catégories",
++      "1103_jahr_kopieren_a5365b5b": "&Copier l’année...",
++      "1111_budget_zeile_entfernen_2116ca10": "Supprimer la &ligne de budget",
++      "1125_neue_hauptkategorie_4edd9c24": "Nouvelle &catégorie principale...",
++      "1131_neue_unterkategorie_51ea953c": "Nouvelle &sous-catégorie...",
+       "1144_massenbearbeitung_aa0c33a1": "&Massenbearbeitung...",
+       "1156_fixkosten_buchen_61d1976c": "&Fixkosten buchen...",
+       "1166_daten_aktualisieren_6e5a0ee6": "&Actualiser les données",
+@@ -1759,57 +1759,57 @@
+       "1615_value_0_value_1_value_2_81323b29": "{value_0} {value_1} — {value_2}",
+       "1625_value_0_value_1_value_2_1999fbaa": "{value_0} — {value_1} {value_2}",
+       "1629_value_0_value_1_value_2_943d4260": "{value_0} {value_1} — {value_2}",
+-      "1788_neustart_erforderlich_288778eb": "Neustart erforderlich",
++      "1788_neustart_erforderlich_288778eb": "Redémarrage requis",
+       "1789_bitte_starten_sie_die_anwendung_neu_e67d74c9": "Veuillez redémarrer l'application pour appliquer les modifications."
+     },
+     "views_savings_goals_dialog": {
+-      "42_bearbeiten_ba02fd7d": "Bearbeiten",
++      "42_bearbeiten_ba02fd7d": "Modifier",
+       "47_sync_0d895102": "Sync",
+-      "51_abschliessen_dfbbbdb2": "Abschliessen",
++      "51_abschliessen_dfbbbdb2": "Terminer",
+       "58_sparziel_freigeben_der_aktuelle_sta_cc2b88a8": "Débloquer l'objectif d'épargne : le solde actuel est gelé.\nDès lors, des dépenses peuvent être enregistrées sur cet objectif.",
+       "62_sparziel_abschliessen_wird_archivie_010ae566": "Terminer l'objectif d'épargne : il est archivé et marqué comme terminé.",
+       "65_sparziel_wieder_zum_sparen_oeffnen__a747e4b3": "Rouvrir l'objectif d'épargne pour épargner.\nLe statut de déblocage est réinitialisé.",
+-      "75_ziel_value_0_4affdb3b": "Ziel ({value_0})",
+-      "75_aktuell_value_0_30c65ab2": "Aktuell ({value_0})",
+-      "76_restbetrag_86038dcb": "Restbetrag",
+-      "77_verbraucht_f5ec0888": "Verbraucht",
++      "75_ziel_value_0_4affdb3b": "Objectif ({value_0})",
++      "75_aktuell_value_0_30c65ab2": "Actuel ({value_0})",
++      "76_restbetrag_86038dcb": "Montant restant",
++      "77_verbraucht_f5ec0888": "Consommé",
+       "105_lebenszyklus_b_sparend_b_b_freigege_b8234217": "💡 Cycle de vie : <b>Épargne</b> → <b>Débloqué</b> (retraits possibles) → <b>Terminé</b> (archive)",
+-      "161_freigeben_a27ef668": "Freigeben…",
+-      "164_abschliessen_786dc795": "Abschliessen…",
++      "161_freigeben_a27ef668": "Libérer…",
++      "164_abschliessen_786dc795": "Terminer…",
+       "282_value_0_f11eb723": "-{value_0}",
+       "350_sparziel_value_0_wirklich_loeschen_a0a55e23": "Supprimer vraiment l'objectif d'épargne « {value_0} » ?",
+       "378_dieses_sparziel_ist_mit_keiner_kate_b42a28db": "Cet objectif d'épargne n'est lié à aucune catégorie.",
+-      "386_synchronisiert_2f5168bf": "Synchronisiert",
++      "386_synchronisiert_2f5168bf": "Synchronisé",
+       "387_sparziel_value_0_wurde_mit_tracking_3a7d4952": "L'objectif d'épargne « {value_0} » a été synchronisé avec le suivi.\n\nCatégorie : {value_1}\nAvant : {value_2}\nAprès : {value_3}\nDifférence : {value_4}",
+-      "409_sparziel_freigeben_adf2825a": "Sparziel freigeben",
++      "409_sparziel_freigeben_adf2825a": "Libérer l’objectif d’épargne",
+       "410_sparziel_value_0_freigeben_aktuelle_7e8d5f78": "Débloquer l'objectif d'épargne « {value_0} » ?\n\nSolde actuel : {value_1}\nObjectif : {value_2}\n\nLe solde actuel ({value_3}) sera gelé.\nDès lors, les transactions négatives sont enregistrées comme des retraits.\n\nContinuer ?",
+       "425_sparziel_value_0_wurde_freigegeben__f6d8c79d": "L'objectif d'épargne « {value_0} » a été débloqué.\n\nMontant gelé : {value_1}\nVous pouvez maintenant enregistrer des dépenses sur cet objectif.",
+-      "444_sparziel_abschliessen_81af1e70": "Sparziel abschliessen",
++      "444_sparziel_abschliessen_81af1e70": "Terminer l’objectif d’épargne",
+       "465_sparziel_value_0_wieder_zum_sparen__1510830d": "Rouvrir l'objectif d'épargne « {value_0} » pour épargner ?\n\nLe statut de déblocage et le montant gelé seront réinitialisés.\nContinuer ?",
+-      "506_keine_8218b1ac": "(Keine)",
++      "506_keine_8218b1ac": "(Aucun)",
+       "516_value_0_value_1_e61189ab": "{value_0} / {value_1}",
+       "519_value_0_value_1_016e0b40": "{value_0} / {value_1}",
+       "560_i_small_tipp_wenn_eine_kategorie_au_ddfbcc66": "<i><small>💡 Astuce : lorsqu'une catégorie est sélectionnée, la progression est automatiquement synchronisée avec les transactions d'épargne de cette catégorie.</small></i>",
+-      "612_aktuell_value_0_05ac9b67": "Aktuell: {value_0}",
+-      "613_ziel_value_0_3aea07af": "Ziel: {value_0}",
+-      "614_restbetrag_value_0_711be043": "Restbetrag: {value_0}",
++      "612_aktuell_value_0_05ac9b67": "Actuel : {value_0}",
++      "613_ziel_value_0_3aea07af": "Objectif : {value_0}",
++      "614_restbetrag_value_0_711be043": "Montant restant : {value_0}",
+       "616_status_freigegeben_eingef_value_0_6728eed9": "Status: 🔓 Freigegeben (eingef. {value_0})"
+     },
+     "views_theme_editor_dialog": {
+-      "103_hell_66974dd7": "hell",
+-      "103_dunkel_b0351793": "dunkel",
+-      "297_neues_theme_7b9881d9": "Neues Theme",
+-      "297_theme_name_e4293a7f": "Theme-Name:",
+-      "316_theme_duplizieren_610b8173": "Theme duplizieren",
+-      "317_neuer_name_771ef819": "Neuer Name:",
++      "103_hell_66974dd7": "clair",
++      "103_dunkel_b0351793": "sombre",
++      "297_neues_theme_7b9881d9": "Nouveau thème",
++      "297_theme_name_e4293a7f": "Nom du thème :",
++      "316_theme_duplizieren_610b8173": "Dupliquer le thème",
++      "317_neuer_name_771ef819": "Nouveau nom :",
+       "318_value_0_kopie_7305d694": "{value_0} (Kopie)",
+-      "388_theme_importieren_3afd6b46": "Theme importieren",
++      "388_theme_importieren_3afd6b46": "Importer un thème",
+       "388_json_json_90618946": "JSON (*.json)",
+-      "403_name_existiert_4dd02b77": "Name existiert",
+-      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Theme-Name existiert bereits. Neuer Name:",
++      "403_name_existiert_4dd02b77": "Le nom existe",
++      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Le nom du thème existe déjà. Nouveau nom :",
+       "405_value_0_import_6030fc3e": "{value_0} (Import)",
+       "418_import_fehlgeschlagen_value_0_17d04026": "Import fehlgeschlagen:\n{value_0}",
+-      "426_theme_exportieren_30cdc637": "Theme exportieren",
++      "426_theme_exportieren_30cdc637": "Exporter le thème",
+       "427_value_0_json_05d9a4f0": "{value_0}.json",
+       "428_json_json_7142e86c": "JSON (*.json)",
+       "444_export_fehlgeschlagen_value_0_b3ec54e6": "Export fehlgeschlagen:\n{value_0}"
+@@ -1819,7 +1819,7 @@
+       "54_anzahl_verwendungen_838041ae": "Anzahl Verwendungen",
+       "54_aktionen_3bb76da2": "Aktionen",
+       "75_neues_tag_erstellen_08b57a81": "Créer une nouvelle étiquette",
+-      "79_bearbeiten_86a45c89": "Bearbeiten",
++      "79_bearbeiten_86a45c89": "Modifier",
+       "99_statistiken_6940bacd": "Statistiken",
+       "101_tag_statistiken_anzeigen_48ad4b4e": "Afficher les statistiques d'étiquettes",
+       "168_keine_8f599208": "(keine)",
+@@ -1830,7 +1830,7 @@
+       "249_tag_value_0_wurde_erstellt_3d280c8d": "L'étiquette « {value_0} » a été créée.",
+       "255_tag_konnte_nicht_erstellt_werden_955e67d7": "L'étiquette n'a pas pu être créée.",
+       "269_tag_bearbeiten_5fd01a35": "Modifier l'étiquette",
+-      "270_neuer_name_ada4af32": "Neuer Name:",
++      "270_neuer_name_ada4af32": "Nouveau nom :",
+       "283_tag_existiert_1725866c": "L'étiquette existe",
+       "284_ein_tag_mit_dem_namen_value_0_exist_126d57ed": "Une étiquette nommée « {value_0} » existe déjà.",
+       "296_tag_wurde_umbenannt_in_value_0_a29907d3": "L'étiquette a été renommée en « {value_0} ».",
+@@ -1844,7 +1844,7 @@
+       "471_tags_wurden_erfolgreich_zusammengef_c25182ec": "Les étiquettes ont été fusionnées avec succès.",
+       "477_tags_konnten_nicht_zusammengefuehrt_5b23f4a0": "Les étiquettes n'ont pas pu être fusionnées.",
+       "488_es_sind_noch_keine_tags_mit_buchung_502ddf34": "Il n'y a pas encore d'étiquettes avec des transactions.",
+-      "501_anzahl_buchungen_d50207ae": "Anzahl Buchungen",
++      "501_anzahl_buchungen_d50207ae": "Nombre d’écritures",
+       "501_gesamtbetrag_034bb324": "Gesamtbetrag"
+     },
+     "views_shortcuts_dialog": {
+@@ -1856,7 +1856,7 @@
+       "415_export_fehlgeschlagen_value_0_208f6ca9": "Export fehlgeschlagen:\n{value_0}",
+       "468_import_fehlgeschlagen_value_0_fabf2450": "Import fehlgeschlagen:\n{value_0}",
+       "706_datenbank_wurde_wiederhergestellt_v_442b01cf": "La base de données a été restaurée.\n\n{value_0}Base active :\n{value_1}\n\nLes données sont actives immédiatement — aucun redémarrage requis.",
+-      "722_neustart_erforderlich_5f2fbae8": "Neustart erforderlich",
++      "722_neustart_erforderlich_5f2fbae8": "Redémarrage requis",
+       "811_datenbank_wurde_zurueckgesetzt_back_48960617": "La base de données a été réinitialisée.\n\nSauvegarde créée : budgetmanager_before_reset_{value_0}.bmr\n\nVeuillez redémarrer l'application.",
+       "820_reset_fehlgeschlagen_value_0_9b562dab": "Reset fehlgeschlagen:\n{value_0}",
+       "830_notfall_reset_31e1b16e": "🆘 NOTFALL-RESET",
+@@ -1872,9 +1872,9 @@
+       "472_noch_kein_benutzer_eingerichtet_ers_0a15a1a4": "Aucun utilisateur configuré.\n\nCréez un utilisateur pour commencer.",
+       "499_starten_00906f67": "Starten",
+       "520_anmelden_e04d6ff2": "Anmelden",
+-      "531_restore_key_verwenden_3cecdcdd": "Restore-Key verwenden",
++      "531_restore_key_verwenden_3cecdcdd": "Utiliser la clé de récupération",
+       "568_anmelden_2adc1609": "Anmelden",
+-      "579_restore_key_verwenden_3077a331": "Restore-Key verwenden",
++      "579_restore_key_verwenden_3077a331": "Utiliser la clé de récupération",
+       "599_starten_3071b86d": "Starten",
+       "608_anmelden_da7d6295": "Anmelden",
+       "645_anmelden_08c3b10b": "Anmelden",
+@@ -1886,7 +1886,7 @@
+       "99_markiert_diese_kategorie_als_wieder_6c7786cd": "Marque cette catégorie comme dépense récurrente.\nLes catégories récurrentes peuvent être enregistrées automatiquement.",
+       "117_small_i_tipp_wenn_du_einen_faelligk_01c58f1d": "<small><i>Astuce : si vous définissez un jour d'échéance, « Récurrent » est activé automatiquement.</i></small>",
+       "185_eine_kategorie_mit_dem_namen_value__53b9f84f": "Une catégorie nommée « {value_0} » existe déjà.",
+-      "220_speichern_fehlgeschlagen_value_0_3a729058": "Speichern fehlgeschlagen:\n{value_0}",
++      "220_speichern_fehlgeschlagen_value_0_3a729058": "Échec de l’enregistrement :\n{value_0}",
+       "254_loeschen_fehlgeschlagen_value_0_833e313c": "Échec de la suppression :\n{value_0}",
+       "286_value_0_value_1_90606f5a": "{value_0} ({value_1})",
+       "325_small_i_hinweis_wenn_du_einen_faell_5237905b": "<small><i>Remarque : si vous définissez un jour d'échéance, « Récurrent » est activé automatiquement.</i></small>",
+@@ -1926,11 +1926,11 @@
+       "536_b_value_0_i_value_1_r_value_2_25a9e209": "B: {value_0}\nI: {value_1}\nR: {value_2}"
+     },
+     "views_tabs_categories_tab": {
+-      "68_neu_hauptkategorie_d317a531": "Neu (Hauptkategorie)",
+-      "69_neu_unterkategorie_577581bc": "Neu (Unterkategorie)",
+-      "344_neu_hauptkategorie_852d2884": "Neu (Hauptkategorie)",
+-      "346_neu_unterkategorie_18e330b2": "Neu (Unterkategorie)",
+-      "349_umbenennen_4ad27303": "Umbenennen",
++      "68_neu_hauptkategorie_d317a531": "Nouveau (catégorie principale)",
++      "69_neu_unterkategorie_577581bc": "Nouveau (sous-catégorie)",
++      "344_neu_hauptkategorie_852d2884": "Nouveau (catégorie principale)",
++      "346_neu_unterkategorie_18e330b2": "Nouveau (sous-catégorie)",
++      "349_umbenennen_4ad27303": "Renommer",
+       "647_setzen_ja_f86a5233": "Setzen: Ja",
+       "647_setzen_nein_60c1ccf6": "Setzen: Nein",
+       "651_setzen_ja_63aa1520": "Setzen: Ja",
+@@ -1964,10 +1964,10 @@
+       "2124_baum_ausblenden_pfad_anzeigen_508ded75": "Baum ausblenden (Pfad anzeigen)"
+     },
+     "views_tabs_tracking_tab": {
+-      "56_nur_letzte_value_0_tage_48196fae": "Nur letzte {value_0} Tage",
++      "56_nur_letzte_value_0_tage_48196fae": "Uniquement les {value_0} derniers jours",
+       "119_id_db302b9b": "_id",
+-      "457_nur_letzte_value_0_tage_be9a083a": "Nur letzte {value_0} Tage",
+-      "582_nur_letzte_value_0_tage_a8e14b8a": "Nur letzte {value_0} Tage",
++      "457_nur_letzte_value_0_tage_be9a083a": "Uniquement les {value_0} derniers jours",
++      "582_nur_letzte_value_0_tage_a8e14b8a": "Uniquement les {value_0} derniers jours",
+       "682_diese_buchung_wird_als_verbrauch_vo_54220c3f": "Cette transaction est enregistrée comme un retrait de l'objectif d'épargne débloqué <b>«{value_0}»</b>.\n\nMontant débloqué : {value_1}\nRetrait : {value_2}"
+     }
+   },
+@@ -2104,6 +2104,11 @@
+     "kind_real_fixed_short": "Fixe + réc.",
+     "kind_variable_fixed_short": "Fixe variable",
+     "kind_variable_recurring_short": "Réc. variable",
+-    "btn_real_fixed_only": "Seulement vrais frais fixes"
++    "btn_real_fixed_only": "Seulement vrais frais fixes",
++    "status": {
++      "days": "{days} jours",
++      "today": "Aujourd’hui",
++      "in_days": "dans {days} j"
++    }
+   }
+-}
+\ No newline at end of file
++}
+diff -ruN bm_analysis_2012_orig/BudgetManager_Source_2_0_12/views/recurring_bookings_dialog.py bm_analysis_2012/BudgetManager_Source_2_0_12/views/recurring_bookings_dialog.py
+--- bm_analysis_2012_orig/BudgetManager_Source_2_0_12/views/recurring_bookings_dialog.py	2026-06-14 19:45:33.000000000 +0000
++++ bm_analysis_2012/BudgetManager_Source_2_0_12/views/recurring_bookings_dialog.py	2026-06-15 02:17:03.519452475 +0000
+@@ -286,16 +286,16 @@
+         # Status
+         if is_overdue:
+             if days > 30:
+-                status_text = f"⚠️ {days} Tage"
++                status_text = "⚠️ " + trf("booking.status.days", days=days)
+                 status_color = QColor(c.danger)
+             else:
+-                status_text = f"🔴 {days} Tage"
++                status_text = "🔴 " + trf("booking.status.days", days=days)
+                 status_color = QColor(c.negative)
+         elif days == 0:
+-            status_text = "📅 Heute"
++            status_text = "📅 " + tr("booking.status.today")
+             status_color = QColor(c.warning)
+         else:
+-            status_text = f"🟢 in {-days} T."
++            status_text = "🟢 " + trf("booking.status.in_days", days=-days)
+             status_color = QColor(c.ok)
+ 
+         status_item = QTableWidgetItem(status_text)
+diff -ruN bm_analysis_2012_orig/BudgetManager_Source_2_0_12/views/tabs/overview_widgets.py bm_analysis_2012/BudgetManager_Source_2_0_12/views/tabs/overview_widgets.py
+--- bm_analysis_2012_orig/BudgetManager_Source_2_0_12/views/tabs/overview_widgets.py	2026-06-14 18:04:38.000000000 +0000
++++ bm_analysis_2012/BudgetManager_Source_2_0_12/views/tabs/overview_widgets.py	2026-06-15 02:14:38.139303791 +0000
+@@ -180,10 +180,21 @@
+             self._chart.removeAxis(axis)
+         self._chart.legend().setVisible(bool(keep_legend))
+ 
++    def _no_data_title(self, title: str = "") -> str:
++        """Einheitlicher Leerdaten-Titel ohne führende Leerzeichen.
++
++        ``tab_ui.keine_daten`` enthält in den Sprachdateien bewusst eine
++        führende Klammer-Ergänzung (z.B. ``" (keine Daten)"``). Ohne
++        Basis-Titel darf daraus aber kein Titel mit führendem Leerzeichen
++        werden.
++        """
++        suffix = tr("tab_ui.keine_daten")
++        return f"{title}{suffix}" if title else suffix.strip()
++
+     def create_pie_chart(self, data: dict[str, float], title: str = "", color_map: dict[str, str] | None = None) -> None:
+         self._clear_chart(keep_legend=False)
+         if not data:
+-            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
++            self._chart.setTitle(self._no_data_title(title))
+             return
+ 
+         series = QPieSeries()
+@@ -205,6 +216,10 @@
+             elif i < len(colors):
+                 s.setColor(colors[i])
+ 
++        if series.count() == 0:
++            self._chart.setTitle(self._no_data_title(title))
++            return
++
+         try:
+             series.clicked.connect(
+                 lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
+@@ -220,20 +235,34 @@
+         self._clear_chart(keep_legend=False)
+         self._chart.setTitle("")
+ 
+-        if not ring_data:
++        visible_rings = [
++            ring for ring in ring_data
++            if any(float(sl.get("value", 0) or 0) >= 0.01 for sl in ring.get("slices", []))
++        ]
++        if not visible_rings:
+             self._chart.setTitle(tr("dlg.no_data"))
+             return
+ 
+-        for ring in ring_data:
++        multi_ring = len(visible_rings) > 1
++        added_any = False
++
++        for ring in visible_rings:
+             series = QPieSeries()
+             series.setPieSize(ring.get("pie_size", 0.9))
+             series.setHoleSize(ring.get("hole_size", 0.7))
++            ring_label = str(ring.get("label", "") or "").strip()
+ 
+             for sl_def in ring.get("slices", []):
+                 val = float(sl_def.get("value", 0))
+                 if val < 0.01:
+                     continue
+-                sl = series.append(sl_def.get("label", ""), val)
++                label = str(sl_def.get("label", "") or "")
++                # Bei mehreren Ringen war bisher jedes Segment nur "Gebucht" /
++                # "Offen" beschriftet. Für DAU-Nutzer ist sichtbar, zu welchem
++                # Konto der Ring gehört.
++                if multi_ring and ring_label and not label.startswith(ring_label):
++                    label = f"{ring_label}: {label}"
++                sl = series.append(label, val)
+                 sl.setColor(QColor(sl_def.get("color", ui_colors(self).text_dim)))
+                 sl.setProperty("raw_label", sl_def.get("raw_label", ""))
+                 sl.setLabelVisible(True)
+@@ -248,6 +277,9 @@
+                 except Exception as e:
+                     logger.debug("sl.hovered connect: %s", e)
+ 
++            if series.count() == 0:
++                continue
++
+             try:
+                 series.clicked.connect(
+                     lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
+@@ -256,6 +288,10 @@
+                 logger.debug("series.clicked connect: %s", e)
+ 
+             self._chart.addSeries(series)
++            added_any = True
++
++        if not added_any:
++            self._chart.setTitle(tr("dlg.no_data"))
+ 
+     def _on_slice_hover(self, state: bool, sl: QPieSlice) -> None:
+         try:
+@@ -287,7 +323,7 @@
+         self._clear_chart(keep_legend=True)
+ 
+         if not categories or not series_data:
+-            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
++            self._chart.setTitle(self._no_data_title(title))
+             return
+ 
+         all_values: list[float] = []
+@@ -305,7 +341,7 @@
+             self._chart.addSeries(series)
+ 
+         if not self._chart.series():
+-            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
++            self._chart.setTitle(self._no_data_title(title))
+             return
+ 
+         axis_x = QBarCategoryAxis()
+@@ -344,7 +380,7 @@
+         self._clear_chart(keep_legend=False)
+         bars = [b for b in bars if float(b.get("value", 0.0) or 0.0) > 0.0]
+         if not bars:
+-            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
++            self._chart.setTitle(self._no_data_title(title))
+             return
+ 
+         labels = [str(b.get("label", "")) for b in bars]
+@@ -382,7 +418,7 @@
+         self._clear_chart(keep_legend=True)
+ 
+         if not categories or not series_data:
+-            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
++            self._chart.setTitle(self._no_data_title(title))
+             return
+ 
+         bar_series = QBarSeries()
+@@ -401,8 +437,10 @@
+         bar_series.attachAxis(axis_x)
+ 
+         axis_y = QValueAxis()
+-        all_vals = [v for sd in series_data for v in sd.get("values", [])]
+-        max_val = max(all_vals) if all_vals else 1000
++        all_vals = [float(v or 0.0) for sd in series_data for v in sd.get("values", [])]
++        max_val = max(all_vals) if all_vals else 0.0
++        if max_val <= 0.0:
++            max_val = 1.0
+         axis_y.setRange(0, max_val * 1.15)
+         axis_y.setLabelFormat("%.0f")
+         self._chart.addAxis(axis_y, Qt.AlignLeft)

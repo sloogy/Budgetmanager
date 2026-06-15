@@ -32,8 +32,9 @@ def _get_months():
     """Gibt die lokalisierten Monatskurzbezeichnungen zurück."""
     return [tr(f"month_short.{i}") for i in range(1, 13)]
 
-from utils.money import parse_money, currency_header
+from utils.money import parse_money, currency_header, format_short
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from views.category_delete_dialog import ask_category_delete_decision
 
 def parse_amount(text: str) -> float:
     return parse_money(text)
@@ -84,11 +85,11 @@ class NewCategoryDialog(QDialog):
         
         # Name
         self.name_edit = QLineEdit(category_name)
-        form.addRow("Name:", self.name_edit)
+        form.addRow(tr("lbl.name"), self.name_edit)
         
         # Typ (read-only anzeigen)
         typ_label = QLabel(trf('auto.views_budget_entry_dialog_extended.90_b_value_0_b_ee6c93f4', value_0=(typ)))
-        form.addRow("Typ:", typ_label)
+        form.addRow(tr("header.type"), typ_label)
         
         # Parent-Kategorie
         self.parent_combo = QComboBox()
@@ -102,7 +103,7 @@ class NewCategoryDialog(QDialog):
                 indent = "  "
             self.parent_combo.addItem(f"{indent}{cat.name}", cat.id)
         
-        form.addRow("Parent-Kategorie:", self.parent_combo)
+        form.addRow(tr("lbl.parent_category"), self.parent_combo)
         
         layout.addWidget(group)
         
@@ -111,11 +112,11 @@ class NewCategoryDialog(QDialog):
         flags_layout = QGridLayout(flags_group)
         
         self.chk_fix = QCheckBox(tr("tracking.title.fixcosts"))
-        self.chk_fix.setToolTip(tr("dlg.diese_kategorie_enthaelt_feste"))
+        self.chk_fix.setToolTip(tr("help.tip.fixcost"))
         flags_layout.addWidget(self.chk_fix, 0, 0)
         
         self.chk_recurring = QCheckBox(tr("lbl.recurring"))
-        self.chk_recurring.setToolTip(tr("dlg.diese_kategorie_hat_regelmaessige"))
+        self.chk_recurring.setToolTip(tr("help.tip.recurring"))
         flags_layout.addWidget(self.chk_recurring, 0, 1)
         
         day_layout = QHBoxLayout()
@@ -434,30 +435,17 @@ class CategoryManagementWidget(QWidget):
             QMessageBox.information(self, tr("msg.info"), tr("tab_ui.bitte_zuerst_eine_kategorie"))
             return
         
-        # Prüfen ob Unterkategorien vorhanden
-        all_cats = self.cat_model.list(self.typ)
-        has_children = any(c.parent_id == cat.id for c in all_cats)
-        
-        msg = f"Kategorie '{cat.name}' wirklich löschen?"
-        if has_children:
-            msg += "\n\n⚠️ WARNUNG: Diese Kategorie hat Unterkategorien, die ebenfalls gelöscht werden!"
-        
-        if QMessageBox.question(self, tr("btn.loeschen_bestaetigen"), msg) != QMessageBox.Yes:
+        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=[cat.id])
+        if decision is None:
             return
-        
+
         try:
-            # IDs zum Löschen sammeln (inkl. Kinder)
-            ids_to_delete = [cat.id]
-            
-            def collect_children(parent_id: int):
-                for c in all_cats:
-                    if c.parent_id == parent_id:
-                        ids_to_delete.append(c.id)
-                        collect_children(c.id)
-            
-            collect_children(cat.id)
-            
-            self.cat_model.delete_by_ids(ids_to_delete)
+            self.cat_model.delete_category_safely(
+                cat.id,
+                data_action=decision.action,
+                reassign_to_id=decision.reassign_to_id,
+                promote_children=True,
+            )
             self._refresh_categories()
             self.category_changed.emit()
         except Exception as e:
@@ -611,7 +599,7 @@ class BudgetEntryDialogExtended(QDialog):
         
         # === Betrag ===
         self.amount = QLineEdit()
-        self.amount.setPlaceholderText(tr('auto.views_budget_entry_dialog_extended.616_z_b_1200_00_ad178edd'))
+        self.amount.setPlaceholderText(trf('lbl.example_amount', amount=format_short(1200)))
         
         # === Modus ===
         self.mode = QComboBox()
@@ -636,10 +624,10 @@ class BudgetEntryDialogExtended(QDialog):
         
         # === Layout ===
         form = QFormLayout()
-        form.addRow("Jahr:", self.year)
-        form.addRow("Typ:", self.typ)
+        form.addRow(tr("lbl.year"), self.year)
+        form.addRow(tr("header.type"), self.typ)
         form.addRow(tr("lbl.category"), self.category_widget)
-        form.addRow(f"Betrag ({currency_header()}):", self.amount)
+        form.addRow(trf("lbl.amount_with_currency", currency=currency_header()), self.amount)
         
         # Separator
         line = QFrame()
@@ -647,10 +635,10 @@ class BudgetEntryDialogExtended(QDialog):
         line.setFrameShadow(QFrame.Sunken)
         form.addRow(line)
         
-        form.addRow("Modus:", self.mode)
-        form.addRow("Monat:", self.month)
-        form.addRow("Von:", self.from_month)
-        form.addRow("Bis:", self.to_month)
+        form.addRow(tr("lbl.mode"), self.mode)
+        form.addRow(tr("lbl.month"), self.month)
+        form.addRow(tr("lbl.from"), self.from_month)
+        form.addRow(tr("lbl.to"), self.to_month)
         form.addRow("", self.only_if_empty)
         
         btns = QHBoxLayout()

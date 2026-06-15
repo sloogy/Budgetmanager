@@ -315,3 +315,213 @@ def test_restore_into_live_connection():
     assert [r[0] for r in live.execute("SELECT x FROM t ORDER BY x")] == [10, 20]
     live.execute("INSERT INTO t VALUES (30)")  # Connection bleibt nutzbar
     live.close()
+
+
+# ── Geldformat / Region ─────────────────────────────────────────
+
+
+def test_money_format_respects_number_format():
+    from utils.money import set_money_locale, format_money, format_short, parse_money
+
+    set_money_locale(currency="CHF", number_format="ch")
+    assert format_money(1234.5) == "1'234.50 CHF"
+    assert format_short(0) == "0.00"
+
+    set_money_locale(currency="EUR", number_format="eu")
+    assert format_money(1234.5) == "1.234,50 €"
+    assert format_short(0) == "0,00"
+
+    set_money_locale(currency="USD", number_format="us")
+    assert format_money(1234.5) == "$ 1,234.50"
+
+    # Parsing bleibt tolerant, egal welches Anzeigeformat aktiv ist.
+    assert parse_money("1'234.50 CHF") == 1234.5
+    assert parse_money("1.234,50 €") == 1234.5
+    assert parse_money("$ 1,234.50") == 1234.5
+
+    # Tests sollen keine globale Region für folgende Tests hinterlassen.
+    set_money_locale(currency="CHF", number_format="ch")
+
+
+def test_money_parser_uses_active_number_format():
+    from utils.money import set_money_locale, parse_money
+
+    set_money_locale(currency="CHF", number_format="ch")
+    assert parse_money("1'234.50 CHF") == 1234.5
+
+    set_money_locale(currency="EUR", number_format="eu")
+    assert parse_money("1.234") == 1234.0
+    assert parse_money("1.234,50 €") == 1234.5
+    assert parse_money("1234,50") == 1234.5
+
+    set_money_locale(currency="USD", number_format="us")
+    assert parse_money("1,234") == 1234.0
+    assert parse_money("$ 1,234.50") == 1234.5
+
+
+def test_settings_migrates_legacy_number_format(tmp_path):
+    from settings import Settings
+
+    f = tmp_path / "settings.json"
+    f.write_text('{"number_format":"german", "currency":"eur"}', encoding="utf-8")
+    s = Settings(str(f))
+    assert s.number_format == "german"
+    assert s.currency == "EUR"
+
+
+def test_category_parent_delete_promotes_children_and_deletes_references(migrated_conn):
+    from model.category_model import CategoryModel
+
+    cm = CategoryModel(migrated_conn)
+    parent = cm.create("Ausgaben", "Wohnen")
+    child = cm.create("Ausgaben", "Miete", parent_id=parent)
+    migrated_conn.execute("INSERT INTO budget(year, month, typ, category, amount) VALUES(2026, 6, 'Ausgaben', 'Wohnen', 100)")
+    migrated_conn.execute("INSERT INTO tracking(date, typ, category, amount, details) VALUES('2026-06-01', 'Ausgaben', 'Wohnen', 100, 'Test')")
+    migrated_conn.commit()
+
+    cm.delete_category_safely(parent, data_action="delete_until_last_booking")
+
+    promoted = cm.get_by_id(child)
+    assert promoted is not None
+    assert promoted.parent_id is None
+    assert migrated_conn.execute("SELECT COUNT(*) FROM budget WHERE category='Wohnen'").fetchone()[0] == 0
+    assert migrated_conn.execute("SELECT COUNT(*) FROM tracking WHERE category='Wohnen'").fetchone()[0] == 0
+
+
+def test_category_delete_reassign_merges_budget_and_moves_tracking(migrated_conn):
+    from model.category_model import CategoryModel
+
+    cm = CategoryModel(migrated_conn)
+    old = cm.create("Ausgaben", "Alt")
+    target = cm.create("Ausgaben", "Neu")
+    migrated_conn.execute("INSERT INTO budget(year, month, typ, category, amount) VALUES(2026, 6, 'Ausgaben', 'Alt', 40)")
+    migrated_conn.execute("INSERT INTO budget(year, month, typ, category, amount) VALUES(2026, 6, 'Ausgaben', 'Neu', 60)")
+    migrated_conn.execute("INSERT INTO tracking(date, typ, category, amount, details) VALUES('2026-06-01', 'Ausgaben', 'Alt', 40, 'Test')")
+    migrated_conn.commit()
+
+    cm.delete_category_safely(old, data_action="reassign", reassign_to_id=target)
+
+    assert cm.get_by_id(old) is None
+    assert migrated_conn.execute("SELECT amount FROM budget WHERE year=2026 AND month=6 AND typ='Ausgaben' AND category='Neu'").fetchone()[0] == 100
+    assert migrated_conn.execute("SELECT COUNT(*) FROM budget WHERE category='Alt'").fetchone()[0] == 0
+    assert migrated_conn.execute("SELECT COUNT(*) FROM tracking WHERE category='Neu'").fetchone()[0] == 1
+
+
+def test_category_rename_cascades_all_known_text_refs(migrated_conn):
+    from model.category_model import CategoryModel
+
+    cm = CategoryModel(migrated_conn)
+    cat = cm.create("Ausgaben", "Altname")
+    migrated_conn.execute("INSERT INTO budget(year, month, typ, category, amount) VALUES(2026, 6, 'Ausgaben', 'Altname', 10)")
+    migrated_conn.execute("INSERT INTO tracking(date, typ, category, amount, details) VALUES('2026-06-01', 'Ausgaben', 'Altname', 10, 'Test')")
+    migrated_conn.execute("INSERT INTO favorites(typ, category, sort_order) VALUES('Ausgaben', 'Altname', 1)")
+    migrated_conn.execute("INSERT INTO budget_warnings(year, month, typ, category, threshold_percent, enabled) VALUES(2026, 6, 'Ausgaben', 'Altname', 90, 1)")
+    migrated_conn.execute("INSERT INTO recurring_transactions(typ, category, amount, details, day_of_month, is_active, start_date, created_date) VALUES('Ausgaben', 'Altname', 10, '', 1, 1, '2026-01-01', '2026-01-01')")
+    migrated_conn.execute("INSERT INTO suggestion_accepted(typ, category, year, month) VALUES('Ausgaben', 'Altname', 2026, 6)")
+    migrated_conn.commit()
+
+    cm.rename_and_cascade(cat, typ="Ausgaben", old_name="Altname", new_name="Neuname")
+
+    for table in ["budget", "tracking", "favorites", "budget_warnings", "recurring_transactions", "suggestion_accepted"]:
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='Altname'").fetchone()[0] == 0
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='Neuname'").fetchone()[0] == 1
+
+
+def test_budget_model_rename_delegates_to_category_cascade(migrated_conn):
+    from model.category_model import CategoryModel
+    from model.budget_model import BudgetModel
+
+    cm = CategoryModel(migrated_conn)
+    cm.create("Ausgaben", "AltBudgetName")
+    migrated_conn.execute("INSERT INTO budget(year, month, typ, category, amount) VALUES(2026, 6, 'Ausgaben', 'AltBudgetName', 10)")
+    migrated_conn.execute("INSERT INTO tracking(date, typ, category, amount, details) VALUES('2026-06-01', 'Ausgaben', 'AltBudgetName', 10, 'Test')")
+    migrated_conn.execute("INSERT INTO favorites(typ, category, sort_order) VALUES('Ausgaben', 'AltBudgetName', 1)")
+    migrated_conn.execute("INSERT INTO budget_warnings(year, month, typ, category, threshold_percent, enabled) VALUES(2026, 6, 'Ausgaben', 'AltBudgetName', 90, 1)")
+    migrated_conn.execute("INSERT INTO recurring_transactions(typ, category, amount, details, day_of_month, is_active, start_date, created_date) VALUES('Ausgaben', 'AltBudgetName', 10, '', 1, 1, '2026-01-01', '2026-01-01')")
+    migrated_conn.execute("INSERT INTO suggestion_accepted(typ, category, year, month) VALUES('Ausgaben', 'AltBudgetName', 2026, 6)")
+    migrated_conn.commit()
+
+    BudgetModel(migrated_conn).rename_category("Ausgaben", "AltBudgetName", "NeuBudgetName")
+
+    assert migrated_conn.execute("SELECT COUNT(*) FROM categories WHERE name='NeuBudgetName'").fetchone()[0] == 1
+    for table in ["budget", "tracking", "favorites", "budget_warnings", "recurring_transactions", "suggestion_accepted"]:
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='AltBudgetName'").fetchone()[0] == 0
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='NeuBudgetName'").fetchone()[0] == 1
+
+
+def test_undo_redo_rename_cascades_all_known_refs(migrated_conn):
+    from model.category_model import CategoryModel
+    from model.undo_redo_model import UndoRedoModel
+
+    cm = CategoryModel(migrated_conn)
+    cat = cm.create("Ausgaben", "UndoAlt")
+    migrated_conn.execute("INSERT INTO budget(year, month, typ, category, amount) VALUES(2026, 6, 'Ausgaben', 'UndoAlt', 10)")
+    migrated_conn.execute("INSERT INTO tracking(date, typ, category, amount, details) VALUES('2026-06-01', 'Ausgaben', 'UndoAlt', 10, 'Test')")
+    migrated_conn.execute("INSERT INTO favorites(typ, category, sort_order) VALUES('Ausgaben', 'UndoAlt', 1)")
+    migrated_conn.execute("INSERT INTO budget_warnings(year, month, typ, category, threshold_percent, enabled) VALUES(2026, 6, 'Ausgaben', 'UndoAlt', 90, 1)")
+    migrated_conn.execute("INSERT INTO recurring_transactions(typ, category, amount, details, day_of_month, is_active, start_date, created_date) VALUES('Ausgaben', 'UndoAlt', 10, '', 1, 1, '2026-01-01', '2026-01-01')")
+    migrated_conn.execute("INSERT INTO suggestion_accepted(typ, category, year, month) VALUES('Ausgaben', 'UndoAlt', 2026, 6)")
+    migrated_conn.commit()
+
+    cm.rename_and_cascade(cat, typ="Ausgaben", old_name="UndoAlt", new_name="UndoNeu")
+    undo = UndoRedoModel(migrated_conn)
+
+    assert undo.undo() is True
+    for table in ["budget", "tracking", "favorites", "budget_warnings", "recurring_transactions", "suggestion_accepted"]:
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='UndoNeu'").fetchone()[0] == 0
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='UndoAlt'").fetchone()[0] == 1
+
+    assert undo.redo() is True
+    for table in ["budget", "tracking", "favorites", "budget_warnings", "recurring_transactions", "suggestion_accepted"]:
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='UndoAlt'").fetchone()[0] == 0
+        assert migrated_conn.execute(f"SELECT COUNT(*) FROM {table} WHERE category='UndoNeu'").fetchone()[0] == 1
+
+
+def test_tracking_source_marks_auto_bookings_and_manual_usage_counts(migrated_conn):
+    from model.category_model import CategoryModel
+    from model.tracking_model import TrackingModel
+
+    cols = {r[1] for r in migrated_conn.execute("PRAGMA table_info(tracking)")}
+    assert "source" in cols
+
+    cm = CategoryModel(migrated_conn)
+    cm.upsert("Ausgaben", "Miete", is_fix=True, is_recurring=True, recurring_day=1)
+    cm.upsert("Ausgaben", "Freizeit", is_fix=False, is_recurring=False)
+
+    tm = TrackingModel(migrated_conn)
+    tm.add("2026-06-01", "Ausgaben", "Miete", 1200, "Juni - Miete", source="auto_fixcost")
+    tm.add("2026-06-02", "Ausgaben", "Freizeit", 25, "Kino")
+    tm.add("2026-06-03", "Ausgaben", "Freizeit", 30, "Restaurant", source="manual")
+
+    all_counts = tm.category_usage_counts("Ausgaben")
+    manual_counts = tm.category_usage_counts("Ausgaben", manual_only=True)
+
+    assert all_counts["Miete"] == 1
+    assert manual_counts.get("Miete", 0) == 0
+    assert manual_counts["Freizeit"] == 2
+
+
+def test_tracking_dropdown_favorites_then_manual_frequency(migrated_conn):
+    from model.category_model import CategoryModel
+    from model.favorites_model import FavoritesModel
+    from model.tracking_model import TrackingModel
+
+    cm = CategoryModel(migrated_conn)
+    for order, name in enumerate(["Alpha", "Bravo", "Charlie", "Delta"], start=1):
+        cm.upsert("Ausgaben", name, is_fix=False, is_recurring=False, sort_order=order)
+
+    fav = FavoritesModel(migrated_conn)
+    fav.add("Ausgaben", "Charlie")
+
+    tm = TrackingModel(migrated_conn)
+    for i in range(3):
+        tm.add(f"2026-06-0{i+1}", "Ausgaben", "Bravo", 10 + i, "manuell")
+    tm.add("2026-06-04", "Ausgaben", "Alpha", 5, "manuell")
+    tm.add("2026-06-05", "Ausgaben", "Delta", 99, "automatisch", source="auto_fixcost")
+
+    pairs = cm.list_for_tracking_dropdown("Ausgaben")
+    names = [real for _label, real in pairs]
+    labels = [label for label, _real in pairs]
+
+    assert names[:4] == ["Charlie", "Bravo", "Alpha", "Delta"]
+    assert labels[0].startswith("★ ")

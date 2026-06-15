@@ -29,7 +29,12 @@ from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
-from utils.money import get_symbol
+from utils.money import (
+    get_symbol, format_money,
+    NUMBER_FORMATS, NUMBER_FORMAT_CODES,
+    set_number_format, get_number_format,
+    LANGUAGE_NUMBER_FORMAT_DEFAULTS,
+)
 
 
 @dataclass
@@ -154,8 +159,14 @@ class SetupAssistantDialog(QDialog):
     # Sidebar (Schritt-Übersicht)
     # ---------------------------------------------------------------------
     # Indizes der beiden alternativen Kategorien-Schritte (Branch)
-    _IDX_CAT_MANAGER = 3
-    _IDX_CAT_EXCEL = 4
+    # Schritt-Indizes (symbolisch statt hartcodiert – robust gegen Reihenfolge-Änderungen)
+    # 0=mode 1=db 2=number_format 3=cat_method 4=cat_manager 5=cat_excel 6=budget_starter ...
+    _IDX_CAT_METHOD = 3
+    _IDX_CAT_MANAGER = 4
+    _IDX_CAT_EXCEL = 5
+    _IDX_BUDGET_STARTER = 6
+    _IDX_BUDGET_LOAD = 7
+    _IDX_TRACKING_FIRST = 9
 
     def _branch_hidden_idx(self) -> int:
         """Index des aktuell NICHT gewählten Kategorien-Schritts."""
@@ -254,6 +265,7 @@ class SetupAssistantDialog(QDialog):
     def _build_steps(self) -> None:
         self._build_step_mode()
         self._build_step_db()
+        self._build_step_number_format()
         self._build_step_cat_method()
         self._build_step_cat_manager()
         self._build_step_cat_excel()
@@ -267,6 +279,22 @@ class SetupAssistantDialog(QDialog):
         self._step_done = [False] * len(self.steps)
         for i, st in enumerate(self.steps):
             self._step_done[i] = not st.is_blocking
+
+        self._verify_step_indices()
+
+    def _verify_step_indices(self) -> None:
+        """Warnt früh, falls symbolische Schritt-Indizes nicht mehr zur UI-Reihenfolge passen."""
+        expected = {
+            self._IDX_CAT_METHOD: getattr(self, "page_cat_method", None),
+            self._IDX_CAT_MANAGER: getattr(self, "page_cat_manager", None),
+            self._IDX_CAT_EXCEL: getattr(self, "page_cat_excel", None),
+            self._IDX_BUDGET_STARTER: getattr(self, "page_budget_starter", None),
+            self._IDX_BUDGET_LOAD: getattr(self, "page_budget_load", None),
+            self._IDX_TRACKING_FIRST: getattr(self, "page_tracking_first", None),
+        }
+        for idx, page in expected.items():
+            if page is None or idx >= len(self.steps) or self.steps[idx].widget is not page:
+                logger.warning("Setup-Assistent: Step-Index %d passt nicht zur erwarteten Seite.", idx)
 
     # ── Step-Builder ─────────────────────────────────────────────
 
@@ -318,6 +346,66 @@ class SetupAssistantDialog(QDialog):
         lay.addLayout(btn_row)
         lay.addStretch(1)
         self.steps.append(_Step(tr("setup.nav_db"), self.page_db))
+
+    def _build_step_number_format(self) -> None:
+        """2b) Zahlenformat (Dezimal-/Tausendertrennung) wählen."""
+        from PySide6.QtWidgets import QComboBox
+        self.page_number_format = QWidget()
+        lay = QVBoxLayout(self.page_number_format)
+        lay.addWidget(QLabel("<h3>" + tr("setup.numfmt_title") + "</h3>"))
+
+        info = QLabel(tr("setup.numfmt_intro"))
+        info.setWordWrap(True)
+        info.setTextFormat(Qt.RichText)
+        lay.addWidget(info)
+
+        form = QFormLayout()
+        self.cmb_number_format = QComboBox()
+        for code in NUMBER_FORMAT_CODES:
+            self.cmb_number_format.addItem(NUMBER_FORMATS[code]["label"], code)
+
+        # Vorauswahl: gespeicherter Wert, sonst Sprach-Default
+        current = str(self.settings.get("number_format", "") or "")
+        if current not in NUMBER_FORMATS:
+            lang = str(self.settings.get("language", "de") or "de").lower()[:2]
+            current = LANGUAGE_NUMBER_FORMAT_DEFAULTS.get(lang, "swiss")
+        idx = self.cmb_number_format.findData(current)
+        self.cmb_number_format.setCurrentIndex(max(0, idx))
+
+        form.addRow(tr("setup.numfmt_label"), self.cmb_number_format)
+        lay.addLayout(form)
+
+        # Live-Vorschau
+        self.lbl_numfmt_preview = QLabel()
+        self.lbl_numfmt_preview.setTextFormat(Qt.RichText)
+        self.lbl_numfmt_preview.setStyleSheet("padding: 8px; font-size: 14px;")
+        lay.addWidget(self.lbl_numfmt_preview)
+
+        self.cmb_number_format.currentIndexChanged.connect(self._on_number_format_changed)
+        # initial anwenden (persistiert sofort, damit auch bei direktem Weiter korrekt)
+        self._on_number_format_changed()
+
+        lay.addStretch(1)
+        self.steps.append(_Step(tr("setup.nav_number_format"), self.page_number_format))
+
+    def _on_number_format_changed(self, *_args) -> None:
+        """Wendet das gewählte Zahlenformat sofort an und aktualisiert die Vorschau."""
+        code = self.cmb_number_format.currentData() or "swiss"
+        set_number_format(code)
+        try:
+            from utils.qt_translator import apply_number_locale
+            apply_number_locale(code)
+        except Exception as e:
+            logger.debug("QLocale konnte nicht gesetzt werden: %s", e)
+        try:
+            self.settings.set("number_format", code)
+        except Exception as e:
+            logger.debug("number_format konnte nicht gespeichert werden: %s", e)
+        sample = format_money(1234567.89, currency=str(self.settings.get("currency", "CHF")))
+        sample_neg = format_money(-49.5, currency=str(self.settings.get("currency", "CHF")))
+        self.lbl_numfmt_preview.setText(
+            f"<b>{tr('setup.numfmt_preview')}:</b> {sample} &nbsp;·&nbsp; {sample_neg}"
+        )
 
     def _build_step_cat_method(self) -> None:
         """3) Kategorien-Methode wählen."""
@@ -514,8 +602,14 @@ class SetupAssistantDialog(QDialog):
         self.btn_add_first = QPushButton(tr("setup.add_first_booking"))
         self.btn_add_first.clicked.connect(self._open_first_booking)
         lay.addWidget(self.btn_add_first)
+        self.lbl_tracking_done = QLabel(tr("setup.tracking_entry_missing"))
+        self.lbl_tracking_done.setTextFormat(Qt.RichText)
+        self.lbl_tracking_done.setWordWrap(True)
+        lay.addWidget(self.lbl_tracking_done)
         lay.addStretch(1)
-        self.steps.append(_Step(tr("setup.nav_tracking_first"), self.page_tracking_first, on_enter=self._enter_tracking_tab))
+        self.steps.append(_Step(tr("setup.nav_tracking_first"), self.page_tracking_first,
+                                on_enter=self._enter_tracking_first,
+                                is_blocking=True, hint_key="setup.hint_locked_tracking"))
 
     def _build_step_tracking_fix(self) -> None:
         """8) Tracking — Fixkosten / Wiederkehrend."""
@@ -605,13 +699,13 @@ class SetupAssistantDialog(QDialog):
         idx = self._current_idx()
 
         # handle branching back: from cat manager/excel to method page
-        if idx in (3, 4):
-            self._set_step(2)
+        if idx in (self._IDX_CAT_MANAGER, self._IDX_CAT_EXCEL):
+            self._set_step(self._IDX_CAT_METHOD)
             return
 
         # from budget starter go back to the selected category path
-        if idx == 5:
-            self._set_step(4 if self.rb_cat_excel.isChecked() else 3)
+        if idx == self._IDX_BUDGET_STARTER:
+            self._set_step(self._IDX_CAT_EXCEL if self.rb_cat_excel.isChecked() else self._IDX_CAT_MANAGER)
             return
 
         self._set_step(idx - 1)
@@ -626,16 +720,16 @@ class SetupAssistantDialog(QDialog):
             self.close()
             return
 
-        # page 2 -> branch
-        if idx == 2:
+        # category-method page -> branch
+        if idx == self._IDX_CAT_METHOD:
             if self.cb_clean_start.isChecked():
                 self._reset_categories()
-            self._set_step(4 if self.rb_cat_excel.isChecked() else 3)
+            self._set_step(self._IDX_CAT_EXCEL if self.rb_cat_excel.isChecked() else self._IDX_CAT_MANAGER)
             return
 
         # after category pages -> budget starter
-        if idx in (3, 4):
-            self._set_step(5)
+        if idx in (self._IDX_CAT_MANAGER, self._IDX_CAT_EXCEL):
+            self._set_step(self._IDX_BUDGET_STARTER)
             return
 
         self._set_step(idx + 1)
@@ -695,6 +789,16 @@ class SetupAssistantDialog(QDialog):
         except Exception as e:
             logger.debug("if hasattr(self.main_window, '_goto_tab'):: %s", e)
 
+    def _enter_tracking_first(self) -> None:
+        """Wechselt zur ersten Buchung und berechnet den Pflichtschritt neu.
+
+        Regression v2.0.8 Cockpit: Der Schritt verwies auf diesen Enter-Hook,
+        die Methode fehlte jedoch. Dadurch konnte der Setup-Assistent beim
+        Erststart nicht konstruiert werden.
+        """
+        self._enter_tracking_tab()
+        self._recompute_tracking_done()
+
     # ---------------------------------------------------------------------
     # Actions (pages)
     # ---------------------------------------------------------------------
@@ -707,7 +811,7 @@ class SetupAssistantDialog(QDialog):
             if cnt <= 0:
                 QMessageBox.information(self, tr("msg.info"), tr("setup.no_categories_yet"))
             self._cats_done = True
-            self._step_done[3] = True
+            self._step_done[self._IDX_CAT_MANAGER] = True
             self.lbl_cat_done_1.setText(tr("setup.cat_manager_done"))
             self._update_nav()
             self.main_window._refresh_all_tabs()
@@ -782,7 +886,7 @@ class SetupAssistantDialog(QDialog):
                 self.main_window._show_category_manager()
 
             self._cats_done = True
-            self._step_done[4] = True
+            self._step_done[self._IDX_CAT_EXCEL] = True
             self.lbl_cat_done_2.setText(tr("setup.excel_import_done"))
             self._update_nav()
             self.main_window._refresh_all_tabs()
@@ -796,6 +900,7 @@ class SetupAssistantDialog(QDialog):
                 with self._setup_hidden_while_child_open():
                     self.main_window.tracking_tab.add()
                 self.main_window.tracking_tab.refresh()
+                self._recompute_tracking_done()
             else:
                 QMessageBox.information(self, tr("msg.info"), tr("msg.setup_tracking_unavailable"))
         except Exception as e:
@@ -1005,8 +1110,48 @@ class SetupAssistantDialog(QDialog):
     def _enter_budget_tab_and_open_budget_window_once(self) -> None:
         """Wechselt in den Budget-Tab und öffnet beim ersten Eintritt das Budget-Fenster."""
         self._enter_budget_tab()
+        self._recompute_budget_done()
         if not self._budget_opened_once:
             self._open_budget_window(auto=True)
+
+    # ── harte Mindestdaten-Prüfung für den Erststart ─────────────
+    def _has_budget_value(self) -> bool:
+        """True, wenn mindestens ein Budgetwert > 0 existiert."""
+        try:
+            row = self.conn.execute("SELECT COUNT(*) FROM budget WHERE amount > 0").fetchone()
+            return bool(row and row[0] > 0)
+        except Exception:
+            return False
+
+    def _recompute_budget_done(self) -> None:
+        has_val = self._has_budget_value()
+        self._budget_done = has_val
+        if len(self._step_done) > self._IDX_BUDGET_LOAD:
+            self._step_done[self._IDX_BUDGET_LOAD] = has_val
+        if hasattr(self, "lbl_budget_done"):
+            self.lbl_budget_done.setText(
+                tr("setup.budget_value_present") if has_val
+                else tr("setup.budget_value_missing")
+            )
+        self._update_nav()
+
+    def _has_tracking_entry(self) -> bool:
+        try:
+            row = self.conn.execute("SELECT COUNT(*) FROM tracking").fetchone()
+            return bool(row and row[0] > 0)
+        except Exception:
+            return False
+
+    def _recompute_tracking_done(self) -> None:
+        has_entry = self._has_tracking_entry()
+        if len(self._step_done) > self._IDX_TRACKING_FIRST:
+            self._step_done[self._IDX_TRACKING_FIRST] = has_entry
+        if hasattr(self, "lbl_tracking_done"):
+            self.lbl_tracking_done.setText(
+                tr("setup.tracking_entry_present") if has_entry
+                else tr("setup.tracking_entry_missing")
+            )
+        self._update_nav()
 
     def _open_budget_window(self, *, auto: bool = False) -> None:
         """Öffnet ein separates Budget-Fenster zum direkten Ausfüllen."""
@@ -1016,15 +1161,7 @@ class SetupAssistantDialog(QDialog):
                 dlg.exec()
 
             self._budget_opened_once = True
-            self._budget_done = True
-
-            # Step-Index: 6 (nach Budget-Grundgerüst)
-            if len(self._step_done) > 6:
-                self._step_done[6] = True
-
-            if hasattr(self, "lbl_budget_done"):
-                self.lbl_budget_done.setText(tr("setup.small_budgetfenster_wurde_geoeffnetsmall"))
-            self._update_nav()
+            self._recompute_budget_done()
 
             # Tabs neu laden (Budget/Übersicht hängen davon ab)
             if hasattr(self.main_window, "_refresh_all_tabs"):
@@ -1039,21 +1176,50 @@ class SetupAssistantDialog(QDialog):
     # ---------------------------------------------------------------------
 
     def _do_restore_backup(self) -> None:
-        """Backup wiederherstellen aus dem Setup-Assistenten."""
+        """Backup wiederherstellen aus dem Setup-Assistenten.
+
+        Wichtig: Der BackupRestoreDialog erwartet die aktive DB-Umgebung
+        (db_path/settings/encrypted_session/active_user). Der alte Aufruf mit
+        einem nicht existierenden Direktpfad-Parameter passte nicht zur Signatur
+        und brach den geführten Starter beim Klick auf „Backup wiederherstellen" ab.
+        """
         try:
             from PySide6.QtWidgets import QFileDialog, QMessageBox
+            from model.app_paths import resolve_in_app
+
             path, _ = QFileDialog.getOpenFileName(
                 self,
                 tr("setup.setup_db_restore"),
                 "",
-                tr("setup.backup_file_filter")
+                tr("setup.backup_file_filter"),
             )
             if not path:
                 return
-            # Direkt über den Backup-Dialog öffnen
+
             from views.backup_restore_dialog import BackupRestoreDialog
-            dlg = BackupRestoreDialog(self, self.conn, restore_path=path)
-            dlg.exec()
+
+            encrypted_session = getattr(self.main_window, "_encrypted_session", None)
+            active_user = getattr(self.main_window, "_active_user", None)
+            db_path = None
+            if encrypted_session is None:
+                db_path = str(resolve_in_app(self.settings.database_path))
+
+            dlg = BackupRestoreDialog(
+                self,
+                self.conn,
+                db_path,
+                self.settings,
+                encrypted_session=encrypted_session,
+                active_user=active_user,
+            )
+            changed = dlg.restore_external_path(path)
+
+            if changed and encrypted_session is None and hasattr(self.main_window, "_refresh_all_tabs"):
+                try:
+                    self.main_window._refresh_all_tabs()
+                except Exception as refresh_err:
+                    logger.warning("Tab-Refresh nach Setup-Restore fehlgeschlagen: %s", refresh_err)
+
             # DB-Info aktualisieren
             try:
                 self.lbl_db.setText(

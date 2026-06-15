@@ -55,7 +55,7 @@ SECURITY_ICONS = {
 @dataclass
 class User:
     username: str               # Eindeutiger Slug (a-z, 0-9, _, -)
-    display_name: str           # Anzeigename frei wählbar ("Christian Krämer")
+    display_name: str           # Anzeigename frei wählbar ("Max Mustermann")
     security: str               # "quick" | "pin" | "password"
     salt_hex: str               # Salt als Hex
     db_filename: str            # z.B. "christian_kraemer.enc"
@@ -222,7 +222,7 @@ class UserModel:
         """Erstellt einen neuen Benutzer.
 
         Args:
-            display_name: Anzeigename ("Christian Krämer")
+            display_name: Anzeigename ("Max Mustermann")
             security: "quick" | "pin" | "password"
             secret: PIN oder Passwort (leer bei Quick)
 

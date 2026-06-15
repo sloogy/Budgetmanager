@@ -32,6 +32,7 @@ from model.category_model import CategoryModel, Category
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from utils.icons import get_icon
 from views.ui_colors import ui_colors
+from views.category_delete_dialog import ask_category_delete_decision
 
 
 class CategoriesTab(QWidget):
@@ -295,22 +296,21 @@ class CategoriesTab(QWidget):
             QMessageBox.information(self, tr("msg.info"), tr("tab_ui.bitte_nur_kategorien_auswaehlen"))
             return
 
-        # IDs sammeln (inkl. Unterbaum)
-        ids: list[int] = []
-        for it in deletable:
-            ids.extend(self._collect_subtree_ids(it))
-        ids = sorted(set(ids))
+        # Nur die ausgewählten Kategorien löschen. Direkte Unterkategorien werden
+        # im Model eine Ebene hochgezogen, nicht stillschweigend mitgelöscht.
+        ids = sorted({int(it.data(self.COL_NAME, self.ROLE_ID)) for it in deletable})
 
-        if len(ids) > 1:
-            txt = trf("categories.confirm_delete_multi", n=len(ids))
-        else:
-            txt = tr("categories.confirm_delete_single")
-
-        if QMessageBox.question(self, tr("dlg.confirm"), txt) != QMessageBox.StandardButton.Yes:
+        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=ids)
+        if decision is None:
             return
 
         try:
-            self.model.delete_by_ids(ids)
+            self.model.delete_categories_safely(
+                ids,
+                data_action=decision.action,
+                reassign_to_id=decision.reassign_to_id,
+                promote_children=True,
+            )
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("msg.kategorie_loeschen_fehler", e=str(e)))
             return
@@ -653,11 +653,11 @@ class CategoriesTab(QWidget):
 
         self._mass_fix = QComboBox()
         self._mass_fix.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.647_setzen_ja_f86a5233'), tr('auto.views_tabs_categories_tab.647_setzen_nein_60c1ccf6')])
-        form.addRow("Fixkosten:", self._mass_fix)
+        form.addRow(tr("tracking.title.fixcosts"), self._mass_fix)
 
         self._mass_rec = QComboBox()
         self._mass_rec.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.651_setzen_ja_63aa1520'), tr('auto.views_tabs_categories_tab.651_setzen_nein_e7dfddad')])
-        form.addRow("Wiederkehrend:", self._mass_rec)
+        form.addRow(tr("lbl.recurring"), self._mass_rec)
 
         day_row = QHBoxLayout()
         self._mass_day_mode = QComboBox()

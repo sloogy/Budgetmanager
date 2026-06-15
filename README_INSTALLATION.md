@@ -1,150 +1,87 @@
-# 📦 Budgetmanager v0.2.3.0 BETA - Installation & Start
+# 📦 BudgetManager v2.0.11 — Installation, Start & Update
 
-## 🚀 Schnellstart
+## Windows Portable
 
-1. **ZIP entpacken**
-   ```bash
-   unzip Budgetmanager_v0_2_3_0_BETA.zip
-   cd Budgetmanager_0.2.2.1_fix2_patched
-   ```
+1. `BudgetManager-v2.0.11-portable.zip` herunterladen.
+2. ZIP in einen eigenen Ordner entpacken, z. B. `C:\BudgetManager` oder auf einen USB-Stick.
+3. `BudgetManager.exe` starten.
 
-2. **Programm starten**
-   ```bash
-   python main.py
-   ```
+Die Nutzerdaten liegen im Ordner `data/` neben der Anwendung. Dadurch bleibt die portable Version komplett zusammen.
 
-   **Oder auf Windows:**
-   - Doppelklick auf `main.py`
-   - Oder: `python.exe main.py` in der Eingabeaufforderung
+## Windows Installer
 
-## 📋 Voraussetzungen
+1. `BudgetManager_Setup_2.0.11.exe` starten.
+2. Installation abschließen.
+3. BudgetManager über Startmenü/Desktop starten.
 
-- **Python 3.8 oder höher** ([Download](https://www.python.org/downloads/))
-- **PySide6** (wird automatisch installiert)
-
-### Installation der Abhängigkeiten
-
-Wenn das Programm nicht startet (Fehler: "ModuleNotFoundError: No module named 'PySide6'"):
+## Linux / Entwicklung
 
 ```bash
-pip install PySide6
-```
-
-**Oder mit den mitgelieferten Requirements:**
-```bash
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
+python3 main.py
 ```
 
-## 🆕 Was ist neu in v0.2.3.0?
+## Update aus der App
 
-### Budget-Tab komplett überarbeitet!
+1. BudgetManager öffnen.
+2. Menü `Extras → Updates...` öffnen oder im Über-Dialog `Updates...` klicken.
+3. Im Update-Fenster `Update jetzt ausführen` klicken.
+4. Die App prüft online, lädt das Update, prüft die Datei und startet die Installation automatisch.
+5. Unter Windows schließt sich BudgetManager. Danach öffnet sich ein kleines Update-Helferfenster, kopiert die neuen Dateien und startet BudgetManager neu.
 
-- ✅ **17 Spalten** (statt 14)
-  - Bezeichnung (hierarchisch: Wohnen › Miete)
-  - ⭐ Fix-Status (klickbar)
-  - ∞ Wiederkehrend (klickbar)
-  - Tag (1-31, editierbar)
-  - Jan-Dez
-  - Total
+Wichtig: Die Datenbank und Einstellungen im Ordner `data/` werden beim Update nicht gelöscht.
 
-- ✅ **Total-Zeile zu oberst**
-  - Zeigt Saldo: Einnahmen - Ausgaben - Ersparnisse
-  - Farbcodiert: Grün (positiv), Rot (negativ), Grau (ausgeglichen)
+## Manuelle Update-Prüfung für Entwickler
 
-- ✅ **Feste Reihenfolge**
-  - Total-Zeile (Zeile 0)
-  - Einnahmen
-  - Ausgaben
-  - Ersparnisse
-
-- ✅ **Klickbare Symbole**
-  - ⭐ Fix: Klick = umschalten
-  - ∞ Wiederkehrend: Klick = umschalten
-  - Tag: Editierbar (nur wenn Wiederkehrend aktiv)
-
-## 📁 Projektstruktur
-
-```
-Budgetmanager_0.2.2.1_fix2_patched/
-├── main.py                          # Hauptprogramm START HIER!
-├── VERSION_INFO.txt                 # Änderungslog
-├── README.md                        # Projekt-Dokumentation
-├── CHANGELOG.md                     # Vollständiger Changelog
-├── requirements.txt                 # Python-Abhängigkeiten
-├── settings.py                      # Einstellungen
-├── theme_manager.py                 # Theme-Verwaltung
-├── model/                           # Datenmodelle
-│   ├── budget_model.py
-│   ├── category_model.py
-│   ├── tracking_model.py
-│   └── ...
-├── views/                           # UI-Komponenten
-│   ├── main_window.py
-│   ├── tabs/
-│   │   ├── budget_tab.py           # ⭐ NEU v2.3.0!
-│   │   ├── budget_tab_ORIGINAL_v0.2.2.1.py  # Backup
-│   │   ├── tracking_tab.py
-│   │   ├── overview_tab.py
-│   │   └── categories_tab.py
-│   └── ...
-└── docs/                            # Dokumentation
-
-```
-
-## 🔧 Konfiguration
-
-### Datenbank-Speicherort
-
-Standardmäßig: `~/.budgetmanager/budget.db`
-
-Ändern in `settings.py`:
-```python
-DB_PATH = "dein/pfad/zur/datenbank.db"
-```
-
-### Themes
-
-30+ Themes verfügbar! Wechsel über: **Ansicht → Erscheinungsmanager**
-
-## ⚠️ Wichtige Hinweise (BETA)
-
-Diese Version ist **BETA**. Bitte:
-
-1. **Backup der Datenbank erstellen** (automatisch beim ersten Start)
-2. **Gründlich testen** vor produktivem Einsatz
-3. **Fehler melden** mit Fehlermeldung
-
-### Bei Problemen
-
-**Option 1:** Alte budget_tab.py wiederherstellen
 ```bash
-cd views/tabs
-cp budget_tab_ORIGINAL_v0.2.2.1.py budget_tab.py
+python main.py --check-update
+python main.py --apply-update
 ```
 
-**Option 2:** Backup der Datenbank wiederherstellen
+Im normalen Windows-Betrieb sollte der Nutzer nicht mit diesen Befehlen arbeiten müssen. Die GUI erledigt den Ablauf.
+
+## Release-Prüfung
+
 ```bash
-cp ~/.budgetmanager/budget_backup_DATUM.db ~/.budgetmanager/budget.db
+python tools/sync_version.py --check
+python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+python tools/i18n_audit.py
+pytest tests/ -v
 ```
 
-## 🆘 Support
+## Abnahme vor Final Release
 
-Bei Fragen oder Problemen:
-
-1. `VERSION_INFO.txt` lesen
-2. `Open Tasks.md` prüfen (bekannte Probleme)
-3. Fehler dokumentieren (Fehlermeldung + Schritte zur Reproduktion)
-
-## 📝 Lizenz
-
-Siehe `README.md` im Projekt-Verzeichnis.
-
-## 🙏 Credits
-
-- **Original:** Christian (Projekt-Autor)
-- **Budget-Tab v2.3.0:** Claude (Anthropic)
-- **Framework:** PySide6 (Qt for Python)
+- App startet auf Windows.
+- App startet auf Linux/Fedora.
+- Erststart-Assistent fragt Sprache, Region, Währung und Zahlenformat ab.
+- Kategorie löschen fragt nach Daten-Aktion.
+- Parent-Kategorie löschen hebt Children hoch.
+- Kategorie-Rename aktualisiert Budget, Tracking, Favoriten, Warnungen, wiederkehrende Buchungen und Sparziele.
+- Update-Fenster zeigt den Ablauf und startet die Installation automatisch nach erfolgreichem Download.
+- Windows-Update ersetzt die EXE erst nach Schließen der App und startet anschließend neu.
 
 ---
 
-**Viel Erfolg mit dem Budgetmanager! 💰📊**
+## Hilfe / Wissensdatenbank / Mindmap
+
+Die Hilfe ist lokal gebündelt und benötigt kein Internet:
+
+- **F1**: durchsuchbares In-App-Handbuch
+- **Ctrl+F1**: Tastenkürzel
+- **Hilfe → HTML-Wissensdatenbank öffnen…**: `docs/help/index.html` im Browser
+- **Hilfe → Informations-Laufplan / Mindmap anzeigen…**: `docs/help/mindmap.html` im Browser
+- **Hilfe → Restore-Key anzeigen…**: Datenbank-/Restore-Key erneut anzeigen und kopieren
+
+Der Restore-Key wird beim ersten Start angezeigt und muss extern gesichert werden. Er kann bei einer Wiederherstellung nötig sein, besonders wenn `users.json` fehlt oder eine verschlüsselte Datenbank aus einem Backup wieder geöffnet werden muss.
+
+## Hinweis zu parallelen Python-Programmen
+
+Der Single-Instance-Schutz von BudgetManager ist absichtlich datenordnerspezifisch. Er soll nur verhindern, dass zwei BudgetManager-Fenster dieselbe Budget-Datenbank gleichzeitig öffnen. Ein anderes Programm, z. B. ein Füller-Sammelprogramm mit eigenem Ordner, wird dadurch nicht blockiert.
+
+Bei Tests bitte keine globalen Befehle wie `pkill -f "python main.py"` verwenden, wenn andere Python-Programme laufen.
+
+### Testhinweis: mehrere Python-Programme
+
+BudgetManager blockiert nur einen zweiten BudgetManager mit demselben Datenordner. Andere Python-Programme bleiben parallel nutzbar. In der Source-Version startet der Update-Dialog für interne Prüfungen nicht mehr `main.py`, sondern Updater-Module, damit kein falscher Eindruck weiterer BudgetManager-Instanzen entsteht.

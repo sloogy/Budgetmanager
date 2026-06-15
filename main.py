@@ -7,9 +7,102 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 from pathlib import Path
+import json
 
 
 _crash_log_handle = None
+
+
+class _SingleInstanceGuard:
+    """Robuster, app- und datenordnerspezifischer Single-Instance-Schutz.
+
+    Wichtig: Dieser Guard blockiert NICHT global alle ``python main.py``-Prozesse.
+    Er sperrt nur genau den übergebenen Lock-Pfad im BudgetManager-Datenordner.
+    Andere Programme wie der Füller-/Sammelmanager dürfen parallel laufen, solange
+    sie ihren eigenen App-/Datenordner verwenden.
+
+    Warum nicht nur QLockFile? In einer früheren Variante konnte ein Qt-Stale-
+    Timeout eine lange laufende App fälschlich als "stale" betrachten. Dieses
+    Lock nutzt atomar ``os.mkdir()`` und prüft bei vorhandenen Locks die gespeicherte
+    PID. Alte Crash-Locks werden nur entfernt, wenn der gespeicherte Prozess nicht
+    mehr läuft.
+    """
+
+    def __init__(self, lock_dir: Path, *, app_id: str = "budgetmanager"):
+        self.lock_dir = Path(lock_dir)
+        self.app_id = app_id
+        self.acquired = False
+
+    @staticmethod
+    def _pid_alive(pid: int) -> bool:
+        if pid <= 0:
+            return False
+        try:
+            os.kill(pid, 0)
+            return True
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            # Prozess existiert, gehört aber ggf. anderem User. Für uns: aktiv.
+            return True
+        except Exception:
+            return False
+
+    def _read_pid(self) -> int | None:
+        try:
+            text = (self.lock_dir / "pid").read_text(encoding="utf-8").strip()
+            return int(text)
+        except Exception:
+            return None
+
+    def acquire(self) -> tuple[bool, str]:
+        self.lock_dir.parent.mkdir(parents=True, exist_ok=True)
+        for _attempt in range(2):
+            try:
+                os.mkdir(self.lock_dir)
+                metadata = {
+                    "app_id": self.app_id,
+                    "pid": os.getpid(),
+                    "cmdline": sys.argv,
+                    "lock_dir": str(self.lock_dir),
+                }
+                (self.lock_dir / "pid").write_text(str(os.getpid()), encoding="utf-8")
+                (self.lock_dir / "owner.json").write_text(
+                    json.dumps(metadata, ensure_ascii=False, indent=2),
+                    encoding="utf-8",
+                )
+                # Kompatibilitäts-Datei für schnelle manuelle Diagnose.
+                (self.lock_dir / "cmdline").write_text(" ".join(sys.argv), encoding="utf-8")
+                self.acquired = True
+                return True, ""
+            except FileExistsError:
+                pid = self._read_pid()
+                if pid is not None and self._pid_alive(pid):
+                    return False, f"BudgetManager läuft bereits (PID {pid})."
+                # Stales Lock: Prozess ist weg oder PID fehlt/kaputt. Entfernen und noch einmal versuchen.
+                try:
+                    import shutil
+                    shutil.rmtree(self.lock_dir)
+                    continue
+                except Exception as exc:
+                    return False, f"BudgetManager-Lock konnte nicht übernommen werden: {exc}"
+            except Exception as exc:
+                return False, f"BudgetManager-Lock konnte nicht erstellt werden: {exc}"
+        return False, "BudgetManager-Lock konnte nicht erstellt werden."
+
+    def release(self) -> None:
+        if not self.acquired:
+            return
+        try:
+            pid = self._read_pid()
+            if pid == os.getpid():
+                import shutil
+                shutil.rmtree(self.lock_dir)
+        except Exception:
+            pass
+        finally:
+            self.acquired = False
+
 
 
 def _install_crash_diagnostics() -> None:
@@ -169,6 +262,20 @@ def main() -> int:
         from model.database import open_db, EncryptedSession
         from model.migrations import migrate_all
 
+        # Single-Instance-Schutz VOR der GUI/User-DB öffnen.
+        # Wichtig: Kein 30s-Stale-Timeout mehr. Eine laufende App bleibt gesperrt,
+        # bis sie sauber beendet wird; nach einem Crash wird das Lock beim nächsten Start
+        # über die PID-Prüfung als stale erkannt und entfernt.
+        # Datenordner-spezifisch: blockiert nur eine zweite BudgetManager-Instanz,
+        # die auf denselben Datenordner zugreift. Andere Apps mit eigener Ablage
+        # (z.B. Füller-/Sammelmanager) bleiben parallel startbar.
+        single_lock = _SingleInstanceGuard(data_dir() / "budgetmanager.instance.lock", app_id="budgetmanager")
+        ok, lock_reason = single_lock.acquire()
+        if not ok:
+            logger.warning("Zweite Instanz blockiert: %s", lock_reason)
+            print(lock_reason)
+            return 0
+
         app = QApplication(sys.argv)
         _setup_emoji_fonts(app)
 
@@ -178,7 +285,7 @@ def main() -> int:
 
         # Sprache & Währung
         from utils.i18n import set_language, available_languages, tr, trf, set_debug_missing
-        from utils.money import set_currency
+        from utils.money import set_currency, set_number_format
 
         # i18n Debug (Missing-Key-Warnungen) – aktivierbar via Env:
         #   BM_I18N_DEBUG=1 python main.py
@@ -200,16 +307,30 @@ def main() -> int:
                 current=settings.get("language", "de"),
                 current_currency=settings.get("currency", "CHF"),
                 current_recurring_day=settings.get("recurring_preferred_day", 25),
+                current_number_format=settings.get("number_format", "swiss"),
             )
             lang_dlg.exec()
             settings.set("language", lang_dlg.selected_code)
             settings.set("currency", lang_dlg.selected_currency)
+            settings.set("number_format", lang_dlg.selected_number_format)
             settings.set("recurring_preferred_day", int(lang_dlg.selected_recurring_day or 0))
             settings.set("language_selected", True)
             settings.save()
 
         set_language(settings.language)
         set_currency(settings.currency)
+        set_number_format(settings.get("number_format", "swiss"))
+        try:
+            from utils.qt_translator import apply_number_locale
+            apply_number_locale(settings.get("number_format", "swiss"))
+        except Exception as _e:
+            logging.getLogger(__name__).debug("QLocale-Kopplung fehlgeschlagen: %s", _e)
+        # Qt-eigene Übersetzungen (native Kontextmenüs: Kopieren/Einfügen/…)
+        try:
+            from utils.qt_translator import install_qt_translations
+            install_qt_translations(app, settings.language)
+        except Exception as _e:
+            logging.getLogger(__name__).debug("Qt-Übersetzung nicht installiert: %s", _e)
 
         encrypted_session = None
         conn = None
@@ -316,15 +437,24 @@ def main() -> int:
         if migration_info.get('migrations_applied'):
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Information)
-            msg.setWindowTitle(tr('dlg.db_updated'))
-            info_text = (
-                f"Datenbank von Version {migration_info['old_version']} "
-                f"auf {migration_info['new_version']} aktualisiert.\n\n"
-            )
-            info_text += "\n".join(f"• {m}" for m in migration_info['migrations_applied'])
+
+            old_v = int(migration_info.get('old_version') or 0)
+            new_v = int(migration_info.get('new_version') or 0)
+            details = "\n".join(f"• {m}" for m in migration_info.get('migrations_applied', []))
             if migration_info.get('backup_created'):
-                info_text += "\n\n✓ Sicherheitskopie erstellt."
-            msg.setText(info_text)
+                details += "\n\n✓ " + tr("db.backup_created")
+
+            if old_v <= 0:
+                # Erststart: nicht mit technischen v0→v11 Details überfordern.
+                msg.setWindowTitle(tr("db.created_title"))
+                msg.setText(tr("db.created_body"))
+            else:
+                msg.setWindowTitle(tr("db.updated_title"))
+                msg.setText(tr("db.updated_body"))
+                msg.setInformativeText(trf("db.version_line", old=old_v, new=new_v))
+
+            if details:
+                msg.setDetailedText(details)
             msg.setStandardButtons(QMessageBox.Ok)
             msg.exec()
 
@@ -334,6 +464,7 @@ def main() -> int:
         # ── MainWindow ──────────────────────────────
         from views.main_window import MainWindow
         win = MainWindow(conn, active_user=active_user, user_model=user_model)
+        win._single_instance_lock = single_lock
 
         if encrypted_session:
             win._encrypted_session = encrypted_session
@@ -353,7 +484,12 @@ def main() -> int:
         # damit _encrypted_session korrekt gesetzt ist und kein Access Violation entsteht)
         QTimer.singleShot(500, win._check_auto_backup)
 
-        win.show()
+        # Hauptfenster genau einmal anzeigen. MainWindow._restore_window_state()
+        # setzt nur Geometrie und merkt sich den gewünschten Zustand.
+        if hasattr(win, "show_restored"):
+            win.show_restored()
+        else:
+            win.show()
 
         # Setup-Assistent
         # WICHTIG: db_existed_before wurde VOR open_db() ermittelt — nach open_db()
@@ -387,6 +523,11 @@ def main() -> int:
         if encrypted_session:
             encrypted_session.close()
 
+        try:
+            single_lock.release()
+        except Exception:
+            pass
+
         # LRU-Caches mit Qt-Objekten leeren
         try:
             from utils.icons import get_icon
@@ -408,6 +549,11 @@ def main() -> int:
         return rc
 
     except Exception as exc:
+        try:
+            if 'single_lock' in locals():
+                single_lock.release()
+        except Exception:
+            pass
         logger.critical("FEHLER BEIM STARTEN DES BUDGETMANAGERS", exc_info=True)
 
         try:

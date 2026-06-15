@@ -11,6 +11,8 @@ import sys
 import time
 from pathlib import Path
 
+from packaging import version as _version
+
 from updater.common import (
     app_dir,
     backup_current_zip,
@@ -18,6 +20,7 @@ from updater.common import (
     enable_utf8_console,
     find_staged_root,
     is_windows,
+    read_check_result,
     staging_dir_for,
     updates_dir,
 )
@@ -46,9 +49,45 @@ def latest_staged_version() -> str | None:
     versions = [p.name for p in staging_root.iterdir() if p.is_dir()]
     if not versions:
         return None
-    # sortiert grob lexikographisch; Versionsvergleich erfolgt im Check
-    versions.sort()
+
+    def _key(v: str):
+        try:
+            return _version.parse(v)
+        except Exception:
+            return _version.parse("0")
+
+    versions.sort(key=_key)
     return versions[-1]
+
+
+def _staging_has_content(version_str: str) -> bool:
+    """True, wenn der Staging-Ordner dieser Version existiert und nicht leer ist."""
+    d = staging_dir_for(version_str)
+    return d.is_dir() and any(d.iterdir())
+
+
+def target_staged_version() -> str | None:
+    """Bestimmt die anzuwendende Staging-Version.
+
+    Bevorzugt die Version, die der letzte ``check_update`` tatsächlich gestaged
+    hat (aus ``updates/last_check.json``: ``staged_version`` bzw. ``remote``).
+    Das verhindert, dass ein alter, höher nummerierter Staging-Ordner (z.B. ein
+    Beta-Rest ``2.1.0``) angewendet wird, obwohl gerade ``2.0.9`` vorbereitet
+    wurde. Fällt sicher auf die höchste vorhandene Staging-Version zurück, falls
+    kein/kein gültiges Prüfergebnis vorliegt.
+    """
+    res = read_check_result()
+    preferred = res.get("staged_version") or res.get("remote")
+    if isinstance(preferred, str) and preferred.strip():
+        preferred = preferred.strip()
+        if _staging_has_content(preferred):
+            return preferred
+        logger.warning(
+            "Bevorzugte Update-Version %s aus last_check.json hat keinen "
+            "gestageten Inhalt – fallback auf höchste Staging-Version.",
+            preferred,
+        )
+    return latest_staged_version()
 
 
 def remove_paths(target: Path, exclude: tuple[str, ...]) -> None:
@@ -185,6 +224,7 @@ if %RC% GEQ 8 goto failed
 echo [%DATE% %TIME%] Update erfolgreich angewendet. >> "%LOGFILE%"
 echo.
 echo   Update abgeschlossen. App wird neu gestartet.
+timeout /t 2 /nobreak >nul 2>&1
 start "" "%EXEPATH%"
 
 rem --- Selbstloeschung des Batch-Skripts ---
@@ -239,14 +279,15 @@ def _apply_via_windows_helper(src_root: Path) -> int:
     batch_path.write_text(batch_text, encoding="utf-8")
 
     print("⟲ Starte externen Update-Helfer (Windows)...")
-    print("   Die App schließt sich jetzt; das Update wird im Hintergrund angewendet.")
+    print("   Es öffnet sich ein eigenes Konsolenfenster, das den Fortschritt zeigt.")
+    print("   Die App schließt sich jetzt; danach werden die Dateien ersetzt und die App neu gestartet.")
 
-    # Detached starten, eigenes Konsolenfenster (gibt dem Nutzer Feedback).
-    creationflags = 0
-    DETACHED_PROCESS = getattr(subprocess, "DETACHED_PROCESS", 0x00000008)
+    # Eigenes Konsolenfenster, damit der Nutzer unter Windows sieht, was passiert.
+    # Wichtig: DETACHED_PROCESS NICHT mit CREATE_NEW_CONSOLE kombinieren; diese
+    # Kombination ist unter Windows fehleranfällig und kann das Fenster verhindern.
     CREATE_NEW_PROCESS_GROUP = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
     CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0x00000010)
-    creationflags = DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NEW_CONSOLE
+    creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NEW_CONSOLE
 
     try:
         subprocess.Popen(
@@ -265,7 +306,7 @@ def _apply_via_windows_helper(src_root: Path) -> int:
 
 def main() -> int:
     enable_utf8_console()
-    v = latest_staged_version()
+    v = target_staged_version()
     if not v:
         print("❌ Kein vorbereitetes Update gefunden. Erst ausführen: python -m updater.check_update")
         return 2

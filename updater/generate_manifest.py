@@ -9,12 +9,12 @@ Du nutzt das, wenn du ein neues Release-ZIP gebaut hast.
 Beispiel (Windows + Linux ZIPs):
 
   python -m updater.generate_manifest \
-    --version 0.2.0.4 \
-    --release-tag v0.2.0.4 \
+    --version 2.0.9 \
+    --release-tag v2.0.9 \
     --channel stable \
     --windows-zip dist/BudgetManager_PORTABLE_WINDOWS.zip \
     --linux-zip dist/BudgetManager_PORTABLE_LINUX.zip \
-    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v0.2.0.4 \
+    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.9 \
     --out latest.json
 
 Danach lädst du die ZIP(s) + latest.json als Release-Assets hoch.
@@ -40,8 +40,8 @@ def _asset_entry(base_url: str, zip_path: Path) -> dict:
 def main() -> int:
     enable_utf8_console()
     p = argparse.ArgumentParser(description="Generate latest.json manifest for BudgetManager releases")
-    p.add_argument("--version", required=True, help="App version, e.g. 0.2.0.4")
-    p.add_argument("--release-tag", required=True, help="Git tag, e.g. v0.2.0.4")
+    p.add_argument("--version", required=True, help="App version, e.g. 2.0.9")
+    p.add_argument("--release-tag", required=True, help="Git tag, e.g. v2.0.9")
     p.add_argument("--channel", default="stable", choices=["stable", "dev"], help="Update channel")
     p.add_argument("--base-url", required=True, help="Base download URL to the release/tag")
     p.add_argument("--windows-zip", help="Path to Windows portable ZIP")

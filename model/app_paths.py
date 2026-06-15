@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import sys
 
 def app_dir() -> Path:
@@ -8,7 +9,11 @@ def app_dir() -> Path:
 
     - PyInstaller (frozen): Ordner, in dem die EXE liegt
     - Dev/Source: Projekt-Root (eine Ebene über /model)
+    - Tests/Tools: optionaler Override via BUDGETMANAGER_APP_DIR
     """
+    override = os.environ.get("BUDGETMANAGER_APP_DIR")
+    if override:
+        return Path(override).expanduser().resolve()
     if getattr(sys, "frozen", False):
         return Path(sys.executable).resolve().parent
     return Path(__file__).resolve().parents[1]

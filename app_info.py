@@ -7,17 +7,16 @@ Best Practice:
 - GUI (Fenstertitel, Über-Dialog), Updater, Logs usw. lesen diese Werte.
 
 Hinweis:
-Die Codebasis hieß historisch "v2.2.0 ... fix2" – für Releases verwenden wir aber 0.x.x.x,
-solange das Projekt noch nicht "fertig" ist.
+Die Versionsnummer ist die zentrale Release-Nummer für App, Installer, Updater und Anzeige.
 """
 
 APP_NAME = "Budgetmanager"
 
-# SemVer-ähnlich, aber mit 4 Stellen wie von dir gewünscht: 0.MAJOR.MINOR.PATCH
-APP_VERSION = "1.0.42"
+# SemVer-Release-Version
+APP_VERSION = "2.0.12"
 
 # Nur Anzeige (About-Dialog). Kannst du jederzeit anpassen.
-APP_RELEASE_DATE = "13. Juni 2026"
+APP_RELEASE_DATE = "15. Juni 2026"
 
 
 def app_window_title() -> str:

@@ -40,8 +40,8 @@ class UndoRedoModel:
     _ALLOWED_TABLES = frozenset({
         "tracking", "budget", "categories", "tags", "category_tags",
         "entry_tags", "budget_warnings", "favorites", "savings_goals",
-        "recurring_transactions", "fixcost_tracking", "system_flags",
-        "undo_stack", "redo_stack",
+        "recurring_transactions", "suggestion_accepted",
+        "fixcost_tracking", "system_flags", "undo_stack", "redo_stack",
     })
 
     @classmethod
@@ -258,6 +258,18 @@ class UndoRedoModel:
             logger.debug("_cols(%s): %s", table, e)
             return set()
 
+    def _table_exists(self, table: str) -> bool:
+        try:
+            safe = self._safe_table(table)
+            row = self.conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (safe,),
+            ).fetchone()
+            return row is not None
+        except Exception as e:
+            logger.debug("_table_exists(%s): %s", table, e)
+            return False
+
     def _last_group_id(self, table: str) -> Optional[str]:
         safe = self._safe_table(table)
         row = self.conn.execute(
@@ -422,16 +434,52 @@ class UndoRedoModel:
         self.conn.execute(f"UPDATE {safe} SET {set_sql} WHERE id=?", values)
 
     def _rename_cascade(self, *, cat_id: int, typ: str, old_name: str, new_name: str) -> None:
-        self.conn.execute("UPDATE categories SET name=? WHERE id=?", (new_name, int(cat_id)))
-        # Cascade (budget/tracking referenzieren Kategorie per Text)
-        self.conn.execute(
-            "UPDATE budget SET category=? WHERE typ=? AND category=?",
-            (new_name, typ, old_name),
-        )
-        self.conn.execute(
-            "UPDATE tracking SET category=? WHERE typ=? AND category=?",
-            (new_name, typ, old_name),
-        )
+        """Undo/Redo-Helfer für Kategorie-Rename.
+
+        Muss dieselben Text-Referenzen anfassen wie
+        ``CategoryModel.rename_and_cascade``. Sonst wäre der eigentliche Rename
+        sauber, aber Undo/Redo würde Favoriten, Warnungen oder wiederkehrende
+        Buchungen wieder inkonsistent machen. Kein commit() hier: undo()/redo()
+        committen die gesamte Gruppe atomar.
+        """
+        if self._table_exists("categories"):
+            self.conn.execute("UPDATE categories SET name=? WHERE id=?", (new_name, int(cat_id)))
+
+        if self._table_exists("budget"):
+            self.conn.execute(
+                "UPDATE budget SET category=? WHERE typ=? AND category=?",
+                (new_name, typ, old_name),
+            )
+        if self._table_exists("tracking"):
+            self.conn.execute(
+                "UPDATE tracking SET category=? WHERE typ=? AND category=?",
+                (new_name, typ, old_name),
+            )
+        if self._table_exists("favorites"):
+            self.conn.execute(
+                "UPDATE OR IGNORE favorites SET category=? WHERE typ=? AND category=?",
+                (new_name, typ, old_name),
+            )
+            self.conn.execute("DELETE FROM favorites WHERE typ=? AND category=?", (typ, old_name))
+        if self._table_exists("budget_warnings"):
+            self.conn.execute(
+                "UPDATE OR IGNORE budget_warnings SET category=? WHERE typ=? AND category=?",
+                (new_name, typ, old_name),
+            )
+            self.conn.execute("DELETE FROM budget_warnings WHERE typ=? AND category=?", (typ, old_name))
+        if self._table_exists("recurring_transactions"):
+            self.conn.execute(
+                "UPDATE recurring_transactions SET category=? WHERE typ=? AND category=?",
+                (new_name, typ, old_name),
+            )
+        if self._table_exists("suggestion_accepted"):
+            self.conn.execute(
+                "UPDATE OR IGNORE suggestion_accepted SET category=? WHERE typ=? AND category=?",
+                (new_name, typ, old_name),
+            )
+            self.conn.execute("DELETE FROM suggestion_accepted WHERE typ=? AND category=?", (typ, old_name))
+        if typ == TYP_SAVINGS and self._table_exists("savings_goals"):
+            self.conn.execute("UPDATE savings_goals SET category=? WHERE category=?", (new_name, old_name))
 
     def _post_recalc(self, rows: list[UndoRow], *, redo: bool = False) -> None:
         """Nach Undo/Redo abhängige Daten korrigieren (Sparziele).

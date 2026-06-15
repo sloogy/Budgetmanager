@@ -1,49 +1,43 @@
-Budgetmanager Version 1.0.42
-===============================
+Budgetmanager Version 2.0.12
+============================
 
-Datum: 13. Juni 2026
+Datum: 15. Juni 2026
+Status: Chart-Fix-Release (Basis 2.0.11)
 
-ZUSAMMENFÜHRUNG (vollständiger Merge):
---------------------------------------
-Diese Version nutzt 1.0.38 merged_settings_fix als Basis, weil dieser Stand
-funktionsseitig kompletter war, und übernimmt aus 1.0.39 nur die sinnvollen
-Korrekturen.
+NEU IN 2.0.12
+-------------
+- Ring/Donut-Chart bei rollierenden Zeitraeumen (7/30/90 Tage): Budget jetzt
+  bereichsbezogen (ueber die Monate des Zeitraums) statt ueber das deaktivierte
+  Monats-Combo. Vorher wurde z.B. 90 Tage Ist gegen 1 Monat Budget gestellt
+  -> "offen"-Ring falsch. Jetzt konsistent mit der KPI-Leiste.
+- Top-Buchungen werden pro Kategorie aggregiert (mehrfacher Lohn im Zeitraum
+  -> eine Summe) statt einzelne Zeilen zu listen.
 
-ÜBERNOMMEN AUS 1.0.38 merged_settings_fix:
-------------------------------------------
-- vollständigerer Kategorien-Manager:
-  - Drag & Drop für Parent/Child-Ebenen
-  - Kontextmenü „Verschieben unter…“
-  - „Zur Hauptkategorie machen“
-  - Auswahl bleibt nach Verschieben erhalten
-- CategoryModel mit get_by_id() und can_reparent()
-- defensive Parent/Child-Validierung mit i18n-Fehlerkeys
-- vollständigere i18n-Dateien de/en/fr
-- Verhalten-Seite mit WrapLongRows und Mindestbreiten pro Eingabefeld
-- Einstellungen → Über liest die Version zuverlässig aus app_info.py
+GEAENDERTE/NEUE DATEIEN
+-----------------------
+- model/overview_aggregation.py (neu, Qt-frei): aggregate_top_bookings()
+- views/tabs/overview_kpi_panel.py: Donut-Budget bereichsbezogen, Top-Aggregation
+- views/tabs/overview_tab.py: budget_sums an refresh_charts durchgereicht
+- tests/test_overview_charts.py (neu)
 
-SINNVOLL ÜBERNOMMEN AUS 1.0.39:
---------------------------------
-- Versionsnummer und Release-Metadaten auf 1.0.39 gesetzt
-- Installer-Version auf 1.0.39 synchronisiert
-- alle Einstellungsseiten werden in eine QScrollArea gelegt
-- Theme-Fix für vertikal abgeschnittene Eingabefelder:
-  - min-height für QLineEdit/QSpinBox/QDoubleSpinBox/QDateEdit/QComboBox
-  - feste Breite für SpinBox-Pfeile
+CHECKS (im Container)
+---------------------
+- python -m compileall -q .            -> 0 Syntaxfehler
+- tools/sync_version.py --check        -> synchron 2.0.12
+- i18n de/en/fr                        -> 1849 Keys identisch, 0 fehlende tr()-Keys
+- Headless-Datenschicht (26 Checks)    -> alle gruen
+- Chart-Fix-Verifikation (6 Checks)    -> alle gruen
+- Neue + Picker-Tests (10)             -> alle gruen (manuell ausgefuehrt)
 
-FIXES:
-------
-- Einstellungen → Über zeigt nun „1.0.39 (13. Juni 2026)“.
-- Einstellungen → Verhalten skaliert robuster, ohne i18n-Keys zu verlieren.
-- Kategorie-Verschieben bleibt komfortabel per Drag & Drop und Kontextmenü möglich.
-- Das Datenmodell verhindert weiterhin Self-Parenting, Typ-Mischung und Zyklen.
+OFFEN / OPTIONAL
+----------------
+- Optional: Randmonate des Zeitraums taganteilig kuerzen (dann 90 Tage Budget
+  exakt = 90 Tage; aktuell volle beruehrte Monate, konsistent mit KPI-Leiste).
+- Monatsverlauf zeichnet Randmonate weiterhin als volle Kalendermonate.
 
-BASIS:
-------
-- Basiert auf v1.0.0
-
-HINWEIS:
---------
-Undo/Redo ist global verfügbar über:
-- Menü: Bearbeiten → Undo / Redo
-- Shortcuts: Strg+Z (Undo), Strg+Y bzw. Strg+Shift+Z (Redo)
+OFFEN VOR RELEASE
+-----------------
+- python -m pytest -q mit PySide6.
+- GUI-Smoke-Test: Uebersicht auf 90 Tage stellen, Ring "offen" plausibel,
+  KPI-Leiste == Ring, Top-Buchungen zeigt Lohn als eine Summe.
+- latest.json mit echten URLs/SHA256 fuellen, Git-Tag v2.0.12.

@@ -20,7 +20,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCharts import (
     QChart, QChartView, QPieSeries, QPieSlice,
-    QBarSeries, QBarSet, QBarCategoryAxis, QValueAxis,
+    QBarSeries, QStackedBarSeries, QBarSet, QBarCategoryAxis, QValueAxis,
+    QLineSeries,
 )
 
 from utils.icons import get_icon
@@ -90,11 +91,18 @@ class CompactKPICard(QFrame):
 
 
 class CompactProgressBar(QWidget):
-    """Kompakter Fortschrittsbalken mit Beschriftung."""
-    def __init__(self, label: str, max_value: float = 100, parent=None):
+    """Kompakter Fortschrittsbalken mit Beschriftung.
+
+    Standard bleibt eine Ampel-Farbe. Für Typ-Balken (Einnahmen/Ausgaben/
+    Ersparnisse) kann ``typ_key`` gesetzt werden; dann verwendet der Balken
+    immer die Kontofarbe aus dem aktiven Theme statt Grün/Gelb/Rot.
+    """
+    def __init__(self, label: str, max_value: float = 100, parent=None, *, typ_key: str | None = None, bar_color: str | None = None):
         super().__init__(parent)
         self.max_value = max_value
         self.current_value = 0.0
+        self.typ_key = typ_key
+        self._bar_color = bar_color
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -128,7 +136,10 @@ class CompactProgressBar(QWidget):
         )
 
         c = ui_colors(self)
-        color = c.progress_color(percent)
+        if self.typ_key:
+            color = c.type_color(self.typ_key)
+        else:
+            color = self._bar_color or c.progress_color(percent)
         self.progress.setStyleSheet(f"""
             QProgressBar {{
                 border: 1px solid {c.border};
@@ -158,10 +169,32 @@ class CompactChart(QChartView):
         self._chart.setMargins(QMargins(0, 0, 0, 0))
         self.setChart(self._chart)
 
-    def create_pie_chart(self, data: dict[str, float], title: str = "", color_map: dict[str, str] | None = None) -> None:
+    def _clear_chart(self, *, keep_legend: bool = False) -> None:
+        """Entfernt Serien und Achsen, damit Pie/Line/Bar sauber umschalten.
+
+        Ohne Achsen-Cleanup bleiben nach einem Wechsel von Linien-/Balken-
+        Diagrammen zu Kreisdiagrammen gelegentlich alte Achsen im Chart hängen.
+        """
         self._chart.removeAllSeries()
+        for axis in list(self._chart.axes()):
+            self._chart.removeAxis(axis)
+        self._chart.legend().setVisible(bool(keep_legend))
+
+    def _no_data_title(self, title: str = "") -> str:
+        """Einheitlicher Leerdaten-Titel ohne führende Leerzeichen.
+
+        ``tab_ui.keine_daten`` enthält in den Sprachdateien bewusst eine
+        führende Klammer-Ergänzung (z.B. ``" (keine Daten)"``). Ohne
+        Basis-Titel darf daraus aber kein Titel mit führendem Leerzeichen
+        werden.
+        """
+        suffix = tr("tab_ui.keine_daten")
+        return f"{title}{suffix}" if title else suffix.strip()
+
+    def create_pie_chart(self, data: dict[str, float], title: str = "", color_map: dict[str, str] | None = None) -> None:
+        self._clear_chart(keep_legend=False)
         if not data:
-            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._chart.setTitle(self._no_data_title(title))
             return
 
         series = QPieSeries()
@@ -183,6 +216,10 @@ class CompactChart(QChartView):
             elif i < len(colors):
                 s.setColor(colors[i])
 
+        if series.count() == 0:
+            self._chart.setTitle(self._no_data_title(title))
+            return
+
         try:
             series.clicked.connect(
                 lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
@@ -195,24 +232,37 @@ class CompactChart(QChartView):
         self._chart.legend().setVisible(False)
 
     def create_nested_donut(self, ring_data: list[dict]) -> None:
-        self._chart.removeAllSeries()
-        self._chart.legend().setVisible(False)
+        self._clear_chart(keep_legend=False)
         self._chart.setTitle("")
 
-        if not ring_data:
+        visible_rings = [
+            ring for ring in ring_data
+            if any(float(sl.get("value", 0) or 0) >= 0.01 for sl in ring.get("slices", []))
+        ]
+        if not visible_rings:
             self._chart.setTitle(tr("dlg.no_data"))
             return
 
-        for ring in ring_data:
+        multi_ring = len(visible_rings) > 1
+        added_any = False
+
+        for ring in visible_rings:
             series = QPieSeries()
             series.setPieSize(ring.get("pie_size", 0.9))
             series.setHoleSize(ring.get("hole_size", 0.7))
+            ring_label = str(ring.get("label", "") or "").strip()
 
             for sl_def in ring.get("slices", []):
                 val = float(sl_def.get("value", 0))
                 if val < 0.01:
                     continue
-                sl = series.append(sl_def.get("label", ""), val)
+                label = str(sl_def.get("label", "") or "")
+                # Bei mehreren Ringen war bisher jedes Segment nur "Gebucht" /
+                # "Offen" beschriftet. Für DAU-Nutzer ist sichtbar, zu welchem
+                # Konto der Ring gehört.
+                if multi_ring and ring_label and not label.startswith(ring_label):
+                    label = f"{ring_label}: {label}"
+                sl = series.append(label, val)
                 sl.setColor(QColor(sl_def.get("color", ui_colors(self).text_dim)))
                 sl.setProperty("raw_label", sl_def.get("raw_label", ""))
                 sl.setLabelVisible(True)
@@ -227,6 +277,9 @@ class CompactChart(QChartView):
                 except Exception as e:
                     logger.debug("sl.hovered connect: %s", e)
 
+            if series.count() == 0:
+                continue
+
             try:
                 series.clicked.connect(
                     lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
@@ -235,6 +288,10 @@ class CompactChart(QChartView):
                 logger.debug("series.clicked connect: %s", e)
 
             self._chart.addSeries(series)
+            added_any = True
+
+        if not added_any:
+            self._chart.setTitle(tr("dlg.no_data"))
 
     def _on_slice_hover(self, state: bool, sl: QPieSlice) -> None:
         try:
@@ -252,19 +309,116 @@ class CompactChart(QChartView):
         except Exception as e:
             logger.debug("_on_slice_hover: %s", e)
 
+    def create_line_chart(
+        self,
+        categories: list[str],
+        series_data: list[dict],
+        title: str = "",
+    ) -> None:
+        """Zeichnet einen kompakten Liniengraphen für Monats-/Trenddaten.
+
+        ``series_data``: [{"label": str, "values": [float], "color": "#rrggbb"?}]
+        Die X-Achse nutzt die übergebenen Kategorien direkt als Monatslabels.
+        """
+        self._clear_chart(keep_legend=True)
+
+        if not categories or not series_data:
+            self._chart.setTitle(self._no_data_title(title))
+            return
+
+        all_values: list[float] = []
+        for sd in series_data:
+            values = [float(v or 0.0) for v in sd.get("values", [])]
+            if not values:
+                continue
+            series = QLineSeries()
+            series.setName(sd.get("label", ""))
+            for i, val in enumerate(values[:len(categories)]):
+                series.append(i, val)
+                all_values.append(val)
+            if sd.get("color"):
+                series.setColor(QColor(sd.get("color")))
+            self._chart.addSeries(series)
+
+        if not self._chart.series():
+            self._chart.setTitle(self._no_data_title(title))
+            return
+
+        axis_x = QBarCategoryAxis()
+        axis_x.append(categories)
+        self._chart.addAxis(axis_x, Qt.AlignBottom)
+
+        if all_values:
+            min_val = min(0.0, min(all_values))
+            max_val = max(0.0, max(all_values))
+        else:
+            min_val, max_val = 0.0, 100.0
+        if abs(max_val - min_val) < 0.01:
+            max_val += 1.0
+            min_val -= 1.0 if min_val < 0 else 0.0
+        pad = max(abs(max_val - min_val) * 0.12, 1.0)
+
+        axis_y = QValueAxis()
+        axis_y.setRange(min_val - pad if min_val < 0 else 0.0, max_val + pad)
+        axis_y.setLabelFormat("%.0f")
+        self._chart.addAxis(axis_y, Qt.AlignLeft)
+
+        for series in self._chart.series():
+            series.attachAxis(axis_x)
+            series.attachAxis(axis_y)
+
+        self._chart.setTitle(title)
+
+
+    def create_colored_bar_chart(self, bars: list[dict], title: str = "") -> None:
+        """Balkendiagramm mit individueller Farbe je Balken.
+
+        ``bars``: [{"label": str, "value": float, "color": "#rrggbb"}]
+        Technisch wird eine StackedBarSeries mit je einem Set pro Balken
+        verwendet. Dadurch bleibt pro Kategorie genau ein farbiger Balken sichtbar.
+        """
+        self._clear_chart(keep_legend=False)
+        bars = [b for b in bars if float(b.get("value", 0.0) or 0.0) > 0.0]
+        if not bars:
+            self._chart.setTitle(self._no_data_title(title))
+            return
+
+        labels = [str(b.get("label", "")) for b in bars]
+        series = QStackedBarSeries()
+        for idx, b in enumerate(bars):
+            bar_set = QBarSet(str(b.get("label", "")))
+            for j in range(len(bars)):
+                bar_set.append(float(b.get("value", 0.0)) if j == idx else 0.0)
+            bar_set.setColor(QColor(str(b.get("color") or ui_colors(self).accent)))
+            series.append(bar_set)
+
+        self._chart.addSeries(series)
+
+        axis_x = QBarCategoryAxis()
+        axis_x.append(labels)
+        self._chart.addAxis(axis_x, Qt.AlignBottom)
+        series.attachAxis(axis_x)
+
+        axis_y = QValueAxis()
+        max_val = max(float(b.get("value", 0.0) or 0.0) for b in bars)
+        axis_y.setRange(0, max_val * 1.15 if max_val > 0 else 1)
+        axis_y.setLabelFormat("%.0f")
+        self._chart.addAxis(axis_y, Qt.AlignLeft)
+        series.attachAxis(axis_y)
+
+        self._chart.setTitle(title)
+        self._chart.legend().setVisible(False)
+
     def create_grouped_bar_chart(
         self,
         categories: list[str],
         series_data: list[dict],
         title: str = "",
     ) -> None:
-        self._chart.removeAllSeries()
-        for ax in self._chart.axes():
-            self._chart.removeAxis(ax)
-        self._chart.legend().setVisible(True)
+        self._clear_chart(keep_legend=True)
 
         if not categories or not series_data:
-            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._chart.setTitle(self._no_data_title(title))
             return
 
         bar_series = QBarSeries()
@@ -283,8 +437,10 @@ class CompactChart(QChartView):
         bar_series.attachAxis(axis_x)
 
         axis_y = QValueAxis()
-        all_vals = [v for sd in series_data for v in sd.get("values", [])]
-        max_val = max(all_vals) if all_vals else 1000
+        all_vals = [float(v or 0.0) for sd in series_data for v in sd.get("values", [])]
+        max_val = max(all_vals) if all_vals else 0.0
+        if max_val <= 0.0:
+            max_val = 1.0
         axis_y.setRange(0, max_val * 1.15)
         axis_y.setLabelFormat("%.0f")
         self._chart.addAxis(axis_y, Qt.AlignLeft)
