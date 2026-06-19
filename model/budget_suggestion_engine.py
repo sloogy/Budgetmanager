@@ -174,7 +174,11 @@ class BudgetSuggestionEngine:
 
         # Abweichungen sammeln (erweitert sich über Lücken hinweg)
         deviations = self._get_deviations_window(
-            typ, category, analysis_year, analysis_month, months_back,
+            typ,
+            category,
+            analysis_year,
+            analysis_month,
+            months_back,
             not_before=not_before,
         )
         if len(deviations) < months_back:
@@ -198,7 +202,11 @@ class BudgetSuggestionEngine:
         #   Fixkosten stabil.
         if fixed_like:
             active_months = self._count_active_months(
-                typ, category, analysis_year, analysis_month, months_back,
+                typ,
+                category,
+                analysis_year,
+                analysis_month,
+                months_back,
                 not_before=not_before,
             )
             if active_months < min(3, months_back):
@@ -226,12 +234,19 @@ class BudgetSuggestionEngine:
         # werden. Fixkosten/Rückstellungen sind oben geschützt.
         if enable_zero_reduction and (not self._is_income(typ)) and (not fixed_like):
             active_months = self._count_active_months(
-                typ, category, analysis_year, analysis_month, months_back,
+                typ,
+                category,
+                analysis_year,
+                analysis_month,
+                months_back,
                 not_before=not_before,
             )
             if active_months == 0:
                 zero_streak = self._compute_zero_streak_months(
-                    typ, category, analysis_year, analysis_month,
+                    typ,
+                    category,
+                    analysis_year,
+                    analysis_month,
                     not_before=not_before,
                 )
                 if zero_streak >= 6:

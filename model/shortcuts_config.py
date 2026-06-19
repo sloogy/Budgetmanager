@@ -31,11 +31,31 @@ SHORTCUT_DEFS: list[tuple[str, str, str, str]] = [
     ("quit", "Ctrl+Q", "shortcut.action.quit", "shortcut.group.general"),
     # --- Navigation ---
     ("tab_budget", "Ctrl+1", "shortcut.action.tab_budget", "shortcut.group.navigation"),
-    ("tab_categories", "Ctrl+2", "shortcut.action.tab_categories", "shortcut.group.navigation"),
-    ("tab_tracking", "Ctrl+3", "shortcut.action.tab_tracking", "shortcut.group.navigation"),
-    ("tab_overview", "Ctrl+4", "shortcut.action.tab_overview", "shortcut.group.navigation"),
+    (
+        "tab_categories",
+        "Ctrl+2",
+        "shortcut.action.tab_categories",
+        "shortcut.group.navigation",
+    ),
+    (
+        "tab_tracking",
+        "Ctrl+3",
+        "shortcut.action.tab_tracking",
+        "shortcut.group.navigation",
+    ),
+    (
+        "tab_overview",
+        "Ctrl+4",
+        "shortcut.action.tab_overview",
+        "shortcut.group.navigation",
+    ),
     # --- Functions ---
-    ("current_year", "Ctrl+Y", "shortcut.action.current_year", "shortcut.group.functions"),
+    (
+        "current_year",
+        "Ctrl+Y",
+        "shortcut.action.current_year",
+        "shortcut.group.functions",
+    ),
     ("search", "Ctrl+F", "shortcut.action.search", "shortcut.group.functions"),
     ("quick_add", "Ctrl+N", "shortcut.action.quick_add", "shortcut.group.functions"),
     ("undo", "Ctrl+Z", "shortcut.action.undo", "shortcut.group.functions"),
