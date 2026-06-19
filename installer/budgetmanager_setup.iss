@@ -11,7 +11,7 @@
 ; - PyInstaller EXE im dist/ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "2.0.28"
+#define MyAppVersion "2.0.30"
 #define MyAppPublisher "Christian"
 #define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"
@@ -42,6 +42,7 @@ ArchitecturesInstallIn64BitMode=x64
 [Languages]
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -55,6 +56,7 @@ Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "CHANGELOG.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "LICENSE.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "docs\USER_GUIDE*.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 
 ; Sprachdateien (PFLICHT - ohne diese startet die App nicht)
 Source: "locales\*"; DestDir: "{app}\locales"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -121,23 +123,23 @@ var
 begin
   { --- Seite 1: Datenverzeichnis (bestehend) --- }
   DataDirPage := CreateInputDirPage(wpSelectDir,
-    'Datenverzeichnis auswählen',
-    'Wo sollen Ihre BudgetManager-Daten gespeichert werden?',
-    'Wählen Sie den Ordner, in dem Ihre Datenbank und Backups gespeichert werden sollen, und klicken Sie dann auf Weiter.' + #13#10#13#10 +
-    'Hinweis: Dieses Verzeichnis wird NICHT bei der Deinstallation gelöscht.',
+    CustomMessage('DataDirTitle'),
+    CustomMessage('DataDirSubtitle'),
+    CustomMessage('DataDirDescription') + #13#10#13#10 +
+    CustomMessage('DataDirUninstallNote'),
     False, '');
   DataDirPage.Add('');
   DataDirPage.Values[0] := ExpandConstant('{userdocs}\BudgetManager');
 
   { --- Seite 2: BudgetManager-Grundeinstellungen --- }
   PrefsPage := CreateCustomPage(DataDirPage.ID,
-    'BudgetManager-Einstellungen',
-    'Sprache, Währung und bevorzugter Buchungstag. Diese Werte werden beim ersten Start übernommen und können später jederzeit in den Einstellungen geändert werden.');
+    CustomMessage('PrefsTitle'),
+    CustomMessage('PrefsSubtitle'));
 
   y := ScaleY(4);
 
   { Sprache }
-  AddLabel(PrefsPage, 'Sprache:', y);
+  AddLabel(PrefsPage, CustomMessage('LanguageLabel'), y);
   CbLanguage := TNewComboBox.Create(PrefsPage);
   CbLanguage.Parent := PrefsPage.Surface;
   CbLanguage.Style := csDropDownList;
@@ -150,39 +152,41 @@ begin
   { Vorauswahl anhand der Installer-Sprache }
   if ActiveLanguage = 'english' then
     CbLanguage.ItemIndex := 1
+  else if ActiveLanguage = 'french' then
+    CbLanguage.ItemIndex := 2
   else
     CbLanguage.ItemIndex := 0;
 
   y := y + ScaleY(52);
 
   { Währung }
-  AddLabel(PrefsPage, 'Währung:', y);
+  AddLabel(PrefsPage, CustomMessage('CurrencyLabel'), y);
   CbCurrency := TNewComboBox.Create(PrefsPage);
   CbCurrency.Parent := PrefsPage.Surface;
   CbCurrency.Style := csDropDownList;
   CbCurrency.Top := y + ScaleY(16);
   CbCurrency.Left := 0;
   CbCurrency.Width := PrefsPage.SurfaceWidth;
-  CbCurrency.Items.Add('CHF – Schweizer Franken');
-  CbCurrency.Items.Add('EUR – Euro');
-  CbCurrency.Items.Add('USD – US-Dollar');
-  CbCurrency.Items.Add('GBP – Britisches Pfund');
+  CbCurrency.Items.Add(CustomMessage('CurrencyCHF'));
+  CbCurrency.Items.Add(CustomMessage('CurrencyEUR'));
+  CbCurrency.Items.Add(CustomMessage('CurrencyUSD'));
+  CbCurrency.Items.Add(CustomMessage('CurrencyGBP'));
   CbCurrency.ItemIndex := 0;
 
   y := y + ScaleY(52);
 
   { Bevorzugter Buchungstag (für wiederkehrende Buchungen) }
-  AddLabel(PrefsPage, 'Bevorzugter Tag für wiederkehrende Buchungen:', y);
+  AddLabel(PrefsPage, CustomMessage('PreferredDayLabel'), y);
   CbDay := TNewComboBox.Create(PrefsPage);
   CbDay.Parent := PrefsPage.Surface;
   CbDay.Style := csDropDownList;
   CbDay.Top := y + ScaleY(16);
   CbDay.Left := 0;
   CbDay.Width := PrefsPage.SurfaceWidth;
-  CbDay.Items.Add('Keiner (manuell festlegen)');
+  CbDay.Items.Add(CustomMessage('PreferredDayNone'));
   for i := 1 to 28 do
     CbDay.Items.Add(IntToStr(i));
-  CbDay.Items.Add('Monatsende');
+  CbDay.Items.Add(CustomMessage('PreferredDayEndOfMonth'));
   { Index 25 entspricht Tag 25 (Index 0 = Keiner, Index 1 = Tag 1, ...) }
   CbDay.ItemIndex := 25;
 end;
@@ -244,7 +248,7 @@ begin
       '  "version": "{#MyAppVersion}"' + #13#10 +
       '}', False);
 
-    { Die App liest ihre Einstellungen aus dem App-Datenordner. }
+    { Die App liest ihre Einstellungen aus {app}\data\budgetmanager_settings.json }
     ForceDirectories(ExpandConstant('{app}\data'));
     SettingsFile := ExpandConstant('{app}\data\budgetmanager_settings.json');
 
@@ -271,7 +275,56 @@ german.CreateDesktopIcon=Symbol auf dem Desktop erstellen
 german.CreateQuickLaunchIcon=Symbol in der Schnellstartleiste erstellen
 german.LaunchProgram=%1 starten
 german.UninstallProgram=%1 deinstallieren
+german.DataDirTitle=Datenverzeichnis auswählen
+german.DataDirSubtitle=Wo sollen Ihre BudgetManager-Daten gespeichert werden?
+german.DataDirDescription=Wählen Sie den Ordner, in dem Ihre Datenbank und Backups gespeichert werden sollen, und klicken Sie dann auf Weiter.
+german.DataDirUninstallNote=Hinweis: Dieses Verzeichnis wird NICHT bei der Deinstallation gelöscht.
+german.PrefsTitle=BudgetManager-Einstellungen
+german.PrefsSubtitle=Sprache, Währung und bevorzugter Buchungstag. Diese Werte werden beim ersten Start übernommen und können später jederzeit in den Einstellungen geändert werden.
+german.LanguageLabel=Sprache:
+german.CurrencyLabel=Währung:
+german.CurrencyCHF=CHF – Schweizer Franken
+german.CurrencyEUR=EUR – Euro
+german.CurrencyUSD=USD – US-Dollar
+german.CurrencyGBP=GBP – Britisches Pfund
+german.PreferredDayLabel=Bevorzugter Tag für wiederkehrende Buchungen:
+german.PreferredDayNone=Keiner (manuell festlegen)
+german.PreferredDayEndOfMonth=Monatsende
 english.CreateDesktopIcon=Create a desktop icon
 english.CreateQuickLaunchIcon=Create a Quick Launch icon
 english.LaunchProgram=Launch %1
 english.UninstallProgram=Uninstall %1
+english.DataDirTitle=Select data folder
+english.DataDirSubtitle=Where should BudgetManager store your data?
+english.DataDirDescription=Choose the folder where your database and backups should be stored, then click Next.
+english.DataDirUninstallNote=Note: This folder will NOT be deleted when uninstalling.
+english.PrefsTitle=BudgetManager settings
+english.PrefsSubtitle=Language, currency and preferred booking day. These values are used on first start and can be changed later in Settings.
+english.LanguageLabel=Language:
+english.CurrencyLabel=Currency:
+english.CurrencyCHF=CHF – Swiss franc
+english.CurrencyEUR=EUR – Euro
+english.CurrencyUSD=USD – US dollar
+english.CurrencyGBP=GBP – British pound
+english.PreferredDayLabel=Preferred day for recurring bookings:
+english.PreferredDayNone=None (set manually)
+english.PreferredDayEndOfMonth=End of month
+french.CreateDesktopIcon=Créer une icône sur le bureau
+french.CreateQuickLaunchIcon=Créer une icône dans la barre de lancement rapide
+french.LaunchProgram=Lancer %1
+french.UninstallProgram=Désinstaller %1
+french.DataDirTitle=Choisir le dossier de données
+french.DataDirSubtitle=Où BudgetManager doit-il enregistrer vos données ?
+french.DataDirDescription=Choisissez le dossier dans lequel la base de données et les sauvegardes seront stockées, puis cliquez sur Suivant.
+french.DataDirUninstallNote=Remarque : ce dossier ne sera PAS supprimé lors de la désinstallation.
+french.PrefsTitle=Paramètres de BudgetManager
+french.PrefsSubtitle=Langue, devise et jour de saisie préféré. Ces valeurs sont appliquées au premier démarrage et peuvent être modifiées plus tard dans les paramètres.
+french.LanguageLabel=Langue :
+french.CurrencyLabel=Devise :
+french.CurrencyCHF=CHF – franc suisse
+french.CurrencyEUR=EUR – euro
+french.CurrencyUSD=USD – dollar américain
+french.CurrencyGBP=GBP – livre sterling
+french.PreferredDayLabel=Jour préféré pour les écritures récurrentes :
+french.PreferredDayNone=Aucun (définir manuellement)
+french.PreferredDayEndOfMonth=Fin du mois

@@ -1,37 +1,37 @@
 {
   "app": "Budgetmanager",
   "channel": "stable",
-  "version": "2.0.28",
-  "release_tag": "v2.0.28",
+  "version": "2.0.30",
+  "release_tag": "v2.0.30",
   "assets": {
     "windows": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28/BudgetManager-v2.0.28-portable.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.30/BudgetManager-v2.0.30-portable.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "linux": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28/BudgetManager-v2.0.28-portable.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.30/BudgetManager-v2.0.30-portable.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "portable_zip": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28/BudgetManager-v2.0.28-portable.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.30/BudgetManager-v2.0.30-portable.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "windows_installer": {
       "type": "installer",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28/BudgetManager_Setup_2.0.28.exe",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.30/BudgetManager_Setup_2.0.30.exe",
       "sha256": "PUT_SHA256_HERE"
     },
     "direct_windows_exe": {
       "type": "exe",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28/BudgetManager-v2.0.28-windows.exe",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.30/BudgetManager-v2.0.30-windows.exe",
       "sha256": "PUT_SHA256_HERE"
     },
     "direct_linux_binary": {
       "type": "binary",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28/BudgetManager-v2.0.28-linux",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v2.0.30/BudgetManager-v2.0.30-linux",
       "sha256": "PUT_SHA256_HERE"
     }
   }
