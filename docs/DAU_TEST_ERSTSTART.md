@@ -1,6 +1,6 @@
 # DAU-Test — Usability & Durchführung nach dem ersten Start
 
-Stand: v2.0.8 · 13. Juni 2026
+Stand: v2.0.28 · 19. Juni 2026
 
 „DAU" = der technisch völlig unbedarfte Nutzer. Getestet wurde der komplette
 Weg vom allerersten Start bis zur ersten eigenen Buchung — einerseits als
@@ -58,7 +58,7 @@ Reihenfolge der Dialoge beim allerersten Start:
 | B5 | **11-Schritte-Assistent** ist lang, aber abwählbar/überspringbar und jederzeit über „Hilfe → Erste Schritte" erneut startbar. | 🟢 ok | — |
 | B6 | Format wird jetzt in Dialog 1 UND im Assistent-Schritt gewählt → der Assistent-Schritt ist nun „Bestätigung" (zeigt die Vorauswahl + Live-Vorschau). | 🟢 ok | konsistent |
 
-### Behobene DAU-Punkte in v2.0.4
+### Behobene DAU-Punkte aus früheren Stabilitätsständen
 
 **B1 — Zahlenformat in den ersten Dialog gezogen.**
 `LanguageSelectDialog` hat jetzt zusätzlich eine **Zahlenformat-Auswahl**
@@ -72,7 +72,7 @@ Setup-Assistenten).
 
 ---
 
-## Teil C — In v2.0.8 zusätzlich behoben
+## Teil C — Aktueller Stand in v2.0.28
 
 - **B3** Quick-Modus: Warnung jetzt **fett in Warnfarbe** mit klarem Text
   („Jede Person mit Dateizugriff kann deine Daten öffnen").

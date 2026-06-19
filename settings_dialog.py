@@ -78,7 +78,7 @@ class SettingsDialog(QDialog):
             tr("settings.behavior"),
             tr("settings.appearance"),
             tr("dlg.shortcuts"),
-            tr("settings.database"),
+            tr("settings.account_data"),
             tr("settings.about"),
         ])
         content.addWidget(self.lw_nav)
@@ -304,7 +304,7 @@ class SettingsDialog(QDialog):
         self.cmb_theme = QComboBox()
         # System-Option würde aktuell wie "Hell" wirken (ThemeManager kennt nur light/dark)
         self.cmb_theme.addItems([tr("settings.theme_light"), tr("settings.theme_dark")])
-        fl.addRow("Design", self.cmb_theme)
+        fl.addRow(tr("settings.design"), self.cmb_theme)
         
         # Design-Profil Dropdown und Manager-Button
         self.cmb_design_profile = QComboBox()
@@ -436,28 +436,17 @@ class SettingsDialog(QDialog):
     def _build_page_database(self) -> QWidget:
         w = QWidget()
         lay = QVBoxLayout(w)
-        lay.addWidget(self._title(tr("settings.database")))
+        lay.addWidget(self._title(tr("settings.account_data")))
 
-        if self.encrypted_mode:
-            # Bei verschlüsselter DB: Info statt Pfad-Wechsel
-            gb_info = QGroupBox(tr("dlg.verschluesselte_datenbank"))
-            fl_info = QFormLayout(gb_info)
-            lbl_enc = QLabel(tr("settings_ui.enc_info"))
-            lbl_enc.setWordWrap(True)
-            lbl_enc.setStyleSheet(f"padding: 8px; color: {ui_colors(self).text_dim};")
-            fl_info.addRow(lbl_enc)
-            lay.addWidget(gb_info)
-        else:
-            gb_db = QGroupBox(tr("grp.db_path"))
-            fl = QFormLayout(gb_db)
-            self.le_db_path = QLineEdit()
-            self.le_db_path.setReadOnly(True)
-            self.btn_db_change = QPushButton(tr("settings.change_db"))
-            self.btn_db_change.clicked.connect(self._choose_db)
-
-            fl.addRow(tr("settings_ui.lbl_path"), self.le_db_path)
-            fl.addRow("", self.btn_db_change)
-            lay.addWidget(gb_db)
+        # Zentraler Hub „Konto & Daten" – dieselbe Komponente wie im Reiter „Konto".
+        # Enthält Konto, Speicherort (inkl. Datenübernahme), Backup- und Reset-Zugang.
+        from views.account_data_hub import AccountDataHub
+        self.account_hub = AccountDataHub(
+            self.settings,
+            self.parent(),
+            encrypted_mode=self.encrypted_mode,
+        )
+        lay.addWidget(self.account_hub)
 
         gb_backup = QGroupBox(tr("settings.backup_group"))
         flb = QFormLayout(gb_backup)
@@ -591,10 +580,6 @@ class SettingsDialog(QDialog):
         self.cmb_density.setCurrentText(_density_map.get(_raw_density, tr("settings.density_normal")))
         self.cb_highlight_fixcosts.setChecked(bool(self.settings.get("highlight_fixcosts", True)))
 
-        # Datenbank
-        if hasattr(self, 'le_db_path'):
-            self.le_db_path.setText(str(self.settings.database_path))
-
         # Backup (neue Keys)
         self.cb_auto_backup.setChecked(bool(self.settings.get("auto_backup", True)))
         self.sb_backup_days.setValue(int(self.settings.get("backup_days", 7)))
@@ -603,8 +588,8 @@ class SettingsDialog(QDialog):
         self._refresh_backup_status()
 
         # Nach vollständigem Rendern prüfen ob Backup-Limit überschritten
-        from model.app_paths import resolve_in_app
-        _bdir = resolve_in_app(self.settings.get("backup_directory", "data/backups"))
+        from model.app_paths import resolve_in_app, configured_db_path, configured_backups_dir
+        _bdir = configured_backups_dir(self.settings.get("backup_directory", "data/backups"))
         QTimer.singleShot(300, lambda: self._check_and_cleanup_backups(_bdir))
 
     def get_settings(self) -> dict:
@@ -636,7 +621,6 @@ class SettingsDialog(QDialog):
             "warn_budget_overrun": self.cb_warn_budget_overrun.isChecked(),
             "table_density": {"Kompakt": "Kompakt", "Normal": "Normal", "Groß": "Groß", tr("settings.density_compact"): "Kompakt", tr("settings.density_normal"): "Normal", tr("settings.density_large"): "Groß"}.get(self.cmb_density.currentText(), "Normal"),
             "highlight_fixcosts": self.cb_highlight_fixcosts.isChecked(),
-            "database_path": self.le_db_path.text().strip() if hasattr(self, 'le_db_path') else "",
             "auto_backup": self.cb_auto_backup.isChecked(),
             "backup_days": int(self.sb_backup_days.value()),
             "auto_backup_keep": int(self.sb_backup_keep.value()),
@@ -714,20 +698,10 @@ class SettingsDialog(QDialog):
         profile_name = "Standard Dunkel" if text == tr("settings.theme_dark") else "Standard Hell"
         self.theme_manager.apply_theme(profile_name=profile_name)
 
-    def _choose_db(self) -> None:
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            tr("dlg.datenbank_auswaehlen"),
-            str(Path.home()),
-            tr('auto.settings_dialog.696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4'),
-        )
-        if file_path:
-            self.le_db_path.setText(file_path)
-
     def _refresh_backup_status(self) -> None:
         """Aktualisiert 'Letzte Sicherung' und Backup-Anzahl in der UI."""
         from datetime import datetime as _dt
-        from model.app_paths import resolve_in_app
+        from model.app_paths import resolve_in_app, configured_db_path, configured_backups_dir
 
         # Letzte Sicherung
         last_backup_str = self.settings.get("last_auto_backup", "")
@@ -742,7 +716,7 @@ class SettingsDialog(QDialog):
 
         # Anzahl Backups im Backup-Ordner
         try:
-            backup_dir = resolve_in_app(self.settings.get("backup_directory", "data/backups"))
+            backup_dir = configured_backups_dir(self.settings.get("backup_directory", "data/backups"))
             count = sum(1 for _ in backup_dir.glob("budgetmanager_backup_*.bmr")) if backup_dir.exists() else 0
             self.lbl_backup_count.setText(str(count))
         except Exception:
@@ -751,7 +725,7 @@ class SettingsDialog(QDialog):
     def _create_backup_now(self) -> None:
         """Erstellt sofort ein manuelles Backup der Datenbank."""
         from datetime import datetime
-        from model.app_paths import resolve_in_app
+        from model.app_paths import resolve_in_app, configured_db_path, configured_backups_dir
         from model.restore_bundle import create_bundle
         from app_info import APP_NAME, APP_VERSION
 
@@ -764,13 +738,13 @@ class SettingsDialog(QDialog):
                     logger.warning("encrypted_session.save() fehlgeschlagen: %s", e)
                 src_db = Path(self.encrypted_session.enc_path)
             else:
-                src_db = resolve_in_app(self.settings.database_path)
+                src_db = configured_db_path(self.settings.database_path)
 
             if not src_db.exists():
                 QMessageBox.warning(self, tr('settings.backup_group'), trf("msg.db_nicht_gefunden", src_db=str(src_db)))
                 return
 
-            backup_dir = resolve_in_app(
+            backup_dir = configured_backups_dir(
                 self.settings.get("backup_directory", "data/backups")
             )
             backup_dir.mkdir(parents=True, exist_ok=True)

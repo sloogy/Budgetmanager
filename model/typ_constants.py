@@ -9,12 +9,13 @@ Wichtig:
 Historisch: Die DB speichert immer Deutsch (Einkommen/Ausgaben/Ersparnisse).
 Das bleibt so – aber der Code referenziert ab jetzt Konstanten, nicht Literale.
 """
+
 from __future__ import annotations
 
 # ── DB-Schlüssel (nie ändern, DB-Migration nötig wenn doch) ──
-TYP_INCOME   = "Einkommen"
+TYP_INCOME = "Einkommen"
 TYP_EXPENSES = "Ausgaben"
-TYP_SAVINGS  = "Ersparnisse"
+TYP_SAVINGS = "Ersparnisse"
 
 # Alle Typen als Tuple (für Iteration, Validierung)
 ALL_TYPEN: tuple[str, ...] = (TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS)
@@ -22,17 +23,17 @@ ALL_TYPEN: tuple[str, ...] = (TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS)
 # Normalisierungs-Aliases: externe / veraltete Strings → DB-Schlüssel
 _ALIASES: dict[str, str] = {
     # Einkommen
-    "einnahmen":  TYP_INCOME,
-    "einkommen":  TYP_INCOME,
-    "income":     TYP_INCOME,
+    "einnahmen": TYP_INCOME,
+    "einkommen": TYP_INCOME,
+    "income": TYP_INCOME,
     # Ausgaben
-    "ausgaben":   TYP_EXPENSES,
-    "expenses":   TYP_EXPENSES,
-    "expense":    TYP_EXPENSES,
+    "ausgaben": TYP_EXPENSES,
+    "expenses": TYP_EXPENSES,
+    "expense": TYP_EXPENSES,
     # Ersparnisse
     "ersparnisse": TYP_SAVINGS,
-    "sparen":      TYP_SAVINGS,
-    "savings":     TYP_SAVINGS,
+    "sparen": TYP_SAVINGS,
+    "savings": TYP_SAVINGS,
 }
 
 # Typen bei denen Beträge abs() normiert werden (nicht Einkommen)

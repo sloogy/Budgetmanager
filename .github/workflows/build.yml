@@ -38,6 +38,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -r requirements-build.txt
+          pip install -r requirements-dev.txt
 
       - name: Install UPX (Linux)
         if: runner.os == 'Linux'
@@ -57,10 +58,14 @@ jobs:
       - name: Compile all sources (syntax check incl. tools/)
         run: python -m compileall -q . -x '_attic|__pycache__'
 
+      - name: Check model formatting
+        run: python -m black --check model/
+
+      - name: Type-check model layer
+        run: python -m mypy model/
+
       - name: Run core tests
-        run: |
-          pip install pytest
-          python -m pytest tests/ -v
+        run: python -m pytest tests/ -v
 
       - name: Build with PyInstaller
         run: pyinstaller BudgetManager.spec --noconfirm
@@ -75,9 +80,61 @@ jobs:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}
 
-  # ── Job 3: ZIP + latest.json generieren & hochladen ──────────────────
-  manifest:
+  # ── Job 3: Windows Installer bauen ───────────────────────────────
+  installer:
     needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BudgetManager-windows.exe
+          path: dist/
+
+      - name: Prepare installer input
+        shell: pwsh
+        run: |
+          if (Test-Path "dist\BudgetManager-windows.exe") {
+            Move-Item -Force "dist\BudgetManager-windows.exe" "dist\BudgetManager.exe"
+          }
+          if (-not (Test-Path "dist\BudgetManager.exe")) {
+            throw "dist\BudgetManager.exe fehlt; Installer kann nicht gebaut werden."
+          }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $candidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles(x86)}\Inno Setup 7\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 7\ISCC.exe"
+          )
+          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe nicht gefunden." }
+          & $iscc "installer\budgetmanager_setup.iss"
+          $setup = Get-ChildItem -Path . -Filter "BudgetManager_Setup_*.exe" -Recurse | Select-Object -First 1
+          if (-not $setup) { throw "Installer-EXE wurde nicht erzeugt." }
+          Copy-Item -Force $setup.FullName "BudgetManager_Setup.exe"
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BudgetManager_Setup.exe
+          path: BudgetManager_Setup.exe
+
+  # ── Job 4: ZIP + latest.json generieren & hochladen ──────────────────
+  manifest:
+    needs: [build, installer]
     runs-on: ubuntu-latest
 
     steps:
@@ -96,6 +153,12 @@ jobs:
           name: BudgetManager-linux
           path: artifacts/
 
+      - name: Download Windows installer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BudgetManager_Setup.exe
+          path: artifacts/
+
       - name: Build portable ZIP + latest.json
         shell: bash
         run: |
@@ -106,42 +169,41 @@ jobs:
           WIN_EXE_NAME="BudgetManager-v${VERSION}-windows.exe"
           LIN_EXE_NAME="BudgetManager-v${VERSION}-linux"
           ZIP_NAME="BudgetManager-v${VERSION}-portable.zip"
+          SETUP_NAME="BudgetManager_Setup_${VERSION}.exe"
 
           # ── Versionierte Einzeldateien für das GitHub Release ────────
           cp artifacts/BudgetManager-windows.exe "${WIN_EXE_NAME}"
           cp artifacts/BudgetManager-linux "${LIN_EXE_NAME}"
+          cp artifacts/BudgetManager_Setup.exe "${SETUP_NAME}"
           chmod +x "${LIN_EXE_NAME}"
 
           # ── Portable-Ordnerstruktur aufbauen ─────────────────────────
           mkdir -p portable/data/backups
 
-          # Executables im ZIP ebenfalls versioniert benennen
-          cp artifacts/BudgetManager-windows.exe "portable/${WIN_EXE_NAME}"
-          cp artifacts/BudgetManager-linux "portable/${LIN_EXE_NAME}"
-          chmod +x "portable/${LIN_EXE_NAME}"
+          # Executables im ZIP stabil benennen. Release-Assets bleiben versioniert,
+          # aber der In-App-Updater braucht im portablen Ordner stabile Startpunkte.
+          cp artifacts/BudgetManager-windows.exe "portable/BudgetManager.exe"
+          cp artifacts/BudgetManager-linux "portable/BudgetManager"
+          chmod +x "portable/BudgetManager"
 
           # Platzhalter damit data/ nicht leer ist
           touch portable/data/.keep
           touch portable/data/backups/.keep
 
-          # Windows-Starter: startet die neueste versionierte Windows-EXE im Ordner
+          # Windows-Starter: stabiler Einstiegspunkt
           cat > portable/start-windows.cmd <<'STARTWIN'
           @echo off
           setlocal EnableExtensions
           set "DIR=%~dp0"
-          for /f "delims=" %%F in ('dir /b /o-n "%DIR%BudgetManager-v*-windows.exe" 2^>nul') do (
-            start "" "%DIR%%%F"
-            exit /b 0
-          )
-          if exist "%DIR%BudgetManager-windows.exe" start "" "%DIR%BudgetManager-windows.exe"
+          start "" "%DIR%BudgetManager.exe"
           STARTWIN
 
-          # Linux-Starter: startet die versionierte Linux-Binary
-          cat > portable/start-linux.sh <<STARTER
+          # Linux-Starter: stabiler Einstiegspunkt
+          cat > portable/start-linux.sh <<'STARTER'
           #!/usr/bin/env bash
-          DIR="\$(cd "\$(dirname "\$0")" && pwd)"
-          chmod +x "\$DIR/${LIN_EXE_NAME}"
-          exec "\$DIR/${LIN_EXE_NAME}" "\$@"
+          DIR="$(cd "$(dirname "$0")" && pwd)"
+          chmod +x "$DIR/BudgetManager"
+          exec "$DIR/BudgetManager" "$@"
           STARTER
           chmod +x portable/start-linux.sh
 
@@ -149,8 +211,8 @@ jobs:
           cat > portable/README.txt <<RDME
           BudgetManager ${VERSION} — Portable
           =====================================
-          Windows : Doppelklick auf start-windows.cmd oder ${WIN_EXE_NAME}
-          Linux   : ./start-linux.sh  (oder chmod +x ${LIN_EXE_NAME} && ./${LIN_EXE_NAME})
+          Windows : Doppelklick auf start-windows.cmd oder BudgetManager.exe
+          Linux   : ./start-linux.sh  (oder chmod +x BudgetManager && ./BudgetManager)
 
           Daten (DB, Einstellungen, Backups) werden in ./data/ gespeichert.
           Stick einfach mitnehmen — alles bleibt portabel.
@@ -167,6 +229,7 @@ jobs:
           WIN_SHA=$(sha256sum "${WIN_EXE_NAME}" | awk '{print $1}')
           LIN_SHA=$(sha256sum "${LIN_EXE_NAME}" | awk '{print $1}')
           ZIP_SHA=$(sha256sum "${ZIP_NAME}" | awk '{print $1}')
+          SETUP_SHA=$(sha256sum "${SETUP_NAME}" | awk '{print $1}')
 
           # ── latest.json schreiben ────────────────────────────────────
           # Wichtig: windows/linux zeigen bewusst auf das portable ZIP.
@@ -194,6 +257,11 @@ jobs:
                 "url": "${BASE}/${ZIP_NAME}",
                 "sha256": "${ZIP_SHA}"
               },
+              "windows_installer": {
+                "type": "installer",
+                "url": "${BASE}/${SETUP_NAME}",
+                "sha256": "${SETUP_SHA}"
+              },
               "direct_windows_exe": {
                 "type": "exe",
                 "url": "${BASE}/${WIN_EXE_NAME}",
@@ -211,6 +279,7 @@ jobs:
           echo "WIN_EXE_NAME=${WIN_EXE_NAME}" >> "$GITHUB_ENV"
           echo "LIN_EXE_NAME=${LIN_EXE_NAME}" >> "$GITHUB_ENV"
           echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
+          echo "SETUP_NAME=${SETUP_NAME}" >> "$GITHUB_ENV"
           echo "ZIP: ${ZIP_NAME}"
           cat latest.json
 
@@ -222,4 +291,5 @@ jobs:
             ${{ env.WIN_EXE_NAME }}
             ${{ env.LIN_EXE_NAME }}
             ${{ env.ZIP_NAME }}
+            ${{ env.SETUP_NAME }}
             latest.json

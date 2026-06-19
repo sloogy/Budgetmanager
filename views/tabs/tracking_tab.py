@@ -20,15 +20,17 @@ from views.type_color_helper import apply_tracking_type_colors
 from views.delegates.badge_delegate import BadgeDelegate
 from model.tracking_model import TrackingModel
 from model.budget_model import BudgetModel
-from model.savings_goals_model import SavingsGoalsModel
+from model.savings_goals_model import SavingsGoalBoundsError, SavingsGoalsModel
 from views.tracker_dialog import TrackerDialog, TrackingInput
 from views.fixcost_dialog import FixcostDialog
 from views.missing_bookings_dialog import MissingBookingsDialog, PendingBooking
 from views.recurring_bookings_dialog import RecurringBookingsDialog
 from utils.money import format_short as format_chf, format_money, currency_header
 from views.ui_colors import ui_colors
+from views.savings_goal_messages import show_savings_goal_bounds_warning
 from utils.i18n import tr, trf
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.coverage_model import coverage_from_tracking_rows, CoverageResult
 from utils.i18n import display_typ, db_typ_from_display
 
 def _months_de() -> list[str]: return [tr(f"month.{i}") for i in range(1, 13)]
@@ -116,6 +118,12 @@ class TrackingTab(QWidget):
         # Summen-Label
         self.lbl_summary = QLabel()
         self.lbl_summary.setStyleSheet("font-weight: bold; padding: 5px;")
+
+        # Deckungswarnung: gebuchte Ausgaben + Ersparnisse dürfen Einkommen nicht übersteigen.
+        self.lbl_coverage_warning = QLabel("")
+        self.lbl_coverage_warning.setWordWrap(True)
+        self.lbl_coverage_warning.setVisible(False)
+        self.lbl_coverage_warning.setTextFormat(Qt.RichText)
 
         # Kontext-Panel: aktive Sparziele nur dort anzeigen, wo sie beim Buchen relevant sind.
         # Wenn keine aktiven Ziele existieren, bleibt der Bereich komplett ausgeblendet.
@@ -210,6 +218,7 @@ class TrackingTab(QWidget):
         root.addWidget(filter_group)
         root.addWidget(self.savings_panel)
         root.addWidget(self.lbl_summary)
+        root.addWidget(self.lbl_coverage_warning)
         root.addWidget(self.table)
         self.setLayout(root)
 
@@ -566,18 +575,6 @@ class TrackingTab(QWidget):
         self.model.add(date.today(), db_typ_from_display(typ), cat, amt, details)
         self.refresh()
 
-    # --- i18n helper: Typ aus Filter (Anzeige -> DB) ---
-    def _current_filter_typ_db(self) -> str:
-        # userData ist der DB-Schlüssel (sprachunabhängig)
-        data = self.filter_typ.currentData()
-        if data is not None:
-            return data if data else "Alle"
-        # Fallback für Index-0 (leer = Alle)
-        return "Alle" if self.filter_typ.currentIndex() == 0 else self.filter_typ.currentText()
-
-    def _is_all_typ(self) -> bool:
-        return self._current_filter_typ_db() == "Alle"
-
     def clear_filters(self):
         """Setzt alle Filter zurück"""
         self.filter_typ.setCurrentIndex(0)
@@ -612,17 +609,63 @@ class TrackingTab(QWidget):
         if self.chk_recent.isChecked():
             self.refresh()
 
-    # --- i18n helper: Typ aus Filter (Anzeige -> DB) ---
-    def _current_filter_typ_db(self) -> str:
-        # userData ist der DB-Schlüssel (sprachunabhängig)
-        data = self.filter_typ.currentData()
-        if data is not None:
-            return data if data else "Alle"
-        # Fallback für Index-0 (leer = Alle)
-        return "Alle" if self.filter_typ.currentIndex() == 0 else self.filter_typ.currentText()
+    def _format_coverage_suggestion(self, result: CoverageResult) -> str:
+        """Formatiert Spar-Vorschläge aus gebuchten Ersparnissen."""
+        singles = result.single_savings_suggestions()
+        if singles:
+            top = singles[0]
+            return trf(
+                "coverage.suggestion_single",
+                category=top.category,
+                amount=format_money(result.deficit),
+            )
+        combined = result.combined_savings_suggestions()
+        if combined:
+            parts = ", ".join(f"{s.category} {format_money(s.amount)}" for s in combined[:4])
+            if len(combined) > 4:
+                parts += " …"
+            return trf("coverage.suggestion_combined", categories=parts)
+        return tr("coverage.no_savings_suggestion")
 
-    def _is_all_typ(self) -> bool:
-        return self._current_filter_typ_db() == "Alle"
+    def _update_tracking_coverage_warning(self, rows) -> None:
+        """Warnt, wenn die sichtbare Gesamtauswertung nicht durch Einkommen gedeckt ist.
+
+        Die Warnung ist bewusst nur beim Konto-Filter „Alle” aktiv. Bei einem
+        reinen Ausgaben- oder Ersparnisse-Filter wäre Einkommen zwangsläufig 0
+        und die Warnung würde falsch positiv wirken.
+        """
+        try:
+            if not self._is_all_typ():
+                self.lbl_coverage_warning.clear()
+                self.lbl_coverage_warning.setVisible(False)
+                return
+            result = coverage_from_tracking_rows(rows)
+            if not result.is_overdrawn:
+                self.lbl_coverage_warning.clear()
+                self.lbl_coverage_warning.setVisible(False)
+                return
+            c = ui_colors(self)
+            self.lbl_coverage_warning.setStyleSheet(
+                f"color: {c.negative}; background-color: {c.error_bg}; "
+                "font-weight: bold; padding: 6px; border-radius: 4px;"
+            )
+            text = trf(
+                "tracking.coverage.warning",
+                deficit=format_money(result.deficit),
+                suggestion=self._format_coverage_suggestion(result),
+            )
+            self.lbl_coverage_warning.setText(text)
+            self.lbl_coverage_warning.setToolTip(
+                f"{tr('kpi.income')}: {format_money(result.income)}\n"
+                f"{tr('kpi.expenses')}: {format_money(result.expenses)}\n"
+                f"{tr('typ.Ersparnisse')}: {format_money(result.savings)}\n"
+                f"{tr('lbl.saldo')}: {format_money(result.balance)}"
+            )
+            self.lbl_coverage_warning.setVisible(True)
+        except Exception as exc:
+            logger.debug("Tracking-Deckungswarnung konnte nicht berechnet werden: %s", exc)
+            self.lbl_coverage_warning.clear()
+            self.lbl_coverage_warning.setVisible(False)
 
     def refresh(self):
         """Lädt Daten mit aktiven Filtern"""
@@ -695,6 +738,7 @@ class TrackingTab(QWidget):
         saldo = total_einkommen - total_ausgaben - total_ersparnisse
         summary_text = trf("tracking.summary", count=len(rows), income=format_money(total_einkommen), expenses=format_money(total_ausgaben), savings=format_money(total_ersparnisse), balance=format_money(saldo))
         self.lbl_summary.setText(summary_text)
+        self._update_tracking_coverage_warning(rows)
         self._refresh_savings_panel()
         # Typ- und Negativfarben anwenden (vom Theme Manager holen)
         type_colors = {}
@@ -728,33 +772,19 @@ class TrackingTab(QWidget):
         except Exception as e:
             logger.debug("apply_tracking_type_colors(self.table, type_colors: %s", e)
 
-
-
-    def set_recent_days(self, days: int):
-        """Setzt die Anzahl Tage für den Quick-Filter (nur 14 oder 30)."""
-        self.recent_days = 30 if int(days) == 30 else 14
-        self.chk_recent.setText(trf('auto.views_tabs_tracking_tab.582_nur_letzte_value_0_tage_a8e14b8a', value_0=(self.recent_days)))
-        # Wenn der Filter aktiv ist, direkt neu laden
-        if self.chk_recent.isChecked():
-            self.refresh()
-
-    # --- i18n helper: Typ aus Filter (Anzeige -> DB) ---
-    def _current_filter_typ_db(self) -> str:
-        # userData ist der DB-Schlüssel (sprachunabhängig)
-        data = self.filter_typ.currentData()
-        if data is not None:
-            return data if data else "Alle"
-        # Fallback für Index-0 (leer = Alle)
-        return "Alle" if self.filter_typ.currentIndex() == 0 else self.filter_typ.currentText()
-
-    def _is_all_typ(self) -> bool:
-        return self._current_filter_typ_db() == "Alle"
-
     def add(self):
         dlg=TrackerDialog(self, conn=self.conn, cats=self.cats)
         if dlg.exec() != QDialog.Accepted:
             return
         inp: TrackingInput = dlg.get_input()
+
+        # ── Sparziel-Grenzen prüfen: nicht unter 0, nicht über 100 %. ──
+        if inp.typ == TYP_SAVINGS:
+            try:
+                self.model.validate_savings_goal_booking(inp.category, inp.amount)
+            except SavingsGoalBoundsError as e:
+                show_savings_goal_bounds_warning(self, e)
+                return
 
         # ── Sparziel-Konfliktprüfung bei negativer Ersparnisse-Buchung ──
         if inp.typ == TYP_SAVINGS and inp.amount < 0:
@@ -764,20 +794,12 @@ class TrackingTab(QWidget):
                 if result == "cancel":
                     return  # Abbrechen
 
-        self.model.add(inp.d, inp.typ, inp.category, inp.amount, inp.details)
+        try:
+            self.model.add(inp.d, inp.typ, inp.category, inp.amount, inp.details)
+        except SavingsGoalBoundsError as e:
+            show_savings_goal_bounds_warning(self, e)
+            return
         self.refresh()
-
-    # --- i18n helper: Typ aus Filter (Anzeige -> DB) ---
-    def _current_filter_typ_db(self) -> str:
-        # userData ist der DB-Schlüssel (sprachunabhängig)
-        data = self.filter_typ.currentData()
-        if data is not None:
-            return data if data else "Alle"
-        # Fallback für Index-0 (leer = Alle)
-        return "Alle" if self.filter_typ.currentIndex() == 0 else self.filter_typ.currentText()
-
-    def _is_all_typ(self) -> bool:
-        return self._current_filter_typ_db() == "Alle"
 
     def _ask_savings_withdrawal(self, conflict: dict, amount: float) -> str:
         """Fragt den Benutzer ob eine negative Buchung auf ein Sparziel ein Bezug oder eine Korrektur ist.
@@ -798,11 +820,12 @@ class TrackingTab(QWidget):
         abs_amount = abs(amount)
 
         if goal_status == "sparend":
-            msg = (
-                f"Du buchst <b>{format_money(abs_amount)}</b> negativ auf die Kategorie "
-                f"mit dem aktiven Sparziel <b>«{goal_name}»</b>.\n\n"
-                f"Aktueller Stand: {format_money(current)} / {format_money(target)}\n\n"
-                f"<b>Was ist der Grund?</b>"
+            msg = trf(
+                "tracking.msg.savings_negative_prompt",
+                amount=format_money(abs_amount),
+                goal=goal_name,
+                current=format_money(current),
+                target=format_money(target),
             )
             box = QMessageBox(self)
             box.setWindowTitle(tr("tracking.title.savings_withdraw"))
@@ -853,9 +876,11 @@ class TrackingTab(QWidget):
         month = req.d.month
         month_name = _months_de()[month-1]
 
-        # Kandidaten sammeln: Fixkosten (fixer Betrag) vs. Wiederkehrend (variabel)
+        # Kandidaten sammeln: Fixkosten, wiederkehrende variable Posten und
+        # optionale Budgetposten (ohne Fix-/Wiederkehrend-Flag).
         fix_items: list[PendingBooking] = []
         recurring_items: list[PendingBooking] = []
+        optional_items: list[PendingBooking] = []
         skipped_existing = 0
         skipped_zero = 0
 
@@ -864,9 +889,6 @@ class TrackingTab(QWidget):
 
         for typ in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
             for cat in self.cats.list(typ):
-                if not (cat.is_fix or cat.is_recurring):
-                    continue
-
                 budget_amt = float(self.budget.get_amount(year, month, typ, cat.name) or 0.0)
                 booked = float(self.model.get_month_total(year, month, typ, cat.name) or 0.0)
 
@@ -881,6 +903,7 @@ class TrackingTab(QWidget):
 
                 both_flags = bool(cat.is_fix and cat.is_recurring)
                 single_flag = bool(cat.is_fix) ^ bool(cat.is_recurring)
+                no_flags = not (cat.is_fix or cat.is_recurring)
 
                 if both_flags:
                     # Echte Fixkosten (fix UND wiederkehrend): fixer Betrag, einmal pro Monat.
@@ -902,18 +925,18 @@ class TrackingTab(QWidget):
                     # Budgetbetrag im Monat nicht erreicht ist. Buchbarer Betrag editierbar,
                     # vorbelegt mit dem noch offenen Restbetrag.
                     if abs(budget_amt) < EPS:
-                        # Kein Budget gesetzt -> bei Fix überspringen, bei Wiederkehrend
-                        # trotzdem editierbar anbieten (Betrag 0, User trägt ein).
-                        if cat.is_fix:
-                            skipped_zero += 1
-                            continue
-                        remaining = 0.0
+                        # Kein Budget gesetzt -> im Autobuchungsdialog nicht anzeigen.
+                        skipped_zero += 1
+                        continue
                     else:
                         # Budget bereits erreicht? (Vorzeichen-unabhängig)
                         if abs(booked) >= abs(budget_amt) - EPS:
                             skipped_existing += 1
                             continue
                         remaining = budget_amt - booked
+                    if abs(remaining) < EPS:
+                        skipped_zero += 1
+                        continue
 
                     src = "auto_fixcost" if cat.is_fix else "auto_recurring"
                     recurring_items.append(PendingBooking(
@@ -922,7 +945,27 @@ class TrackingTab(QWidget):
                         budget=budget_amt, booked=booked))
                     continue
 
-        if not fix_items and not recurring_items:
+                if no_flags:
+                    # Optionale Budgetposten: keine Monatsautomatik, aber auf Wunsch
+                    # im Autobuchungsdialog sichtbar. Null-Budgets werden bewusst
+                    # ausgeblendet, damit der Dialog nicht mit leeren Kategorien volläuft.
+                    if abs(budget_amt) < EPS:
+                        skipped_zero += 1
+                        continue
+                    if abs(booked) >= abs(budget_amt) - EPS:
+                        skipped_existing += 1
+                        continue
+                    remaining = budget_amt - booked
+                    if abs(remaining) < EPS:
+                        skipped_zero += 1
+                        continue
+                    optional_items.append(PendingBooking(
+                        d=d, typ=typ, category=cat.name, amount=float(remaining), details=details,
+                        source="auto_optional", is_fix=False, is_recurring=False,
+                        budget=budget_amt, booked=booked))
+                    continue
+
+        if not fix_items and not recurring_items and not optional_items:
             if skipped_existing > 0:
                 QMessageBox.information(self, tr("msg.info"), tr("tracking.msg.already_booked"))
             else:
@@ -936,8 +979,13 @@ class TrackingTab(QWidget):
         # Wenn wiederkehrende (variable) existieren: immer Liste öffnen (Beträge editierbar)
         # + Button "Nur Fixkosten" für den schnellen Fixkosten-Only-Run.
         to_book: list[PendingBooking] = []
-        if recurring_items:
-            dlg_book = RecurringBookingsDialog(self, fix_items=fix_items, recurring_items=recurring_items)
+        if recurring_items or optional_items:
+            dlg_book = RecurringBookingsDialog(
+                self,
+                fix_items=fix_items,
+                recurring_items=recurring_items,
+                optional_items=optional_items,
+            )
             if dlg_book.exec() != QDialog.Accepted:
                 return
             to_book = dlg_book.selected_items()
@@ -964,12 +1012,14 @@ class TrackingTab(QWidget):
 
         inserted = 0
         skipped_zero_book = 0
-        for it in to_book:
-            if abs(float(it.amount)) < 1e-9:
-                skipped_zero_book += 1
-                continue
-            self.model.add(it.d, it.typ, it.category, float(it.amount), it.details, source=getattr(it, "source", "manual"))
-            inserted += 1
+        from model.crypto import coalesced_commits
+        with coalesced_commits(self.conn):
+            for it in to_book:
+                if abs(float(it.amount)) < 1e-9:
+                    skipped_zero_book += 1
+                    continue
+                self.model.add(it.d, it.typ, it.category, float(it.amount), it.details, source=getattr(it, "source", "manual"))
+                inserted += 1
 
         QMessageBox.information(
             self,
@@ -977,18 +1027,6 @@ class TrackingTab(QWidget):
             trf("tracking.msg.fixcosts_result", inserted=inserted, skipped_existing=skipped_existing, skipped_zero=skipped_zero, skipped_zero_book=skipped_zero_book),
         )
         self.refresh()
-
-    # --- i18n helper: Typ aus Filter (Anzeige -> DB) ---
-    def _current_filter_typ_db(self) -> str:
-        # userData ist der DB-Schlüssel (sprachunabhängig)
-        data = self.filter_typ.currentData()
-        if data is not None:
-            return data if data else "Alle"
-        # Fallback für Index-0 (leer = Alle)
-        return "Alle" if self.filter_typ.currentIndex() == 0 else self.filter_typ.currentText()
-
-    def _is_all_typ(self) -> bool:
-        return self._current_filter_typ_db() == "Alle"
 
     def edit(self):
         row_id = self._selected_id()
@@ -1011,20 +1049,12 @@ class TrackingTab(QWidget):
         if dlg.exec() != QDialog.Accepted:
             return
         inp: TrackingInput = dlg.get_input()
-        self.model.update(row_id, inp.d, inp.typ, inp.category, inp.amount, inp.details)
+        try:
+            self.model.update(row_id, inp.d, inp.typ, inp.category, inp.amount, inp.details)
+        except SavingsGoalBoundsError as e:
+            show_savings_goal_bounds_warning(self, e)
+            return
         self.refresh()
-
-    # --- i18n helper: Typ aus Filter (Anzeige -> DB) ---
-    def _current_filter_typ_db(self) -> str:
-        # userData ist der DB-Schlüssel (sprachunabhängig)
-        data = self.filter_typ.currentData()
-        if data is not None:
-            return data if data else "Alle"
-        # Fallback für Index-0 (leer = Alle)
-        return "Alle" if self.filter_typ.currentIndex() == 0 else self.filter_typ.currentText()
-
-    def _is_all_typ(self) -> bool:
-        return self._current_filter_typ_db() == "Alle"
 
     def delete(self):
         row_id = self._selected_id()
@@ -1035,5 +1065,9 @@ class TrackingTab(QWidget):
         summary = f"{self.table.item(r,0).text()} | {self.table.item(r,1).text()} | {self.table.item(r,2).text()} | {self.table.item(r,3).text()}"
         if QMessageBox.question(self, tr("msg.delete_entry"), trf("tracking.msg.delete_confirm", summary=summary)) != QMessageBox.Yes:
             return
-        self.model.delete(row_id)
+        try:
+            self.model.delete(row_id)
+        except SavingsGoalBoundsError as e:
+            show_savings_goal_bounds_warning(self, e)
+            return
         self.refresh()

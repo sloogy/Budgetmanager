@@ -111,11 +111,11 @@ class AccountManagementDialog(QDialog):
         self.edt_display_name = QLineEdit(self.user.display_name)
         self.edt_display_name.setStyleSheet("padding: 8px; font-size: 13px;")
         self.edt_display_name.setMaxLength(60)
-        form.addRow("Anzeigename:", self.edt_display_name)
+        form.addRow(tr("account.display_name_label"), self.edt_display_name)
 
         lbl_username = QLabel(self.user.username)
         lbl_username.setStyleSheet(f"color: {ui_colors(self).text_dim}; font-size: 11px;")
-        form.addRow("Benutzername:", lbl_username)
+        form.addRow(tr("account.username_label"), lbl_username)
 
         layout.addLayout(form)
         layout.addSpacing(10)
@@ -232,7 +232,7 @@ class AccountManagementDialog(QDialog):
         self.edt_old_secret.setPlaceholderText(trf('auto.views_account_management_dialog.237_aktuelles_value_0_eingeben_53722645', value_0=(mode_label)))
         if is_pin:
             self.edt_old_secret.setMaxLength(8)
-        form.addRow(f"Aktuelles {mode_label}:", self.edt_old_secret)
+        form.addRow(trf("account.current_secret_label", mode_label=mode_label), self.edt_old_secret)
 
         # Neues Secret
         self.edt_new_secret = QLineEdit()
@@ -243,7 +243,7 @@ class AccountManagementDialog(QDialog):
             self.edt_new_secret.setMaxLength(8)
         else:
             self.edt_new_secret.setPlaceholderText(tr('create_user.password_placeholder'))
-        form.addRow(f"Neues {mode_label}:", self.edt_new_secret)
+        form.addRow(trf("account.new_secret_label", mode_label=mode_label), self.edt_new_secret)
 
         # Wiederholung
         self.edt_new_secret2 = QLineEdit()
@@ -252,7 +252,7 @@ class AccountManagementDialog(QDialog):
         self.edt_new_secret2.setPlaceholderText(trf('auto.views_account_management_dialog.257_value_0_wiederholen_679c9574', value_0=(mode_label)))
         if is_pin:
             self.edt_new_secret2.setMaxLength(8)
-        form.addRow("Wiederholen:", self.edt_new_secret2)
+        form.addRow(tr("account.repeat_secret_label"), self.edt_new_secret2)
 
         layout.addWidget(self._secret_form_frame)
         layout.addSpacing(10)

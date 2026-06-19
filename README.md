@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.0.11
+# 💰 BudgetManager v2.0.28
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.0.11-blue)
+![Version](https://img.shields.io/badge/version-2.0.28-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -36,10 +36,23 @@ Alternativ:
 
 ---
 
-## Neu in v2.0.11
+## Neu in v2.0.28
 
-v2.0.11 ergänzt die Fixkosten-/Wiederkehrend-Logik für Franchise, Selbstbehalt und variable Monatskosten sowie einen übersichtlicheren Tracker-Picker.
+- Final-Release-Härtung für den In-App-Updater: Frozen-Builds starten jetzt die echten `--check-update`/`--apply-update`-Pfade.
+- Portable-ZIP nutzt stabile Startdateien (`BudgetManager.exe` / `BudgetManager`), während GitHub-Assets weiterhin versioniert bleiben.
+- Windows-Update migriert alte versionierte Portable-Binaries auf den stabilen Startpunkt und startet danach die neue App.
+- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.0.28 synchronisiert.
+- i18n-Härtung für mehrere dynamische Dialogtexte in Budget, Tracking, Backup, Konto, Tags, Themes und Sparzielen.
+- Konto & Daten sind in einem eigenen Hub gebündelt: Konto verwalten, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
+- Der Datenordner ist frei wählbar; beim Wechsel kann die App bestehende Nutzerdaten sicher kopieren, inklusive Sicherheits-ZIP.
+- Default-Datenbank und Default-Backups folgen dem aktiven Datenordner; explizite Sonderpfade bleiben möglich.
+- PBKDF2-Härtung mit 600 000 Iterationen; ältere Vorab-Konten werden nach erfolgreichem Login automatisch migriert.
+- Autobuchungen, Budget-Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl sind enthalten.
 
+
+Diese Version ist als Release-Ready-Source-Candidate gedacht. Vor Veröffentlichung sollten zusätzlich der echte Windows-/Linux-Build und `python tools/verify_qt_translations.py <Build-Ordner>` ausgeführt werden, damit die Qt-eigenen Kontextmenüs ebenfalls DE/FR lokalisiert sind.
+
+## Wichtige Grundfunktionen
 
 ### Fixkosten / Wiederkehrend sauber getrennt
 
@@ -185,8 +198,8 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.0.9"
-APP_RELEASE_DATE = "13. Juni 2026"
+APP_VERSION = "2.0.28"
+APP_RELEASE_DATE = "19. Juni 2026"
 ```
 
 Vor einem Release prüfen:
@@ -209,6 +222,8 @@ python tools/sync_version.py
 python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
 python tools/sync_version.py --check
 python tools/i18n_audit.py
+black --check model/
+mypy model/
 pytest tests/ -v
 ```
 
@@ -222,12 +237,12 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.0.9 \
-  --release-tag v2.0.9 \
+  --version 2.0.28 \
+  --release-tag v2.0.28 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.0.9-portable.zip \
-  --linux-zip dist/BudgetManager-v2.0.9-portable.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.9 \
+  --windows-zip dist/BudgetManager-v2.0.28-portable.zip \
+  --linux-zip dist/BudgetManager-v2.0.28-portable.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28 \
   --out latest.json
 ```
 
@@ -237,7 +252,7 @@ Die Datei `latest.json` muss zusammen mit dem Portable-ZIP / der Windows-EXE in 
 
 ## Datenschutz
 
-Alle Daten bleiben lokal. BudgetManager nutzt standardmäßig eine SQLite-Datenbank unter `data/budgetmanager.db`. Backups liegen unter `data/backups/`, sofern nicht anders konfiguriert.
+Alle Daten bleiben lokal. Standardmäßig nutzt BudgetManager den portablen Datenordner `data/` neben der Anwendung. Über den Konto-Hub kann ein anderer Datenordner gewählt werden; DB, verschlüsselte Konto-Dateien und Standard-Backups folgen dann diesem Ordner.
 
 ---
 
@@ -254,6 +269,14 @@ Alle Daten bleiben lokal. BudgetManager nutzt standardmäßig eine SQLite-Datenb
 ### Sparziele im Workflow
 
 Sparziele sind jetzt klarer eingebettet: im Budget gibt es einen kleinen 🎯-Einstieg, im Tracking erscheint bei aktiven Zielen ein ausblendbares Panel mit Fortschrittsbalken und Doppelklick zum Ziel, und die Übersicht bleibt die Kontrollstelle.
+
+### Sparziel-Entnahme / Geld herausbuchen
+
+Geld aus einem Sparziel wird als **negative Ersparnisse-Buchung** auf die mit dem Sparziel verknüpfte Kategorie gebucht, z. B. `-500 CHF` auf `Ersparnisse → Hochzeit`. Negative Beträge sind dafür bei `Ersparnisse` erlaubt; bei `Ausgaben` bleiben negative Beträge bewusst gesperrt.
+
+Sparziele haben jetzt echte Grenzen: Eine Entnahme darf den Stand nicht unter `0 CHF` ziehen, und eine Einzahlung darf das Ziel nicht über `100 %` füllen. Bei beiden Fällen wird die Buchung blockiert und eine Meldung angezeigt.
+
+Best Practice: Sparziel zuerst **freigeben**, dann die Entnahme buchen und das Ziel abschließen, wenn es erledigt ist.
 
 ### Sicherer Start
 

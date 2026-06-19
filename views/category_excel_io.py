@@ -12,6 +12,7 @@ from openpyxl import Workbook, load_workbook
 
 import logging
 from utils.i18n import tr, trf
+from model.crypto import suspend_after_commit_autosave
 logger = logging.getLogger(__name__)
 
 TYP_ALIASES = {
@@ -287,41 +288,42 @@ def import_categories_from_xlsx(conn: sqlite3.Connection, xlsx_path: Path) -> Ca
     skipped = 0
 
     # Daten
-    for r_idx, row in enumerate(ws.iter_rows(min_row=2), start=2):
-        typ_raw = row[c_typ].value if c_typ is not None else None
-        path_raw = row[c_path].value if c_path is not None else None
+    with suspend_after_commit_autosave(conn):
+        for r_idx, row in enumerate(ws.iter_rows(min_row=2), start=2):
+            typ_raw = row[c_typ].value if c_typ is not None else None
+            path_raw = row[c_path].value if c_path is not None else None
 
-        if typ_raw is None and path_raw is None:
-            continue
+            if typ_raw is None and path_raw is None:
+                continue
 
-        typ = _norm_typ(typ_raw)
-        path_str = str(path_raw).strip() if path_raw is not None else ""
-        if not typ or not path_str:
-            skipped += 1
-            continue
+            typ = _norm_typ(typ_raw)
+            path_str = str(path_raw).strip() if path_raw is not None else ""
+            if not typ or not path_str:
+                skipped += 1
+                continue
 
-        if path_str.startswith("#"):
-            continue
+            if path_str.startswith("#"):
+                continue
 
-        if typ not in {tr("kpi.income"), tr("kpi.expenses"), tr("typ.Ersparnisse")}:
-            warnings.append(trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ_raw))
-            skipped += 1
-            continue
+            if typ not in {tr("kpi.income"), tr("kpi.expenses"), tr("typ.Ersparnisse")}:
+                warnings.append(trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ_raw))
+                skipped += 1
+                continue
 
-        parts = _split_path(path_str)
-        if not parts:
-            skipped += 1
-            continue
+            parts = _split_path(path_str)
+            if not parts:
+                skipped += 1
+                continue
 
-        is_fix = _as_bool(row[c_fix].value) if c_fix is not None else False
-        is_rec = _as_bool(row[c_rec].value) if c_rec is not None else False
-        day = _as_int_day(row[c_day].value) if c_day is not None else 1
+            is_fix = _as_bool(row[c_fix].value) if c_fix is not None else False
+            is_rec = _as_bool(row[c_rec].value) if c_rec is not None else False
+            day = _as_int_day(row[c_day].value) if c_day is not None else 1
 
-        ins, upd = _apply_path(conn, typ, parts, is_fix=is_fix, is_rec=is_rec, day=day, has_parent=has_parent)
-        inserted += ins
-        updated += upd
+            ins, upd = _apply_path(conn, typ, parts, is_fix=is_fix, is_rec=is_rec, day=day, has_parent=has_parent)
+            inserted += ins
+            updated += upd
 
-    conn.commit()
+        conn.commit()
     return CategoryImportResult(inserted=inserted, updated=updated, skipped=skipped, warnings=warnings)
 
 
@@ -447,34 +449,35 @@ def import_categories_from_csv(conn: sqlite3.Connection, csv_path: Path) -> Cate
             return None
         return row[idx]
 
-    for r_idx, row in enumerate(rows[1:], start=2):
-        if not row or all((str(x or "").strip() == "") for x in row):
-            continue
+    with suspend_after_commit_autosave(conn):
+        for r_idx, row in enumerate(rows[1:], start=2):
+            if not row or all((str(x or "").strip() == "") for x in row):
+                continue
 
-        typ = _norm_typ(cell(row, c_typ))
-        haupt = str(cell(row, c_haupt) or "").strip()
-        unter = str(cell(row, c_unter) or "").strip()
+            typ = _norm_typ(cell(row, c_typ))
+            haupt = str(cell(row, c_haupt) or "").strip()
+            unter = str(cell(row, c_unter) or "").strip()
 
-        if not typ or not haupt or haupt.startswith("#"):
-            skipped += 1
-            continue
-        if typ not in valid_typen:
-            warnings.append(trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ))
-            skipped += 1
-            continue
+            if not typ or not haupt or haupt.startswith("#"):
+                skipped += 1
+                continue
+            if typ not in valid_typen:
+                warnings.append(trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ))
+                skipped += 1
+                continue
 
-        # Pfad bauen: [Hauptkategorie] (+ Unterkategorie, ggf. tiefer via ›)
-        parts = [haupt] + (_split_subpath_csv(unter) if unter else [])
+            # Pfad bauen: [Hauptkategorie] (+ Unterkategorie, ggf. tiefer via ›)
+            parts = [haupt] + (_split_subpath_csv(unter) if unter else [])
 
-        is_fix = _as_bool(cell(row, c_fix))
-        is_rec = _as_bool(cell(row, c_rec))
-        day = _as_int_day(cell(row, c_day))
+            is_fix = _as_bool(cell(row, c_fix))
+            is_rec = _as_bool(cell(row, c_rec))
+            day = _as_int_day(cell(row, c_day))
 
-        ins, upd = _apply_path(conn, typ, parts, is_fix=is_fix, is_rec=is_rec, day=day, has_parent=has_parent)
-        inserted += ins
-        updated += upd
+            ins, upd = _apply_path(conn, typ, parts, is_fix=is_fix, is_rec=is_rec, day=day, has_parent=has_parent)
+            inserted += ins
+            updated += upd
 
-    conn.commit()
+        conn.commit()
     logger.info("Kategorien-CSV importiert: +%d neu, %d aktualisiert, %d übersprungen",
                 inserted, updated, skipped)
     return CategoryImportResult(inserted=inserted, updated=updated, skipped=skipped, warnings=warnings)

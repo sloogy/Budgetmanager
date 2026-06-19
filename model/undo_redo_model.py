@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+
 logger = logging.getLogger(__name__)
 import json
 import sqlite3
@@ -34,15 +35,29 @@ class UndoRedoModel:
 
     Tabellennamen werden gegen eine Whitelist validiert (SQL-Injection-Schutz).
     """
+
     # Erlaubte Tabellennamen für dynamische SQL-Queries
     MAX_UNDO_ENTRIES = 100
 
-    _ALLOWED_TABLES = frozenset({
-        "tracking", "budget", "categories", "tags", "category_tags",
-        "entry_tags", "budget_warnings", "favorites", "savings_goals",
-        "recurring_transactions", "suggestion_accepted",
-        "fixcost_tracking", "system_flags", "undo_stack", "redo_stack",
-    })
+    _ALLOWED_TABLES = frozenset(
+        {
+            "tracking",
+            "budget",
+            "categories",
+            "tags",
+            "category_tags",
+            "entry_tags",
+            "budget_warnings",
+            "favorites",
+            "savings_goals",
+            "recurring_transactions",
+            "suggestion_accepted",
+            "fixcost_tracking",
+            "system_flags",
+            "undo_stack",
+            "redo_stack",
+        }
+    )
 
     @classmethod
     def _safe_table(cls, table: str) -> str:
@@ -93,11 +108,11 @@ class UndoRedoModel:
 
         # Dynamisch prüfen welche Spalten existieren und entsprechend einfügen
         cols = self._cols("undo_stack")
-        
+
         # Basis-Werte
         values = []
         col_names = []
-        
+
         # ts oder timestamp (oder beide)
         if "ts" in cols:
             col_names.append("ts")
@@ -105,24 +120,34 @@ class UndoRedoModel:
         if "timestamp" in cols:
             col_names.append("timestamp")
             values.append(ts)
-        
+
         # group_id (optional in alten DBs)
         if "group_id" in cols:
             col_names.append("group_id")
             values.append(gid)
-        
+
         # Pflichtfelder
         col_names.extend(["table_name", "operation", "old_data", "new_data"])
-        values.extend([
-            str(table_name),
-            str(operation),
-            json.dumps(old_data, ensure_ascii=False) if old_data is not None else None,
-            json.dumps(new_data, ensure_ascii=False) if new_data is not None else None,
-        ])
-        
+        values.extend(
+            [
+                str(table_name),
+                str(operation),
+                (
+                    json.dumps(old_data, ensure_ascii=False)
+                    if old_data is not None
+                    else None
+                ),
+                (
+                    json.dumps(new_data, ensure_ascii=False)
+                    if new_data is not None
+                    else None
+                ),
+            ]
+        )
+
         placeholders = ",".join(["?"] * len(col_names))
         col_sql = ",".join(col_names)
-        
+
         self.conn.execute(
             f"INSERT INTO undo_stack({col_sql}) VALUES({placeholders})",
             values,
@@ -136,7 +161,7 @@ class UndoRedoModel:
                 "  SELECT DISTINCT group_id FROM undo_stack "
                 "  ORDER BY id DESC LIMIT ?"
                 ")",
-                (self.MAX_UNDO_ENTRIES,)
+                (self.MAX_UNDO_ENTRIES,),
             )
         except Exception as e:
             logger.debug("undo_stack pruning: %s", e)
@@ -164,7 +189,11 @@ class UndoRedoModel:
                 self.conn.rollback()
             except Exception as re:
                 logger.debug("Rollback nach Undo-Fehler fehlgeschlagen: %s", re)
-            logger.warning("Undo der Gruppe %s fehlgeschlagen — vollständig zurückgerollt: %s", last_gid, e)
+            logger.warning(
+                "Undo der Gruppe %s fehlgeschlagen — vollständig zurückgerollt: %s",
+                last_gid,
+                e,
+            )
             return False
 
         self._post_recalc(rows, redo=False)
@@ -189,7 +218,11 @@ class UndoRedoModel:
                 self.conn.rollback()
             except Exception as re:
                 logger.debug("Rollback nach Redo-Fehler fehlgeschlagen: %s", re)
-            logger.warning("Redo der Gruppe %s fehlgeschlagen — vollständig zurückgerollt: %s", last_gid, e)
+            logger.warning(
+                "Redo der Gruppe %s fehlgeschlagen — vollständig zurückgerollt: %s",
+                last_gid,
+                e,
+            )
             return False
 
         self._post_recalc(rows, redo=True)
@@ -229,23 +262,29 @@ class UndoRedoModel:
 
         # Sicherstellen dass alle Spalten existieren (für alte DBs)
         cols = self._cols("undo_stack")
-        
+
         # group_id column for older dbs
         if "group_id" not in cols:
             try:
                 self.conn.execute("ALTER TABLE undo_stack ADD COLUMN group_id TEXT")
             except sqlite3.OperationalError:
-                logger.debug("ALTER TABLE undo_stack ADD COLUMN group_id: Spalte bereits vorhanden")
-        
+                logger.debug(
+                    "ALTER TABLE undo_stack ADD COLUMN group_id: Spalte bereits vorhanden"
+                )
+
         # ts column for older dbs (alte Version hatte 'timestamp')
         if "ts" not in cols:
             try:
                 self.conn.execute("ALTER TABLE undo_stack ADD COLUMN ts TEXT")
                 # Falls timestamp existiert, Daten kopieren
                 if "timestamp" in cols:
-                    self.conn.execute("UPDATE undo_stack SET ts = timestamp WHERE ts IS NULL")
+                    self.conn.execute(
+                        "UPDATE undo_stack SET ts = timestamp WHERE ts IS NULL"
+                    )
             except sqlite3.OperationalError:
-                logger.debug("ALTER TABLE undo_stack ADD COLUMN ts: Spalte bereits vorhanden")
+                logger.debug(
+                    "ALTER TABLE undo_stack ADD COLUMN ts: Spalte bereits vorhanden"
+                )
 
         self.conn.commit()
 
@@ -287,7 +326,7 @@ class UndoRedoModel:
         # Dynamisch prüfen ob ts oder timestamp Spalte existiert
         cols = self._cols(safe)
         ts_col = "ts" if "ts" in cols else "timestamp" if "timestamp" in cols else "ts"
-        
+
         cur = self.conn.execute(
             f"SELECT id, COALESCE({ts_col}, ''), COALESCE(group_id,''), table_name, operation, old_data, new_data "
             f"FROM {safe} WHERE group_id=? ORDER BY id {order}",
@@ -310,7 +349,9 @@ class UndoRedoModel:
             )
         return out
 
-    def _push_to_other_stack(self, target_table: str, r: UndoRow, *, clear_redo: bool = False) -> None:
+    def _push_to_other_stack(
+        self, target_table: str, r: UndoRow, *, clear_redo: bool = False
+    ) -> None:
         # for redo→undo we must not clear redo stack
         ts = datetime.now().isoformat(sep=" ", timespec="seconds")
         if clear_redo:
@@ -321,10 +362,10 @@ class UndoRedoModel:
 
         # Dynamisch prüfen welche Spalten existieren
         cols = self._cols(target_table)
-        
+
         values = []
         col_names = []
-        
+
         if "ts" in cols:
             col_names.append("ts")
             values.append(ts)
@@ -334,18 +375,28 @@ class UndoRedoModel:
         if "group_id" in cols:
             col_names.append("group_id")
             values.append(r.group_id)
-        
+
         col_names.extend(["table_name", "operation", "old_data", "new_data"])
-        values.extend([
-            r.table_name,
-            r.operation,
-            json.dumps(r.old_data, ensure_ascii=False) if r.old_data is not None else None,
-            json.dumps(r.new_data, ensure_ascii=False) if r.new_data is not None else None,
-        ])
-        
+        values.extend(
+            [
+                r.table_name,
+                r.operation,
+                (
+                    json.dumps(r.old_data, ensure_ascii=False)
+                    if r.old_data is not None
+                    else None
+                ),
+                (
+                    json.dumps(r.new_data, ensure_ascii=False)
+                    if r.new_data is not None
+                    else None
+                ),
+            ]
+        )
+
         placeholders = ",".join(["?"] * len(col_names))
         col_sql = ",".join(col_names)
-        
+
         self.conn.execute(
             f"INSERT INTO {target_table}({col_sql}) VALUES({placeholders})",
             values,
@@ -433,7 +484,9 @@ class UndoRedoModel:
         values = [data[k] for k in set_cols] + [int(data["id"])]
         self.conn.execute(f"UPDATE {safe} SET {set_sql} WHERE id=?", values)
 
-    def _rename_cascade(self, *, cat_id: int, typ: str, old_name: str, new_name: str) -> None:
+    def _rename_cascade(
+        self, *, cat_id: int, typ: str, old_name: str, new_name: str
+    ) -> None:
         """Undo/Redo-Helfer für Kategorie-Rename.
 
         Muss dieselben Text-Referenzen anfassen wie
@@ -443,7 +496,9 @@ class UndoRedoModel:
         committen die gesamte Gruppe atomar.
         """
         if self._table_exists("categories"):
-            self.conn.execute("UPDATE categories SET name=? WHERE id=?", (new_name, int(cat_id)))
+            self.conn.execute(
+                "UPDATE categories SET name=? WHERE id=?", (new_name, int(cat_id))
+            )
 
         if self._table_exists("budget"):
             self.conn.execute(
@@ -460,13 +515,18 @@ class UndoRedoModel:
                 "UPDATE OR IGNORE favorites SET category=? WHERE typ=? AND category=?",
                 (new_name, typ, old_name),
             )
-            self.conn.execute("DELETE FROM favorites WHERE typ=? AND category=?", (typ, old_name))
+            self.conn.execute(
+                "DELETE FROM favorites WHERE typ=? AND category=?", (typ, old_name)
+            )
         if self._table_exists("budget_warnings"):
             self.conn.execute(
                 "UPDATE OR IGNORE budget_warnings SET category=? WHERE typ=? AND category=?",
                 (new_name, typ, old_name),
             )
-            self.conn.execute("DELETE FROM budget_warnings WHERE typ=? AND category=?", (typ, old_name))
+            self.conn.execute(
+                "DELETE FROM budget_warnings WHERE typ=? AND category=?",
+                (typ, old_name),
+            )
         if self._table_exists("recurring_transactions"):
             self.conn.execute(
                 "UPDATE recurring_transactions SET category=? WHERE typ=? AND category=?",
@@ -477,13 +537,19 @@ class UndoRedoModel:
                 "UPDATE OR IGNORE suggestion_accepted SET category=? WHERE typ=? AND category=?",
                 (new_name, typ, old_name),
             )
-            self.conn.execute("DELETE FROM suggestion_accepted WHERE typ=? AND category=?", (typ, old_name))
+            self.conn.execute(
+                "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
+                (typ, old_name),
+            )
         if typ == TYP_SAVINGS and self._table_exists("savings_goals"):
-            self.conn.execute("UPDATE savings_goals SET category=? WHERE category=?", (new_name, old_name))
+            self.conn.execute(
+                "UPDATE savings_goals SET category=? WHERE category=?",
+                (new_name, old_name),
+            )
 
     def _post_recalc(self, rows: list[UndoRow], *, redo: bool = False) -> None:
         """Nach Undo/Redo abhängige Daten korrigieren (Sparziele).
-        
+
         WICHTIG: Wir berechnen NICHT pauschal neu, da das manuell eingetragene
         Sparziel-Beträge überschreiben würde. Stattdessen passen wir den Betrag
         entsprechend der rückgängig gemachten/wiederholten Operation an.
@@ -499,12 +565,12 @@ class UndoRedoModel:
         for r in rows:
             if r.table_name != "tracking":
                 continue
-                
+
             try:
                 # Prüfe ob es eine Ersparnisse-Buchung ist
                 old_typ = r.old_data.get("typ") if r.old_data else None
                 new_typ = r.new_data.get("typ") if r.new_data else None
-                
+
                 # Bei Undo einer INSERT: Die Buchung wurde gelöscht
                 # → Betrag vom Sparziel abziehen
                 if r.operation.upper() == "INSERT" and new_typ == TYP_SAVINGS:
@@ -512,7 +578,7 @@ class UndoRedoModel:
                     amount = float(r.new_data.get("amount", 0))
                     if category and amount:
                         self._adjust_savings_goal(category, sign * -amount)
-                
+
                 # Bei Undo einer DELETE: Die Buchung wurde wiederhergestellt
                 # → Betrag zum Sparziel addieren
                 elif r.operation.upper() == "DELETE" and old_typ == TYP_SAVINGS:
@@ -520,7 +586,7 @@ class UndoRedoModel:
                     amount = float(r.old_data.get("amount", 0))
                     if category and amount:
                         self._adjust_savings_goal(category, sign * amount)
-                
+
                 # Bei Undo einer UPDATE: alte Werte wiederherstellen
                 elif r.operation.upper() == "UPDATE":
                     # Alte Ersparnisse-Buchung wiederherstellen
@@ -535,27 +601,29 @@ class UndoRedoModel:
                         new_amt = float(r.new_data.get("amount", 0))
                         if new_cat and new_amt:
                             self._adjust_savings_goal(new_cat, sign * -new_amt)
-                            
+
             except Exception as e:
                 logger.error("Fehler bei Sparziel-Korrektur: %s", e)
-    
+
     def _adjust_savings_goal(self, category: str, amount_change: float) -> None:
         """Passt den Betrag eines Sparziels um einen Wert an."""
         try:
             goals = self.conn.execute(
                 "SELECT id, current_amount FROM savings_goals WHERE category = ?",
-                (category,)
+                (category,),
             ).fetchall()
-            
+
             for goal in goals:
                 goal_id, current = goal[0], float(goal[1])
                 new_amount = max(0, current + amount_change)  # Nicht unter 0
                 self.conn.execute(
                     "UPDATE savings_goals SET current_amount = ? WHERE id = ?",
-                    (new_amount, goal_id)
+                    (new_amount, goal_id),
                 )
-            
+
             if goals:
                 self.conn.commit()
         except Exception as e:
-            logger.warning("Fehler beim Anpassen des Sparziels für '%s': %s", category, e)
+            logger.warning(
+                "Fehler beim Anpassen des Sparziels für '%s': %s", category, e
+            )

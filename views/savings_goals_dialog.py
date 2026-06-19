@@ -13,14 +13,20 @@ from PySide6.QtWidgets import (
 )
 
 from model.savings_goals_model import (
-    SavingsGoalsModel, SavingsGoal,
-    STATUS_SAVING, STATUS_RELEASED, STATUS_COMPLETED,
-    STATUS_LABELS, STATUS_ICONS,
+    SavingsGoalBoundsError,
+    SavingsGoalsModel,
+    SavingsGoal,
+    STATUS_SAVING,
+    STATUS_RELEASED,
+    STATUS_COMPLETED,
+    STATUS_LABELS,
+    STATUS_ICONS,
 )
 from model.category_model import CategoryModel
 from utils.icons import get_icon
 from utils.money import format_money, get_symbol, currency_header
 from views.ui_colors import ui_colors
+from views.savings_goal_messages import show_savings_goal_bounds_warning
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 
@@ -219,15 +225,15 @@ class SavingsGoalsDialog(QDialog):
             name_item = QTableWidgetItem(goal.name)
             name_item.setIcon(get_icon(goal.status_icon))
             name_item.setData(Qt.UserRole, goal.id)
-            tooltip_parts = [f"Status: {goal.status_label}"]
+            tooltip_parts = [trf("savings.tooltip.status", status=goal.status_label)]
             if goal.category:
-                tooltip_parts.append(f"Kategorie: {goal.category}")
+                tooltip_parts.append(trf("savings.tooltip.category", category=goal.category))
             if goal.deadline:
-                tooltip_parts.append(f"Frist: {goal.deadline}")
+                tooltip_parts.append(trf("savings.tooltip.deadline", deadline=goal.deadline))
             if goal.released_date:
-                tooltip_parts.append(f"Freigegeben: {goal.released_date[:10]}")
+                tooltip_parts.append(trf("savings.tooltip.released", date=goal.released_date[:10]))
             if goal.notes:
-                tooltip_parts.append(f"Notiz: {goal.notes}")
+                tooltip_parts.append(trf("savings.tooltip.note", note=goal.notes))
             name_item.setToolTip("\n".join(tooltip_parts))
             self.table.setItem(r, 0, name_item)
             
@@ -307,14 +313,18 @@ class SavingsGoalsDialog(QDialog):
         dlg = EditGoalDialog(self, self.conn)
         if dlg.exec() == QDialog.Accepted:
             data = dlg.get_data()
-            self.goals_model.create(
-                name=data['name'],
-                target_amount=data['target_amount'],
-                current_amount=data['current_amount'],
-                deadline=data['deadline'],
-                category=data['category'],
-                notes=data['notes']
-            )
+            try:
+                self.goals_model.create(
+                    name=data['name'],
+                    target_amount=data['target_amount'],
+                    current_amount=data['current_amount'],
+                    deadline=data['deadline'],
+                    category=data['category'],
+                    notes=data['notes']
+                )
+            except SavingsGoalBoundsError as e:
+                show_savings_goal_bounds_warning(self, e)
+                return
             self.refresh()
     
     def edit_goal(self):
@@ -326,15 +336,19 @@ class SavingsGoalsDialog(QDialog):
         dlg = EditGoalDialog(self, self.conn, goal)
         if dlg.exec() == QDialog.Accepted:
             data = dlg.get_data()
-            self.goals_model.update(
-                goal_id=goal.id,
-                name=data['name'],
-                target_amount=data['target_amount'],
-                current_amount=data['current_amount'],
-                deadline=data['deadline'],
-                category=data['category'],
-                notes=data['notes']
-            )
+            try:
+                self.goals_model.update(
+                    goal_id=goal.id,
+                    name=data['name'],
+                    target_amount=data['target_amount'],
+                    current_amount=data['current_amount'],
+                    deadline=data['deadline'],
+                    category=data['category'],
+                    notes=data['notes']
+                )
+            except SavingsGoalBoundsError as e:
+                show_savings_goal_bounds_warning(self, e)
+                return
             self.refresh()
     
     def delete_goal(self):
@@ -361,7 +375,11 @@ class SavingsGoalsDialog(QDialog):
         dlg = AddProgressDialog(self, goal)
         if dlg.exec() == QDialog.Accepted:
             amount = dlg.get_amount()
-            self.goals_model.add_progress(goal.id, amount)
+            try:
+                self.goals_model.add_progress(goal.id, amount)
+            except SavingsGoalBoundsError as e:
+                show_savings_goal_bounds_warning(self, e)
+                return
             self.refresh()
     
     def sync_with_tracking(self):
@@ -378,7 +396,11 @@ class SavingsGoalsDialog(QDialog):
             return
         
         old_amount = goal.current_amount
-        new_amount = self.goals_model.sync_with_tracking(goal.id)
+        try:
+            new_amount = self.goals_model.sync_with_tracking(goal.id)
+        except SavingsGoalBoundsError as e:
+            show_savings_goal_bounds_warning(self, e)
+            return
         
         QMessageBox.information(
             self, tr('auto.views_savings_goals_dialog.386_synchronisiert_2f5168bf'),
@@ -425,13 +447,16 @@ class SavingsGoalsDialog(QDialog):
         extra = ""
         if goal.is_released:
             spent = self.goals_model.get_spent_amount(goal.id)
-            extra = f"\nVerbraucht seit Freigabe: {format_money(spent)}\n"
+            extra = trf("savings.msg.spent_since_release", amount=format_money(spent))
 
         reply = QMessageBox.question(
             self, tr('auto.views_savings_goals_dialog.444_sparziel_abschliessen_81af1e70'),
-            f"Sparziel «{goal.name}» wirklich abschliessen?\n\nStand: {format_money(goal.current_amount)}\n{extra}"
-            f"Das Ziel wird archiviert und kann nicht mehr bebucht werden.\n" +
-            tr("btn.wieder_oeffnen_ist_jederzeit"),
+            trf(
+                "savings.msg.complete_confirm",
+                name=goal.name,
+                amount=format_money(goal.current_amount),
+                extra=extra,
+            ),
             QMessageBox.Yes | QMessageBox.No
         )
         if reply != QMessageBox.Yes:
@@ -478,7 +503,7 @@ class EditGoalDialog(QDialog):
         self.target_spin.setSuffix(f" {get_symbol()}")
         
         self.current_spin = QDoubleSpinBox()
-        self.current_spin.setRange(-1000000, 1000000)
+        self.current_spin.setRange(0, 1000000)
         self.current_spin.setDecimals(2)
         self.current_spin.setSuffix(f" {get_symbol()}")
         

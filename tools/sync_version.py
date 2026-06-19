@@ -51,6 +51,11 @@ def _latest_template_data() -> dict:
                 "url": f"{base}/BudgetManager-v{APP_VERSION}-portable.zip",
                 "sha256": "PUT_SHA256_HERE",
             },
+            "windows_installer": {
+                "type": "installer",
+                "url": f"{base}/BudgetManager_Setup_{APP_VERSION}.exe",
+                "sha256": "PUT_SHA256_HERE",
+            },
             "direct_windows_exe": {
                 "type": "exe",
                 "url": f"{base}/BudgetManager-v{APP_VERSION}-windows.exe",

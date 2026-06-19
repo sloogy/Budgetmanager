@@ -25,6 +25,7 @@ last_review.md
 .ai_dispatch/
 
 # --- Python ---
+.pytest_cache/
 __pycache__/
 *.py[cod]
 *.pyo

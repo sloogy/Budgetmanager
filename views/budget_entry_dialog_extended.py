@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from model.category_model import CategoryModel, Category
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from model.budget_modes import BUDGET_MODE_MONTH, BUDGET_MODE_ALL, BUDGET_MODE_RANGE, normalize_budget_mode
 from utils.icons import get_icon
 
 def _get_months():
@@ -37,7 +38,7 @@ from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from views.category_delete_dialog import ask_category_delete_decision
 
 def parse_amount(text: str) -> float:
-    return parse_money(text)
+    return parse_money(text, empty_is_zero=False)
 
 
 @dataclass(frozen=True)
@@ -46,7 +47,7 @@ class BudgetEntryRequest:
     typ: str
     category: str
     amount: float
-    mode: str              # "Monat", "Alle", "Bereich"
+    mode: str              # internal: "month", "all", "range"
     month: int             # 1..12 (für Mode Monat)
     from_month: int        # 1..12 (für Bereich)
     to_month: int          # 1..12 (für Bereich)
@@ -256,7 +257,7 @@ class CategoryManagementWidget(QWidget):
     
     def _refresh_categories(self) -> None:
         """Lädt die Kategorien-Liste neu."""
-        current_text = self.category_combo.currentText()
+        current_text = self.get_category()
         self.category_combo.clear()
         
         cats = self.cat_model.list(self.typ)
@@ -283,11 +284,17 @@ class CategoryManagementWidget(QWidget):
                 self.category_combo.setEditText(current_text)
     
     def get_category(self) -> str:
-        """Gibt den aktuell ausgewählten/eingegebenen Kategorie-Namen zurück."""
-        data = self.category_combo.currentData()
-        if data:
-            return str(data)
-        return self.category_combo.currentText().strip().lstrip("▸• ").strip()
+        """Gibt den aktuell ausgewählten/eingegebenen Kategorie-Namen zurück.
+
+        Bei editierbaren QComboBoxen kann currentData() auf dem vorherigen
+        Eintrag stehen bleiben, während der Benutzer bereits neuen Text tippt.
+        Deshalb nutzen wir denselben robusten Resolver wie Tracker/Schnelleingabe.
+        """
+        from views.category_picker import resolve_combo_category
+
+        name = resolve_combo_category(self.category_combo).strip().lstrip("▸• ").strip()
+        resolved = self.cat_model.resolve_name(self.typ, name)
+        return resolved or name
     
     def set_category(self, name: str) -> None:
         """Setzt die ausgewählte Kategorie."""
@@ -520,15 +527,15 @@ class CategoryManagementWidget(QWidget):
         # Prüfen ob Kategorie existiert
         existing = self.cat_model.list(self.typ)
         for cat in existing:
-            if cat.name.lower() == name.lower():
+            if cat.name.casefold() == name.casefold():
+                self.set_category(cat.name)
                 return True
         
         # Kategorie existiert nicht -> Dialog anbieten
         reply = QMessageBox.question(
             self,
             tr("dlg.kategorie_nicht_gefunden"),
-            f"Die Kategorie '{name}' existiert noch nicht.\n\n" +
-            tr("btn.moechtest_du_sie_jetzt"),
+            trf("budget_entry.msg.category_missing_create", category=name),
             QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel
         )
         
@@ -536,7 +543,10 @@ class CategoryManagementWidget(QWidget):
             return False
         
         if reply == QMessageBox.No:
-            return True  # Trotzdem fortfahren (User-Entscheidung)
+            # Nicht mit einer nicht existierenden Kategorie fortfahren: Budget-
+            # und Tracking-Tabellen referenzieren Kategorien historisch per Text.
+            # Orphan-Namen würden Filter, Forecast und Auswertungen verfälschen.
+            return False
         
         # Dialog zum Erstellen öffnen
         dlg = NewCategoryDialog(
@@ -603,7 +613,9 @@ class BudgetEntryDialogExtended(QDialog):
         
         # === Modus ===
         self.mode = QComboBox()
-        self.mode.addItems([tr('auto.views_budget_entry_dialog_extended.620_monat_88dd17e2'), tr('typ.Alle'), tr('auto.views_budget_entry_dialog_extended.620_bereich_8b22d123')])
+        self.mode.addItem(tr('auto.views_budget_entry_dialog_extended.620_monat_88dd17e2'), BUDGET_MODE_MONTH)
+        self.mode.addItem(tr('typ.Alle'), BUDGET_MODE_ALL)
+        self.mode.addItem(tr('auto.views_budget_entry_dialog_extended.620_bereich_8b22d123'), BUDGET_MODE_RANGE)
         
         self.month = QComboBox()
         self.month.addItems(_get_months())
@@ -652,14 +664,14 @@ class BudgetEntryDialogExtended(QDialog):
         self.setLayout(root)
         
         # === Signale ===
-        self.mode.currentTextChanged.connect(self._mode_changed)
+        self.mode.currentIndexChanged.connect(lambda _: self._mode_changed())
         self.typ.currentIndexChanged.connect(
             lambda _: self._typ_changed(self.typ.currentData() or self.typ.currentText())
         )
         self.btn_ok.clicked.connect(self._validate_and_accept)
         self.btn_cancel.clicked.connect(self.reject)
         
-        self._mode_changed(self.mode.currentText())
+        self._mode_changed()
         
         if preset:
             self._apply_preset(preset)
@@ -668,9 +680,19 @@ class BudgetEntryDialogExtended(QDialog):
         """Aktualisiert die Kategorie-Liste bei Typwechsel."""
         self.category_widget.set_typ(typ)
     
-    def _mode_changed(self, mode: str) -> None:
-        is_month = mode == "Monat"
-        is_range = mode == "Bereich"
+    def _current_mode(self) -> str:
+        return normalize_budget_mode(self.mode.currentData() or self.mode.currentText())
+
+    def _set_mode(self, value: object) -> None:
+        mode = normalize_budget_mode(value)
+        idx = self.mode.findData(mode)
+        if idx >= 0:
+            self.mode.setCurrentIndex(idx)
+
+    def _mode_changed(self) -> None:
+        mode = self._current_mode()
+        is_month = mode == BUDGET_MODE_MONTH
+        is_range = mode == BUDGET_MODE_RANGE
         self.month.setEnabled(is_month)
         self.from_month.setEnabled(is_range)
         self.to_month.setEnabled(is_range)
@@ -683,7 +705,7 @@ class BudgetEntryDialogExtended(QDialog):
         if "month" in preset and preset["month"]:
             self.month.setCurrentIndex(int(preset["month"]) - 1)
         if "mode" in preset and preset["mode"]:
-            self.mode.setCurrentText(str(preset["mode"]))
+            self._set_mode(preset["mode"])
         if "from_month" in preset and preset["from_month"]:
             self.from_month.setCurrentIndex(int(preset["from_month"]) - 1)
         if "to_month" in preset and preset["to_month"]:
@@ -719,7 +741,7 @@ class BudgetEntryDialogExtended(QDialog):
         self.accept()
     
     def get_request(self) -> BudgetEntryRequest:
-        mode = self.mode.currentText()
+        mode = self._current_mode()
         month = self.month.currentIndex() + 1
         fm = self.from_month.currentIndex() + 1
         tm = self.to_month.currentIndex() + 1

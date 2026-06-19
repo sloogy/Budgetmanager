@@ -3,7 +3,7 @@ Budget-Erfassungs-Dialog
 ========================
 Dialog zum Erfassen und Bearbeiten von Budget-Einträgen.
 
-Version: 2.0.9 - Mit integrierter Kategorien-Erstellung
+Version: 2.0.28 - Mit integrierter Kategorien-Erstellung und sprachneutralen Modi
 - Neue Kategorien können direkt beim Budget-Erfassen erstellt werden
 - Wahlweise als Hauptkategorie oder Unterkategorie
 - Kategorien-Eigenschaften (Fixkosten, Wiederkehrend) direkt setzen
@@ -25,6 +25,7 @@ def _get_months():
     return [tr(f"month_short.{i}") for i in range(1, 13)]
 
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from model.budget_modes import BUDGET_MODE_MONTH, BUDGET_MODE_ALL, BUDGET_MODE_RANGE, normalize_budget_mode
 from utils.money import parse_money, currency_header
 from views.ui_colors import ui_colors
 
@@ -33,7 +34,7 @@ from utils.i18n import tr, trf, display_typ, db_typ_from_display
 logger = logging.getLogger(__name__)
 
 def parse_amount(text: str) -> float:
-    return parse_money(text)
+    return parse_money(text, empty_is_zero=False)
 
 @dataclass(frozen=True)
 class BudgetEntryRequest:
@@ -41,7 +42,7 @@ class BudgetEntryRequest:
     typ: str
     category: str
     amount: float
-    mode: str              # "Monat", "Alle", "Bereich"
+    mode: str              # internal: "month", "all", "range"
     month: int             # 1..12 (für Mode Monat)
     from_month: int        # 1..12 (für Bereich)
     to_month: int          # 1..12 (für Bereich)
@@ -102,7 +103,9 @@ class BudgetEntryDialog(QDialog):
         self.amount.setPlaceholderText(tr('auto.views_budget_entry_dialog.102_z_b_1200_00_d7c96b70'))
 
         self.mode = QComboBox()
-        self.mode.addItems([tr('auto.views_budget_entry_dialog.105_monat_069d7526'), tr('typ.Alle'), tr('auto.views_budget_entry_dialog.105_bereich_1f8db464')])
+        self.mode.addItem(tr('auto.views_budget_entry_dialog.105_monat_069d7526'), BUDGET_MODE_MONTH)
+        self.mode.addItem(tr('typ.Alle'), BUDGET_MODE_ALL)
+        self.mode.addItem(tr('auto.views_budget_entry_dialog.105_bereich_1f8db464'), BUDGET_MODE_RANGE)
 
         self.month = QComboBox()
         self.month.addItems(_get_months())
@@ -170,14 +173,14 @@ class BudgetEntryDialog(QDialog):
 
         # --- Layout ---
         form = QFormLayout()
-        form.addRow("Jahr", self.year)
-        form.addRow("Typ", self.typ)
+        form.addRow(tr("lbl.year"), self.year)
+        form.addRow(tr("header.type"), self.typ)
         form.addRow(tr("header.category"), self.category)
-        form.addRow(f"Betrag ({currency_header()})", self.amount)
-        form.addRow("Modus", self.mode)
-        form.addRow("Monat", self.month)
-        form.addRow("Von", self.from_month)
-        form.addRow("Bis", self.to_month)
+        form.addRow(trf("lbl.amount_with_currency", currency=currency_header()), self.amount)
+        form.addRow(tr("lbl.mode"), self.mode)
+        form.addRow(tr("lbl.month"), self.month)
+        form.addRow(tr("lbl.from"), self.from_month)
+        form.addRow(tr("lbl.to"), self.to_month)
         form.addRow("", self.only_if_empty)
 
         btns = QHBoxLayout()
@@ -192,7 +195,7 @@ class BudgetEntryDialog(QDialog):
         self.setLayout(root)
 
         # --- Signal-Verbindungen ---
-        self.mode.currentTextChanged.connect(self._mode_changed)
+        self.mode.currentIndexChanged.connect(lambda _: self._mode_changed())
         self.btn_ok.clicked.connect(self._validate_and_accept)
         self.btn_cancel.clicked.connect(self.reject)
         
@@ -205,7 +208,7 @@ class BudgetEntryDialog(QDialog):
             lambda _: self._on_typ_changed(self.typ.currentData() or self.typ.currentText())
         )
 
-        self._mode_changed(self.mode.currentText())
+        self._mode_changed()
 
         if preset:
             self._apply_preset(preset)
@@ -301,23 +304,30 @@ class BudgetEntryDialog(QDialog):
         except Exception as e:
             logger.warning(trf("msg.fehler_beim_laden_der_1", e=str(e)))
 
+    def _selected_category(self) -> str:
+        from views.category_picker import resolve_combo_category
+
+        return resolve_combo_category(self.category).strip()
+
     def _check_category_exists(self, text: str = None):
         """Prüft ob die eingegebene Kategorie existiert und zeigt ggf. die Erstellungs-Option."""
+        # Bei editierbaren Combos kann currentData() veraltet sein. Für die
+        # Sichtbarkeitsprüfung deshalb immer den sichtbaren/getippten Text
+        # bereinigen, inklusive Baum-Pfad und Favoritenstern.
         if text is None:
-            text = self.category.currentText()
-        
-        # Entferne Einrückungen von Tree-Darstellung
-        text = text.strip()
-        while text.startswith("  "):
-            text = text[2:]
-        
+            text = self._selected_category()
+        else:
+            from views.category_picker import _clean_category_label
+
+            text = _clean_category_label(str(text))
+
         if not text:
             self.new_category_group.setVisible(False)
             return
-        
+
         # Prüfe ob Kategorie bereits existiert
         exists = text.lower() in self._existing_categories
-        
+
         if not exists and len(text) >= 2:
             self.new_category_group.setVisible(True)
             self.new_cat_info.setText(
@@ -349,7 +359,7 @@ class BudgetEntryDialog(QDialog):
         if "month" in preset and preset["month"]:
             self.month.setCurrentIndex(int(preset["month"]) - 1)
         if "mode" in preset and preset["mode"]:
-            self.mode.setCurrentText(str(preset["mode"]))
+            self._set_mode(preset["mode"])
         if "from_month" in preset and preset["from_month"]:
             self.from_month.setCurrentIndex(int(preset["from_month"]) - 1)
         if "to_month" in preset and preset["to_month"]:
@@ -357,20 +367,26 @@ class BudgetEntryDialog(QDialog):
         if "only_if_empty" in preset:
             self.only_if_empty.setChecked(bool(preset["only_if_empty"]))
 
-    def _mode_changed(self, mode: str) -> None:
-        is_month = mode == "Monat"
-        is_range = mode == "Bereich"
+    def _current_mode(self) -> str:
+        return normalize_budget_mode(self.mode.currentData() or self.mode.currentText())
+
+    def _set_mode(self, value: object) -> None:
+        mode = normalize_budget_mode(value)
+        idx = self.mode.findData(mode)
+        if idx >= 0:
+            self.mode.setCurrentIndex(idx)
+
+    def _mode_changed(self) -> None:
+        mode = self._current_mode()
+        is_month = mode == BUDGET_MODE_MONTH
+        is_range = mode == BUDGET_MODE_RANGE
         self.month.setEnabled(is_month)
         self.from_month.setEnabled(is_range)
         self.to_month.setEnabled(is_range)
 
     def _validate_and_accept(self) -> None:
-        cat = (self.category.currentData() or self.category.currentText() or "").strip()
-        
-        # Entferne Einrückungen von Tree-Darstellung
-        while cat.startswith("  "):
-            cat = cat[2:]
-        
+        cat = self._selected_category()
+
         if not cat:
             QMessageBox.warning(self, tr('auto.views_budget_entry_dialog.376_fehlt_e088971c'), tr("dlg.bitte_kategorie_auswaehleneingeben"))
             return
@@ -395,8 +411,7 @@ class BudgetEntryDialog(QDialog):
                 result = QMessageBox.question(
                     self, 
                     tr('btn.new_category'),
-                    f"Die Kategorie \"{cat}\" existiert noch nicht.\n\n" +
-                    tr("btn.moechtest_du_sie_jetzt"),
+                    trf("budget_entry.msg.category_missing_create", category=cat),
                     QMessageBox.Yes | QMessageBox.No,
                     QMessageBox.Yes
                 )
@@ -408,18 +423,14 @@ class BudgetEntryDialog(QDialog):
         self.accept()
 
     def get_request(self) -> BudgetEntryRequest:
-        mode = self.mode.currentText()
+        mode = self._current_mode()
         month = self.month.currentIndex() + 1
         fm = self.from_month.currentIndex() + 1
         tm = self.to_month.currentIndex() + 1
         amt = parse_amount(self.amount.text())
         
-        cat = (self.category.currentData() or self.category.currentText() or "").strip()
-        
-        # Entferne Einrückungen von Tree-Darstellung
-        while cat.startswith("  "):
-            cat = cat[2:]
-        
+        cat = self._selected_category()
+
         cat_lower = cat.lower()
         
         # Neue Kategorie erstellen?

@@ -26,6 +26,7 @@ datas = [
     ("locales", "locales"),
     ("data/default_categories.json", "data"),
     ("docs/help", "docs/help"),
+    ("resources/icons", "resources/icons"),
     # 25 mitgelieferte Theme-Profile — ThemeManager lädt sie aus
     # <bundle>/views/profiles (theme_manager.py: bundled_dir)
     ("views/profiles", "views/profiles"),
@@ -88,6 +89,7 @@ exe = EXE(
     a.datas,
     [],
     name="BudgetManager",
+    icon="resources/icons/budgetmanager.ico",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

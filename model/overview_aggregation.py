@@ -3,6 +3,7 @@
 Hier liegt reine Datenlogik, damit sie ohne PySide6 testbar ist
 (siehe tests/test_overview_charts.py).
 """
+
 from __future__ import annotations
 
 from model.typ_constants import normalize_typ

@@ -41,7 +41,7 @@ TR_CALL_RE = re.compile(r"\b(?:tr|trf)\(\s*['\"]([^'\"]+)['\"]", re.MULTILINE)
 HARDCODE_HINT_RE = re.compile(
     r"\b(setText|setWindowTitle|setToolTip|setPlaceholderText|setStatusTip|"
     r"setWhatsThis|setHeaderLabels|setHorizontalHeaderLabels|setVerticalHeaderLabels|"
-    r"setTabText|addTab|addAction|setTitle|setLabelText|setInformativeText|setTextFormat|"
+    r"setTabText|addTab|addAction|setTitle|setLabelText|setInformativeText|setTextFormat|addRow|addItem|addItems|insertItem|setItemText|"
     r"QMessageBox\.|QAction\(|QLabel\(|QPushButton\(|QGroupBox\(|QMenu\(|QDialog\()",
     re.MULTILINE,
 )
@@ -150,7 +150,7 @@ def _find_hardcoded_ui_strings(py_path: Path) -> List[HardcodedFinding]:
         raw = py_path.read_text(encoding="latin-1", errors="replace")
 
     for idx, line in enumerate(raw.splitlines(), start=1):
-        if "tr(" in line or "trf(" in line:
+        if "tr(" in line or "trf(" in line or "display_typ(" in line:
             continue
         if not HARDCODE_HINT_RE.search(line):
             continue

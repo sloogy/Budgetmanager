@@ -50,6 +50,10 @@ def _entrypoint_cmd(module: str | None = None) -> list[str]:
     bestehenden CLI-Flags erhalten.
     """
     if getattr(sys, "frozen", False):
+        if module == "updater.check_update":
+            return [sys.executable, "--check-update"]
+        if module == "updater.apply_update":
+            return [sys.executable, "--apply-update"]
         return [sys.executable]
     mod = module or "updater.check_update"
     return [sys.executable, "-m", mod]

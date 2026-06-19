@@ -338,16 +338,14 @@ class ThemeEditorDialog(QDialog):
             QMessageBox.warning(
                 self,
                 tr('msg.error'),
-                "Mitgelieferte Themes können nicht gelöscht werden.\n\n" +
-                tr("msg.theme_override_hinweis"),
+                tr("theme.msg.builtin_delete_forbidden"),
             )
             return
 
         reply = QMessageBox.question(
             self,
             tr("btn.theme_loeschen"),
-            f"Möchten Sie '{self.current_theme}' wirklich löschen?\n\n" +
-            tr("msg.hinweis_bei_mitgelieferten_themes"),
+            trf("theme.msg.delete_confirm", theme=self.current_theme),
             QMessageBox.Yes | QMessageBox.No,
         )
 
@@ -364,16 +362,14 @@ class ThemeEditorDialog(QDialog):
             QMessageBox.information(
                 self,
                 tr('dlg.hinweis'),
-                "Dieses Theme hat kein mitgeliefertes Standard-Profil zum Zurücksetzen.\n" +
-                tr("dlg.tipp_eigene_themes_koennen"),
+                tr("theme.msg.no_default_reset"),
             )
             return
 
         reply = QMessageBox.question(
             self,
             tr("dlg.zuruecksetzen"),
-            f"Möchten Sie '{self.current_theme}' wirklich zurücksetzen?\n\n" +
-            tr("dlg.alle_lokalen_aenderungen_overrides"),
+            trf("theme.msg.reset_confirm", theme=self.current_theme),
             QMessageBox.Yes | QMessageBox.No,
         )
 

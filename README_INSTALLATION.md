@@ -1,16 +1,21 @@
-# 📦 BudgetManager v2.0.11 — Installation, Start & Update
+# 📦 BudgetManager v2.0.28 — Installation, Start & Update
+
+
+## Hinweis zu v2.0.28
+
+Diese README gehört zu v2.0.28. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
 
 ## Windows Portable
 
-1. `BudgetManager-v2.0.11-portable.zip` herunterladen.
+1. `BudgetManager-v2.0.28-portable.zip` herunterladen.
 2. ZIP in einen eigenen Ordner entpacken, z. B. `C:\BudgetManager` oder auf einen USB-Stick.
 3. `BudgetManager.exe` starten.
 
-Die Nutzerdaten liegen im Ordner `data/` neben der Anwendung. Dadurch bleibt die portable Version komplett zusammen.
+Standardmäßig liegen die Nutzerdaten im Ordner `data/` neben der Anwendung. Über den Reiter `Konto` → Speicherort kann ein anderer Datenordner gewählt werden; bei einem Wechsel bietet BudgetManager eine sichere Datenübernahme mit Sicherheits-ZIP an.
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.0.11.exe` starten.
+1. `BudgetManager_Setup_2.0.28.exe` starten, falls ein Installer-Asset gebaut wurde.
 2. Installation abschließen.
 3. BudgetManager über Startmenü/Desktop starten.
 
@@ -48,6 +53,8 @@ Im normalen Windows-Betrieb sollte der Nutzer nicht mit diesen Befehlen arbeiten
 python tools/sync_version.py --check
 python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
 python tools/i18n_audit.py
+black --check model/
+mypy model/
 pytest tests/ -v
 ```
 

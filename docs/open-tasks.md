@@ -1,38 +1,49 @@
-# Open Tasks — BudgetManager v2.0.8
+# Open Tasks — BudgetManager v2.0.28
 
-Stand: 13. Juni 2026
+Stand: 19. Juni 2026
 
 ## Vor Release prüfen
 
-- Windows-Installer mit Inno Setup real bauen und starten.
-- Installer-Seite für Sprache, Währung und bevorzugten Buchungstag testen.
-- Portable-ZIP unter Windows testen: `start-windows.cmd` und direkte EXE.
-- Portable-ZIP unter Linux testen: `./start-linux.sh` oder `./run.sh`.
-- Update-Manifest nach dem GitHub-Release mit echten SHA256-Werten prüfen.
+- Windows-EXE über GitHub Actions bauen lassen.
+- Linux-Binary über GitHub Actions bauen lassen.
+- Portable-ZIP unter Windows testen.
+- Portable-ZIP unter Linux testen.
+- Start unter GNOME/Wayland prüfen: Standard-Fallback auf `xcb` im Log sichtbar.
+- Cockpit prüfen: Rechtsklick-Menü öffnet echte Cockpit-Aktionen.
+- Cockpit prüfen: Budget-Ampel und Budgetwarnungen werden angezeigt.
+- Update-Manifest nach dem GitHub-Release mit echten SHA256-Werten füllen.
 
 ## Funktionale Smoke-Tests
 
-- Kategorien-Manager: Kategorie auf Kategorie ziehen → wird Unterkategorie.
-- Kategorien-Manager: Kategorie auf Typ-Header ziehen → wird Hauptkategorie.
-- Budgetübersicht: Drag & Drop aktivieren/deaktivieren.
-- Budgetübersicht: Kategorie per Drag & Drop umhängen und Budget neu laden.
-- Einstellungen → Verhalten: Budgetvorschlag-Monate und Drag&Drop speichern.
-- Erststart: Sprache/Währung/Tag übernehmen.
+- Erster Start: Sprache, Währung und Zahlenformat übernehmen.
+- Konto anlegen und Datenbank erstellen.
+- Budgetwert erfassen und speichern.
+- Buchung erfassen, bearbeiten und löschen.
+- Fixkosten/Wiederkehrend-Buchungen buchen.
+- Budgetwarnungen öffnen und Doppelklick-Aktion prüfen.
+- Kategorien-Manager: Kategorie verschieben, umbenennen und löschen.
+- Backup erstellen und Restore testen.
+- Backup-Restore mit falschem Restore-Key testen.
+- Defektes Konto/Selbstheilung testen.
 
 ## Technische Checks
 
 ```bash
 python tools/sync_version.py --check
 python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+python tools/i18n_audit.py
+python tools/dau_first_run_check.py
+black --check model/
+mypy model/
 pytest tests/ -v
 ```
 
 ## Nach Release
 
-- GitHub-Tag eindeutig setzen: `v2.0.8`.
+- GitHub-Tag eindeutig setzen: `v2.0.28`.
 - Nicht mehrere Release-Tags auf denselben alten Commit zeigen lassen.
 - Release-Assets prüfen:
-  - `BudgetManager-v2.0.8-portable.zip`
-  - `BudgetManager-v2.0.8-windows.exe`
-  - `BudgetManager-v2.0.8-linux`
+  - `BudgetManager-v2.0.28-portable.zip`
+  - `BudgetManager-v2.0.28-windows.exe`
+  - `BudgetManager-v2.0.28-linux`
   - `latest.json`

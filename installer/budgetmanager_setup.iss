@@ -3,7 +3,7 @@
 ; 
 ; Verwendung:
 ; 1. PyInstaller ausführen um EXE zu erstellen:
-;    pyinstaller --onefile --windowed --icon=icon.ico --name=BudgetManager main.py
+;    pyinstaller BudgetManager.spec --noconfirm
 ; 2. Inno Setup Compiler auf dieses Skript ausführen
 ;
 ; Voraussetzungen:
@@ -11,12 +11,13 @@
 ; - PyInstaller EXE im dist/ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "v2.0.12"
+#define MyAppVersion "2.0.28"
 #define MyAppPublisher "Christian"
 #define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"
 
 [Setup]
+SourceDir=..
 AppId={{8F9A3B2C-D4E6-4A1B-9C7E-5F2D3A8B1C6D}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
@@ -30,7 +31,7 @@ AllowNoIcons=yes
 LicenseFile=LICENSE.txt
 OutputDir=installer_output
 OutputBaseFilename=BudgetManager_Setup_{#MyAppVersion}
-;SetupIconFile=icon.ico  ; Auskommentiert – icon.ico muss erst erstellt werden (siehe docs/create_icon.md)
+SetupIconFile=resources\icons\budgetmanager.ico
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
@@ -63,6 +64,9 @@ Source: "data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs cre
 
 ; Theme-Profile (PFLICHT - ohne diese kein Theme-System)
 Source: "views\profiles\*"; DestDir: "{app}\views\profiles"; Flags: ignoreversion recursesubdirs createallsubdirs
+
+; App-Icon und Icon-Varianten
+Source: "resources\icons\*"; DestDir: "{app}\resources\icons"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Hinweis: budgetmanager_settings.json wird NICHT mehr aus [Files] kopiert.
 ; Sie wird im [Code]-Abschnitt korrekt nach {app}\data\ geschrieben
@@ -231,6 +235,14 @@ begin
   if CurStep = ssPostInstall then
   begin
     DataDir := DataDirPage.Values[0];
+
+    { Installationsart-Marker: Der Updater erkennt dadurch den Installer-Pfad
+      und lädt künftig Setup-EXE statt Portable-ZIP. }
+    SaveStringToFile(ExpandConstant('{app}\installation.json'),
+      '{' + #13#10 +
+      '  "install_type": "windows_installer",' + #13#10 +
+      '  "version": "{#MyAppVersion}"' + #13#10 +
+      '}', False);
 
     { Die App liest ihre Einstellungen aus {app}\data\budgetmanager_settings.json }
     ForceDirectories(ExpandConstant('{app}\data'));

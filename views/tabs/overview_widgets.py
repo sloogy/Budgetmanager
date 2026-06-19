@@ -164,8 +164,11 @@ class CompactChart(QChartView):
         self.setMinimumHeight(180)
         self.setMaximumHeight(300)
         self._chart = QChart()
-        self._chart.setAnimationOptions(QChart.SeriesAnimations)
-        self._chart.setAnimationDuration(400)
+        # Animationen bewusst AUS: SeriesAnimations + removeAllSeries() beim
+        # Neuzeichnen konnten unter Wayland/Linux eine noch animierte Serie
+        # freigeben -> "double free or corruption". Ohne Animation ist das
+        # Umzeichnen (z.B. nach einer Budgetanpassung) sicher.
+        self._chart.setAnimationOptions(QChart.NoAnimation)
         self._chart.setMargins(QMargins(0, 0, 0, 0))
         self.setChart(self._chart)
 
@@ -180,21 +183,10 @@ class CompactChart(QChartView):
             self._chart.removeAxis(axis)
         self._chart.legend().setVisible(bool(keep_legend))
 
-    def _no_data_title(self, title: str = "") -> str:
-        """Einheitlicher Leerdaten-Titel ohne führende Leerzeichen.
-
-        ``tab_ui.keine_daten`` enthält in den Sprachdateien bewusst eine
-        führende Klammer-Ergänzung (z.B. ``" (keine Daten)"``). Ohne
-        Basis-Titel darf daraus aber kein Titel mit führendem Leerzeichen
-        werden.
-        """
-        suffix = tr("tab_ui.keine_daten")
-        return f"{title}{suffix}" if title else suffix.strip()
-
     def create_pie_chart(self, data: dict[str, float], title: str = "", color_map: dict[str, str] | None = None) -> None:
         self._clear_chart(keep_legend=False)
         if not data:
-            self._chart.setTitle(self._no_data_title(title))
+            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
             return
 
         series = QPieSeries()
@@ -216,10 +208,6 @@ class CompactChart(QChartView):
             elif i < len(colors):
                 s.setColor(colors[i])
 
-        if series.count() == 0:
-            self._chart.setTitle(self._no_data_title(title))
-            return
-
         try:
             series.clicked.connect(
                 lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
@@ -235,34 +223,20 @@ class CompactChart(QChartView):
         self._clear_chart(keep_legend=False)
         self._chart.setTitle("")
 
-        visible_rings = [
-            ring for ring in ring_data
-            if any(float(sl.get("value", 0) or 0) >= 0.01 for sl in ring.get("slices", []))
-        ]
-        if not visible_rings:
+        if not ring_data:
             self._chart.setTitle(tr("dlg.no_data"))
             return
 
-        multi_ring = len(visible_rings) > 1
-        added_any = False
-
-        for ring in visible_rings:
+        for ring in ring_data:
             series = QPieSeries()
             series.setPieSize(ring.get("pie_size", 0.9))
             series.setHoleSize(ring.get("hole_size", 0.7))
-            ring_label = str(ring.get("label", "") or "").strip()
 
             for sl_def in ring.get("slices", []):
                 val = float(sl_def.get("value", 0))
                 if val < 0.01:
                     continue
-                label = str(sl_def.get("label", "") or "")
-                # Bei mehreren Ringen war bisher jedes Segment nur "Gebucht" /
-                # "Offen" beschriftet. Für DAU-Nutzer ist sichtbar, zu welchem
-                # Konto der Ring gehört.
-                if multi_ring and ring_label and not label.startswith(ring_label):
-                    label = f"{ring_label}: {label}"
-                sl = series.append(label, val)
+                sl = series.append(sl_def.get("label", ""), val)
                 sl.setColor(QColor(sl_def.get("color", ui_colors(self).text_dim)))
                 sl.setProperty("raw_label", sl_def.get("raw_label", ""))
                 sl.setLabelVisible(True)
@@ -277,9 +251,6 @@ class CompactChart(QChartView):
                 except Exception as e:
                     logger.debug("sl.hovered connect: %s", e)
 
-            if series.count() == 0:
-                continue
-
             try:
                 series.clicked.connect(
                     lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
@@ -288,10 +259,6 @@ class CompactChart(QChartView):
                 logger.debug("series.clicked connect: %s", e)
 
             self._chart.addSeries(series)
-            added_any = True
-
-        if not added_any:
-            self._chart.setTitle(tr("dlg.no_data"))
 
     def _on_slice_hover(self, state: bool, sl: QPieSlice) -> None:
         try:
@@ -323,7 +290,7 @@ class CompactChart(QChartView):
         self._clear_chart(keep_legend=True)
 
         if not categories or not series_data:
-            self._chart.setTitle(self._no_data_title(title))
+            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
             return
 
         all_values: list[float] = []
@@ -341,7 +308,7 @@ class CompactChart(QChartView):
             self._chart.addSeries(series)
 
         if not self._chart.series():
-            self._chart.setTitle(self._no_data_title(title))
+            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
             return
 
         axis_x = QBarCategoryAxis()
@@ -380,7 +347,7 @@ class CompactChart(QChartView):
         self._clear_chart(keep_legend=False)
         bars = [b for b in bars if float(b.get("value", 0.0) or 0.0) > 0.0]
         if not bars:
-            self._chart.setTitle(self._no_data_title(title))
+            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
             return
 
         labels = [str(b.get("label", "")) for b in bars]
@@ -418,7 +385,7 @@ class CompactChart(QChartView):
         self._clear_chart(keep_legend=True)
 
         if not categories or not series_data:
-            self._chart.setTitle(self._no_data_title(title))
+            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
             return
 
         bar_series = QBarSeries()
@@ -437,10 +404,8 @@ class CompactChart(QChartView):
         bar_series.attachAxis(axis_x)
 
         axis_y = QValueAxis()
-        all_vals = [float(v or 0.0) for sd in series_data for v in sd.get("values", [])]
-        max_val = max(all_vals) if all_vals else 0.0
-        if max_val <= 0.0:
-            max_val = 1.0
+        all_vals = [v for sd in series_data for v in sd.get("values", [])]
+        max_val = max(all_vals) if all_vals else 1000
         axis_y.setRange(0, max_val * 1.15)
         axis_y.setLabelFormat("%.0f")
         self._chart.addAxis(axis_y, Qt.AlignLeft)

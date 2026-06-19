@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 import sqlite3
 from dataclasses import dataclass
@@ -7,7 +8,16 @@ from typing import List, Dict, Optional
 from datetime import date
 
 from model.budget_suggestion_engine import BudgetSuggestionEngine
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, normalize_typ, is_income, rest_sign, ALL_TYPEN
+from model.typ_constants import (
+    TYP_INCOME,
+    TYP_EXPENSES,
+    TYP_SAVINGS,
+    normalize_typ,
+    is_income,
+    rest_sign,
+    ALL_TYPEN,
+)
+
 
 @dataclass
 class BudgetWarning:
@@ -19,9 +29,11 @@ class BudgetWarning:
     threshold_percent: int
     enabled: bool
 
+
 @dataclass
 class BudgetExceedance:
     """Informationen über eine Budget-Überschreitung"""
+
     typ: str
     category: str
     year: int
@@ -33,13 +45,20 @@ class BudgetExceedance:
     suggestion: Optional[float] = None  # Vorgeschlagenes Budget
     exceed_count: int = 0  # Wie oft überschritten in letzten Monaten
 
+
 class BudgetWarningsModelExtended:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
         self._engine = BudgetSuggestionEngine(conn)
 
-    def create(self, year: int, month: int, typ: str, category: str, 
-               threshold_percent: int = 90) -> int:
+    def create(
+        self,
+        year: int,
+        month: int,
+        typ: str,
+        category: str,
+        threshold_percent: int = 90,
+    ) -> int:
         """Erstellt eine Budget-Warnung"""
         try:
             cur = self.conn.execute(
@@ -48,26 +67,30 @@ class BudgetWarningsModelExtended:
                 (year, month, typ, category, threshold_percent, enabled)
                 VALUES (?, ?, ?, ?, ?, 1)
                 """,
-                (year, month, typ, category, threshold_percent)
+                (year, month, typ, category, threshold_percent),
             )
             self.conn.commit()
             return cur.lastrowid
         except sqlite3.IntegrityError:
             return 0  # bereits vorhanden
 
-    def update(self, warning_id: int, threshold_percent: int | None = None,
-               enabled: bool | None = None) -> None:
+    def update(
+        self,
+        warning_id: int,
+        threshold_percent: int | None = None,
+        enabled: bool | None = None,
+    ) -> None:
         """Aktualisiert eine Warnung"""
         updates = []
         params = []
-        
+
         if threshold_percent is not None:
             updates.append("threshold_percent = ?")
             params.append(threshold_percent)
         if enabled is not None:
             updates.append("enabled = ?")
             params.append(1 if enabled else 0)
-        
+
         if updates:
             params.append(warning_id)
             query = f"UPDATE budget_warnings SET {', '.join(updates)} WHERE id = ?"
@@ -79,7 +102,9 @@ class BudgetWarningsModelExtended:
         self.conn.execute("DELETE FROM budget_warnings WHERE id = ?", (warning_id,))
         self.conn.commit()
 
-    def get_warnings(self, year: int, month: int, typ: str | None = None) -> List[BudgetWarning]:
+    def get_warnings(
+        self, year: int, month: int, typ: str | None = None
+    ) -> List[BudgetWarning]:
         """Gibt alle Warnungen für Jahr/Monat zurück"""
         if typ:
             cur = self.conn.execute(
@@ -88,7 +113,7 @@ class BudgetWarningsModelExtended:
                 FROM budget_warnings
                 WHERE year = ? AND month = ? AND typ = ? AND enabled = 1
                 """,
-                (year, month, typ)
+                (year, month, typ),
             )
         else:
             cur = self.conn.execute(
@@ -97,9 +122,9 @@ class BudgetWarningsModelExtended:
                 FROM budget_warnings
                 WHERE year = ? AND month = ? AND enabled = 1
                 """,
-                (year, month)
+                (year, month),
             )
-        
+
         return [
             BudgetWarning(
                 id=row[0],
@@ -108,32 +133,35 @@ class BudgetWarningsModelExtended:
                 typ=row[3],
                 category=row[4],
                 threshold_percent=row[5],
-                enabled=bool(row[6])
+                enabled=bool(row[6]),
             )
             for row in cur.fetchall()
         ]
 
-    def check_warnings_extended(self, year: int, month: int, lookback_months: int = 6) -> List[BudgetExceedance]:
+    def check_warnings_extended(
+        self, year: int, month: int, lookback_months: int = 6
+    ) -> List[BudgetExceedance]:
         """
         Prüft alle Warnungen und gibt überschrittene zurück mit erweiterten Infos
-        
+
         Args:
             year: Jahr
             month: Monat
             lookback_months: Wie viele Monate zurückschauen für Überschreitungshistorie
-            
+
         Returns:
             Liste von BudgetExceedance-Objekten mit Vorschlägen
         """
         # Explizit gespeicherte Warnungen holen
         warnings = self.get_warnings(year, month)
-        
+
         # Auto-Generierung: Wenn keine expliziten Warnungen vorhanden, temporäre aus Budget erzeugen.
         # Gesteuert über Setting "auto_generate_budget_warnings" (default: True).
         self._auto_generated = False  # Für UI-Kennzeichnung (Dialog zeigt Hinweis)
         if not warnings:
             try:
                 from settings import Settings
+
                 auto_gen = bool(Settings().get("auto_generate_budget_warnings", True))
             except Exception:
                 auto_gen = True
@@ -144,7 +172,7 @@ class BudgetWarningsModelExtended:
                     FROM budget
                     WHERE year = ? AND month = ? AND COALESCE(amount, 0) > 0
                     """,
-                    (year, month)
+                    (year, month),
                 )
                 rows = cur.fetchall()
                 warnings = [
@@ -167,10 +195,13 @@ class BudgetWarningsModelExtended:
         # ein einzelner Ausreisser-Monat den Vorschlag.
         try:
             from settings import Settings
-            sign_ratio = float(Settings().get("budget_suggestion_sign_ratio", 0.7) or 0.7)
+
+            sign_ratio = float(
+                Settings().get("budget_suggestion_sign_ratio", 0.7) or 0.7
+            )
         except Exception:
             sign_ratio = 0.7
-        
+
         for warn in warnings:
             # Budget abrufen
             cur = self.conn.execute(
@@ -178,32 +209,32 @@ class BudgetWarningsModelExtended:
                 SELECT amount FROM budget
                 WHERE year = ? AND month = ? AND typ = ? AND category = ?
                 """,
-                (year, month, warn.typ, warn.category)
+                (year, month, warn.typ, warn.category),
             )
             budget_row = cur.fetchone()
             if not budget_row or budget_row[0] <= 0:
                 continue
             budget = float(budget_row[0])
-            
+
             # Ausgaben abrufen (nur für den Monat)
             start_date = f"{year:04d}-{month:02d}-01"
             if month == 12:
                 end_date = f"{year+1:04d}-01-01"
             else:
                 end_date = f"{year:04d}-{month+1:02d}-01"
-            
+
             cur = self.conn.execute(
                 """
                 SELECT COALESCE(SUM(amount), 0) FROM tracking
                 WHERE date >= ? AND date < ? AND typ = ? AND category = ?
                 """,
-                (start_date, end_date, warn.typ, warn.category)
+                (start_date, end_date, warn.typ, warn.category),
             )
             spent = float(cur.fetchone()[0])
             # Ausgaben/Ersparnisse: abs() für Konsistenz mit Engine
             if not is_income(warn.typ):
                 spent = abs(spent)
-            
+
             # Prozentverwendung
             percent_used = (spent / budget) * 100 if budget > 0 else 0.0
 
@@ -235,65 +266,68 @@ class BudgetWarningsModelExtended:
                     warn.typ, warn.category, year, month, lookback_months
                 )
 
-                exceeded.append(BudgetExceedance(
-                    typ=warn.typ,
-                    category=warn.category,
-                    year=year,
-                    month=month,
-                    budget=budget,
-                    spent=spent,
-                    threshold_percent=warn.threshold_percent,
-                    percent_used=percent_used,
-                    suggestion=suggestion,
-                    exceed_count=exceed_count
-                ))
-        
+                exceeded.append(
+                    BudgetExceedance(
+                        typ=warn.typ,
+                        category=warn.category,
+                        year=year,
+                        month=month,
+                        budget=budget,
+                        spent=spent,
+                        threshold_percent=warn.threshold_percent,
+                        percent_used=percent_used,
+                        suggestion=suggestion,
+                        exceed_count=exceed_count,
+                    )
+                )
+
         return exceeded
 
-    def _get_exceed_count(self, typ: str, category: str, year: int, month: int, 
-                          lookback_months: int) -> int:
+    def _get_exceed_count(
+        self, typ: str, category: str, year: int, month: int, lookback_months: int
+    ) -> int:
         """
         Zählt wie oft das Budget in den letzten N Monaten überschritten wurde
         """
         count = 0
         current_date = date(year, month, 1)
-        
+
         for i in range(lookback_months):
             check_date = self._subtract_months(current_date, i)
             check_year = check_date.year
             check_month = check_date.month
-            
+
             # Budget holen
             cur = self.conn.execute(
                 "SELECT amount FROM budget WHERE year = ? AND month = ? AND typ = ? AND category = ?",
-                (check_year, check_month, typ, category)
+                (check_year, check_month, typ, category),
             )
             budget_row = cur.fetchone()
             if not budget_row or budget_row[0] <= 0:
                 continue
             budget = float(budget_row[0])
-            
+
             # Ausgaben holen
             start = f"{check_year:04d}-{check_month:02d}-01"
             if check_month == 12:
                 end = f"{check_year+1:04d}-01-01"
             else:
                 end = f"{check_year:04d}-{check_month+1:02d}-01"
-            
+
             cur = self.conn.execute(
                 """
                 SELECT COALESCE(SUM(amount), 0) FROM tracking
                 WHERE date >= ? AND date < ? AND typ = ? AND category = ?
                 """,
-                (start, end, typ, category)
+                (start, end, typ, category),
             )
             spent = float(cur.fetchone()[0])
             if not is_income(typ):
                 spent = abs(spent)
-            
+
             if spent >= budget:
                 count += 1
-        
+
         return count
 
     # _calculate_budget_suggestion wurde ersetzt durch BudgetSuggestionEngine
@@ -302,21 +336,28 @@ class BudgetWarningsModelExtended:
         """Subtrahiert N Monate von einem Datum"""
         month = start_date.month - months
         year = start_date.year
-        
+
         while month < 1:
             month += 12
             year -= 1
-        
+
         return date(year, month, 1)
 
-    def apply_budget_suggestion(self, typ: str, category: str, year: int, month: int, 
-                                new_budget: float, remaining_months: bool = False) -> int:
+    def apply_budget_suggestion(
+        self,
+        typ: str,
+        category: str,
+        year: int,
+        month: int,
+        new_budget: float,
+        remaining_months: bool = False,
+    ) -> int:
         """Wendet den Budget-Vorschlag an.
-        
+
         Args:
             remaining_months: Wenn True, wird das Budget für alle restlichen Monate
                             des Jahres (ab month) angewendet. Sonst nur für month.
-        
+
         Returns:
             Anzahl der angepassten Monate
         """
@@ -328,7 +369,7 @@ class BudgetWarningsModelExtended:
                     INSERT OR REPLACE INTO budget (year, month, typ, category, amount)
                     VALUES (?, ?, ?, ?, ?)
                     """,
-                    (year, m, typ, category, new_budget)
+                    (year, m, typ, category, new_budget),
                 )
                 count += 1
             self.conn.commit()
@@ -339,12 +380,14 @@ class BudgetWarningsModelExtended:
                 INSERT OR REPLACE INTO budget (year, month, typ, category, amount)
                 VALUES (?, ?, ?, ?, ?)
                 """,
-                (year, month, typ, category, new_budget)
+                (year, month, typ, category, new_budget),
             )
             self.conn.commit()
             return 1
 
-    def mark_suggestion_accepted(self, typ: str, category: str, year: int, month: int) -> None:
+    def mark_suggestion_accepted(
+        self, typ: str, category: str, year: int, month: int
+    ) -> None:
         """Markiert einen Vorschlag als angenommen für diesen Monat.
 
         Verhindert dass dieselbe Kategorie im selben Monat erneut vorgeschlagen wird.
@@ -356,7 +399,7 @@ class BudgetWarningsModelExtended:
                 INSERT OR IGNORE INTO suggestion_accepted (typ, category, year, month)
                 VALUES (?, ?, ?, ?)
                 """,
-                (typ, category, year, month)
+                (typ, category, year, month),
             )
             self.conn.commit()
         except Exception as e:
@@ -367,7 +410,7 @@ class BudgetWarningsModelExtended:
         try:
             rows = self.conn.execute(
                 "SELECT typ, category FROM suggestion_accepted WHERE year=? AND month=?",
-                (year, month)
+                (year, month),
             ).fetchall()
             return {(r[0], r[1]) for r in rows}
         except Exception as e:
@@ -377,7 +420,7 @@ class BudgetWarningsModelExtended:
     def get_exceed_statistics(self, typ: str, category: str, months: int = 6) -> Dict:
         """
         Gibt Statistiken über Budget-Überschreitungen zurück
-        
+
         Returns:
             {
                 'months_checked': int,
@@ -394,48 +437,51 @@ class BudgetWarningsModelExtended:
         # Einheitlicher Sign-Ratio-Parameter (wie überall)
         try:
             from settings import Settings
-            sign_ratio = float(Settings().get("budget_suggestion_sign_ratio", 0.7) or 0.7)
+
+            sign_ratio = float(
+                Settings().get("budget_suggestion_sign_ratio", 0.7) or 0.7
+            )
         except Exception:
             sign_ratio = 0.7
-        
+
         for i in range(months):
             check_date = self._subtract_months(today, i)
             check_year = check_date.year
             check_month = check_date.month
-            
+
             # Budget holen
             cur = self.conn.execute(
                 "SELECT amount FROM budget WHERE year = ? AND month = ? AND typ = ? AND category = ?",
-                (check_year, check_month, typ, category)
+                (check_year, check_month, typ, category),
             )
             budget_row = cur.fetchone()
             if not budget_row or budget_row[0] <= 0:
                 continue
             budget = float(budget_row[0])
-            
+
             # Ausgaben holen
             start = f"{check_year:04d}-{check_month:02d}-01"
             if check_month == 12:
                 end = f"{check_year+1:04d}-01-01"
             else:
                 end = f"{check_year:04d}-{check_month+1:02d}-01"
-            
+
             cur = self.conn.execute(
                 """
                 SELECT COALESCE(SUM(amount), 0) FROM tracking
                 WHERE date >= ? AND date < ? AND typ = ? AND category = ?
                 """,
-                (start, end, typ, category)
+                (start, end, typ, category),
             )
             spent = float(cur.fetchone()[0])
             if not is_income(typ):
                 spent = abs(spent)
-            
+
             if spent > budget:
                 times_exceeded += 1
                 overspend_percent = ((spent - budget) / budget) * 100
                 overspend_percents.append(overspend_percent)
-        
+
         # Einheitlicher Vorschlag (kann auch bei dauerhaftem Unterschreiten kommen)
         res = None
         try:
@@ -455,13 +501,19 @@ class BudgetWarningsModelExtended:
             res = None
 
         suggestion = res.suggested_budget if res else 0.0
-        
+
         return {
-            'months_checked': months,
-            'times_exceeded': times_exceeded,
-            'avg_overspend_percent': sum(overspend_percents) / len(overspend_percents) if overspend_percents else 0,
-            'max_overspend_percent': max(overspend_percents) if overspend_percents else 0,
-            'suggestion': suggestion
+            "months_checked": months,
+            "times_exceeded": times_exceeded,
+            "avg_overspend_percent": (
+                sum(overspend_percents) / len(overspend_percents)
+                if overspend_percents
+                else 0
+            ),
+            "max_overspend_percent": (
+                max(overspend_percents) if overspend_percents else 0
+            ),
+            "suggestion": suggestion,
         }
 
     def list_all(self) -> List[BudgetWarning]:
@@ -481,7 +533,7 @@ class BudgetWarningsModelExtended:
                 typ=row[3],
                 category=row[4],
                 threshold_percent=row[5],
-                enabled=bool(row[6])
+                enabled=bool(row[6]),
             )
             for row in cur.fetchall()
         ]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 import sqlite3
 from dataclasses import dataclass
@@ -21,8 +22,9 @@ RESERVED_CATEGORY_NAMES = [
     "TOTAL",
     "SUMME",
     "__TOTAL__",
-    "__SALDO__"
+    "__SALDO__",
 ]
+
 
 @dataclass(frozen=True)
 class BudgetRow:
@@ -31,6 +33,7 @@ class BudgetRow:
     typ: str
     category: str
     amount: float
+
 
 class BudgetModel:
     def __init__(self, conn: sqlite3.Connection):
@@ -56,18 +59,24 @@ class BudgetModel:
         """Entfernt fehlerhafte reservierte Kategorien aus der Datenbank (einmalig beim Start)."""
         try:
             for reserved_name in RESERVED_CATEGORY_NAMES:
-                self.conn.execute("DELETE FROM budget WHERE category = ?",
-                           (reserved_name,))
+                self.conn.execute(
+                    "DELETE FROM budget WHERE category = ?", (reserved_name,)
+                )
             self.conn.commit()
         except Exception as e:
             logger.warning("_cleanup_reserved_categories fehlgeschlagen: %s", e)
 
-    def set_amount(self, year:int, month:int, typ:str, category:str, amount:float) -> None:
+    def set_amount(
+        self, year: int, month: int, typ: str, category: str, amount: float
+    ) -> None:
         # SCHUTZ: Reservierte Kategorien blockieren
         if self._is_reserved_category(category):
-            logger.warning("Versuch, Budget für reservierte Kategorie '%s' zu setzen — blockiert", category)
+            logger.warning(
+                "Versuch, Budget für reservierte Kategorie '%s' zu setzen — blockiert",
+                category,
+            )
             return
-        
+
         old = self.conn.execute(
             "SELECT * FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
             (int(year), int(month), typ, category),
@@ -123,38 +132,40 @@ class BudgetModel:
         except Exception:
             return float(default)
 
-    def get_matrix(self, year:int, typ:str) -> dict[str, dict[int,float]]:
-        cur=self.conn.execute(
+    def get_matrix(self, year: int, typ: str) -> dict[str, dict[int, float]]:
+        cur = self.conn.execute(
             "SELECT month, category, amount FROM budget WHERE year=? AND typ=?",
             (int(year), typ),
         )
-        matrix={}
+        matrix: dict[str, dict[int, float]] = {}
         for r in cur.fetchall():
             cat = r["category"]
             # SCHUTZ: Reservierte Kategorien herausfiltern
             if self._is_reserved_category(cat):
                 continue
-            matrix.setdefault(cat, {})[int(r["month"])]=float(r["amount"])
+            matrix.setdefault(cat, {})[int(r["month"])] = float(r["amount"])
         return matrix
 
     def years(self) -> list[int]:
-        cur=self.conn.execute("SELECT DISTINCT year FROM budget ORDER BY year")
+        cur = self.conn.execute("SELECT DISTINCT year FROM budget ORDER BY year")
         return [int(r[0]) for r in cur.fetchall()]
 
-    def seed_year_from_categories(self, year:int, typ:str, categories:list[str], amount:float=0.0) -> None:
-        cur=self.conn.cursor()
+    def seed_year_from_categories(
+        self, year: int, typ: str, categories: list[str], amount: float = 0.0
+    ) -> None:
+        cur = self.conn.cursor()
         for cat in categories:
             # SCHUTZ: Reservierte Kategorien überspringen
             if self._is_reserved_category(cat):
                 continue
-            for m in range(1,13):
+            for m in range(1, 13):
                 cur.execute(
                     "INSERT OR IGNORE INTO budget(year,month,typ,category,amount) VALUES(?,?,?,?,?)",
                     (int(year), int(m), typ, cat, float(amount)),
                 )
         self.conn.commit()
 
-    def delete_category_for_year(self, year:int, typ:str, category:str) -> None:
+    def delete_category_for_year(self, year: int, typ: str, category: str) -> None:
         rows = self.conn.execute(
             "SELECT * FROM budget WHERE year=? AND typ=? AND category=?",
             (int(year), typ, category),
@@ -169,9 +180,11 @@ class BudgetModel:
         self.conn.commit()
 
         for r in rows:
-            self.undo.record_operation("budget", "DELETE", dict(r), None, group_id=group)
+            self.undo.record_operation(
+                "budget", "DELETE", dict(r), None, group_id=group
+            )
 
-    def delete_category_all_years(self, typ:str, category:str) -> None:
+    def delete_category_all_years(self, typ: str, category: str) -> None:
         rows = self.conn.execute(
             "SELECT * FROM budget WHERE typ=? AND category=?",
             (typ, category),
@@ -186,9 +199,11 @@ class BudgetModel:
         self.conn.commit()
 
         for r in rows:
-            self.undo.record_operation("budget", "DELETE", dict(r), None, group_id=group)
+            self.undo.record_operation(
+                "budget", "DELETE", dict(r), None, group_id=group
+            )
 
-    def rename_category(self, typ:str, old_name:str, new_name:str) -> None:
+    def rename_category(self, typ: str, old_name: str, new_name: str) -> None:
         """Legacy-Kompatibilität: Kategorie-Rename zentral delegieren.
 
         Früher aktualisierte diese Methode nur die Budget-Tabelle. Seit v2.0.1
@@ -205,6 +220,7 @@ class BudgetModel:
         ).fetchone()
         if row is not None:
             from model.category_model import CategoryModel
+
             CategoryModel(self.conn).rename_and_cascade(
                 int(row["id"]), typ=typ, old_name=old_name, new_name=new_name
             )
@@ -229,16 +245,18 @@ class BudgetModel:
             old_dict = dict(r)
             new_dict = dict(r)
             new_dict["category"] = new_name
-            self.undo.record_operation("budget", "UPDATE", old_dict, new_dict, group_id=group)
+            self.undo.record_operation(
+                "budget", "UPDATE", old_dict, new_dict, group_id=group
+            )
 
-    def sum_by_typ(self, year:int, month:int) -> dict[str,float]:
+    def sum_by_typ(self, year: int, month: int) -> dict[str, float]:
         cur = self.conn.execute(
             "SELECT typ, SUM(amount) AS s FROM budget WHERE year=? AND month=? GROUP BY typ",
             (int(year), int(month)),
         )
         return {str(r["typ"]): float(r["s"] or 0.0) for r in cur.fetchall()}
 
-    def sum_year_by_typ(self, year:int, typ: str|None=None) -> dict[str,float]:
+    def sum_year_by_typ(self, year: int, typ: str | None = None) -> dict[str, float]:
         if typ is None:
             cur = self.conn.execute(
                 "SELECT typ, SUM(amount) AS s FROM budget WHERE year=? GROUP BY typ",
@@ -253,7 +271,9 @@ class BudgetModel:
             row = cur.fetchone()
             return {typ: float(row["s"] or 0.0) if row else 0.0}
 
-    def sum_by_category(self, year: int|None = None, month: int|None = None, typ: str|None = None) -> dict[str,float]:
+    def sum_by_category(
+        self, year: int | None = None, month: int | None = None, typ: str | None = None
+    ) -> dict[str, float]:
         if year is None and month is None:
             if typ is None:
                 cur = self.conn.execute(
@@ -294,7 +314,7 @@ class BudgetModel:
                 result[cat] = float(r["s"] or 0.0)
         return result
 
-    def sum_month_all(self, month: int, typ: str | None = None) -> dict[str,float]:
+    def sum_month_all(self, month: int, typ: str | None = None) -> dict[str, float]:
         if typ is None:
             cur = self.conn.execute(
                 "SELECT category, SUM(amount) AS s FROM budget WHERE month=? GROUP BY category ORDER BY ABS(s) DESC",
@@ -315,18 +335,26 @@ class BudgetModel:
 
     def sum_by_month_all(self, typ: str | None = None) -> dict[int, float]:
         if typ is None:
-            cur = self.conn.execute("SELECT month AS m, SUM(amount) AS s FROM budget GROUP BY m ORDER BY m")
+            cur = self.conn.execute(
+                "SELECT month AS m, SUM(amount) AS s FROM budget GROUP BY m ORDER BY m"
+            )
         else:
             cur = self.conn.execute(
                 "SELECT month AS m, SUM(amount) AS s FROM budget WHERE typ=? GROUP BY m ORDER BY m",
                 (typ,),
             )
         out = {int(r["m"]): float(r["s"] or 0.0) for r in cur.fetchall()}
-        for m in range(1,13):
+        for m in range(1, 13):
             out.setdefault(m, 0.0)
         return out
 
-    def copy_year(self, src_year:int, dst_year:int, carry_amounts:bool=True, typ: str | None = None) -> None:
+    def copy_year(
+        self,
+        src_year: int,
+        dst_year: int,
+        carry_amounts: bool = True,
+        typ: str | None = None,
+    ) -> None:
         if typ is None:
             if carry_amounts:
                 self.conn.execute(

@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QFileDialog, QMessageBox, QListWidget, QListWidgetItem, QInputDialog, QApplication
 )
 
-from model.app_paths import resolve_in_app
+from model.app_paths import resolve_in_app, configured_backups_dir
 from utils.icons import get_icon
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ class BackupRestoreDialog(QDialog):
         
         # Backup-Ordner aus Einstellungen oder Standard
         if settings and hasattr(settings, 'backup_directory'):
-            self.backup_dir = resolve_in_app(settings.backup_directory)
+            self.backup_dir = configured_backups_dir(settings.backup_directory)
         else:
             self.backup_dir = Path.home() / "BudgetManager_Backups"
         
@@ -673,9 +673,13 @@ class BackupRestoreDialog(QDialog):
             target = Path(self.db_path) if self.db_path else Path("(unbekannt)")
 
         if self.active_user is not None:
-            user_line = f"Aktiver Benutzer: {getattr(self.active_user, 'display_name', '')} ({getattr(self.active_user, 'security_label', getattr(self.active_user, 'security', ''))})\n"
+            user_line = trf(
+                "backup_restore.user_line.active",
+                name=getattr(self.active_user, 'display_name', ''),
+                security=getattr(self.active_user, 'security_label', getattr(self.active_user, 'security', '')),
+            )
         else:
-            user_line = "Aktiver Benutzer: (unverschlüsselte DB / kein User-Modus)\n"
+            user_line = tr("backup_restore.user_line.plain")
 
         if self.encrypted_session is None:
             # Legacy: Restore erfolgte direkt in die Live-Connection → kein Neustart nötig.
@@ -686,13 +690,7 @@ class BackupRestoreDialog(QDialog):
             )
             return
 
-        msg = (
-            "Datenbank wurde wiederhergestellt.\n\n"
-            f"{user_line}"
-            f"Aktive DB wurde ersetzt:\n{target}\n\n"
-            "WICHTIG: Damit die App die neue DB lädt, ist ein Neustart nötig.\n\n"
-            "Jetzt Anwendung beenden?"
-        )
+        msg = trf("backup_restore.msg.restore_restart_prompt", user_line=user_line, target=target)
         if QMessageBox.question(
             self,
             tr('auto.views_backup_restore_dialog.722_neustart_erforderlich_5f2fbae8'),
@@ -728,10 +726,7 @@ class BackupRestoreDialog(QDialog):
         reply = QMessageBox.question(
             self,
             tr("dlg.datenbank_zuruecksetzen"),
-            "WARNUNG: Dies löscht ALLE Daten!\n\n"
-            "Die Datenbank wird auf Standard zurückgesetzt.\n"
-            "Ein automatisches Backup wird erstellt.\n\n" +
-            tr("dlg.moechten_sie_wirklich_fortfahren"),
+            tr("backup_restore.msg.reset_confirm"),
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No
         )

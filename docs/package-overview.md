@@ -1,4 +1,6 @@
-# Paketübersicht — BudgetManager v2.0.8
+# Paketübersicht — BudgetManager v2.0.28
+
+Diese Übersicht beschreibt den aktuellen Release-Quellbaum. Alte Arbeits-, Analyse- und Zwischenstandsberichte sind nicht Bestandteil des Release-Pakets.
 
 ## Root
 
@@ -30,13 +32,13 @@ installer/                      Inno-Setup-Skript
 updater/                        Update-Logik und Manifest-Helfer
 tools/                          Release-/Audit-Skripte
 tests/                          Core- und GUI-Smoke-Tests
-docs/                           technische Dokumentation
+docs/                           aktive technische Dokumentation und Hilfe
 ```
 
 ## Bereinigt in diesem Paket
 
 - Keine AI-Arbeitsordner.
-- Keine lokalen Nutzer-Settings im Root.
-- Keine alten Merge-/Analyse-Berichte.
-- Kein `_attic`-Ordner mit totem Code.
-- Release-Dateien sind auf `v2.0.8` synchronisiert.
+- Keine lokalen Nutzer-Settings.
+- Keine Python-Cache-Ordner.
+- Keine alten Merge-, Analyse- oder Bugfix-Berichte als aktive Dokumentation.
+- Release-Dateien, aktive Dokumentation und Manifest-Beispiele sind auf `v2.0.28` synchronisiert.

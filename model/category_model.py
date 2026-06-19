@@ -1,8 +1,10 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 import sqlite3
 from dataclasses import dataclass
+from typing import List
 
 from model.undo_redo_model import UndoRedoModel
 
@@ -11,6 +13,33 @@ from model.undo_redo_model import UndoRedoModel
 Verwaltet Kategorien mit hierarchischer Eltern-Kind-Struktur,
 Typen (Ausgaben/Einkommen/Ersparnisse), Fixkosten- und Wiederkehrend-Flags.
 """
+
+
+class CategoryError(ValueError):
+    """Benutzer-sichtbarer Kategorie-Fehler mit i18n-Key.
+
+    Bleibt eine ``ValueError``-Subklasse, damit bestehende
+    ``except ValueError``/``except Exception`` Pfade unverändert greifen.
+    ``str()`` rendert den Text zur Anzeigezeit lokalisiert (de/en/fr),
+    inklusive optionaler ``str.format``-Argumente. Dadurch erscheinen die
+    Meldungen in Dialogen übersetzt, auch wenn ein Aufrufer den Fehler nur
+    generisch als ``{error}``/``{value_0}`` einbettet, statt den rohen
+    i18n-Key auszugeben.
+    """
+
+    def __init__(self, key: str, **fmt):
+        self.key = key
+        self.fmt = fmt
+        super().__init__(key)
+
+    def __str__(self) -> str:
+        try:
+            from utils.i18n import tr, trf
+
+            return trf(self.key, **self.fmt) if self.fmt else tr(self.key)
+        except Exception:
+            return self.key
+
 
 @dataclass(frozen=True)
 class Category:
@@ -24,7 +53,33 @@ class Category:
     funded_by_category_id: int | None
     sort_order: int
 
+
 class CategoryModel:
+    _ALLOWED_SCHEMA_TABLES = frozenset(
+        {
+            "budget",
+            "budget_warnings",
+            "categories",
+            "category_tags",
+            "entry_tags",
+            "favorites",
+            "recurring_transactions",
+            "savings_goals",
+            "suggestion_accepted",
+            "system_flags",
+            "tracking",
+        }
+    )
+    _CATEGORY_TEXT_REFERENCE_TABLES = frozenset(
+        {
+            "budget",
+            "favorites",
+            "budget_warnings",
+            "recurring_transactions",
+            "suggestion_accepted",
+        }
+    )
+
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
         # Undo/Redo (global)
@@ -35,18 +90,20 @@ class CategoryModel:
         flag = self.conn.execute(
             "SELECT value FROM system_flags WHERE key='defaults_loaded'"
         ).fetchone()
-        
+
         if flag:
             return  # Defaults wurden bereits geladen, nichts tun
-        
+
         # Zentrale Quelle: data/default_categories.json (siehe model/default_categories.py).
         # Die frühere hardcodierte Liste (inkl. persönlicher Einträge und Tippfehler
         # wie "Nebenerweb"/"Rechtschutzz") wurde in v1.0.30 entfernt — Erststart und
         # Reset verwenden jetzt dieselbe Quelle UND dieselbe Insert-Routine
         # (inkl. Unterkategorien via parent_id, v1.0.34).
         from model.default_categories import insert_default_categories
+
         try:
             from settings import Settings
+
             preferred_day = int(Settings().get("recurring_preferred_day", 25) or 0)
         except Exception:
             preferred_day = 25
@@ -58,24 +115,42 @@ class CategoryModel:
         )
         self.conn.commit()
 
-    def list(self, typ: str | None = None) -> list[Category]:
+    def list(self, typ: str | None = None) -> List[Category]:
         if typ:
-            cur=self.conn.execute("SELECT * FROM categories WHERE typ=? ORDER BY sort_order, name COLLATE NOCASE",(typ,))
+            cur = self.conn.execute(
+                "SELECT * FROM categories WHERE typ=? ORDER BY sort_order, name COLLATE NOCASE",
+                (typ,),
+            )
         else:
-            cur=self.conn.execute("SELECT * FROM categories ORDER BY typ, sort_order, name COLLATE NOCASE")
-        out=[]
+            cur = self.conn.execute(
+                "SELECT * FROM categories ORDER BY typ, sort_order, name COLLATE NOCASE"
+            )
+        out = []
         for r in cur.fetchall():
             out.append(
                 Category(
                     int(r["id"]),
                     r["typ"],
                     r["name"],
-                    int(r["parent_id"]) if "parent_id" in r.keys() and r["parent_id"] is not None else None,
+                    (
+                        int(r["parent_id"])
+                        if "parent_id" in r.keys() and r["parent_id"] is not None
+                        else None
+                    ),
                     bool(r["is_fix"]),
                     bool(r["is_recurring"]),
                     int(r["recurring_day"] or 1),
-                    int(r["funded_by_category_id"]) if "funded_by_category_id" in r.keys() and r["funded_by_category_id"] is not None else None,
-                    int(r["sort_order"]) if "sort_order" in r.keys() and r["sort_order"] is not None else 0,
+                    (
+                        int(r["funded_by_category_id"])
+                        if "funded_by_category_id" in r.keys()
+                        and r["funded_by_category_id"] is not None
+                        else None
+                    ),
+                    (
+                        int(r["sort_order"])
+                        if "sort_order" in r.keys() and r["sort_order"] is not None
+                        else 0
+                    ),
                 )
             )
         return out
@@ -83,7 +158,7 @@ class CategoryModel:
     # ---------------------------------------------------------------------
     # Kompatibilitätsschicht (für Views aus dem 0.18.x-Branch)
     # ---------------------------------------------------------------------
-    def get_all_categories(self) -> list[dict]:
+    def get_all_categories(self) -> List[dict]:
         """Gibt alle Kategorien als Dict-Liste zurück.
 
         Einige Views/Dialogs (z.B. Übersicht / Fixkosten-Check) erwarten ein
@@ -100,7 +175,11 @@ class CategoryModel:
             "is_fix" if "is_fix" in cols else "0 as is_fix",
             "is_recurring" if "is_recurring" in cols else "0 as is_recurring",
             "recurring_day" if "recurring_day" in cols else "1 as recurring_day",
-            "funded_by_category_id" if "funded_by_category_id" in cols else "NULL as funded_by_category_id",
+            (
+                "funded_by_category_id"
+                if "funded_by_category_id" in cols
+                else "NULL as funded_by_category_id"
+            ),
             "sort_order" if "sort_order" in cols else "0 as sort_order",
         ]
         # optional (einige Dialoge nutzen diesen Wert)
@@ -124,7 +203,7 @@ class CategoryModel:
             # Fallback: wie Ausgaben behandeln
             return "expense"
 
-        out: list[dict] = []
+        out: List[dict] = []
         for r in cur.fetchall():
             out.append(
                 {
@@ -132,33 +211,45 @@ class CategoryModel:
                     "name": r["name"],
                     "typ": r["typ"],
                     "type": _map_type(r["typ"]),
-                    "parent_id": int(r["parent_id"]) if r["parent_id"] is not None else None,
+                    "parent_id": (
+                        int(r["parent_id"]) if r["parent_id"] is not None else None
+                    ),
                     # Legacy-Key für Fixkosten-Dialoge
                     "is_fixcost": bool(r["is_fix"]),
                     "is_fix": bool(r["is_fix"]),
                     "is_recurring": bool(r["is_recurring"]),
                     "recurring_day": int(r["recurring_day"] or 1),
-                    "funded_by_category_id": int(r["funded_by_category_id"]) if r["funded_by_category_id"] is not None else None,
+                    "funded_by_category_id": (
+                        int(r["funded_by_category_id"])
+                        if r["funded_by_category_id"] is not None
+                        else None
+                    ),
                     "sort_order": int(r["sort_order"] or 0),
-                    "expected_monthly_bookings": int(r["expected_monthly_bookings"] or 1),
+                    "expected_monthly_bookings": int(
+                        r["expected_monthly_bookings"] or 1
+                    ),
                 }
             )
         return out
 
-    def list_tree(self) -> dict[str, list[Category]]:
+    def list_tree(self) -> dict[str, List[Category]]:
         """Liefert alle Kategorien gruppiert nach typ (Einnahmen/Ausgaben/Ersparnisse)."""
-        data: dict[str, list[Category]] = {"Einkommen": [], "Ausgaben": [], "Ersparnisse": []}
+        data: dict[str, List[Category]] = {
+            "Einkommen": [],
+            "Ausgaben": [],
+            "Ersparnisse": [],
+        }
         for c in self.list(None):
             data.setdefault(c.typ, []).append(c)
         return data
 
-    def build_tree(self, items: list[Category]) -> list[dict]:
+    def build_tree(self, items: List[Category]) -> List[dict]:
         """Baut aus flacher Liste eine Baumstruktur.
 
         Returns: Liste von Nodes {cat: Category, children: [...]}
         """
         by_id: dict[int, dict] = {}
-        roots: list[dict] = []
+        roots: List[dict] = []
         for c in items:
             by_id[c.id] = {"cat": c, "children": []}
         for c in items:
@@ -169,19 +260,36 @@ class CategoryModel:
                 roots.append(node)
         return roots
 
+    @classmethod
+    def _safe_table(cls, table: str) -> str:
+        """Gibt einen geprüften internen Tabellennamen zurück.
+
+        SQLite erlaubt für ``PRAGMA table_info`` und DDL-artige Stellen keine
+        Platzhalter für Tabellen-/Spaltennamen. Deshalb dürfen dynamische
+        Tabellennamen hier nur aus einer festen internen Whitelist kommen.
+        Nutzerwerte laufen weiterhin ausschließlich über ``?``-Parameter.
+        """
+        if table not in cls._ALLOWED_SCHEMA_TABLES:
+            raise ValueError(f"Nicht erlaubte Tabelle: {table}")
+        return table
+
     def _cols(self, table: str) -> set[str]:
         try:
-            cur = self.conn.execute(f"PRAGMA table_info({table});")
+            safe_table = self._safe_table(table)
+            cur = self.conn.execute(f"PRAGMA table_info({safe_table});")
             return {row[1] for row in cur.fetchall()}
         except Exception as e:
             logger.debug("_cols(%s) fehlgeschlagen: %s", table, e)
             return set()
 
-    def list_names(self, typ: str) -> list[str]:
-        cur=self.conn.execute("SELECT name FROM categories WHERE typ=? ORDER BY name COLLATE NOCASE",(typ,))
+    def list_names(self, typ: str) -> List[str]:
+        cur = self.conn.execute(
+            "SELECT name FROM categories WHERE typ=? ORDER BY name COLLATE NOCASE",
+            (typ,),
+        )
         return [r["name"] for r in cur.fetchall()]
 
-    def list_names_tree(self, typ: str) -> list[tuple[str, str]]:
+    def list_names_tree(self, typ: str) -> List[tuple[str, str]]:
         """Hierarchische Namensliste für Dropdowns.
 
         Anzeige: Einrückung bleibt, aber ab Unterkategorie wird zusätzlich der direkte Parent angezeigt:
@@ -192,20 +300,24 @@ class CategoryModel:
         items = self.list(typ)
         nodes = self.build_tree(items)
 
-        out: list[tuple[str, str]] = []
+        out: List[tuple[str, str]] = []
 
-        def walk(children: list[dict], depth: int, parent_name: str | None) -> None:
+        def walk(children: List[dict], depth: int, parent_name: str | None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 prefix = "  " * depth
-                label = c.name if depth == 0 or not parent_name else f"{parent_name} › {c.name}"
+                label = (
+                    c.name
+                    if depth == 0 or not parent_name
+                    else f"{parent_name} › {c.name}"
+                )
                 out.append((f"{prefix}{label}", c.name))
                 walk(n["children"], depth + 1, c.name)
 
         walk(nodes, 0, None)
         return out
 
-    def list_for_tracking_dropdown(self, typ: str) -> list[tuple[str, str]]:
+    def list_for_tracking_dropdown(self, typ: str) -> List[tuple[str, str]]:
         """Kategorien-Reihenfolge für Buchungsdialoge.
 
         Flache Fallback-Liste ohne Kopfzeilen. Die eigentliche Tracker-UI nutzt
@@ -214,9 +326,15 @@ class CategoryModel:
         reduziert.
         """
         grouped = self.list_for_tracking_dropdown_grouped(typ)
-        return [(label, str(value)) for kind, label, value in grouped if kind == "item" and value]
+        return [
+            (label, str(value))
+            for kind, label, value in grouped
+            if kind == "item" and value
+        ]
 
-    def list_for_tracking_dropdown_grouped(self, typ: str) -> list[tuple[str, str, object]]:
+    def list_for_tracking_dropdown_grouped(
+        self, typ: str
+    ) -> List[tuple[str, str, object]]:
         """Gruppierte Reihenfolge für den Tracker-Picker.
 
         Liefert eine flache Liste aus Kopfzeilen und Einträgen:
@@ -245,7 +363,7 @@ class CategoryModel:
         nodes = self.build_tree(items)
         tree_pos: dict[str, int] = {}
 
-        def walk(children: list[dict], parent_path: str | None = None) -> None:
+        def walk(children: List[dict], parent_path: str | None = None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 path = c.name if not parent_path else f"{parent_path} › {c.name}"
@@ -268,26 +386,38 @@ class CategoryModel:
 
         try:
             from model.tracking_model import TrackingModel
-            usage = TrackingModel(self.conn).category_usage_counts(typ, manual_only=True)
+
+            usage = TrackingModel(self.conn).category_usage_counts(
+                typ, manual_only=True
+            )
         except Exception as e:
             logger.debug("Nutzungsranking für gruppierten Picker: %s", e)
             usage = {}
 
-        def order_by_usage(names: list[str]) -> list[str]:
+        def order_by_usage(names: List[str]) -> List[str]:
             return sorted(
                 names,
-                key=lambda n: (-int(usage.get(n, 0)), tree_pos.get(n, 1 << 30),
-                               path_by_name.get(n, n).casefold()),
+                key=lambda n: (
+                    -int(usage.get(n, 0)),
+                    tree_pos.get(n, 1 << 30),
+                    path_by_name.get(n, n).casefold(),
+                ),
             )
 
-        def order_by_tree(names: list[str]) -> list[str]:
-            return sorted(names, key=lambda n: (tree_pos.get(n, 1 << 30), path_by_name.get(n, n).casefold()))
+        def order_by_tree(names: List[str]) -> List[str]:
+            return sorted(
+                names,
+                key=lambda n: (
+                    tree_pos.get(n, 1 << 30),
+                    path_by_name.get(n, n).casefold(),
+                ),
+            )
 
-        frequent_manual: list[str] = []
-        normal_other: list[str] = []
-        fix_variable: list[str] = []
-        recurring_variable: list[str] = []
-        real_fixcosts: list[str] = []
+        frequent_manual: List[str] = []
+        normal_other: List[str] = []
+        fix_variable: List[str] = []
+        recurring_variable: List[str] = []
+        real_fixcosts: List[str] = []
 
         for c in items:
             if c.name in fav_set:
@@ -306,19 +436,28 @@ class CategoryModel:
                 else:
                     normal_other.append(c.name)
 
-        out: list[tuple[str, str, object]] = []
+        out: List[tuple[str, str, object]] = []
 
         def _tr(title_key: str, default_title: str) -> str:
             try:
                 from utils.i18n import tr
+
                 title = tr(title_key)
                 if title and title != title_key:
                     return title
             except Exception as e:
-                logger.debug("Picker-Gruppentitel nicht übersetzt (%s): %s", title_key, e)
+                logger.debug(
+                    "Picker-Gruppentitel nicht übersetzt (%s): %s", title_key, e
+                )
             return default_title
 
-        def add_group(title_key: str, default_title: str, names: list[str], *, favorite: bool = False) -> None:
+        def add_group(
+            title_key: str,
+            default_title: str,
+            names: List[str],
+            *,
+            favorite: bool = False,
+        ) -> None:
             if not names:
                 return
             out.append(("header", _tr(title_key, default_title), None))
@@ -329,27 +468,50 @@ class CategoryModel:
                 out.append(("item", label, n))
 
         add_group("picker.group_favorites", "★ Favoriten", fav_order, favorite=True)
-        add_group("picker.group_frequent_manual", "Häufig manuell gebucht", order_by_usage(frequent_manual))
-        add_group("picker.group_normal", "Normale Buchungen", order_by_tree(normal_other))
-        add_group("picker.group_variable_fix", "Fix / variabel", order_by_usage(fix_variable))
-        add_group("picker.group_variable_recurring", "Wiederkehrend / variabel", order_by_usage(recurring_variable))
-        add_group("picker.group_real_fixcosts", "Echte Fixkosten", order_by_usage(real_fixcosts))
+        add_group(
+            "picker.group_frequent_manual",
+            "Häufig manuell gebucht",
+            order_by_usage(frequent_manual),
+        )
+        add_group(
+            "picker.group_normal", "Normale Buchungen", order_by_tree(normal_other)
+        )
+        add_group(
+            "picker.group_variable_fix", "Fix / variabel", order_by_usage(fix_variable)
+        )
+        add_group(
+            "picker.group_variable_recurring",
+            "Wiederkehrend / variabel",
+            order_by_usage(recurring_variable),
+        )
+        add_group(
+            "picker.group_real_fixcosts",
+            "Echte Fixkosten",
+            order_by_usage(real_fixcosts),
+        )
         return out
 
-    def list_fix_names(self, typ: str) -> list[str]:
-        cur=self.conn.execute("SELECT name FROM categories WHERE typ=? AND is_fix=1 ORDER BY name COLLATE NOCASE",(typ,))
+    def list_fix_names(self, typ: str) -> List[str]:
+        cur = self.conn.execute(
+            "SELECT name FROM categories WHERE typ=? AND is_fix=1 ORDER BY name COLLATE NOCASE",
+            (typ,),
+        )
         return [r["name"] for r in cur.fetchall()]
 
-    def list_fix_names_tree(self, typ: str) -> list[tuple[str, str]]:
+    def list_fix_names_tree(self, typ: str) -> List[tuple[str, str]]:
         items = [c for c in self.list(typ) if c.is_fix]
         nodes = self.build_tree(items)
-        out: list[tuple[str, str]] = []
+        out: List[tuple[str, str]] = []
 
-        def walk(children: list[dict], depth: int, parent_name: str | None) -> None:
+        def walk(children: List[dict], depth: int, parent_name: str | None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 prefix = "  " * depth
-                label = c.name if depth == 0 or not parent_name else f"{parent_name} › {c.name}"
+                label = (
+                    c.name
+                    if depth == 0 or not parent_name
+                    else f"{parent_name} › {c.name}"
+                )
                 out.append((f"{prefix}{label}", c.name))
                 walk(n["children"], depth + 1, c.name)
 
@@ -372,8 +534,41 @@ class CategoryModel:
         ).fetchone()
         if not row or row["parent_id"] is None:
             return None
-        prow = self.conn.execute("SELECT name FROM categories WHERE id=?", (int(row["parent_id"]),)).fetchone()
+        prow = self.conn.execute(
+            "SELECT name FROM categories WHERE id=?", (int(row["parent_id"]),)
+        ).fetchone()
         return str(prow["name"]) if prow else None
+
+    def exists(self, typ: str, name: str) -> bool:
+        """True, wenn eine Kategorie mit Typ + Name existiert.
+
+        Wird bewusst case-insensitive geprüft, weil Benutzer im Suchfeld einer
+        editierbaren ComboBox tippen können. Gespeichert wird anschließend aber
+        der echte Datenbankname aus ``resolve_name``.
+        """
+        name = (name or "").strip()
+        if not typ or not name:
+            return False
+        row = self.conn.execute(
+            "SELECT 1 FROM categories WHERE typ=? AND lower(name)=lower(?) LIMIT 1",
+            (typ, name),
+        ).fetchone()
+        return row is not None
+
+    def resolve_name(self, typ: str, name: str) -> str | None:
+        """Liefert den exakten DB-Kategorienamen zu einer Benutzereingabe.
+
+        Bei exact/case-insensitive Treffern wird der gespeicherte Name
+        zurückgegeben. Ohne Treffer gibt die Methode ``None`` zurück.
+        """
+        name = (name or "").strip()
+        if not typ or not name:
+            return None
+        row = self.conn.execute(
+            "SELECT name FROM categories WHERE typ=? AND lower(name)=lower(?) LIMIT 1",
+            (typ, name),
+        ).fetchone()
+        return str(row["name"]) if row else None
 
     def get_flags(self, typ: str, name: str) -> tuple[bool, bool, int]:
         """returns (is_fix, is_recurring, recurring_day). if missing -> (False, False, 1)"""
@@ -383,7 +578,11 @@ class CategoryModel:
         ).fetchone()
         if not cur:
             return (False, False, 1)
-        return (bool(cur["is_fix"]), bool(cur["is_recurring"]), int(cur["recurring_day"] or 1))
+        return (
+            bool(cur["is_fix"]),
+            bool(cur["is_recurring"]),
+            int(cur["recurring_day"] or 1),
+        )
 
     def upsert(
         self,
@@ -403,7 +602,11 @@ class CategoryModel:
         if day > 31:
             day = 31
         cols = self._cols("categories")
-        if "parent_id" in cols and "funded_by_category_id" in cols and "sort_order" in cols:
+        if (
+            "parent_id" in cols
+            and "funded_by_category_id" in cols
+            and "sort_order" in cols
+        ):
             self.conn.execute(
                 "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
                 "VALUES(?,?,?,?,?,?,?,?) "
@@ -414,7 +617,16 @@ class CategoryModel:
                 "  recurring_day=excluded.recurring_day, "
                 "  funded_by_category_id=excluded.funded_by_category_id, "
                 "  sort_order=excluded.sort_order",
-                (typ, name, parent_id, int(is_fix), int(is_recurring), day, funded_by_category_id, int(sort_order)),
+                (
+                    typ,
+                    name,
+                    parent_id,
+                    int(is_fix),
+                    int(is_recurring),
+                    day,
+                    funded_by_category_id,
+                    int(sort_order),
+                ),
             )
         else:
             self.conn.execute(
@@ -443,11 +655,24 @@ class CategoryModel:
         day = int(recurring_day) if recurring_day else 1
         day = max(1, min(31, day))
         cols = self._cols("categories")
-        if "parent_id" in cols and "funded_by_category_id" in cols and "sort_order" in cols:
+        if (
+            "parent_id" in cols
+            and "funded_by_category_id" in cols
+            and "sort_order" in cols
+        ):
             cur = self.conn.execute(
                 "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
                 "VALUES(?,?,?,?,?,?,?,?)",
-                (typ, name, parent_id, int(is_fix), int(is_recurring), day, funded_by_category_id, int(sort_order)),
+                (
+                    typ,
+                    name,
+                    parent_id,
+                    int(is_fix),
+                    int(is_recurring),
+                    day,
+                    funded_by_category_id,
+                    int(sort_order),
+                ),
             )
         else:
             cur = self.conn.execute(
@@ -456,17 +681,30 @@ class CategoryModel:
             )
         self.conn.commit()
         new_id = int(cur.lastrowid)
-        row = self.conn.execute("SELECT * FROM categories WHERE id=?", (new_id,)).fetchone()
-        self.undo.record_operation("categories", "INSERT", None, dict(row) if row else None)
+        row = self.conn.execute(
+            "SELECT * FROM categories WHERE id=?", (new_id,)
+        ).fetchone()
+        self.undo.record_operation(
+            "categories", "INSERT", None, dict(row) if row else None
+        )
         return new_id
 
-    def update_flags(self, cat_id: int, *, is_fix: bool | None = None, is_recurring: bool | None = None, recurring_day: int | None = None) -> None:
+    def update_flags(
+        self,
+        cat_id: int,
+        *,
+        is_fix: bool | None = None,
+        is_recurring: bool | None = None,
+        recurring_day: int | None = None,
+    ) -> None:
         """Aktualisiert Flags (und optional den Tag) per ID + Undo/Redo."""
-        old = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        old = self.conn.execute(
+            "SELECT * FROM categories WHERE id=?", (int(cat_id),)
+        ).fetchone()
         old_d = dict(old) if old else None
 
-        fields: list[str] = []
-        params: list[object] = []
+        fields: List[str] = []
+        params: List[object] = []
         if is_fix is not None:
             fields.append("is_fix=?")
             params.append(int(is_fix))
@@ -480,22 +718,28 @@ class CategoryModel:
         if not fields:
             return
         params.append(int(cat_id))
-        self.conn.execute(f"UPDATE categories SET {', '.join(fields)} WHERE id=?", params)
+        self.conn.execute(
+            f"UPDATE categories SET {', '.join(fields)} WHERE id=?", params
+        )
         self.conn.commit()
 
-        new = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        new = self.conn.execute(
+            "SELECT * FROM categories WHERE id=?", (int(cat_id),)
+        ).fetchone()
         new_d = dict(new) if new else None
         if old_d != new_d:
             self.undo.record_operation("categories", "UPDATE", old_d, new_d)
 
     def _table_exists(self, table: str) -> bool:
         try:
+            safe_table = self._safe_table(table)
             row = self.conn.execute(
                 "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
-                (table,),
+                (safe_table,),
             ).fetchone()
             return row is not None
-        except Exception:
+        except Exception as e:
+            logger.debug("_table_exists(%s) fehlgeschlagen: %s", table, e)
             return False
 
     def get_category_usage(self, cat_id: int) -> dict[str, object]:
@@ -515,9 +759,16 @@ class CategoryModel:
             if not self._table_exists(table):
                 return 0
             try:
-                return int(self.conn.execute(f"SELECT COUNT(*) FROM {table} WHERE {where}", params).fetchone()[0] or 0)
+                return int(
+                    self.conn.execute(
+                        f"SELECT COUNT(*) FROM {table} WHERE {where}", params
+                    ).fetchone()[0]
+                    or 0
+                )
             except Exception as e:
-                logger.debug("get_category_usage count(%s) fehlgeschlagen: %s", table, e)
+                logger.debug(
+                    "get_category_usage count(%s) fehlgeschlagen: %s", table, e
+                )
                 return 0
 
         last_booking = None
@@ -528,7 +779,11 @@ class CategoryModel:
             ).fetchone()
             last_booking = row["max_date"] if row and row["max_date"] else None
 
-        children = count("categories", "parent_id=?", (int(cat_id),)) if "parent_id" in self._cols("categories") else 0
+        children = (
+            count("categories", "parent_id=?", (int(cat_id),))
+            if "parent_id" in self._cols("categories")
+            else 0
+        )
         return {
             "exists": True,
             "cat_id": int(cat.id),
@@ -539,15 +794,27 @@ class CategoryModel:
             "tracking": count("tracking", "typ=? AND category=?", (typ, name)),
             "last_booking_date": last_booking,
             "favorites": count("favorites", "typ=? AND category=?", (typ, name)),
-            "budget_warnings": count("budget_warnings", "typ=? AND category=?", (typ, name)),
-            "recurring_transactions": count("recurring_transactions", "typ=? AND category=?", (typ, name)),
-            "suggestion_accepted": count("suggestion_accepted", "typ=? AND category=?", (typ, name)),
+            "budget_warnings": count(
+                "budget_warnings", "typ=? AND category=?", (typ, name)
+            ),
+            "recurring_transactions": count(
+                "recurring_transactions", "typ=? AND category=?", (typ, name)
+            ),
+            "suggestion_accepted": count(
+                "suggestion_accepted", "typ=? AND category=?", (typ, name)
+            ),
             # Sparziele haben historisch keine typ-Spalte; deshalb nur für Ersparnisse hart zählen.
-            "savings_goals": count("savings_goals", "category=?", (name,)) if typ == "Ersparnisse" else 0,
+            "savings_goals": (
+                count("savings_goals", "category=?", (name,))
+                if typ == "Ersparnisse"
+                else 0
+            ),
             "category_tags": count("category_tags", "category_id=?", (int(cat_id),)),
         }
 
-    def rename_and_cascade(self, cat_id: int, *, typ: str, old_name: str, new_name: str) -> None:
+    def rename_and_cascade(
+        self, cat_id: int, *, typ: str, old_name: str, new_name: str
+    ) -> None:
         """Benennt eine Kategorie zentral um und aktualisiert alle bekannten Referenzen.
 
         Budgetmanager-Legacy-Tabellen referenzieren Kategorien noch per Text
@@ -565,11 +832,14 @@ class CategoryModel:
             (typ, new_name, cat_id),
         ).fetchone()
         if existing:
-            raise ValueError("categories.category_exists")
+            raise CategoryError("categories.category_exists", name=new_name)
 
         from model.database import db_transaction
+
         with db_transaction(self.conn):
-            self.conn.execute("UPDATE categories SET name=? WHERE id=?", (new_name, cat_id))
+            self.conn.execute(
+                "UPDATE categories SET name=? WHERE id=?", (new_name, cat_id)
+            )
             if self._table_exists("budget"):
                 self.conn.execute(
                     "UPDATE budget SET category=? WHERE typ=? AND category=?",
@@ -585,13 +855,18 @@ class CategoryModel:
                     "UPDATE OR IGNORE favorites SET category=? WHERE typ=? AND category=?",
                     (new_name, typ, old_name),
                 )
-                self.conn.execute("DELETE FROM favorites WHERE typ=? AND category=?", (typ, old_name))
+                self.conn.execute(
+                    "DELETE FROM favorites WHERE typ=? AND category=?", (typ, old_name)
+                )
             if self._table_exists("budget_warnings"):
                 self.conn.execute(
                     "UPDATE OR IGNORE budget_warnings SET category=? WHERE typ=? AND category=?",
                     (new_name, typ, old_name),
                 )
-                self.conn.execute("DELETE FROM budget_warnings WHERE typ=? AND category=?", (typ, old_name))
+                self.conn.execute(
+                    "DELETE FROM budget_warnings WHERE typ=? AND category=?",
+                    (typ, old_name),
+                )
             if self._table_exists("recurring_transactions"):
                 self.conn.execute(
                     "UPDATE recurring_transactions SET category=? WHERE typ=? AND category=?",
@@ -602,9 +877,15 @@ class CategoryModel:
                     "UPDATE OR IGNORE suggestion_accepted SET category=? WHERE typ=? AND category=?",
                     (new_name, typ, old_name),
                 )
-                self.conn.execute("DELETE FROM suggestion_accepted WHERE typ=? AND category=?", (typ, old_name))
+                self.conn.execute(
+                    "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
+                    (typ, old_name),
+                )
             if typ == "Ersparnisse" and self._table_exists("savings_goals"):
-                self.conn.execute("UPDATE savings_goals SET category=? WHERE category=?", (new_name, old_name))
+                self.conn.execute(
+                    "UPDATE savings_goals SET category=? WHERE category=?",
+                    (new_name, old_name),
+                )
 
         self.undo.record_operation(
             "categories",
@@ -613,7 +894,9 @@ class CategoryModel:
             {"cat_id": cat_id, "typ": typ, "new_name": new_name},
         )
 
-    def _move_category_text_references(self, *, typ: str, old_name: str, target_name: str, target_id: int) -> None:
+    def _move_category_text_references(
+        self, *, typ: str, old_name: str, target_name: str, target_id: int
+    ) -> None:
         """Hängt abhängige Daten von old_name auf target_name um.
 
         Budgetwerte werden additiv zusammengeführt, weil budget pro
@@ -633,9 +916,17 @@ class CategoryModel:
                     ON CONFLICT(year, month, typ, category)
                     DO UPDATE SET amount = amount + excluded.amount
                     """,
-                    (int(r["year"]), int(r["month"]), typ, target_name, float(r["amount"] or 0.0)),
+                    (
+                        int(r["year"]),
+                        int(r["month"]),
+                        typ,
+                        target_name,
+                        float(r["amount"] or 0.0),
+                    ),
                 )
-            self.conn.execute("DELETE FROM budget WHERE typ=? AND category=?", (typ, old_name))
+            self.conn.execute(
+                "DELETE FROM budget WHERE typ=? AND category=?", (typ, old_name)
+            )
 
         if self._table_exists("tracking"):
             self.conn.execute(
@@ -653,31 +944,46 @@ class CategoryModel:
                 "SELECT typ, ?, MIN(sort_order) FROM favorites WHERE typ=? AND category=? GROUP BY typ",
                 (target_name, typ, old_name),
             )
-            self.conn.execute("DELETE FROM favorites WHERE typ=? AND category=?", (typ, old_name))
+            self.conn.execute(
+                "DELETE FROM favorites WHERE typ=? AND category=?", (typ, old_name)
+            )
         if self._table_exists("budget_warnings"):
             self.conn.execute(
                 "INSERT OR IGNORE INTO budget_warnings(year, month, typ, category, threshold_percent, enabled) "
                 "SELECT year, month, typ, ?, threshold_percent, enabled FROM budget_warnings WHERE typ=? AND category=?",
                 (target_name, typ, old_name),
             )
-            self.conn.execute("DELETE FROM budget_warnings WHERE typ=? AND category=?", (typ, old_name))
+            self.conn.execute(
+                "DELETE FROM budget_warnings WHERE typ=? AND category=?",
+                (typ, old_name),
+            )
         if self._table_exists("suggestion_accepted"):
             self.conn.execute(
                 "INSERT OR IGNORE INTO suggestion_accepted(typ, category, year, month, accepted_at) "
                 "SELECT typ, ?, year, month, accepted_at FROM suggestion_accepted WHERE typ=? AND category=?",
                 (target_name, typ, old_name),
             )
-            self.conn.execute("DELETE FROM suggestion_accepted WHERE typ=? AND category=?", (typ, old_name))
+            self.conn.execute(
+                "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
+                (typ, old_name),
+            )
         if typ == "Ersparnisse" and self._table_exists("savings_goals"):
-            self.conn.execute("UPDATE savings_goals SET category=? WHERE category=?", (target_name, old_name))
-        if self._table_exists("categories") and "funded_by_category_id" in self._cols("categories"):
+            self.conn.execute(
+                "UPDATE savings_goals SET category=? WHERE category=?",
+                (target_name, old_name),
+            )
+        if self._table_exists("categories") and "funded_by_category_id" in self._cols(
+            "categories"
+        ):
             self.conn.execute(
                 "UPDATE categories SET funded_by_category_id=? WHERE funded_by_category_id IN "
                 "(SELECT id FROM categories WHERE typ=? AND name=?)",
                 (int(target_id), typ, old_name),
             )
 
-    def _delete_category_text_references(self, *, typ: str, name: str, delete_savings_goals: bool) -> None:
+    def _delete_category_text_references(
+        self, *, typ: str, name: str, delete_savings_goals: bool
+    ) -> None:
         """Entfernt alle Text-Referenzen einer Kategorie ohne Zielkategorie."""
         if self._table_exists("tracking"):
             if self._table_exists("entry_tags"):
@@ -686,15 +992,22 @@ class CategoryModel:
                     "(SELECT id FROM tracking WHERE typ=? AND category=?)",
                     (typ, name),
                 )
-            self.conn.execute("DELETE FROM tracking WHERE typ=? AND category=?", (typ, name))
-        for table in ("budget", "favorites", "budget_warnings", "recurring_transactions", "suggestion_accepted"):
+            self.conn.execute(
+                "DELETE FROM tracking WHERE typ=? AND category=?", (typ, name)
+            )
+        for table in self._CATEGORY_TEXT_REFERENCE_TABLES:
             if self._table_exists(table):
-                self.conn.execute(f"DELETE FROM {table} WHERE typ=? AND category=?", (typ, name))
+                safe_table = self._safe_table(table)
+                self.conn.execute(
+                    f"DELETE FROM {safe_table} WHERE typ=? AND category=?", (typ, name)
+                )
         if typ == "Ersparnisse" and self._table_exists("savings_goals"):
             if delete_savings_goals:
                 self.conn.execute("DELETE FROM savings_goals WHERE category=?", (name,))
             else:
-                self.conn.execute("UPDATE savings_goals SET category=NULL WHERE category=?", (name,))
+                self.conn.execute(
+                    "UPDATE savings_goals SET category=NULL WHERE category=?", (name,)
+                )
 
     def delete_category_safely(
         self,
@@ -724,7 +1037,7 @@ class CategoryModel:
 
     def delete_categories_safely(
         self,
-        ids: list[int],
+        ids: List[int],
         *,
         data_action: str = "delete_until_last_booking",
         reassign_to_id: int | None = None,
@@ -736,18 +1049,21 @@ class CategoryModel:
         if data_action not in {"delete_until_last_booking", "delete_all", "reassign"}:
             raise ValueError(f"Unbekannte Kategorie-Löschaktion: {data_action}")
 
-        target = self.get_by_id(int(reassign_to_id)) if reassign_to_id is not None else None
+        target = (
+            self.get_by_id(int(reassign_to_id)) if reassign_to_id is not None else None
+        )
         if data_action == "reassign":
             if target is None:
-                raise ValueError("category_delete.no_target")
+                raise CategoryError("category_delete.no_target")
             if int(target.id) in ids:
-                raise ValueError("category_delete.target_is_deleted")
+                raise CategoryError("category_delete.target_is_deleted")
 
         from model.database import db_transaction
+
         deleted = 0
         skipped = 0
         group = self.undo.new_group_id()
-        undo_rows: list[dict] = []
+        undo_rows: List[dict] = []
 
         with db_transaction(self.conn):
             for cat_id in ids:
@@ -756,9 +1072,11 @@ class CategoryModel:
                     skipped += 1
                     continue
                 if target is not None and cat.typ != target.typ:
-                    raise ValueError("category_delete.target_type_mismatch")
+                    raise CategoryError("category_delete.target_type_mismatch")
 
-                old_row = self.conn.execute("SELECT * FROM categories WHERE id=?", (cat_id,)).fetchone()
+                old_row = self.conn.execute(
+                    "SELECT * FROM categories WHERE id=?", (cat_id,)
+                ).fetchone()
                 old_d = dict(old_row) if old_row else None
 
                 # Direkte Kinder hochziehen: Parent-Löschung löscht nicht automatisch den Unterbaum.
@@ -788,7 +1106,9 @@ class CategoryModel:
                             "SELECT ?, tag_id FROM category_tags WHERE category_id=?",
                             (int(target.id), cat_id),
                         )
-                        self.conn.execute("DELETE FROM category_tags WHERE category_id=?", (cat_id,))
+                        self.conn.execute(
+                            "DELETE FROM category_tags WHERE category_id=?", (cat_id,)
+                        )
                 else:
                     self._delete_category_text_references(
                         typ=cat.typ,
@@ -796,9 +1116,14 @@ class CategoryModel:
                         delete_savings_goals=(data_action == "delete_all"),
                     )
                     if self._table_exists("category_tags"):
-                        self.conn.execute("DELETE FROM category_tags WHERE category_id=?", (cat_id,))
+                        self.conn.execute(
+                            "DELETE FROM category_tags WHERE category_id=?", (cat_id,)
+                        )
                     if "funded_by_category_id" in self._cols("categories"):
-                        self.conn.execute("UPDATE categories SET funded_by_category_id=NULL WHERE funded_by_category_id=?", (cat_id,))
+                        self.conn.execute(
+                            "UPDATE categories SET funded_by_category_id=NULL WHERE funded_by_category_id=?",
+                            (cat_id,),
+                        )
 
                 self.conn.execute("DELETE FROM categories WHERE id=?", (cat_id,))
                 deleted += 1
@@ -806,34 +1131,55 @@ class CategoryModel:
                     undo_rows.append(old_d)
 
         for old_d in undo_rows:
-            self.undo.record_operation("categories", "DELETE_SAFE", old_d, None, group_id=group)
+            self.undo.record_operation(
+                "categories", "DELETE_SAFE", old_d, None, group_id=group
+            )
 
         return {"deleted": deleted, "skipped": skipped, "action": data_action}
 
     def delete(self, typ: str, name: str) -> None:
-        row = self.conn.execute("SELECT id FROM categories WHERE typ=? AND name=?", (typ, name)).fetchone()
+        row = self.conn.execute(
+            "SELECT id FROM categories WHERE typ=? AND name=?", (typ, name)
+        ).fetchone()
         if not row:
             return
-        self.delete_category_safely(int(row["id"]), data_action="delete_until_last_booking")
+        self.delete_category_safely(
+            int(row["id"]), data_action="delete_until_last_booking"
+        )
 
-    def delete_by_ids(self, ids: list[int]) -> None:
+    def delete_by_ids(self, ids: List[int]) -> None:
         self.delete_categories_safely(ids, data_action="delete_until_last_booking")
 
     def get_by_id(self, cat_id: int) -> Category | None:
         """Einzelne Kategorie per ID (oder None)."""
-        r = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        r = self.conn.execute(
+            "SELECT * FROM categories WHERE id=?", (int(cat_id),)
+        ).fetchone()
         if r is None:
             return None
         return Category(
             int(r["id"]),
             r["typ"],
             r["name"],
-            int(r["parent_id"]) if "parent_id" in r.keys() and r["parent_id"] is not None else None,
+            (
+                int(r["parent_id"])
+                if "parent_id" in r.keys() and r["parent_id"] is not None
+                else None
+            ),
             bool(r["is_fix"]),
             bool(r["is_recurring"]),
             int(r["recurring_day"] or 1),
-            int(r["funded_by_category_id"]) if "funded_by_category_id" in r.keys() and r["funded_by_category_id"] is not None else None,
-            int(r["sort_order"]) if "sort_order" in r.keys() and r["sort_order"] is not None else 0,
+            (
+                int(r["funded_by_category_id"])
+                if "funded_by_category_id" in r.keys()
+                and r["funded_by_category_id"] is not None
+                else None
+            ),
+            (
+                int(r["sort_order"])
+                if "sort_order" in r.keys() and r["sort_order"] is not None
+                else 0
+            ),
         )
 
     def _descendant_ids(self, cat_id: int) -> set[int]:
@@ -895,9 +1241,11 @@ class CategoryModel:
         # wenn ein Aufrufer die Prüfung über can_reparent() übersprungen hat.
         ok, reason = self.can_reparent(cat_id, new_parent_id)
         if not ok:
-            raise ValueError(reason)
+            raise CategoryError(reason)
 
-        old = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        old = self.conn.execute(
+            "SELECT * FROM categories WHERE id=?", (int(cat_id),)
+        ).fetchone()
         old_d = dict(old) if old else None
 
         self.conn.execute(
@@ -906,7 +1254,9 @@ class CategoryModel:
         )
         self.conn.commit()
 
-        new = self.conn.execute("SELECT * FROM categories WHERE id=?", (int(cat_id),)).fetchone()
+        new = self.conn.execute(
+            "SELECT * FROM categories WHERE id=?", (int(cat_id),)
+        ).fetchone()
         new_d = dict(new) if new else None
         if old_d != new_d:
             self.undo.record_operation("categories", "UPDATE", old_d, new_d)

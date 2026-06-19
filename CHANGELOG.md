@@ -1,4 +1,211 @@
-# Changelog — BudgetManager
+# Changelog
+
+### v2.0.28 – Release-Blocker-Fix Budget-Modi, Money-Validation und Hardcoded-Audit
+
+- Budget-Erfassungsmodus von sichtbaren Labels entkoppelt: Geschäftslogik nutzt jetzt stabile Werte `month`, `all`, `range`.
+- Legacy-/Anzeigewerte `Monat`, `Alle`, `Bereich`, `Month`, `All`, `Range`, `Mois`, `Tous`, `Période` werden robust normalisiert.
+- Budget- und Tracking-Dialoge validieren Beträge strikt; nicht-numerische Eingaben werden nicht mehr als `0.0` akzeptiert.
+- Copy-Year-Bereich nutzt sprachneutrale itemData statt sichtbarem `Alle`-Text.
+- i18n-Audit erkennt zusätzliche harte UI-Strings in `addRow`, `addItem`, `addItems`, `insertItem` und `setItemText`.
+- Bekannte deutsche EN/FR-Restwerte übersetzt und Regressionstests für Money-Parser, Budget-Modi und i18n-Rückfälle ergänzt.
+
+### v2.0.27 – Final-Release-Härtung Updater, Portable-ZIP und i18n
+
+- Frozen/In-App-Updater korrigiert: Update-Dialog startet im PyInstaller-Build jetzt `--check-update --gui` und `--apply-update` statt nur die normale EXE.
+- Portable-ZIP stabilisiert: Im ZIP heißen die Startdateien `BudgetManager.exe` und `BudgetManager`; GitHub-Release-Assets dürfen weiterhin versioniert sein.
+- Windows-Updatepfad gehärtet: alte versionierte Portable-Binaries werden nach dem Schließen der App entfernt und der stabile neue Startpunkt wird gestartet.
+- Linux/DEV-Updatepfad startet nach erfolgreichem Apply wieder neu, bleibt aber in Tests per `BM_UPDATER_NO_RESTART` deaktivierbar.
+- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionsangaben auf v2.0.27 synchronisiert.
+- Mehrere dynamische Dialogtexte in Budget, Sparzielen, Tags, Themes, Login, Tracking, Backup/Restore und Datenbank-Info über i18n-Keys gehärtet.
+- Zusätzliche Release-Tests für Updater-Einstiegspunkte, ZIP-Struktur, Dokumentversionen und i18n-Parität ergänzt.
+
+### v2.0.26 – i18n-Härtung Fehler-/Eingabepfade (de/en/fr)
+- **Fehlermeldungen vollständig lokalisiert:** Restore-/Entschlüsselungs- und Kategorie-Fehler erschienen in seltenen Fehlerpfaden noch hart auf Deutsch (bzw. als roher i18n-Key), wenn ein Dialog sie nur generisch als `{error}` einbettete. Neu werden sie in de/en/fr angezeigt.
+- **Krypto-Fehler übersetzbar:** Neue `CryptoUserError(ValueError)` in `model/crypto.py` rendert Restore-Key-, Entschlüsselungs- und „Salt zu kurz"-Fehler zur Anzeigezeit lokalisiert (Fallback Deutsch nur, falls i18n nicht initialisiert). Bleibt `ValueError`-Subklasse – bestehende `except`-Pfade unverändert. Zwei neue Schlüssel `crypto.*` in de/en/fr.
+- **Kategorie-Fehler übersetzbar:** Neue `CategoryError(ValueError)` in `model/category_model.py` für die fünf Stellen, die bisher einen i18n-Key als Exception-Text warfen (Umbenennen auf bestehenden Namen, Lösch-Ziel-Validierung, Reparent-Zyklus/Typ). `str()` liefert nun den übersetzten Text inkl. Format-Argumente statt des rohen Keys – behebt u. a. den rohen `categories.category_exists` im Budget-Tab-Umbenennen und im Budget-Eingabedialog.
+- **Erststart-Assistent: fehlende Namensprüfung ergänzt.** `views/startup_wizard.py` prüft jetzt – wie der Login-Dialog – vor dem Anlegen auf einen leeren Namen und zeigt `account.bitte_einen_namen_eingeben` (de/en/fr), statt mit leerem Namen in `create_user` zu laufen und dort eine harte deutsche Meldung auszulösen.
+- **Hardcodierter SpinBox-Suffix entfernt:** `views/category_properties_dialog.py` nutzt für „… des Monats" jetzt den bestehenden Schlüssel `categories.day_suffix` (de/en/fr) statt eines fest verdrahteten deutschen Suffix (zwei Stellen).
+- **Qualität abgesichert:** Statische Loops über doppelte Methoden, kaputte Signal-Verbindungen, `trf()`-Platzhalter/kwarg-Parität, Exception-Variablen-Mismatch, vergessene f-Präfixe und Header-/Eingabedialog-Hardcodes – ohne weitere Funde. i18n-Parität de=en=fr (1978 Schlüssel), Qt-freie Regressionstests, DAU-Erststart und Versions-Synchronisation grün.
+
+### v2.0.25 – Release-Readiness-Härtung Konto-Hub
+- **Vergleich gegen v2.0.24 Release-Hardening:** Konto-Hub/Datenübernahme wurde mit der gehärteten v2.0.24 zusammengeführt, ohne die PBKDF2-Legacy-Kompatibilität und zentrale Datenordner-Pfadlogik zu verlieren.
+- **PBKDF2 rückwärtskompatibel:** Vorab-Konten mit 200 000 Iterationen können sich weiter anmelden und werden nach erfolgreichem Login automatisch auf 600 000 Iterationen umverpackt.
+- **Datenordner vollständig durchgezogen:** Default-DB und Default-Backup-Pfade folgen jetzt auch im Konto-Hub/Backup/Starter/Auto-Backup dem aktiven Datenordner. Explizite Sonderpfade bleiben erhalten.
+- **Datenübernahme sicherer:** Der Konto-Hub übernimmt den neuen Speicherort nur noch, wenn der zentrale Handler die Änderung tatsächlich angewandt hat; bei abgebrochener oder fehlgeschlagener Migration bleibt der alte Zustand sichtbar und aktiv.
+- **i18n nachgehärtet:** Letzte hartcodierte Statusleisten-Texte wurden durch de/en/fr-Schlüssel ersetzt.
+- **Release-Artefakte bereinigt:** `.pytest_cache`, `__pycache__`, `.pyc` und veraltete Runtime-Audit-Dateien sind aus dem Paket entfernt und per Ignore-/Regressionstest abgesichert.
+- **Zusätzliche Regressionstests:** Datenordner-Defaultpfade, explizite Pfade, Konto-Hub-Abbruchpfad, PBKDF2-Legacy-Upgrade und Release-Integrität.
+
+### v2.0.24 – Konto & Daten gebündelt + Datenübernahme
+- **Neuer Reiter „Konto":** Konto, Speicherort, Sicherung (Backup) und Zurücksetzen sind jetzt an **einem** Ort gebündelt – als eigener Hauptreiter und identisch unter Einstellungen → „Konto & Daten". Eine wiederverwendbare Hub-Komponente (`views/account_data_hub.py`) wird in beiden Stellen eingebettet.
+- **Schluss mit verstreuten Einstiegen:** Backup und Datenbank-Verwaltung sind nicht mehr einzeln im Extras-Menü verteilt, sondern über den Hub erreichbar. Das Konto-Menü verlinkt zusätzlich direkt auf den neuen Reiter. Die bestehenden, getesteten Dialoge (Konto verwalten, Backup & Wiederherstellung, Datenbank-Verwaltung) bleiben unverändert und werden vom Hub geöffnet.
+- **Datenübernahme beim Ordnerwechsel:** Wird ein neuer Datenordner gewählt und liegen im bisherigen Ordner bereits Daten, bietet die App an, diese zu übernehmen. Dabei wird zuerst ein **Sicherheits-Backup** (ZIP) im Zielordner erstellt, anschließend werden `.enc`-Dateien, `users.json` und der `backups`-Ordner **kopiert** (der bisherige Ordner bleibt unangetastet als zusätzliche Sicherung). Erst nach Neustart aktiv.
+- **Sicher gegen Vermischen:** In einen Zielordner, der bereits Daten enthält, wird nicht übernommen; bei Übernahme wird die aktive verschlüsselte Sitzung vorher auf die Platte gesichert. Bei Fehlern bleibt der bisherige Speicherort aktiv. Logik liegt Qt-frei in `model/data_location.py`.
+- **Speicherort jetzt im Hub:** Die Datenordner-Auswahl wurde aus der alten Einstellungen-Seite „Datenbank" in den Hub verschoben; die Auto-Backup-Feineinstellungen bleiben darunter erhalten.
+- i18n: neue Schlüssel für Reiter, Hub und Datenübernahme in de/en/fr (Parität gewahrt).
+- Regressionstests ergänzt: Datenübernahme (Allowlist, Sicherungs-ZIP, Kopieren statt Verschieben, Schutzregeln) und Hub-Struktur/Delegation.
+
+### v2.0.23 – Wählbarer Datenordner + stärkere Schlüsselableitung
+- **Datenverzeichnis frei wählbar:** Der Speicherort für Datenbank, Backups und verschlüsselte `.enc`-Dateien lässt sich jetzt in den Einstellungen (Seite „Datenbank") wählen. Leer = portabel (Ordner `data` neben dem Programm); ein gesetzter absoluter Pfad wird verwendet.
+- **Installer-Datenpfad wirkt jetzt:** Der im Installer gewählte Datenordner (`data_directory`) wird von der App tatsächlich ausgewertet. Zuvor wurde der Wert geschrieben, aber nie gelesen – die Daten landeten immer im Programmordner.
+- **Zentrale Pfadlogik:** `model/app_paths.data_dir()` liest `data_directory` aus der portablen Einstellungsdatei; ist nichts gesetzt, bleibt es beim portablen Standard. Die Einstellungsdatei selbst bleibt bewusst immer portabel (Bootstrap, kein Zirkelbezug).
+- **Sicherheits-Hinweis bei Änderung:** Ein neuer Datenordner wird erst nach einem Neustart wirksam; bestehende Daten werden nicht automatisch verschoben (klarer Hinweis im Dialog und nach dem Speichern).
+- **PBKDF2 auf 600 000 Iterationen erhöht** (zuvor 200 000) gemäß OWASP-2023-Empfehlung für PBKDF2-HMAC-SHA256. Da noch keine veröffentlichte Version existiert, ist keine Migration bestehender Datenbanken nötig.
+- i18n: neue Schlüssel für den Datenordner-Bereich in de/en/fr (Parität gewahrt).
+
+### v2.0.22 – Autobuchungs-Artfilter + Deckungswarnungen
+- **Autobuchungsdialog erweitert:** Neben dem Kontofilter gibt es jetzt einen eigenen Artfilter für Alle Arten, echte Fixkosten (Fix + Wiederkehrend), Fix/variabel, Wiederkehrend/variabel und optionale Budgetposten.
+- **Deckungswarnung im Budget-Tab:** Wenn geplante Ausgaben + Ersparnisse die Einnahmen übersteigen, erscheint oberhalb der Tabelle eine klare Warnung mit größtem Monatsfehlbetrag und Spar-Vorschlag.
+- **Deckungswarnung im Tracking-Tab:** Bei Konto-Filter „Alle” warnt das Tracking, wenn gebuchte Ausgaben + gebuchte Ersparnisse höher sind als gebuchte Einnahmen.
+- **Spar-Vorschläge:** Die Warnungen nennen eine einzelne Ersparnis-Kategorie, wenn diese den Fehlbetrag decken kann; sonst wird eine kombinierte Reduktion vorgeschlagen oder transparent gemeldet, dass keine Sparposition reicht.
+- **Gemeinsame Fachlogik:** Die Berechnung liegt zentral in `model/coverage_model.py`, damit Budget und Tracking dieselbe Deckungslogik nutzen.
+- Regressionstests ergänzt: Artfilter-Marker, Budget-/Tracking-Warnhooks und funktionale Coverage-Berechnung.
+
+### v2.0.21 – Autobuchungen optional + Budget-Mehrfachauswahl
+- **Autobuchungen erweitert:** Der Dialog zeigt jetzt neben echten Fixkosten und variablen Fix-/Wiederkehrend-Posten auch optionale Budgetposten ohne Fix- und ohne Wiederkehrend-Flag an. Diese Posten sind nicht vorausgewählt und werden als „Optional“ markiert.
+- **Null-Budgets ausgeblendet:** Kategorien mit Budgetbetrag 0 werden im Autobuchungsdialog nicht mehr angeboten. Das betrifft echte Fixkosten, variable Fix-/Wiederkehrend-Posten und optionale Budgetposten.
+- **Restbetrag statt Gesamtbetrag:** Variable und optionale Posten werden mit dem noch offenen Monatsbetrag vorbelegt. Bereits erreichte Budgets gelten als erledigt und werden übersprungen.
+- **Kontofilter im Autobuchungsdialog:** Die Liste kann nach Alle, Ausgaben, Einnahmen oder Ersparnisse gefiltert werden. Auswahlbuttons wirken nur auf die sichtbaren Zeilen.
+- **Budget-Tab Mehrfachauswahl:** Budgetzeilen können mit Strg/Shift + Mausklick mehrfach markiert werden. Rechtsklick auf eine Mehrfachauswahl erlaubt das Löschen mehrerer Budgetpositionen im aktuellen Jahr oder mehrerer Kategorien über den zentralen Sicherheitsdialog.
+- **v2.0.19-Fix wieder abgesichert:** Die fehlenden Regressionstests für Kategorie-Validierung und doppelte Tracking-Methoden wurden wieder integriert; der Tracking-Tab ist erneut frei von den alten Methoden-Duplikaten.
+- Regressionstests ergänzt: Autobuchungs-Optionen, Typfilter, Budget-Mehrfachauswahl, Kategorie-Validierung und Tracking-Duplikate.
+
+### v2.0.20 – Schnelleingabe mit Suche + Dropdown
+- **Usability-Fix:** Die Schnelleingabe nutzt für Kategorien jetzt ein klares Suchfeld plus ein echtes Dropdown-Menü. Tippen filtert die Kategorien live, das Dropdown zeigt nur passende Kategorien des gewählten Kontotyps.
+- Das Dropdown bleibt gruppiert: Favoriten, häufig manuell gebucht, normale Buchungen, variable Fix-/Wiederholungs-Kategorien und echte Fixkosten. Leere Gruppen werden bei aktiver Suche ausgeblendet.
+- Nach einer Dropdown-Auswahl wird der echte Datenbankname der Kategorie gespeichert. Kopfzeilen, Favoritenstern und Baum-Pfade bleiben reine Anzeige und werden nicht als Kategorie übernommen.
+- Beim Kontotypwechsel wird die Suche zurückgesetzt, damit keine alte Ausgaben-Suche versehentlich Einkommen oder Ersparnisse leerfiltert.
+- Regressionstests erweitert: Suche filtert Gruppen korrekt, Kindnamen/Pfade werden gefunden, nicht-editierbare Dropdowns verwenden nur echte `itemData()`.
+
+### v2.0.19 – Schnelleingabe-/Kategorie-Picker-Fix
+- **Bugfix:** Editierbare Kategorie-Comboboxen konnten bei getipptem Suchtext noch die vorherige `currentData()`-Kategorie zurückgeben. Dadurch konnte die Schnelleingabe bzw. der Tracking-Dialog auf eine falsche Kategorie buchen, wenn der Benutzer tippte, aber keinen Completer-Eintrag aktiv auswählte.
+- Zentraler Kategorie-Resolver in `views/category_picker.py`: sichtbarer/getippter Text wird zuerst gegen echte Einträge geprüft; `currentData()` wird nur noch verwendet, wenn Text und aktueller Eintrag zusammenpassen. Favoritenstern und Baum-Pfade werden bereinigt.
+- Schnelleingabe und Tracking-Dialog validieren vor dem Speichern, dass die Kategorie im gewählten Typ wirklich existiert; gespeichert wird der exakte Datenbankname.
+- Budget-Kategorie-Dialoge nutzen dieselbe robuste Kategorieauflösung. Im erweiterten Dialog erzeugt „Nein“ bei nicht existierender Kategorie keinen verwaisten Budget-Eintrag mehr.
+- Regressionstest ergänzt: `tests/test_category_combo_resolution.py`.
+
+### v2.0.18 – Budgetvorschläge respektieren den Tracking-Beginn
+- **Bugfix:** Mit nur einem gebuchten Monat (aber Budgets über mehrere Monate) erschienen bereits Anpassungsvorschläge, und die Häufigkeit zeigte unmögliche Werte wie „5/3". Ursache: Die Vorschlags-Engine zählte stur bis Januar/Vorjahr zurück und las Monate VOR der ersten echten Buchung als reale „0-Ausgaben"-Monate.
+- Neue untere Analysegrenze in `BudgetSuggestionEngine`: der spätere von (erste echte Buchung global, konfigurierter Startmonat `carryover_start_*`). Monate davor werden in Abweichungsfenster, aktiven Monaten und Strähnen ignoriert (`_data_start_boundary`, `not_before`-Clamping in allen Rückwärts-Scans).
+- Auto-Erkennung ohne neue Eingabe: Liegt keine Buchung und kein Startmonat vor, wird NICHT geklammert – die gewollte Langzeit-0-Reduktion (Budget gesetzt, 6+ Monate nie gebucht) bleibt damit erhalten.
+- Häufigkeits-Boden entfernt (`budget_overview_model`): Der Zähler wird nicht mehr künstlich auf das Fenster angehoben; die Anzeige zeigt die echte Strähne. Im Dialog wird der Bruch zusätzlich auf das Fenster begrenzt – kein „5/3" mehr.
+- „Chronischer Überschreiter" ist jetzt richtungsabhängig: dauerhaft UNTER-Budget-Kategorien werden nicht mehr fälschlich als Überschreiter markiert.
+- Regressionstests ergänzt: `tests/test_suggestion_tracking_start.py` (6 Fälle). Alle bestehenden Fixkosten-Vorschlagstests bleiben grün.
+
+### v2.0.17 – Konsolidierter Pre-Release-Fix
+- Kombiniert den robusten Budget-Tab Editor-Lifecycle-Fix mit der verbesserten Bulk-Commit-Drossel `coalesced_commits(conn)`.
+- Beibehaltung des rückwärtskompatiblen Alias `suspend_after_commit_autosave(conn)`, damit vorhandene Bulk-Pfade stabil bleiben.
+- Fix/Wiederkehrend-Sammelbuchung im Tracking wird ebenfalls gebündelt.
+- Kategorie-Import, Kategorien-Massenbearbeitung und Setup-Budgetgerüst behalten ihre Bulk-Bündelung aus der Final-Version.
+
+### v2.0.17 – Budget-Tab Reentrancy-/Editor-Lifecycle-Fix
+- Commit-Autosave bleibt für einzelne Aktionen sofort aktiv, wird bei Bulk-Pfaden aber gebündelt, damit verschlüsselte `.enc`-Dateien nicht unnötig oft vollständig neu geschrieben werden.
+- Gebündelt wurden u. a. Kategorien-Massenbearbeitung, Sparziel-Neuberechnung, Kategorie-Import, Setup-Budgetgerüst, Budget-Jahr kopieren, Budget aus Kategorien erzeugen, Zeile auf alle Monate kopieren und automatische Budgetwarnungen.
+- Aktiven QTableWidget-Zell-Editor vor Budget-Reload, Budget-Save, Dialog-Apply, Tabwechsel-Save und Fokuswechseln deterministisch schließen.
+- Posted Editor-/View-Events gezielt drainen, bevor `setRowCount(0)` oder ein Tabellen-Rebuild Editorobjekte freigibt.
+- Budget-Dialog-Apply blockiert doppelte Reloads durch `typ_cb.currentTextChanged`, damit nach `Budget erfassen` nur noch ein kontrollierter Tabellen-Rebuild läuft.
+- Automatischer Fokus nach `Budget erfassen/bearbeiten` über zentrale Editor-Schleuse geführt und auf den konkreten Kontotyp eingeschränkt.
+- Version auf 2.0.17 synchronisiert.
+
+### v2.0.16 – Budget-Dialog-Segfault-Hotfix
+- Budget-Tab nutzt kein `QObject.installEventFilter()` mehr für Enter-Navigation. Das beseitigt die Qt-Warnung `Cannot filter events for objects in a different thread`, die vor dem nativen `QAbstractItemView::closeEditor`-Segfault erschien.
+- Enter-Navigation wurde in den Tabellen-Subclass verschoben und bleibt damit im normalen Qt-Eventfluss.
+- `SelectedClicked` als Edit-Trigger entfernt: Zellen öffnen den Editor jetzt nicht mehr durch einen einfachen Auswahlklick, sondern per Doppelklick oder Edit-Taste. Das reduziert offene Zell-Editoren beim Öffnen von Dialogen und beim Tabellen-Reload.
+- Automatischer Fokus nach Budget-Erfassen/Bearbeiten wird nur noch verzögert und defensiv gesetzt; wenn Qt noch einen Tabelleneditor schließt, wird der Fokus übersprungen statt erzwungen.
+
+### v2.0.16 – DB-Autosave & Budget-Eingabe-Stabilisierung
+- Verschlüsselte In-Memory-Datenbank speichert jetzt nach erfolgreichen `conn.commit()` automatisch in die `.enc`-Datei. Dadurch bleiben Budget-/Tracking-/Sparziel-Änderungen auch erhalten, wenn danach ein nativer Qt/PySide-Crash passiert.
+- Bulk-Saves im Budget-Tab bündeln viele interne Commits zu einem verschlüsselten Disk-Save, damit Tabwechsel/Schließen sicher bleiben ohne hunderte `.enc`-Schreibvorgänge.
+- Beim Tabwechsel wird der vorherige Budget-Tab still gespeichert, wenn Auto-Save aktiv ist (Standard). Beim Schließen über `X` oder `Datei → Beenden` wird ebenfalls gespeichert.
+- Budget-Erfassen/Bearbeiten speichert nach Übernahme zusätzlich explizit die verschlüsselte Session und schreibt Diagnose-Logs.
+- Fokuswechsel nach Budget-Dialog/Reload wird per `QTimer.singleShot(0, ...)` verzögert, um Qt-Reentrancy-Crashes unter XCB/Wayland zu vermeiden.
+- Regressionstests für den Commit-Autosave-Hook ergänzt.
+
+### v2.0.16 – Erststart-Segfault-Hotfix
+- Auto-Backup wird beim aktiven First-Start-Assistenten nicht mehr parallel zur Dialog-Initialisierung ausgeführt, sondern bis nach dem Assistenten verschoben.
+- Setup-Assistent startet verzögert nach dem Hauptfenster, damit Qt das Fenster vollständig realisieren kann.
+- Riskante `raise_()`/`activateWindow()`-Fokusaktivierung beim automatischen Setup-Start entfernt, weil sie unter Fedora/Wayland via XCB sporadische native Qt-Segfaults auslösen kann.
+- Zusätzliche Diagnose-Logs für Setup-Assistent und verschobenes Auto-Backup ergänzt.
+
+### v2.0.16 – Sparziel-Grenzen fachlich erzwungen
+- Sparziel-Stände werden nicht mehr nur in der Anzeige gedeckelt, sondern fachlich validiert.
+- Entnahmen, die den Stand unter **0 CHF** ziehen würden, werden blockiert und melden den maximal entnehmbaren Betrag.
+- Einzahlungen, die das Ziel über **100 %** füllen würden, werden blockiert und melden den maximal noch einzahlbaren Betrag.
+- Die Prüfung greift im Sparziel-Dialog, in der Schnellerfassung, im Tracking-Dialog und beim Sync mit Tracking.
+
+### v2.0.16 – Sparziel-Fortschritt unten gedeckelt
+- `SavingsGoal.progress_percent` begrenzt Fortschritt jetzt beidseitig auf **0 % bis 100 %**. Dadurch zeigen Label und Fortschrittsbalken bei negativem Sparzielstand konsistent **0 %** statt negativer Prozentwerte.
+- Regressionstest ergänzt: negative, normale, überfüllte und Zielbetrag-0-Fälle werden geprüft.
+- Hinweis überholt durch die nachfolgende Fachregel: Der gespeicherte Stand darf nicht mehr unter 0 fallen; die Anzeige bleibt zusätzlich bei 0–100 %.
+
+
+### v2.0.16 – Sparziel-Entnahme expliziter erklärt
+- Hilfe, README und Feature-Übersicht erklären jetzt ausdrücklich, wie Geld aus einem Sparziel herausgebucht wird: `Ersparnisse` wählen, Ziel-Kategorie wählen, Betrag negativ erfassen, z. B. `-500 CHF`.
+- Klarstellung ergänzt: Negative Beträge sind bei `Ersparnisse` erlaubt, bei `Ausgaben` bleiben sie bewusst gesperrt.
+- Schnellerfassung erlaubt nun negative Beträge für `Ersparnisse` und zeigt bei aktiven/freigegebenen Sparzielen eine Sicherheitsinformation bzw. Bestätigungsfrage.
+
+### v2.0.16 – Audit-Härtung & Release-Dokumentation
+- Aktive Dokumentation, Installationshinweise, Feature-Übersichten, Hilfe-Kopfzeilen, Release-Checkliste und Updater-/Manifest-Beispiele auf v2.0.16 synchronisiert. Historische Changelog-Einträge bleiben absichtlich bei ihren alten Versionsnummern.
+- `requirements.lock` ergänzt und Build-/Dev-Anforderungen auf den Lockfile-Pfad ausgerichtet, damit Release-Builds reproduzierbarer werden.
+- CI erweitert: `black --check model/` und `mypy model/` laufen vor den Tests.
+- `model/` mit Black formatiert und kleinere Typannotationen für den mypy-Lauf ergänzt.
+- `CategoryModel` nutzt jetzt eine zentrale Tabellen-Whitelist für dynamische interne Tabellennamen (`PRAGMA table_info`, Lösch-Cascade).
+- `recurring_transactions_model.py` als Legacy/experimentell kommentiert, damit klar ist, dass der aktive Wiederholungsworkflow kategoriebasiert läuft.
+
+### v2.0.16 – Selbstheilung bei defektem Konto (kein Aussperren mehr)
+- **Behebt das Aussperren durch ein defektes/verwaistes Konto.** Konnte beim Start die Datenbank eines Kontos nicht geöffnet werden – etwa nach einem **Erststart-Restore mit falschem Wiederherstellungscode**, einem abgebrochenen Schreibvorgang oder einer gesperrten Datei – beendete sich die App hart, und man kam erst wieder hinein, **nachdem man den `data`-Ordner manuell geleert** hatte.
+- **Neu: Selbstheilung beim Start.** Statt hart zu beenden, bietet die App an, das nicht öffenbare Konto **inklusive seiner verschlüsselten DB zu entfernen** und die **Ersteinrichtung erneut zu starten** (Backup neu einspielen oder neuen Benutzer anlegen). Der `data`-Ordner muss **nie mehr manuell geleert** werden. Vorhandene Backup-Dateien bleiben unangetastet.
+- Greift für den **automatischen Quick-Login** (Authentifizierung fehlgeschlagen) **und** für **jeden Einzelbenutzer**, dessen DB sich nicht öffnen lässt; die Benutzerauflösung läuft dafür in einer wiederholbaren Schleife.
+- Neue dreisprachige Hinweise `startup.recover_title` / `startup.recover_question` (de/en/fr) und Regressionstests `tests/test_startup_recovery_no_brick.py`.
+
+### v2.0.15 – Erststart-Restore gehärtet (kein Brick-Loop)
+- **Behebt einen Sackgassen-/„Brick"-Loop beim Erststart.** Wer beim ersten Start ein Backup einspielt und den **Wiederherstellungscode falsch** eingibt (oder abbricht), bleibt nicht mehr auf der Sicherheitsseite des Assistenten hängen.
+- **Neuer Ablauf:** Die Entschlüsselung wird **zuerst** versucht. Nur bei Erfolg geht es weiter. Schlägt sie fehl (falscher Restore-Key, Abbruch oder defektes Backup), wird der eben angelegte Benutzer **sauber zurückgerollt** und der Assistent kehrt zur **Auswahlseite** zurück – „wieder von vorne": neuen Benutzer anlegen **oder** Backup erneut einspielen.
+- Der **Restore-Key des neuen Benutzers** wird erst **nach** erfolgreicher Entschlüsselung angezeigt (vorher konnte er für einen wieder verworfenen Benutzer erscheinen).
+- Neuer dreisprachiger Hinweistext `startup.restore_retry_from_start` (de/en/fr) und Regressionstests `tests/test_startup_restore_brick_loop.py`.
+
+### v2.0.14 – Dokumentationsbereinigung
+- Aktive technische Dokumente unter `docs/` auf v2.0.14 gebracht.
+- Alte Zwischenstands-, Audit- und Fix-Berichte aus dem Release-Paket entfernt.
+- Python-Cache- und Test-Cache-Ordner aus dem ZIP entfernt.
+- Release-Checkliste als aktuelle `docs/release-checklist.md` neu erstellt.
+
+
+### v2.0.14 – Merge: Cockpit-Kontextmenü, Budgetwarnungen, Wayland-Fallback & i18n
+
+- **Release-Dokumentation:** README, Installations-README, Feature-Übersicht, Updater-Doku und Hilfe-Kopfzeilen wurden auf v2.0.14 aktualisiert, damit keine v2.0.11/v2.0.9-Beispiele mehr als aktueller Stand erscheinen.
+- **v2.0.14 und der v2.0.13-Fixstand wurden zusammengeführt.** Der automatische
+  XCB/XWayland-Stabilitätsfallback aus v2.0.13 bleibt erhalten, damit der
+  Wayland-TextInput-Segfault nicht wiederkehrt. Native Wayland-Nutzung ist
+  weiterhin per `BM_ALLOW_WAYLAND=1` möglich.
+- **Rechtsklick im Cockpit ist wieder nützlich statt tot.** Das Cockpit zeigt
+  ein eigenes Kontextmenü mit Schnellaktionen: Buchung erfassen,
+  Fix/Wiederkehrend buchen, Budgetwarnungen prüfen, Budget, Übersicht,
+  Sparziele, Aktualisieren, Cockpit gestalten und alle Bereiche einblenden.
+  Die Fachreiter behalten ihre normalen Bearbeiten-Kontextmenüs.
+- **Neues Panel „Budgetwarnungen" im Cockpit.** Zeigt die echten,
+  schwellenbasierten Budgetwarnungen (gleiche Engine wie der
+  Budget-Anpassungsdialog, `BudgetWarningsModelExtended`): überschrittene
+  Budgets, nach Auslastung absteigend, mit Auslastung in %,
+  Überschreitungszähler und – sofern verfügbar – vorgeschlagenem Budget.
+  Doppelklick öffnet die Budgetwarnungsprüfung. Die bestehende
+  „Budget-Ampel" bleibt zusätzlich erhalten.
+- **Hardcoded Cockpit-Texte entfernt.** Paneltitel, Buttons, Tooltips,
+  Tabellenköpfe, Statusmeldungen und Leerzustände laufen wieder über i18n-Keys
+  in Deutsch, Englisch und Französisch.
+
+### v2.0.13 – Absturz-Fix: „double free or corruption" beim Chart-Neuzeichnen
+
+- **QtCharts-Animationen deaktiviert.** Die Übersicht-Charts liefen mit
+  `SeriesAnimations` (400 ms). Beim Neuzeichnen (z.B. **nach einer
+  Budgetanpassung**) ruft jede Grafik `removeAllSeries()` auf; lief dabei noch
+  eine Animation, gab QtCharts eine bereits gelöschte Serie frei → nativer
+  Absturz **„double free or corruption"** (SIGABRT). Besonders unter
+  **Wayland/Linux** trat das auf.
+- Fix: `QChart.NoAnimation` in `CompactChart`. Das Umzeichnen aller Diagramme
+  ist damit gefahrlos; an Aussehen/Funktion der Charts ändert sich sonst nichts.
+- Hinweis: Falls unter Wayland weiterhin Grafikprobleme auftreten, hilft als
+  Workaround der Start mit `QT_QPA_PLATFORM=xcb` (X11-Backend).
 
 ### v2.0.12 – Übersicht-Charts: 90-Tage-Budget & Top-Buchungen
 
@@ -272,7 +479,7 @@ Schwesterpaket übernommen: `docs/DAU_TEST_ERSTSTART.md`. Das dortige
 
 ### Bereinigt
 
-- `CLAUDE.md`, `_attic`, lokale Settings, i18n-Audit-Ausgaben und alte Merge-/Analyse-/Bugfix-Berichte nicht übernommen.
+- `CLAUDE.md`, alte Arbeitsordner, lokale Settings, i18n-Audit-Ausgaben und alte Merge-/Analyse-/Bugfix-Berichte nicht übernommen.
 - Stale Markdown-Dateien mit 0.x-, 1.0.35- oder internen Analysebezügen nicht übernommen.
 - Aktive Markdown-Dokumente neu geschrieben oder auf den aktuellen Release reduziert.
 

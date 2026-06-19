@@ -25,6 +25,7 @@ from views.category_excel_io import (
 from views.budget_fill_dialog import BudgetFillDialog
 from model.category_model import CategoryModel
 from model.budget_model import BudgetModel
+from model.crypto import suspend_after_commit_autosave
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from utils.icons import get_icon
@@ -61,7 +62,8 @@ class SetupAssistantDialog(QDialog):
         self.main_window = main_window
         self.conn = conn
         self.settings = settings
-        self.db_path = Path(self.settings.get("database_path", "budgetmanager.db")).expanduser()
+        from model.app_paths import configured_db_path
+        self.db_path = configured_db_path(self.settings.get("database_path", "budgetmanager.db"))
         self.db_existed_before = bool(db_existed_before)
         self._cat_model = CategoryModel(conn)
         self._budget_model = BudgetModel(conn)
@@ -982,8 +984,9 @@ class SetupAssistantDialog(QDialog):
         by_typ: dict[str, list[str]] = {}
         for cat in self._cat_model.list(None):
             by_typ.setdefault(cat.typ, []).append(cat.name)
-        for typ, names in by_typ.items():
-            self._budget_model.seed_year_from_categories(int(year), typ, names, amount=0.0)
+        with suspend_after_commit_autosave(self.conn):
+            for typ, names in by_typ.items():
+                self._budget_model.seed_year_from_categories(int(year), typ, names, amount=0.0)
 
     def _set_monthly_budget_amount(
         self,
@@ -1001,17 +1004,18 @@ class SetupAssistantDialog(QDialog):
         if amount <= 0:
             return changed, skipped
 
-        for month in range(1, 13):
-            row = self.conn.execute(
-                "SELECT amount FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
-                (int(year), int(month), typ, category),
-            ).fetchone()
-            existing = float(row["amount"] or 0.0) if row else 0.0
-            if row is not None and existing != 0.0 and not overwrite:
-                skipped += 1
-                continue
-            self._budget_model.set_amount(int(year), int(month), typ, category, amount)
-            changed += 1
+        with suspend_after_commit_autosave(self.conn):
+            for month in range(1, 13):
+                row = self.conn.execute(
+                    "SELECT amount FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
+                    (int(year), int(month), typ, category),
+                ).fetchone()
+                existing = float(row["amount"] or 0.0) if row else 0.0
+                if row is not None and existing != 0.0 and not overwrite:
+                    skipped += 1
+                    continue
+                self._budget_model.set_amount(int(year), int(month), typ, category, amount)
+                changed += 1
         return changed, skipped
 
     def _create_empty_budget_year(self) -> None:
@@ -1185,7 +1189,7 @@ class SetupAssistantDialog(QDialog):
         """
         try:
             from PySide6.QtWidgets import QFileDialog, QMessageBox
-            from model.app_paths import resolve_in_app
+            from model.app_paths import resolve_in_app, configured_db_path
 
             path, _ = QFileDialog.getOpenFileName(
                 self,
@@ -1202,7 +1206,7 @@ class SetupAssistantDialog(QDialog):
             active_user = getattr(self.main_window, "_active_user", None)
             db_path = None
             if encrypted_session is None:
-                db_path = str(resolve_in_app(self.settings.database_path))
+                db_path = str(configured_db_path(self.settings.database_path))
 
             dlg = BackupRestoreDialog(
                 self,

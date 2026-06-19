@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 import sqlite3
 import atexit
@@ -66,6 +67,7 @@ def db_transaction(conn: sqlite3.Connection):
 
 # ── Verschlüsselter Modus (In-Memory) ──────────────────────────
 
+
 class EncryptedSession:
     """Verwaltet eine verschlüsselte In-Memory-DB-Session.
 
@@ -80,8 +82,9 @@ class EncryptedSession:
         session.save()
     """
 
-    def __init__(self, conn: sqlite3.Connection, enc_path: str,
-                 db_key: bytes, salt: bytes):
+    def __init__(
+        self, conn: sqlite3.Connection, enc_path: str, db_key: bytes, salt: bytes
+    ):
         self.conn = conn
         # intern halten (damit wir später Properties anbieten können)
         self._enc_path = str(enc_path)
@@ -89,28 +92,51 @@ class EncryptedSession:
         self._salt = salt
         self._closed = False
         self._frozen = False  # wenn True: keine Saves auf Disk (z.B. nach Restore)
+        self._saving = False
+
+        # Im verschluesselten Modus ist die SQLite-DB im RAM.  Jeder erfolgreiche
+        # conn.commit() muss deshalb direkt die .enc-Datei aktualisieren, sonst
+        # koennen native Qt/PySide-Abstuerze die letzten Aenderungen verlieren.
+        try:
+            if hasattr(self.conn, "set_after_commit_callback"):
+                self.conn.set_after_commit_callback(self._save_after_commit)
+        except Exception as exc:
+            logger.debug("Commit-Auto-Save konnte nicht aktiviert werden: %s", exc)
 
         # Auto-Save bei App-Exit
         atexit.register(self._atexit_save)
 
     @classmethod
-    def open_with_key(cls, enc_path: str, db_key: bytes, salt: bytes) -> "EncryptedSession":
+    def open_with_key(
+        cls, enc_path: str, db_key: bytes, salt: bytes
+    ) -> "EncryptedSession":
         """Öffnet eine verschlüsselte DB mit dem db_key."""
         from model.crypto import decrypt_db_from_file
 
         conn = decrypt_db_from_file(enc_path, db_key)
         return cls(conn, enc_path, db_key, salt)
 
-    def save(self) -> None:
+    def save(self, *, reason: str = "manual") -> None:
         """Speichert die In-Memory-DB verschlüsselt auf Disk."""
-        if self._closed or self._frozen:
+        if self._closed or self._frozen or self._saving:
             return
+        self._saving = True
         try:
             from model.crypto import save_memory_db
+
             save_memory_db(self.conn, self._enc_path, self._db_key, self._salt)
-            logger.info("Verschlüsselte DB gespeichert: %s", Path(self._enc_path).name)
+            if reason == "commit":
+                logger.debug("Verschlüsselte DB nach Commit gespeichert: %s", Path(self._enc_path).name)
+            else:
+                logger.info("Verschlüsselte DB gespeichert: %s", Path(self._enc_path).name)
         except Exception as e:
             logger.error("Fehler beim Speichern der verschlüsselten DB: %s", e)
+        finally:
+            self._saving = False
+
+    def _save_after_commit(self, _reason: str = "commit") -> None:
+        """Persistiert erfolgreiche DB-Commits sofort in die verschlüsselte Datei."""
+        self.save(reason="commit")
 
     def close(self) -> None:
         """Speichert (falls aktiv) und schliesst die Session."""
@@ -119,7 +145,7 @@ class EncryptedSession:
         # Wenn die Session eingefroren wurde (z.B. nach Restore),
         # speichern wir NICHT mehr auf Disk, schliessen aber die Connection sauber.
         if not self._frozen:
-            self.save()
+            self.save(reason="close")
         try:
             self.conn.close()
         finally:
@@ -155,6 +181,6 @@ class EncryptedSession:
         """Wird bei App-Exit aufgerufen."""
         if not self._closed:
             try:
-                self.save()
+                self.save(reason="atexit")
             except Exception as e:
                 logger.error("atexit save failed: %s", e)

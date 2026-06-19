@@ -10,17 +10,21 @@ Das Cockpit ist die ruhige Startseite: Es zeigt das Wichtigste, ohne die Fachrei
 
 **Empfohlener roter Faden:** Cockpit öffnen → Warnungen/offene Buchungen prüfen → bei Bedarf Buchung erfassen oder Fixkosten buchen → Budget/Sparziele/Übersicht nur öffnen, wenn Details nötig sind.
 
- v2.0.11
-
 > Direkt anzeigbare Mindmap: `docs/help/mindmap.html` (Browser) · Mermaid-Quelle: `docs/help/mindmap.mmd`.
 
 
-Stand: 14. Juni 2026  
-Gültig für: BudgetManager 2.0.11
+Stand: 19. Juni 2026  
+Gültig für: BudgetManager 2.0.28
 
 Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: **Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore**.
 
 ---
+
+## Ergänzung v2.0.28 – Cockpit und Stabilität
+
+- Das Cockpit zeigt zusätzlich Budgetwarnungen und bietet per Rechtsklick sinnvolle Schnellaktionen.
+- Unter Wayland nutzt BudgetManager standardmäßig `xcb`, um bekannte Qt-TextInput-Abstürze zu vermeiden. Native Wayland-Nutzung ist mit `BM_ALLOW_WAYLAND=1` möglich.
+- Diagramme und Übersetzungen wurden für die Release-Abnahme bereinigt.
 
 ## 0. Der wichtigste Ablauf in einem Satz
 
@@ -32,7 +36,7 @@ Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere 
 
 > Wichtig: Ein Budgetwert erzeugt keine Buchung. Buchungen entstehen manuell, über Schnelleingabe oder bewusst über **Tracking → Fix/Wiederkehrend buchen…**.
 
-> Standard ab v2.0.8 finalisiert: **Auto-Speichern** und **Auto-Backup** sind beim ersten Start eingeschaltet. Du arbeitest dadurch sicherer, auch wenn du das Programm einfach schließt.
+> Aktueller Standard: **Auto-Speichern** und **Auto-Backup** sind beim ersten Start eingeschaltet. Du arbeitest dadurch sicherer, auch wenn du das Programm einfach schließt.
 
 ---
 
@@ -400,7 +404,7 @@ Beispiele:
 Extras → Kategorien verwalten
 ```
 
-oder direkt im **Budget**-Tab. Der frühere separate Kategorien-Tab (Experten-Modus) wurde in v2.0.11 entfernt – Kategorien verwaltest du jetzt über den Kategorie-Manager (`Strg+K`) und den Budget-Tab.
+oder direkt im **Budget**-Tab. Der frühere separate Kategorien-Tab (Experten-Modus) wurde entfernt – Kategorien verwaltest du jetzt über den Kategorie-Manager (`Strg+K`) und den Budget-Tab.
 
 Mit Drag & Drop kannst du:
 
@@ -604,8 +608,12 @@ Tracking/Buchungen = Realität: Ich habe Geld auf dieses Ziel gelegt oder wieder
 3. **Einzahlung buchen** – im Tracking als Typ *Ersparnisse* mit positiver Summe.
 4. **Fortschritt prüfen** – Tracking zeigt aktive Ziele kompakt mit Balken; Übersicht zeigt die Gesamtsicht.
 5. **Freigeben** – wenn das Ziel erreicht/verwendbar ist. Der Betrag wird eingefroren.
-6. **Entnahme buchen** – negative Ersparnisse-Buchung auf die Ziel-Kategorie wird als Verbrauch geprüft.
+6. **Geld herausbuchen** – im Tracking eine **Ersparnisse-Buchung mit negativem Betrag** auf die Ziel-Kategorie erfassen, z. B. `-500 CHF`.
 7. **Abschließen** – wenn das Ziel erledigt oder verbraucht ist.
+
+**Wichtig zu negativen Beträgen:** Negative Beträge sind nicht grundsätzlich gesperrt. Bei **Ausgaben** sind sie bewusst blockiert, damit Ausgaben nicht versehentlich falsch herum erfasst werden. Bei **Ersparnisse** sind negative Beträge erlaubt und bedeuten: *Geld aus einem Sparziel / einer Ersparnis herausnehmen*.
+
+**Grenzen:** BudgetManager lässt den Sparziel-Stand nicht mehr unter **0** fallen und nicht über **100 %** steigen. Wenn du mehr entnehmen willst, als im Sparziel vorhanden ist, oder mehr einzahlen willst als bis zum Zielbetrag fehlt, wird die Buchung blockiert und du bekommst eine Meldung.
 
 **Warum so?** Dadurch bleibt das Budget sauber: Das Ziel ist geplant, aber echte Bewegungen entstehen erst durch Buchungen.
 
@@ -727,19 +735,42 @@ Empfohlene Praxis:
 
 ### 10.6 Freigeben
 
-Freigeben bedeutet: Geld aus dem Sparziel wird wieder verfügbar/verbraucht.
+Freigeben bedeutet: Das angesparte Geld darf jetzt verwendet werden. Der aktuelle Stand wird dabei eingefroren. Ab diesem Zeitpunkt erkennt BudgetManager negative Ersparnisse-Buchungen auf dieselbe Kategorie als Verbrauch dieses Sparziels.
 
 Beispiel:
 
 - Du hast 1'000 CHF für Ferien angespart.
 - Die Ferien werden bezahlt.
 - Du gibst das Sparziel frei.
+- Danach buchst du die Zahlung als negative Ersparnisse-Buchung.
 
-### 10.7 Abschließen
+### 10.7 Geld aus einem Sparziel herausbuchen
+
+So buchst du angespartes Geld aus einem Sparziel heraus:
+
+1. Öffne `Sparziele`.
+2. Wähle das passende Sparziel aus, z. B. `Ferien` oder `Hochzeit`.
+3. Klicke auf `Freigeben`.
+4. Gehe zu `Tracking / Buchungen`.
+5. Erstelle eine neue Buchung.
+6. Wähle als Typ/Konto `Ersparnisse`.
+7. Wähle die Kategorie, die mit dem Sparziel verknüpft ist, z. B. `Hochzeit`.
+8. Trage den Betrag **negativ** ein, z. B. `-500 CHF`.
+9. Speichere die Buchung.
+
+BudgetManager behandelt diese negative Ersparnisse-Buchung als Entnahme aus dem freigegebenen Sparziel.
+
+**Ist eine negative Zahl gesperrt?** Nein, nicht für Ersparnisse. Im normalen Buchungsdialog und in der Schnellerfassung sind negative Beträge für `Ersparnisse` erlaubt. Bei `Ausgaben` bleiben negative Beträge gesperrt, weil Ausgaben immer positiv erfasst werden sollen.
+
+**Wichtig:** Du kannst aber nicht mehr aus einem Sparziel herausbuchen, als aktuell darin vorhanden ist. Beispiel: Stand `300 CHF`, Entnahme `-500 CHF` → wird blockiert. Ebenso kannst du nicht über 100 % einzahlen. Beispiel: Ziel `1'000 CHF`, Stand `900 CHF`, Einzahlung `200 CHF` → wird blockiert. In beiden Fällen zeigt BudgetManager eine verständliche Meldung.
+
+**Nicht verwechseln:** Wenn du Geld aus einem Sparziel verwendest, buchst du es nicht als normale Ausgabe, sondern als negative Buchung auf die passende Ersparnisse-Kategorie. Die eigentliche Ausgabe kann zusätzlich separat gebucht werden, wenn du sie in deiner Ausgabenstatistik sehen möchtest.
+
+### 10.8 Abschließen
 
 Abschließen bedeutet: Ziel ist erledigt. Es bleibt dokumentiert, wird aber nicht mehr als aktives Sparziel behandelt.
 
-### 10.8 Wieder öffnen
+### 10.9 Wieder öffnen
 
 Wenn ein Ziel fälschlich abgeschlossen wurde oder weiterlaufen soll, kannst du es wieder öffnen.
 
@@ -1124,7 +1155,7 @@ Nutze:
 
 ---
 
-## Ergänzung v2.0.8 Cockpit-Bugfix 2
+## Ergänzung — Cockpit-Bugfix
 
 ### Erststart und Datenbankmeldung
 
@@ -1177,7 +1208,7 @@ Aktuell bleibt BudgetManager bewusst beim Kalender-Monat. Der bevorzugte Tag fü
 
 ---
 
-## Ergänzung v2.0.11 – Aufgeräumt
+## Ergänzung — Aufgeräumt
 
 Der separate **Kategorien-Tab (Experten-Modus)** wurde entfernt, da redundant. Kategorienverwaltung läuft jetzt über den **Kategorie-Manager** (`Strg+K`, Menü Extras → Kategorien verwalten) und direkt im **Budget**-Tab (inkl. Drag & Drop). Die Settings-Option „separaten Kategorien-Tab anzeigen" entfällt.
 

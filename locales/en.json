@@ -99,7 +99,9 @@
     "goto_savings": "Go to &Savings goals",
     "goto_cockpit": "Go to cockpit",
     "show_tabs": "Show/hide tabs",
-    "cockpit_panels": "Cockpit panels"
+    "cockpit_panels": "Cockpit panels",
+    "account_data": "Account & data",
+    "account_data_tip": "Account, data location, backup and reset in one place"
   },
   "tab": {
     "budget": "Budget",
@@ -116,7 +118,8 @@
     "filter": "🔍 Filters",
     "transactions": "📋 Transactions",
     "budget_table": "Overview",
-    "cockpit": "Cockpit"
+    "cockpit": "Cockpit",
+    "account": "Account"
   },
   "btn": {
     "add": "Add",
@@ -454,8 +457,8 @@
     "wurde_importiert": " was imported!",
     "die_anwendung_muss_danach": "(The application must be restarted afterwards.)",
     "die_tagzuweisungen_werden_entfernt": "(The tag assignments are removed; the transactions are kept.)",
-    "keine_profile_vorhanden": "(No profiles available)",
-    "keine_passenden_profile": "(No matching profiles)",
+    "keine_profile_vorhanden": "(Keine Profile vorhanden)",
+    "keine_passenden_profile": "(Keine passenden Profile)",
     "tipp_eigene_themes_koennen": "(Tip: Custom themes can be deleted.)",
     "und_lenselected_10_weitere": "... and {count} more",
     "b_existiert_noch_nicht": "</b> does not exist yet.",
@@ -503,7 +506,7 @@
     "kategorie_nicht_gefunden": "Category not found",
     "keine_auswahl": "No selection",
     "keine_kategorie": "No category",
-    "keine_statistiken": "No statistics",
+    "keine_statistiken": "Keine Statistiken",
     "letzten_geoeffneten_reiter_merken": "Remember last opened tab",
     "loeschvorgaenge_bestaetigen_lassen": "Confirm deletion operations",
     "mehrere_tags_zu_einem": "Merge multiple tags into one",
@@ -511,7 +514,7 @@
     "moechten_sie_fortfahren": "Would you like to continue?",
     "moechten_sie_wirklich_fortfahren": "Would you really like to continue?",
     "nicht_erlaubt": "Nicht erlaubt",
-    "nicht_genug_tags": "Nicht genug Tags",
+    "nicht_genug_tags": "Not enough tags",
     "nur_ueberfaellige": "Only overdue",
     "nur_ueberschreiben_wenn_zelle": "Only overwrite if cell is empty",
     "restorekey_ungueltig": "Restore key invalid",
@@ -544,7 +547,7 @@
     "uebergeordnet": "Parent:",
     "uebernehmen": "Apply",
     "ueberschussdefizitvorschlag_ab": "Surplus/deficit suggestion from",
-    "keine_hauptkategorie": "— None (main category) —",
+    "keine_hauptkategorie": "— Keine (Hauptkategorie) —",
     "nicht_aendern": "— Do not change —",
     "zuruecksetzen_1": "↺ Reset",
     "datenbank_zuruecksetzen_1": "⚠️ Reset database",
@@ -605,7 +608,8 @@
     "restore_users_title": "Restore user accounts?",
     "restore_users_question": "This backup contains user account data (users.json).\n\nDo you want to restore the user accounts as well?\n\n(Recommended for fresh installs or new devices)",
     "create_account": "Set up account",
-    "restore_key_intro_quick": "<b>Your restore key</b><br><br>With this key you can restore your encrypted database.<br><b style='color:{color}'>Note it down and keep it safe now!</b>"
+    "restore_key_intro_quick": "<b>Your restore key</b><br><br>With this key you can restore your encrypted database.<br><b style='color:{color}'>Note it down and keep it safe now!</b>",
+    "unknown_category": "The category “{name}” does not exist for this type. Please select an existing category from the list."
   },
   "msg": {
     "really_delete": "Really delete?",
@@ -680,7 +684,15 @@
     "setup_budget_template_failed": "Budget structure could not be created:\n{e}",
     "help_opened": "Help opened: {path}",
     "help_not_found": "The local help was not found. Check that docs/help exists in the program folder or bundle.",
-    "app_already_running": "BudgetManager is already running. Please use the existing window."
+    "app_already_running": "BudgetManager is already running. Please use the existing window.",
+    "settings_saved": "Settings saved",
+    "budget_saved": "Budget saved",
+    "view_refreshed": "View refreshed",
+    "fullscreen_enabled": "Fullscreen mode enabled",
+    "fullscreen_disabled": "Fullscreen mode disabled",
+    "window_maximized": "Window maximized",
+    "window_normalized": "Window restored",
+    "theme_changed_to": "Theme changed to: {theme}"
   },
   "chk": {
     "autosave": "Auto-Save",
@@ -761,7 +773,23 @@
     "budget_overview_drag_drop_tip": "Allows changing category hierarchy directly in the budget overview: drop onto a category to make it a subcategory, drop onto a type header to make it a main category.",
     "number_format": "Number format",
     "number_format_tip": "Decimal and thousands separator for monetary amounts.",
-    "auto_backup_default_note": "Auto-save and auto-backup are enabled from first start. You can change both in Settings."
+    "auto_backup_default_note": "Auto-save and auto-backup are enabled from first start. You can change both in Settings.",
+    "data_dir_group": "Data location",
+    "data_dir_portable_placeholder": "Portable (folder next to the program)",
+    "choose_data_dir": "Browse…",
+    "reset_data_dir_portable": "Reset to portable",
+    "data_dir_restart_hint": "Note: a change takes effect only after a restart. Existing data is not moved automatically – copy your files to the new folder manually if needed.",
+    "data_dir_effective": "Currently active: {path}",
+    "data_dir_changed_title": "Data location changed",
+    "data_dir_changed_msg": "The new location will be used after restarting BudgetManager. Existing data is not moved automatically – copy your existing files to the new folder if needed.",
+    "data_dir_migrate_title": "Move data?",
+    "data_dir_migrate_question": "Move the existing data to the new folder?\n\nFrom:\n{old}\n\nTo:\n{new}\n\nA safety backup is created first. The previous folder is kept unchanged.",
+    "data_dir_migrate_done_title": "Data moved",
+    "data_dir_migrate_done_msg": "{count} items were copied.\n\nSafety backup:\n{backup}\n\nNew location (active after restart):\n{new}\n\nPlease restart BudgetManager. The previous folder is kept as an additional backup.",
+    "data_dir_migrate_failed_title": "Move not possible",
+    "data_dir_migrate_failed_msg": "The data could not be moved: {error}\n\nThe location was not changed; your existing data stays active.",
+    "data_dir_target_has_data_msg": "The selected folder already contains data. It will be used after a restart. Your existing data was not changed.",
+    "account_data": "Account & data"
   },
   "radio": {
     "cat_manager": "Use Category Manager (in app)",
@@ -1071,7 +1099,8 @@
       "parent_has_children": "This category has subcategories.\n\nMonth values are the sum (children + buffer).",
       "total_parent_readonly": "Total is read-only for parent categories.",
       "no_categories_create_main": "There are no categories yet. Please create a main category first.",
-      "category_missing": "The category was not found in the database. Reload the view and try again."
+      "category_missing": "The category was not found in the database. Reload the view and try again.",
+      "remove_rows_confirm": "Delete {count} budget rows for {year}? The categories themselves will remain."
     },
     "title": {
       "rename_category": "Rename category",
@@ -1098,7 +1127,10 @@
       "favorite": "⭐ Mark as favorite",
       "section_budget": "💰 Budget",
       "edit_budget": "💰 Edit budget…",
-      "copy_row_all_months": "Copy row to all months"
+      "copy_row_all_months": "Copy row to all months",
+      "multi_section": "{count} categories selected",
+      "delete_rows_this_year_count": "Delete {count} budget rows for this year",
+      "delete_categories_count": "Delete {count} categories globally"
     },
     "overview": {
       "single": "Overview: {typ} {year}  |  Year budget: {year_budget}  |  Month avg: {month_avg}",
@@ -1112,6 +1144,10 @@
     },
     "parent": {
       "marker": "+"
+    },
+    "coverage": {
+      "warning_months": "⚠ Budget coverage warning {year}: expenses + savings exceed income in {months} month(s). Largest gap: {month} {deficit}. {suggestion}",
+      "warning_annual": "⚠ Budget coverage warning {year}: the annual plan is not covered. Gap: {deficit}. {suggestion}"
     }
   },
   "tracking": {
@@ -1148,7 +1184,8 @@
       "goal_still_saving": "The savings goal «{goal_name}» is still in status <b>Saving</b>.",
       "goal_consumption_info": "This booking will be recorded as consumption from the unlocked savings goal <b>«{goal_name}»</b>.\n\nUnlocked amount: {current}\nWithdrawal: {withdrawal}",
       "fixcosts_missing": "{count} fixed costs are missing in {month} {year}.",
-      "no_means_book_all": "(No = book all missing directly)"
+      "no_means_book_all": "(No = book all missing directly)",
+      "savings_negative_prompt": "You are booking <b>{amount}</b> as a negative amount to the category with active savings goal <b>«{goal}»</b>.\n\nCurrent amount: {current} / {target}\n\n<b>What is the reason?</b>"
     },
     "title": {
       "set_tags": "🏷️ Set tags",
@@ -1188,7 +1225,10 @@
       "tip_open": "Double-click: open savings goal"
     },
     "category_placeholder": "Search or select category …",
-    "category_tip": "Favorites stay on top. Then normal categories are sorted by manual booking frequency. Fixed/recurring categories have their own groups and are not pushed up by automatic bookings."
+    "category_tip": "Favorites stay on top. Then normal categories are sorted by manual booking frequency. Fixed/recurring categories have their own groups and are not pushed up by automatic bookings.",
+    "coverage": {
+      "warning": "⚠ Tracking coverage warning: booked expenses + savings exceed booked income by {deficit}. {suggestion}"
+    }
   },
   "tab_ui": {
     "keine_daten": " (no data)",
@@ -1200,12 +1240,12 @@
     "bitte_zuerst_kategorien_auswaehlen_1": "Please select categories first.",
     "bitte_zuerst_eine_kategorie": "Please select a category first.",
     "erhoehungen": "Increases:",
-    "keine_flags": "No flags",
+    "keine_flags": "Keine Flags",
     "keine_offenen_betraege": "No open amounts",
     "name_der_unterkategorie_typ": "Name of the subcategory ({typ}):",
     "name_der_neuen_kategorie": "Name of the new category ({typ}):",
     "nicht_aendern": "Do not change",
-    "verteilung_nach_typ": "Verteilung nach Typ",
+    "verteilung_nach_typ": "Distribution by type",
     "vorschlaegebanner_konnte_nicht_geladen": "Suggestions banner could not be loaded: %s",
     "get_flags_fehlgeschlagen_fuer_ss": "get_flags failed for %s/%s: %s",
     "aenderungen_auf_bleneditableb_ausgewaehlte": "Apply changes to <b>{count}</b> selected categories:",
@@ -1231,7 +1271,7 @@
     "geloescht": "Deleted",
     "hier_kannst_du_deinen": "Here you can change your display name.",
     "kein_restorekey_verfuegbar": "No restore key available.",
-    "keine_benutzer_vorhanden": "No users available.",
+    "keine_benutzer_vorhanden": "Keine Benutzer vorhanden.",
     "kopieren_nicht_moeglich": "Copying not possible.",
     "maximaler_schutz_mit_passwort": "Maximum protection with a password.",
     "name_konnte_nicht_gespeichert": "The name could not be saved.",
@@ -1261,7 +1301,15 @@
     "pin_length": "PIN must be 4–8 digits long.",
     "password_min_length": "Password must be at least 4 characters long.",
     "quick_login_failed": "Quick login failed.",
-    "quick_no_protection_warn": "⚠️ Without a password: anyone with access to your files can open your data. Convenient, but unprotected."
+    "quick_no_protection_warn": "⚠️ Without a password: anyone with access to your files can open your data. Convenient, but unprotected.",
+    "msg": {
+      "delete_user_confirm": "Really delete «{name}»?\n\n⚠️ The encrypted database ({db}) will be deleted!\nThis action CANNOT be undone!"
+    },
+    "display_name_label": "Display name:",
+    "username_label": "Username:",
+    "current_secret_label": "Current {mode_label}:",
+    "new_secret_label": "New {mode_label}:",
+    "repeat_secret_label": "Repeat:"
   },
   "backup": {
     "btn_restore": "Restore backup",
@@ -1316,9 +1364,23 @@
   },
   "savings": {
     "msg": {
-      "select_goal": "Please select a goal."
+      "select_goal": "Please select a goal.",
+      "spent_since_release": "\nSpent since release: {amount}\n",
+      "complete_confirm": "Really complete savings goal «{name}»?\n\nCurrent amount: {amount}\n{extra}The goal will be archived and can no longer be booked.\nIt can be reopened at any time."
     },
-    "workflow_hint": "💡 Flow: plan the goal in Budget → book savings in Tracking → check progress in Overview and Tracking → release when reached → book later withdrawals as consumption → complete."
+    "workflow_hint": "💡 Flow: plan the goal in Budget → book savings in Tracking → check progress in Overview and Tracking → release when reached → book later withdrawals as consumption → complete.",
+    "bounds": {
+      "title": "Savings goal limit reached",
+      "withdraw_too_much": "This booking was not saved.\n\nSavings goal “{goal_name}” currently contains {current_amount}. You tried to withdraw {attempted_amount}. That would move the balance to {resulting_amount}.\n\nYou can withdraw at most {max_allowed}. A savings goal cannot go below 0.",
+      "deposit_too_much": "This booking was not saved.\n\nSavings goal “{goal_name}” has a target of {target_amount}. Current balance: {current_amount}. You tried to deposit {attempted_amount}. That would move the balance to {resulting_amount}.\n\nYou can deposit at most {max_allowed}. A savings goal cannot be booked above 100%."
+    },
+    "tooltip": {
+      "status": "Status: {status}",
+      "category": "Category: {category}",
+      "deadline": "Deadline: {deadline}",
+      "released": "Released: {date}",
+      "note": "Note: {note}"
+    }
   },
   "export": {
     "success_title": "Export successful",
@@ -1353,7 +1415,8 @@
     "about_name": "Name",
     "about_version": "Version",
     "enc_info": "🔒 Your database is encrypted.\nPath and database are managed via account management.",
-    "version_unknown": "(Version unknown)"
+    "version_unknown": "(Version unknown)",
+    "data_dir_current": "Location:"
   },
   "update": {
     "hint_staging": "Note: 'Check & download' downloads an update and places it in 'updates/staging/'.",
@@ -1418,7 +1481,15 @@
     "auto_backup_notice": "An automatic backup will be created.\n\n{extra}",
     "backup_created": "Backup created: {name}\n\n{extra}",
     "error_title": "Error",
-    "hints_title": "Hints"
+    "hints_title": "Hints",
+    "user_line": {
+      "active": "Active user: {name} ({security})\n",
+      "plain": "Active user: (unencrypted DB / no user mode)\n"
+    },
+    "msg": {
+      "restore_restart_prompt": "Database has been restored.\n\n{user_line}Active DB was replaced:\n{target}\n\nIMPORTANT: Restart is required so the app loads the new DB.\n\nQuit the application now?",
+      "reset_confirm": "WARNING: This deletes ALL data!\n\nThe database will be reset to defaults.\nAn automatic backup will be created.\n\nDo you really want to continue?"
+    }
   },
   "cat": {
     "default": {
@@ -1562,6 +1633,9 @@
     "restore_key_prompt": "This backup is encrypted and likely from a different account.\n\nPlease enter the restore key.",
     "restore_key_title": "Restore Key",
     "restore_aborted_no_key": "Restore cancelled (no restore key entered).",
+    "restore_retry_from_start": "Please start over: create a new user or import the backup again.",
+    "recover_title": "Account cannot be opened",
+    "recover_question": "This account's database cannot be opened:\n\n{reason}\n\nDo you want to remove the account and restart the initial setup (e.g. to import the backup again)?\n\nExisting backup files remain untouched.",
     "import_title": "Success",
     "name_step_desc": "What should your account be called? Enter your name or a nickname.",
     "choice_step_desc": "Do you want to create a new account or restore data from a backup?",
@@ -1601,45 +1675,45 @@
       "411_budgetmanager_konnte_nicht_gestarte_8ae862ce": "Budgetmanager could not be started:\n\n{value_0}\n\nSee budgetmanager.log for details."
     },
     "settings_dialog": {
-      "146_start_bedienung_809e5573": "Start & Operation",
-      "182_eingabe_workflow_c2c724ba": "Input & Workflow",
+      "146_start_bedienung_809e5573": "Start & Bedienung",
+      "182_eingabe_workflow_c2c724ba": "Eingabe & Workflow",
       "212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5": "Preferred day for new recurring categories/transactions.\nSet automatically when you mark a category as recurring.\nEnd of month = last day of the month.",
       "226_mindestanzahl_aufeinanderfolgender__c912895e": "Minimum number of consecutive months with the same trend\nbefore an adjustment suggestion is shown.",
       "237_ab_welchem_monat_soll_der_uebertrag_6ec46422": "From which month should the carry-over be accumulated?\nExample: From March → Jan/Feb have no carry-over,\naccumulation starts only in March.",
       "246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac": "From which year should the carry-over be accumulated?\nThe carry-over is carried across years.\nExample: Start year 2025, start month March →\naccumulation begins in March 2025 and continues\nacross all following years.",
-      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Show separate categories tab",
+      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Show separate Categories tab",
       "262_aktiviert_den_separaten_kategorien__7db32e53": "Enables the separate Categories tab for advanced category management.\n\nDefault: Disabled – categories are created and managed directly in the budget dialog.\nThe separate tab is useful for bulk editing, filters and advanced options.\n\nChanging this requires a restart of the application.",
       "270_small_i_hinweis_kategorien_koennen__5859fbbe": "<small><i>Note: Categories can also be created and edited directly in the budget dialog via the ⚙ menu.</i></small>",
-      "310_tabellen_listen_d0cf90f1": "Tables & Lists",
+      "310_tabellen_listen_d0cf90f1": "Tabellen & Listen",
       "328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c": "<i>Click a shortcut and press the desired key combination. Empty fields disable the shortcut.</i>",
       "485_budgetmanager_11c4305b": "Budgetmanager",
       "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "SQLite database (*.db *.sqlite *.sqlite3);;All files (*)",
-      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Backup created successfully:\n{value_0}\n\nLocation: {value_1}"
+      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Backup erfolgreich erstellt:\n{value_0}\n\nOrt: {value_1}"
     },
     "views_budget_entry_dialog_extended": {
       "82_kategorie_details_6ef68b34": "Category details",
       "90_b_value_0_b_ee6c93f4": "<b>{value_0}</b>",
       "95_hauptkategorie_kein_parent_883e571a": "— Main category (no parent) —",
-      "110_eigenschaften_902ad0b9": "Properties",
+      "110_eigenschaften_902ad0b9": "Eigenschaften",
       "140_kategorie_erstellen_d45dd95d": "Create category",
       "164_eine_kategorie_mit_dem_namen_value__2fba299b": "A category named '{value_0}' already exists.",
       "184_konnte_kategorie_nicht_erstellen_va_dce4d9f6": "Could not create category:\n{value_0}",
       "220_kategorie_optionen_e050bea2": "Category options",
-      "225_neue_unterkategorie_e01e0b00": "New subcategory…",
+      "225_neue_unterkategorie_e01e0b00": "Neue Unterkategorie…",
       "314_name_der_neuen_kategorie_value_0_399f599a": "Name of the new category ({value_0}):",
       "333_konnte_kategorie_nicht_erstellen_va_12bb8446": "Could not create category:\n{value_0}",
       "358_parent_kategorie_23016e6b": "Parent category",
       "375_name_der_neuen_unterkategorie_unter_655e15ec": "Name of the new subcategory under '{value_0}':",
       "394_konnte_unterkategorie_nicht_erstell_10c56189": "Could not create subcategory:\n{value_0}",
-      "404_umbenennen_6ad211f7": "Rename",
+      "404_umbenennen_6ad211f7": "Umbenennen",
       "405_neuer_name_fuer_value_0_ac7dc2c9": "New name for '{value_0}':",
       "425_kategorie_umbenannt_value_0_value_1_ac33fb77": "Category renamed: '{value_0}' → '{value_1}'\nAll budget and tracking entries were updated.",
-      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Rename failed:\n{value_0}",
+      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Umbenennen fehlgeschlagen:\n{value_0}",
       "506_tag_im_monat_fuer_value_0_1_31_1fcfbede": "Day of month for '{value_0}' (1-31):",
       "516_faelligkeitstag_fuer_value_0_auf_va_02c90616": "Due day for '{value_0}' set to the {value_1}.\n(Recurring was enabled automatically)",
       "616_z_b_1200_00_ad178edd": "z.B. 1200.00",
       "620_monat_88dd17e2": "Month",
-      "620_bereich_8b22d123": "Bereich",
+      "620_bereich_8b22d123": "Range",
       "715_fehlt_2f708b3e": "Missing"
     },
     "views_language_select_dialog": {
@@ -1648,9 +1722,9 @@
       "57_ok_6128635b": "✓  OK"
     },
     "views_database_management_dialog": {
-      "54_datenbank_verwaltung_de01b445": "🗄️ Database Management",
+      "54_datenbank_verwaltung_de01b445": "🗄️ Datenbank-Verwaltung",
       "83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4": "Removes orphaned entries, invalid data and optimises the database.\nThis operation is safe and does not delete important data.",
-      "89_datenbank_bereinigen_031c950d": "🧹 Clean database",
+      "89_datenbank_bereinigen_031c950d": "🧹 Datenbank bereinigen",
       "101_b_achtung_b_diese_aktion_loescht_da_28422052": "<b>CAUTION:</b> This action deletes data!\nA backup is created automatically.",
       "118_budget_kategorien_zuruecksetzen_buc_e2fafa90": "Reset budget & categories (keep transactions)",
       "207_value_0_details_value_1_c4c562a1": "{value_0}\n\nDetails:\n{value_1}"
@@ -1667,43 +1741,43 @@
       "54_zu_exportierende_daten_263da15e": "Data to export",
       "57_tracking_daten_transaktionen_e754548e": "📊 Tracking data (transactions)",
       "61_budget_daten_d0bbdcff": "💰 Budget data",
-      "72_zeitraum_91c1e2b4": "Period",
+      "72_zeitraum_91c1e2b4": "Zeitraum",
       "94_optionen_21208517": "Optionen",
-      "111_exportieren_f9fcfb6d": "Export...",
-      "146_export_speichern_unter_7108d72d": "Save export as",
+      "111_exportieren_f9fcfb6d": "Exportieren...",
+      "146_export_speichern_unter_7108d72d": "Export speichern unter",
       "147_value_0_value_1_3c09bb8d": "{value_0}.{value_1}"
     },
     "views_account_management_dialog": {
       "58_value_0_ce49c534": "👤 {value_0}",
-      "78_profil_a112e8f0": "Profile",
-      "80_passwort_pin_2e7b87ff": "Password / PIN",
-      "123_namen_speichern_3c32107f": "Save name",
+      "78_profil_a112e8f0": "Profil",
+      "80_passwort_pin_2e7b87ff": "Passwort / PIN",
+      "123_namen_speichern_3c32107f": "Namen speichern",
       "145_info_80dc0679": "Info",
       "151_value_0_3a8da07a": "👤 {value_0}",
-      "153_gespeichert_1672f513": "Saved",
+      "153_gespeichert_1672f513": "Gespeichert",
       "172_dein_konto_hat_aktuell_b_keinen_pas_1282d8ba": "⚡ Your account currently has <b>no password protection</b>.\n\nTo set a password or PIN, first change\nthe security level in the «🔒 Security level» tab.\n\n<b>Important:</b> Even without a password there is a <b>restore key</b>. You can use it to reopen an encrypted backup.",
       "186_b_nur_an_einem_sicheren_ort_speiche_b5321905": "⚠️ <b>Store only in a safe place.</b>\nLosing the PIN or restore key = the database can no longer be decrypted.",
-      "237_aktuelles_value_0_eingeben_53722645": "Enter current {value_0}",
+      "237_aktuelles_value_0_eingeben_53722645": "Aktuelles {value_0} eingeben",
       "257_value_0_wiederholen_679c9574": "{value_0} wiederholen",
       "360_wechsle_die_sicherheitsstufe_deines_f6de7988": "Change the security level of your account.\nThe database is preserved.",
-      "378_neue_sicherheitsstufe_3f613920": "New security level",
+      "378_neue_sicherheitsstufe_3f613920": "Neue Sicherheitsstufe",
       "385_schneller_zugriff_ohne_eingabe_schu_5c56399c": "Quick access without input.\nProtects against mistakes — not against losing the USB drive.",
-      "415_aktuelles_passwort_38b1f100": "Current password:",
-      "427_neues_passwort_d5fba2a0": "New password:",
+      "415_aktuelles_passwort_38b1f100": "Aktuelles Passwort:",
+      "427_neues_passwort_d5fba2a0": "Neues Passwort:",
       "513_quick_modus_entfernt_den_passwortsc_84601067": "⚠️ Quick mode removes the password protection!\nAnyone with access to your files can open the data.",
       "525_value_0_oder_restore_key_verlieren__81330d27": "⚠️ Losing the {value_0} or restore key = the database is lost forever!",
-      "538_aktuelle_stufe_5d6746d9": "(Current level)",
-      "542_wechseln_zu_value_0_c4af1f8b": "Switch to: {value_0}",
+      "538_aktuelle_stufe_5d6746d9": "(Aktuelle Stufe)",
+      "542_wechseln_zu_value_0_c4af1f8b": "Wechseln zu: {value_0}",
       "558_info_c90436c3": "Info",
-      "606_schutz_entfernen_0233ca15": "Remove protection",
+      "606_schutz_entfernen_0233ca15": "Schutz entfernen",
       "634_value_0_value_1_erstellt_value_2_08181f59": "{value_0} {value_1}  •  Erstellt: {value_2}",
       "653_sicherheitsstufe_geaendert_zu_value_de978174": "Security level changed to «{value_0}».",
       "692_b_wichtig_b_dein_restore_key_hat_si_aa706b0f": "⚠️ <b>IMPORTANT:</b> Your restore key has changed!<br>Note this key down safely — it is your emergency access.<br>Without this key and without password/PIN, your data is <b>lost</b>!",
-      "705_dein_neuer_restore_key_0417e1e7": "Your new restore key:",
-      "720_in_zwischenablage_kopieren_a988f8aa": "Copy to clipboard",
+      "705_dein_neuer_restore_key_0417e1e7": "Dein neuer Restore-Key:",
+      "720_in_zwischenablage_kopieren_a988f8aa": "In Zwischenablage kopieren",
       "736_ich_habe_den_key_notiert_9961ef11": "I have written down the key",
-      "754_kopiert_833acc01": "Copied!",
-      "757_in_zwischenablage_kopieren_a4a61e69": "Copy to clipboard"
+      "754_kopiert_833acc01": "Kopiert!",
+      "757_in_zwischenablage_kopieren_a4a61e69": "In Zwischenablage kopieren"
     },
     "views_budget_adjustment_dialog": {
       "366_value_0_e619e83b": "{value_0}%",
@@ -1728,7 +1802,7 @@
     "views_budget_entry_dialog": {
       "102_z_b_1200_00_d7c96b70": "z.B. 1200.00",
       "105_monat_069d7526": "Month",
-      "105_bereich_1f8db464": "Bereich",
+      "105_bereich_1f8db464": "Range",
       "120_neue_kategorie_erstellen_2cbb61c0": "Create new category",
       "145_diese_kategorie_ist_eine_monatlich__584b29cb": "This category is a fixed monthly expense",
       "290_value_0_b601d60d": "  ↳ {value_0}",
@@ -1747,11 +1821,11 @@
       "1089_budget_bearbeiten_45efb7d1": "Budget &bearbeiten...",
       "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Create rows from &categories",
       "1103_jahr_kopieren_a5365b5b": "&Copy year...",
-      "1111_budget_zeile_entfernen_2116ca10": "Remove budget &row",
-      "1125_neue_hauptkategorie_4edd9c24": "New &main category...",
-      "1131_neue_unterkategorie_51ea953c": "New &subcategory...",
+      "1111_budget_zeile_entfernen_2116ca10": "Budget-&Zeile entfernen",
+      "1125_neue_hauptkategorie_4edd9c24": "Neue &Hauptkategorie...",
+      "1131_neue_unterkategorie_51ea953c": "Neue &Unterkategorie...",
       "1144_massenbearbeitung_aa0c33a1": "&Massenbearbeitung...",
-      "1156_fixkosten_buchen_61d1976c": "&Fixkosten buchen...",
+      "1156_fixkosten_buchen_61d1976c": "Book &fixed costs...",
       "1166_daten_aktualisieren_6e5a0ee6": "&Refresh data",
       "1577_info_a7110986": "Info",
       "1578_kontoverwaltung_ist_nur_bei_verschl_381922cb": "Account management is only available for encrypted accounts.",
@@ -1759,57 +1833,57 @@
       "1615_value_0_value_1_value_2_81323b29": "{value_0} {value_1} — {value_2}",
       "1625_value_0_value_1_value_2_1999fbaa": "{value_0} — {value_1} {value_2}",
       "1629_value_0_value_1_value_2_943d4260": "{value_0} {value_1} — {value_2}",
-      "1788_neustart_erforderlich_288778eb": "Restart required",
+      "1788_neustart_erforderlich_288778eb": "Neustart erforderlich",
       "1789_bitte_starten_sie_die_anwendung_neu_e67d74c9": "Please restart the application to apply the changes."
     },
     "views_savings_goals_dialog": {
       "42_bearbeiten_ba02fd7d": "Edit",
       "47_sync_0d895102": "Sync",
-      "51_abschliessen_dfbbbdb2": "Complete",
+      "51_abschliessen_dfbbbdb2": "Abschliessen",
       "58_sparziel_freigeben_der_aktuelle_sta_cc2b88a8": "Release savings goal: The current balance is frozen.\nFrom then on, expenses can be booked against this goal.",
       "62_sparziel_abschliessen_wird_archivie_010ae566": "Complete savings goal: It is archived and marked as done.",
       "65_sparziel_wieder_zum_sparen_oeffnen__a747e4b3": "Reopen savings goal for saving.\nThe released status is reset.",
-      "75_ziel_value_0_4affdb3b": "Goal ({value_0})",
-      "75_aktuell_value_0_30c65ab2": "Current ({value_0})",
-      "76_restbetrag_86038dcb": "Remaining amount",
-      "77_verbraucht_f5ec0888": "Consumed",
+      "75_ziel_value_0_4affdb3b": "Ziel ({value_0})",
+      "75_aktuell_value_0_30c65ab2": "Aktuell ({value_0})",
+      "76_restbetrag_86038dcb": "Restbetrag",
+      "77_verbraucht_f5ec0888": "Verbraucht",
       "105_lebenszyklus_b_sparend_b_b_freigege_b8234217": "💡 Lifecycle: <b>Saving</b> → <b>Released</b> (withdrawals possible) → <b>Completed</b> (archive)",
-      "161_freigeben_a27ef668": "Release…",
-      "164_abschliessen_786dc795": "Complete…",
+      "161_freigeben_a27ef668": "Freigeben…",
+      "164_abschliessen_786dc795": "Abschliessen…",
       "282_value_0_f11eb723": "-{value_0}",
       "350_sparziel_value_0_wirklich_loeschen_a0a55e23": "Really delete savings goal «{value_0}»?",
       "378_dieses_sparziel_ist_mit_keiner_kate_b42a28db": "This savings goal is not linked to any category.",
-      "386_synchronisiert_2f5168bf": "Synchronized",
+      "386_synchronisiert_2f5168bf": "Synchronisiert",
       "387_sparziel_value_0_wurde_mit_tracking_3a7d4952": "Savings goal «{value_0}» has been synchronised with tracking.\n\nCategory: {value_1}\nBefore: {value_2}\nAfter: {value_3}\nDifference: {value_4}",
       "409_sparziel_freigeben_adf2825a": "Release savings goal",
       "410_sparziel_value_0_freigeben_aktuelle_7e8d5f78": "Release savings goal «{value_0}»?\n\nCurrent balance: {value_1}\nTarget: {value_2}\n\nThe current balance ({value_3}) will be frozen.\nFrom then on, negative transactions are recorded as withdrawals.\n\nContinue?",
       "425_sparziel_value_0_wurde_freigegeben__f6d8c79d": "Savings goal «{value_0}» has been released.\n\nFrozen amount: {value_1}\nYou can now book expenses against this goal.",
-      "444_sparziel_abschliessen_81af1e70": "Complete savings goal",
+      "444_sparziel_abschliessen_81af1e70": "Close savings goal",
       "465_sparziel_value_0_wieder_zum_sparen__1510830d": "Reopen savings goal «{value_0}» for saving?\n\nThe released status and the frozen amount will be reset.\nContinue?",
-      "506_keine_8218b1ac": "(None)",
+      "506_keine_8218b1ac": "(Keine)",
       "516_value_0_value_1_e61189ab": "{value_0} / {value_1}",
       "519_value_0_value_1_016e0b40": "{value_0} / {value_1}",
       "560_i_small_tipp_wenn_eine_kategorie_au_ddfbcc66": "<i><small>💡 Tip: When a category is selected, progress is automatically synchronised with savings transactions of that category.</small></i>",
-      "612_aktuell_value_0_05ac9b67": "Current: {value_0}",
-      "613_ziel_value_0_3aea07af": "Goal: {value_0}",
-      "614_restbetrag_value_0_711be043": "Remaining amount: {value_0}",
+      "612_aktuell_value_0_05ac9b67": "Aktuell: {value_0}",
+      "613_ziel_value_0_3aea07af": "Ziel: {value_0}",
+      "614_restbetrag_value_0_711be043": "Restbetrag: {value_0}",
       "616_status_freigegeben_eingef_value_0_6728eed9": "Status: 🔓 Freigegeben (eingef. {value_0})"
     },
     "views_theme_editor_dialog": {
-      "103_hell_66974dd7": "light",
-      "103_dunkel_b0351793": "dark",
-      "297_neues_theme_7b9881d9": "New theme",
-      "297_theme_name_e4293a7f": "Theme name:",
-      "316_theme_duplizieren_610b8173": "Duplicate theme",
-      "317_neuer_name_771ef819": "New name:",
+      "103_hell_66974dd7": "hell",
+      "103_dunkel_b0351793": "dunkel",
+      "297_neues_theme_7b9881d9": "Neues Theme",
+      "297_theme_name_e4293a7f": "Theme-Name:",
+      "316_theme_duplizieren_610b8173": "Theme duplizieren",
+      "317_neuer_name_771ef819": "Neuer Name:",
       "318_value_0_kopie_7305d694": "{value_0} (Kopie)",
-      "388_theme_importieren_3afd6b46": "Import theme",
+      "388_theme_importieren_3afd6b46": "Theme importieren",
       "388_json_json_90618946": "JSON (*.json)",
-      "403_name_existiert_4dd02b77": "Name exists",
-      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Theme name already exists. New name:",
+      "403_name_existiert_4dd02b77": "Name existiert",
+      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Theme-Name existiert bereits. Neuer Name:",
       "405_value_0_import_6030fc3e": "{value_0} (Import)",
       "418_import_fehlgeschlagen_value_0_17d04026": "Import fehlgeschlagen:\n{value_0}",
-      "426_theme_exportieren_30cdc637": "Export theme",
+      "426_theme_exportieren_30cdc637": "Theme exportieren",
       "427_value_0_json_05d9a4f0": "{value_0}.json",
       "428_json_json_7142e86c": "JSON (*.json)",
       "444_export_fehlgeschlagen_value_0_b3ec54e6": "Export fehlgeschlagen:\n{value_0}"
@@ -1830,7 +1904,7 @@
       "249_tag_value_0_wurde_erstellt_3d280c8d": "Tag '{value_0}' was created.",
       "255_tag_konnte_nicht_erstellt_werden_955e67d7": "The tag could not be created.",
       "269_tag_bearbeiten_5fd01a35": "Edit tag",
-      "270_neuer_name_ada4af32": "New name:",
+      "270_neuer_name_ada4af32": "Neuer Name:",
       "283_tag_existiert_1725866c": "Tag exists",
       "284_ein_tag_mit_dem_namen_value_0_exist_126d57ed": "A tag named '{value_0}' already exists.",
       "296_tag_wurde_umbenannt_in_value_0_a29907d3": "Tag was renamed to '{value_0}'.",
@@ -1844,7 +1918,7 @@
       "471_tags_wurden_erfolgreich_zusammengef_c25182ec": "Tags were merged successfully.",
       "477_tags_konnten_nicht_zusammengefuehrt_5b23f4a0": "The tags could not be merged.",
       "488_es_sind_noch_keine_tags_mit_buchung_502ddf34": "There are no tags with transactions yet.",
-      "501_anzahl_buchungen_d50207ae": "Number of bookings",
+      "501_anzahl_buchungen_d50207ae": "Anzahl Buchungen",
       "501_gesamtbetrag_034bb324": "Gesamtbetrag"
     },
     "views_shortcuts_dialog": {
@@ -1856,7 +1930,7 @@
       "415_export_fehlgeschlagen_value_0_208f6ca9": "Export fehlgeschlagen:\n{value_0}",
       "468_import_fehlgeschlagen_value_0_fabf2450": "Import fehlgeschlagen:\n{value_0}",
       "706_datenbank_wurde_wiederhergestellt_v_442b01cf": "Database has been restored.\n\n{value_0}Active DB:\n{value_1}\n\nThe data is active immediately — no restart required.",
-      "722_neustart_erforderlich_5f2fbae8": "Restart required",
+      "722_neustart_erforderlich_5f2fbae8": "Neustart erforderlich",
       "811_datenbank_wurde_zurueckgesetzt_back_48960617": "Database has been reset.\n\nBackup created: budgetmanager_before_reset_{value_0}.bmr\n\nPlease restart the application.",
       "820_reset_fehlgeschlagen_value_0_9b562dab": "Reset fehlgeschlagen:\n{value_0}",
       "830_notfall_reset_31e1b16e": "🆘 NOTFALL-RESET",
@@ -1872,9 +1946,9 @@
       "472_noch_kein_benutzer_eingerichtet_ers_0a15a1a4": "No user set up yet.\n\nCreate a user to get started.",
       "499_starten_00906f67": "Starten",
       "520_anmelden_e04d6ff2": "Anmelden",
-      "531_restore_key_verwenden_3cecdcdd": "Use restore key",
+      "531_restore_key_verwenden_3cecdcdd": "Restore-Key verwenden",
       "568_anmelden_2adc1609": "Anmelden",
-      "579_restore_key_verwenden_3077a331": "Use restore key",
+      "579_restore_key_verwenden_3077a331": "Restore-Key verwenden",
       "599_starten_3071b86d": "Starten",
       "608_anmelden_da7d6295": "Anmelden",
       "645_anmelden_08c3b10b": "Anmelden",
@@ -1926,11 +2000,11 @@
       "536_b_value_0_i_value_1_r_value_2_25a9e209": "B: {value_0}\nI: {value_1}\nR: {value_2}"
     },
     "views_tabs_categories_tab": {
-      "68_neu_hauptkategorie_d317a531": "New (main category)",
-      "69_neu_unterkategorie_577581bc": "New (subcategory)",
-      "344_neu_hauptkategorie_852d2884": "New (main category)",
-      "346_neu_unterkategorie_18e330b2": "New (subcategory)",
-      "349_umbenennen_4ad27303": "Rename",
+      "68_neu_hauptkategorie_d317a531": "Neu (Hauptkategorie)",
+      "69_neu_unterkategorie_577581bc": "Neu (Unterkategorie)",
+      "344_neu_hauptkategorie_852d2884": "Neu (Hauptkategorie)",
+      "346_neu_unterkategorie_18e330b2": "Neu (Unterkategorie)",
+      "349_umbenennen_4ad27303": "Umbenennen",
       "647_setzen_ja_f86a5233": "Setzen: Ja",
       "647_setzen_nein_60c1ccf6": "Setzen: Nein",
       "651_setzen_ja_63aa1520": "Setzen: Ja",
@@ -1955,19 +2029,19 @@
       "1934_favorit_6f4adb2a": "Favorit",
       "1943_favorit_a9b8479f": "Favorit",
       "1944_value_0_wurde_aus_favoriten_entfern_56aa3cd9": "☆ '{value_0}' was removed from favourites.",
-      "2115_alles_aufklappen_d750a09b": "Alles aufklappen",
-      "2116_alles_zuklappen_nur_hauptkategorien_4f06f19e": "Alles zuklappen (nur Hauptkategorien)",
+      "2115_alles_aufklappen_d750a09b": "Expand all",
+      "2116_alles_zuklappen_nur_hauptkategorien_4f06f19e": "Collapse all (main categories only)",
       "2118_nur_ebene_0_anzeigen_b996cf39": "Nur Ebene 0 anzeigen",
-      "2119_bis_ebene_1_anzeigen_ec306d04": "Bis Ebene 1 anzeigen",
-      "2120_bis_ebene_2_anzeigen_52a77975": "Bis Ebene 2 anzeigen",
+      "2119_bis_ebene_1_anzeigen_ec306d04": "Show to level 1",
+      "2120_bis_ebene_2_anzeigen_52a77975": "Show to level 2",
       "2123_baum_einblenden_auf_zuklappen_0f72e127": "Baum einblenden (Auf/Zuklappen)",
       "2124_baum_ausblenden_pfad_anzeigen_508ded75": "Baum ausblenden (Pfad anzeigen)"
     },
     "views_tabs_tracking_tab": {
-      "56_nur_letzte_value_0_tage_48196fae": "Last {value_0} days only",
+      "56_nur_letzte_value_0_tage_48196fae": "Nur letzte {value_0} Tage",
       "119_id_db302b9b": "_id",
-      "457_nur_letzte_value_0_tage_be9a083a": "Last {value_0} days only",
-      "582_nur_letzte_value_0_tage_a8e14b8a": "Last {value_0} days only",
+      "457_nur_letzte_value_0_tage_be9a083a": "Nur letzte {value_0} Tage",
+      "582_nur_letzte_value_0_tage_a8e14b8a": "Nur letzte {value_0} Tage",
       "682_diese_buchung_wird_als_verbrauch_vo_54220c3f": "This transaction is recorded as a withdrawal from the released savings goal <b>«{value_0}»</b>.\n\nReleased amount: {value_1}\nWithdrawal: {value_2}"
     }
   },
@@ -2074,7 +2148,47 @@
     "customize_intro": "Choose which panels are visible and reorder them with Up/Down. This keeps the cockpit compact but personal.",
     "move_up": "↑ Up",
     "move_down": "↓ Down",
-    "reset_order": "Reset order"
+    "reset_order": "Reset order",
+    "panel": {
+      "kpis": "Monthly status",
+      "quick_actions": "Quick actions",
+      "favorites": "Favorites at a glance",
+      "savings": "Active savings goals",
+      "warnings": "Budget status",
+      "missing": "Open monthly bookings",
+      "recent": "Last 10 bookings",
+      "budget_warnings": "Budget warnings"
+    },
+    "month_feeling": "Monthly feel",
+    "action_quick_add": "➕ Add booking",
+    "action_quick_add_tip": "Book a new income, expense or savings entry.",
+    "action_fixcosts": "📅 Book fixed/recurring",
+    "action_fixcosts_tip": "Check and book open monthly bookings/fixed costs.",
+    "action_check_budget": "💰 Check budget",
+    "action_check_budget_tip": "Switch to the Budget tab.",
+    "action_budget_warnings": "🚨 Budget warnings",
+    "action_budget_warnings_tip": "Open budget warnings and budget suggestions.",
+    "action_savings": "🎯 Savings goals",
+    "action_savings_tip": "Manage savings goals.",
+    "action_overview": "📈 Overview",
+    "action_overview_tip": "Switch to the analysis view.",
+    "kpi_budget": "Budget {amount}",
+    "balance_positive": "positive",
+    "balance_warning": "Warning: expenses/savings exceed income",
+    "empty_favorites": "No favorites set yet. Favorites are useful for categories you always want to watch.",
+    "empty_warnings": "No noticeable budget items for this month.",
+    "empty_missing": "No open fixed costs/recurring bookings found.",
+    "empty_recent": "No bookings yet.",
+    "doubleclick_book": "Double-click: book",
+    "warning_exceeded": "exceeded",
+    "warning_near_limit": "near limit",
+    "warning_goal_open": "goal open",
+    "warning_suggestion": "suggestion",
+    "warning_percent": "used: {percent}",
+    "warning_suggestion_amount": "suggestion: {amount}",
+    "warning_repeated": "flagged {count}× in checks",
+    "warning_underused": "barely used",
+    "empty_budget_warnings": "No budget warnings for this month."
   },
   "db": {
     "created_title": "Database created",
@@ -2083,7 +2197,27 @@
     "updated_body": "The database has been updated to the current version.",
     "backup_created": "Safety backup created.",
     "details": "Details",
-    "version_line": "v{old} → v{new}"
+    "version_line": "v{old} → v{new}",
+    "info": {
+      "title_html": "<h3>Database information</h3>",
+      "file": "File",
+      "path": "Path",
+      "size": "Size",
+      "schema": "Schema version",
+      "migration_status": "Migration status",
+      "migration_needed": "⚠️ Migration required",
+      "missing_tables": "Missing tables",
+      "current": "✓ Database is up to date",
+      "data_stats": "Data statistics",
+      "categories": "Categories",
+      "budget_entries": "Budget entries",
+      "tracking_entries": "Tracking bookings",
+      "savings_goals": "Savings goals",
+      "budget_years": "Years with budget",
+      "tracking_years": "Years with tracking",
+      "no_years": "None",
+      "available_tables": "Available tables"
+    }
   },
   "keine_auswahl": "No selection",
   "picker": {
@@ -2105,10 +2239,122 @@
     "kind_variable_fixed_short": "Fixed variable",
     "kind_variable_recurring_short": "Rec. variable",
     "btn_real_fixed_only": "Only true fixed costs",
-    "status": {
-      "days": "{days} days",
-      "today": "Today",
-      "in_days": "in {days} d"
+    "kind_optional": "Optional budget items",
+    "kind_optional_short": "Optional",
+    "filter_type_tip": "Filters the auto-booking list by income, expenses, savings, or all accounts.",
+    "filter_kind_label": "Kind:",
+    "filter_kind_all": "All kinds",
+    "filter_kind_tip": "Filters by optional items, recurring, fixed/variable, or true fixed costs."
+  },
+  "col": {
+    "typ": "Type",
+    "kategorie": "Category",
+    "budget": "Budget",
+    "gebucht": "Booked",
+    "rest": "Remaining",
+    "status": "Status",
+    "hinweis": "Note",
+    "faelligkeit": "Due",
+    "aktion": "Action",
+    "datum": "Date",
+    "betrag": "Amount",
+    "bemerkung": "Note",
+    "auslastung": "Utilization",
+    "empfehlung": "Recommendation"
+  },
+  "quickadd": {
+    "savings_negative_tip": "For savings, negative amounts are allowed: this books money out of a savings goal.",
+    "amount_must_not_be_zero": "Please enter an amount other than 0. Savings goal withdrawals may be negative.",
+    "negative_only_savings": "In quick entry, negative amounts are only allowed for savings withdrawals.",
+    "savings_still_saving_confirm": "You are booking {withdrawal} negatively against the savings goal «{goal_name}».\n\nCurrent amount: {current}\n\nThe goal has not been released yet. Best practice: release the savings goal first, then withdraw.\n\nBook anyway as a correction/withdrawal?",
+    "category_search_placeholder": "Search category, e.g. rent, salary, groceries …",
+    "category_search_tip": "Typing filters the category list. Then choose the matching category in the dropdown.",
+    "category_dropdown_tip": "Filtered dropdown menu. Only categories for the selected account are shown.",
+    "no_category_matches": "No matching category found."
+  },
+  "coverage": {
+    "suggestion_single": "Suggestion: take/reduce {amount} from “{category}” to cover the gap.",
+    "suggestion_combined": "Suggestion: reduce savings in combination: {categories}.",
+    "no_savings_suggestion": "No savings category alone covers the gap; check expenses or several savings positions."
+  },
+  "account_hub": {
+    "intro": "Everything about your account and your data in one place: data location, backup and reset.",
+    "group_account": "Account",
+    "btn_manage_account": "Manage account…",
+    "account_summary": "Signed in as: {name}",
+    "unknown_user": "—",
+    "btn_apply_location": "Apply location",
+    "group_backup": "Backup",
+    "backup_desc": "Create, restore, export or import backups.",
+    "btn_backup": "Backup & restore…",
+    "group_reset": "Reset & maintenance",
+    "reset_desc": "Reset the database (fully or partially), statistics and cleanup.",
+    "btn_reset_db": "Reset database & statistics…"
+  },
+  "data_location": {
+    "error": {
+      "identical": "Source and target folder are identical.",
+      "nested": "Source and target folder must not be nested inside each other.",
+      "no_source_data": "No data was found in the previous folder.",
+      "target_has_data": "The target folder already contains data."
     }
+  },
+  "crypto": {
+    "corrupt_salt_short": "Corrupt file: salt too short",
+    "decrypt_failed_wrong_key": "Decryption failed — wrong key"
+  },
+  "budget_entry": {
+    "msg": {
+      "category_missing_create": "The category \"{category}\" does not exist yet.\n\nDo you want to create it now?"
+    }
+  },
+  "tags": {
+    "msg": {
+      "delete_used_confirm": "The tag '{tag}' is used by {count} booking(s).\n\nDo you really want to delete this tag?\nTag assignments will be removed."
+    },
+    "dialog": {
+      "color_title": "Choose color for '{tag}'"
+    },
+    "target_tag_label": "Target tag:"
+  },
+  "theme": {
+    "msg": {
+      "builtin_delete_forbidden": "Bundled themes cannot be deleted.\n\nYou can only reset local overrides.",
+      "delete_confirm": "Do you really want to delete '{theme}'?\n\nFor bundled themes, only the local override is removed.",
+      "no_default_reset": "This theme has no bundled default profile to reset to.\nCustom themes can be deleted directly.",
+      "reset_confirm": "Do you really want to reset '{theme}'?\n\nAll local changes/overrides will be removed."
+    }
+  },
+  "about": {
+    "html": "<h2>{app_name}</h2>\n<p><b>Version:</b> {version}</p>\n<p><b>Built with:</b> PySide6 (Qt for Python)</p>\n<p><b>Database:</b> SQLite</p>\n<br>\n<p>A simple budget manager for:</p>\n<ul>\n  <li>Budget planning by category</li>\n  <li>Tracking income and expenses</li>\n  <li>Visualization and analysis</li>\n  <li>Savings goals and favorites</li>\n  <li>Tags and budget warnings</li>\n</ul>\n<br>\n<p><b>Highlights {app_version}:</b></p>\n<ul>\n  <li>Hardened portable updater</li>\n  <li>Stable Windows/Linux launch files in the portable ZIP</li>\n  <li>Account hub and selectable data folder</li>\n  <li>Budget, tracking and i18n hardening</li>\n</ul>"
+  },
+  "budget_adjustment": {
+    "header": {
+      "info_n": "ℹ️ {n} category/categories with hints"
+    },
+    "income_warning": {
+      "title": "⚠️ Income warning",
+      "text": "The proposed budget increases exceed the budgeted income!",
+      "income": "Income (budget)",
+      "current": "Expenses+savings current",
+      "after": "Expenses+savings after suggestions",
+      "deficit": "Shortfall",
+      "action": "→ Reduce expenses or increase income!"
+    },
+    "recommendations": {
+      "title": "General recommendations",
+      "critical": "🔴 <strong>Critical:</strong> Several categories are regularly exceeded. {text}",
+      "attention": "🟠 <strong>Attention:</strong> Budgets should be adjusted to set more realistic targets.",
+      "hint": "🟡 <strong>Note:</strong> Occasional overruns are normal. {text}",
+      "category_exceeded": "💰 The category <strong>{category}</strong> was exceeded by {percent}%. Check whether unexpected expenses occurred here."
+    },
+    "apply": {
+      "period_lines": "• Only {month:02d}/{year}: adjustment applies only to this month\n• Remaining months: adjustment applies to {month:02d}–12/{year} ({count} months)",
+      "scope_remaining": "for {month:02d}–12/{year} ({count} monthly values)",
+      "scope_month": "for {month:02d}/{year}"
+    }
+  },
+  "money": {
+    "invalid_amount": "Invalid amount."
   }
 }

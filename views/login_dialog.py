@@ -776,9 +776,7 @@ class LoginDialog(QDialog):
 
         reply = QMessageBox.warning(
             self, tr("msg.delete_user"),
-            f"«{user.display_name}» wirklich löschen?\n\n"
-            f"⚠️ Die verschlüsselte Datenbank ({user.db_filename}) wird gelöscht!\n" +
-            tr("account.diese_aktion_kann_nicht"),
+            trf("account.msg.delete_user_confirm", name=user.display_name, db=user.db_filename),
             QMessageBox.Yes | QMessageBox.No
         )
         if reply == QMessageBox.Yes:

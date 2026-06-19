@@ -333,7 +333,11 @@ class BudgetAdjustmentDialog(QDialog):
 
             # Kategorie
             cat_item = QTableWidgetItem(category)
-            is_chronic = (exceed_count >= 3) or (sug and sug.consecutive_months >= 3)
+            # "Chronischer Überschreiter" = wiederholt ÜBER Budget. exceed_count
+            # zählt genau die Monate mit spent >= budget. Die frühere Oder-
+            # Bedingung über consecutive_months war richtungsblind und markierte
+            # auch dauerhaft UNTER-Budget-Kategorien fälschlich als Überschreiter.
+            is_chronic = (exceed_count >= 3)
             if is_chronic:
                 cat_item.setBackground(QColor(c.error_bg))
                 chronic_categories.append(category)
@@ -371,11 +375,13 @@ class BudgetAdjustmentDialog(QDialog):
                 percent_item.setBackground(QColor(c.warning_bg))
             self.table.setItem(row, 5, percent_item)
 
-            # Häufigkeit / Konsekutive Monate
+            # Häufigkeit / Konsekutive Monate (innerhalb des Fensters,
+            # daher Zähler stets ≤ Fenster – kein "5/3" mehr).
             if sug and sug.consecutive_months > 0:
-                freq_text = f"{sug.consecutive_months}/{self._lookback_months}"
+                _fnum = min(sug.consecutive_months, self._lookback_months)
             else:
-                freq_text = f"{exceed_count}/{self._lookback_months}"
+                _fnum = min(exceed_count, self._lookback_months)
+            freq_text = f"{_fnum}/{self._lookback_months}"
             freq_item = QTableWidgetItem(freq_text)
             freq_item.setTextAlignment(Qt.AlignCenter)
             if exceed_count >= 4 or (sug and sug.consecutive_months >= 4):
@@ -447,7 +453,7 @@ class BudgetAdjustmentDialog(QDialog):
             header_parts.append(f"⚠️ " + trf("suggestion.exceeded_n", n=len(exceeded_cats)))
         if surplus_cats:
             header_parts.append(f"💡 " + trf("suggestion.surplus_n", n=len(surplus_cats)))
-        header_txt = " &nbsp;|&nbsp; ".join(header_parts) if header_parts else f"ℹ️ {len(exceedances)} Kategorie(n) mit Hinweisen"
+        header_txt = " &nbsp;|&nbsp; ".join(header_parts) if header_parts else trf("budget_adjustment.header.info_n", n=len(exceedances))
         html += f"<h3 style='margin-top: 0;'>{header_txt}</h3>"
         
         # Chronische Überschreiter
@@ -481,45 +487,42 @@ class BudgetAdjustmentDialog(QDialog):
                         f"<div style='background-color: {_c.warning_bg}; border: 2px solid {_c.warning}; "
                         f"border-radius: 6px; padding: 10px; margin: 10px 0;'>"
                         f"<h3 style='color: {_c.warning}; margin-top: 0;'>"
-                        "⚠️ Einkommenswarnung</h3>"
-                        f"<p>Die vorgeschlagenen Budget-Erhöhungen übersteigen "
-                        f"das budgetierte Einkommen!</p>"
+                        f"{tr('budget_adjustment.income_warning.title')}</h3>"
+                        f"<p>{tr('budget_adjustment.income_warning.text')}</p>"
                         f"<table style='margin: 5px 0;'>"
-                        f"<tr><td>Einkommen (Budget):</td>"
+                        f"<tr><td>{tr('budget_adjustment.income_warning.income')}:</td>"
                         f"<td style='text-align: right; padding-left: 15px;'>"
                         f"<strong>{format_money(income_budget)}</strong></td></tr>"
-                        f"<tr><td>Ausgaben+Ersparnisse aktuell:</td>"
+                        f"<tr><td>{tr('budget_adjustment.income_warning.current')}:</td>"
                         f"<td style='text-align: right; padding-left: 15px;'>"
                         f"{format_money(current_total)}</td></tr>"
-                        f"<tr><td>Ausgaben+Ersparnisse nach Vorschlägen:</td>"
+                        f"<tr><td>{tr('budget_adjustment.income_warning.after')}:</td>"
                         f"<td style='text-align: right; padding-left: 15px;'>"
                         f"<span style='color: {_c.negative}; font-weight: bold;'>"
                         f"{format_money(new_total)}</span></td></tr>"
-                        f"<tr><td><strong>Fehlbetrag:</strong></td>"
+                        f"<tr><td><strong>{tr('budget_adjustment.income_warning.deficit')}:</strong></td>"
                         f"<td style='text-align: right; padding-left: 15px;'>"
                         f"<span style='color: {_c.negative}; font-weight: bold;'>"
                         f"{format_money(deficit)}</span></td></tr>"
                         f"</table>"
                         f"<p style='color: {_c.warning};'><strong>"
-                        f"→ Ausgaben reduzieren oder Einkommen erhöhen!</strong></p>"
+                        f"{tr('budget_adjustment.income_warning.action')}</strong></p>"
                         "</div>"
                     )
         except Exception as e:
             logger.debug("%s", e)
         
         # Allgemeine Tipps
-        html += "<hr/><p><strong>Allgemeine Empfehlungen:</strong></p><ul>"
+        html += f"<hr/><p><strong>{tr('budget_adjustment.recommendations.title')}:</strong></p><ul>"
         
         avg_exceed_count = (sum(e.exceed_count for e in exceedances) / len(exceedances)) if exceedances else 0
         
         if avg_exceed_count >= 3:
-            html += "<li>🔴 <strong>Kritisch:</strong> Mehrere Kategorien werden regelmäßig überschritten. "
-            html += tr("dlg.dlg_urgent_check") + "</li>"
+            html += "<li>" + trf("budget_adjustment.recommendations.critical", text=tr("dlg.dlg_urgent_check")) + "</li>"
         elif avg_exceed_count >= 2:
-            html += "<li>🟠 <strong>Achtung:</strong> Budgets sollten angepasst werden, um realistischere Ziele zu setzen.</li>"
+            html += "<li>" + tr("budget_adjustment.recommendations.attention") + "</li>"
         else:
-            html += "<li>🟡 <strong>Hinweis:</strong> Gelegentliche Überschreitungen sind normal. "
-            html += tr("dlg.dlg_structural_changes") + "</li>"
+            html += "<li>" + trf("budget_adjustment.recommendations.hint", text=tr("dlg.dlg_structural_changes")) + "</li>"
         
         # Spezifische Tipps basierend auf aktuellen Überschreitungen.
         # Regression v2.0.8: Der Dialog kann reine Verlaufsvorschläge enthalten,
@@ -527,9 +530,11 @@ class BudgetAdjustmentDialog(QDialog):
         # Dann ist ``exceedances`` leer und max([]) darf nicht crashen.
         max_exceedance = max(exceeded_cats, key=lambda x: x.percent_used) if exceeded_cats else None
         if max_exceedance is not None and max_exceedance.percent_used >= 150:
-            html += f"<li>💰 Die Kategorie <strong>{max_exceedance.category}</strong> wurde um "
-            html += f"{max_exceedance.percent_used:.0f}% überschritten. "
-            html += "Überprüfen Sie, ob hier unerwartete Ausgaben aufgetreten sind.</li>"
+            html += "<li>" + trf(
+                "budget_adjustment.recommendations.category_exceeded",
+                category=max_exceedance.category,
+                percent=f"{max_exceedance.percent_used:.0f}",
+            ) + "</li>"
         
         html += "</ul>"
         html += "</div>"
@@ -573,9 +578,12 @@ class BudgetAdjustmentDialog(QDialog):
         msg.setWindowTitle(tr("dlg.confirm"))
         msg.setText(
             tr("dlg.dlg_adjust_period_question") + "\n\n"
-            f"• Nur {self.month:02d}/{self.year}: Anpassung gilt nur für diesen Monat\n"
-            f"• Restliche Monate: Anpassung gilt für {self.month:02d}–12/{self.year} "
-            f"({remaining_months_count} Monate)"
+            + trf(
+                "budget_adjustment.apply.period_lines",
+                month=self.month,
+                year=self.year,
+                count=remaining_months_count,
+            )
         )
         
         btn_this_month = msg.addButton(
@@ -627,9 +635,9 @@ class BudgetAdjustmentDialog(QDialog):
         
         if applied_count > 0:
             scope_text = (
-                f"für {self.month:02d}–12/{self.year} ({total_months_affected} Monatswerte)"
+                trf("budget_adjustment.apply.scope_remaining", month=self.month, year=self.year, count=total_months_affected)
                 if apply_remaining
-                else f"für {self.month:02d}/{self.year}"
+                else trf("budget_adjustment.apply.scope_month", month=self.month, year=self.year)
             )
             QMessageBox.information(
                 self,

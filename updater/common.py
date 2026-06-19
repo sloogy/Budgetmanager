@@ -93,25 +93,96 @@ def detect_platform_key() -> str:
     return "linux"
 
 
+def installation_marker_path() -> Path:
+    """Marker fuer Installationsart neben der App.
+
+    Der Windows-Installer schreibt ``installation.json`` nach ``{app}``.
+    Portable ZIPs enthalten keinen Installer-Marker und bleiben dadurch
+    updatebar per portable ZIP.
+    """
+    return app_dir() / "installation.json"
+
+
+def read_install_type() -> str:
+    try:
+        marker = installation_marker_path()
+        if not marker.is_file():
+            return ""
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return ""
+        return str(data.get("install_type", "")).strip().lower()
+    except Exception as e:
+        logger.debug("Installationsart konnte nicht gelesen werden: %s", e)
+        return ""
+
+
+def preferred_asset_keys(platform_key: str) -> list[str]:
+    """Asset-Prioritaet fuer die unterschiedlichen Build-Arten.
+
+    Drei Windows-/Linux-Auslieferungen haben unterschiedliche Updatepfade:
+    - Installer-Installation: Setup-EXE herunterladen und starten
+    - Direct EXE/Binary: direkte Binary stagen und nach App-Ende ersetzen
+    - Portable: portable ZIP stagen und Programmdateien ersetzen, data/ bleibt
+    """
+    keys: list[str] = []
+    install_type = read_install_type()
+    current = current_exe_filename().lower()
+
+    if platform_key == "windows":
+        if install_type in {"windows_installer", "installer"}:
+            keys.append("windows_installer")
+        if current.startswith("budgetmanager-v") or current in {"budgetmanager-windows.exe"}:
+            keys.append("direct_windows_exe")
+        keys.extend(["windows", "portable_zip"])
+    elif platform_key == "linux":
+        if current.startswith("budgetmanager-v") or current == "budgetmanager-linux":
+            keys.append("direct_linux_binary")
+        keys.extend(["linux", "portable_zip"])
+    else:
+        keys.append(platform_key)
+
+    # Duplikate stabil entfernen
+    return list(dict.fromkeys(keys))
+
+
 def is_windows() -> bool:
     return sys.platform.startswith("win")
 
 
+def stable_exe_filename() -> str:
+    """Stabiler App-Binary-Name im portablen Installationsordner.
+
+    Release-Assets dürfen versioniert heißen, aber der portable ZIP enthält
+    bewusst stabile Zielnamen. Dadurch kann der In-App-Updater eine neue
+    Version installieren und danach zuverlässig denselben Startpunkt verwenden.
+    """
+    return "BudgetManager.exe" if is_windows() else "BudgetManager"
+
+
 def current_exe_filename() -> str:
-    """Dateiname, unter dem die App-Binary installiert ist bzw. starten soll.
+    """Dateiname der aktuell laufenden App-Binary.
 
-    - Frozen (PyInstaller): exakt der Name der laufenden EXE/Binary
-      (z.B. ``BudgetManager.exe`` auf Windows, ``BudgetManager`` auf Linux).
-    - DEV: plattform-typischer Default (nur als Fallback relevant).
-
-    Wichtig fürs Update: Das GitHub-Release liefert die Windows-Binary als
-    ``BudgetManager-windows.exe``, installiert ist sie aber als
-    ``BudgetManager.exe``. Beim Stagen benennen wir die heruntergeladene
-    Binary deshalb auf genau diesen Ziel-Namen um.
+    Bei älteren portablen Builds kann dieser Name noch versioniert sein
+    (z.B. ``BudgetManager-v2.0.28-windows.exe``). Der Updater nutzt ihn zum
+    Warten auf den laufenden Prozess, aber nicht zwingend als Neustart-Ziel.
     """
     if _is_frozen():
         return Path(sys.executable).name
-    return "BudgetManager.exe" if is_windows() else "BudgetManager"
+    return stable_exe_filename()
+
+
+def update_target_exe_filename() -> str:
+    """Binary-Name, unter dem ein Update installiert und neu gestartet wird.
+
+    Versionierte Alt-Binaries werden auf den stabilen Namen migriert. Für
+    nicht-standardisierte Umbenennungen bleibt der aktuell laufende Name gültig.
+    """
+    current = current_exe_filename()
+    low = current.lower()
+    if low.startswith("budgetmanager-v") or low in {"budgetmanager-windows.exe", "budgetmanager-linux"}:
+        return stable_exe_filename()
+    return current
 
 
 def asset_is_zip(asset_url: str, asset_type: str = "") -> bool:
@@ -230,6 +301,7 @@ def write_staged_marker(version_str: str, manifest: Manifest, asset: AssetInfo) 
         "channel": manifest.channel,
         "download_url": asset.url,
         "sha256": asset.sha256,
+        "asset_type": asset.asset_type,
         "staged_at": int(time.time()),
     }
     marker.parent.mkdir(parents=True, exist_ok=True)

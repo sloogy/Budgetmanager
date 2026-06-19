@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 
 def test_release_package_contains_no_user_databases_or_keys():
@@ -154,3 +156,96 @@ def test_budget_overview_drag_drop_can_move_child_back_to_root():
     assert "new_parent_id = None" in src
     assert "def _make_category_root" in src
     assert "categories.make_root" in src
+
+
+def test_release_ignore_rules_cover_runtime_caches_and_audit_artifacts():
+    ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
+    assert ".pytest_cache/" in ignore
+    assert "__pycache__/" in ignore
+    assert "*.py[cod]" in ignore
+    assert "data/i18n_audit_report.txt" in ignore
+
+
+def test_release_tree_contains_no_stale_runtime_audit_artifacts():
+    assert not (ROOT / "data" / "i18n_audit_report.txt").exists()
+
+
+def test_frozen_update_dialog_passes_real_updater_flags():
+    src = (ROOT / "views" / "update_dialog.py").read_text(encoding="utf-8")
+    assert 'return [sys.executable, "--check-update"]' in src
+    assert 'return [sys.executable, "--apply-update"]' in src
+    assert '_entrypoint_cmd("updater.check_update") + ["--gui"]' in src
+
+
+def test_portable_release_zip_uses_stable_launch_names():
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    assert 'portable/BudgetManager.exe' in workflow
+    assert 'portable/BudgetManager"' in workflow
+    assert 'portable/${WIN_EXE_NAME}' not in workflow
+    assert 'portable/${LIN_EXE_NAME}' not in workflow
+    assert 'start "" "%DIR%BudgetManager.exe"' in workflow
+    assert 'exec "$DIR/BudgetManager" "$@"' in workflow
+
+
+def test_update_apply_migrates_versioned_portable_binary_to_stable_name(monkeypatch, tmp_path):
+    import updater.apply_update as apply_update
+
+    (tmp_path / "BudgetManager").write_text("new", encoding="utf-8")
+    monkeypatch.setattr(apply_update, "current_exe_filename", lambda: "BudgetManager-v2.0.26-linux")
+    monkeypatch.setattr(apply_update, "stable_exe_filename", lambda: "BudgetManager")
+    monkeypatch.setattr(apply_update, "update_target_exe_filename", lambda: "BudgetManager")
+
+    assert apply_update._staged_target_binary(tmp_path) == tmp_path / "BudgetManager"
+    assert apply_update._launch_exe_filename(tmp_path) == "BudgetManager"
+
+
+def test_active_release_docs_are_version_synced():
+    import app_info
+
+    version = app_info.APP_VERSION
+    active_docs = [
+        ROOT / "README.md",
+        ROOT / "README_INSTALLATION.md",
+        ROOT / "FEATURES.md",
+        ROOT / "docs" / "help" / "README.md",
+        ROOT / "docs" / "help" / "index.html",
+        ROOT / "docs" / "release-checklist.md",
+        ROOT / "docs" / "package-overview.md",
+        ROOT / "docs" / "features.md",
+    ]
+    for path in active_docs:
+        text = path.read_text(encoding="utf-8")
+        assert version in text, f"{path} enthält nicht die aktuelle Version {version}"
+        assert "2.0.25" not in text, f"{path} enthält noch v2.0.25"
+        assert "2.0.18" not in text, f"{path} enthält noch v2.0.18"
+
+
+def test_new_release_i18n_keys_exist_in_all_languages():
+    required = {
+        "budget_entry.msg.category_missing_create",
+        "savings.msg.complete_confirm",
+        "tags.msg.delete_used_confirm",
+        "theme.msg.delete_confirm",
+        "account.msg.delete_user_confirm",
+        "tracking.msg.savings_negative_prompt",
+        "backup_restore.msg.restore_restart_prompt",
+        "backup_restore.msg.reset_confirm",
+        "about.html",
+        "db.info.current",
+    }
+
+    def flatten(obj, prefix=""):
+        out = {}
+        for key, value in obj.items():
+            full = f"{prefix}.{key}" if prefix else str(key)
+            if isinstance(value, dict):
+                out.update(flatten(value, full))
+            else:
+                out[full] = value
+        return out
+
+    for lang in ("de", "en", "fr"):
+        data = json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8"))
+        flat = flatten(data)
+        missing = required - set(flat)
+        assert not missing, f"{lang}.json missing: {sorted(missing)}"

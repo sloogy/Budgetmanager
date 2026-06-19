@@ -15,17 +15,17 @@ Wenn du ein neues Release gebaut hast (portable ZIP), generierst du das Manifest
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.0.9 \
-  --release-tag v2.0.9 \
+  --version 2.0.28 \
+  --release-tag v2.0.28 \
   --channel stable \
-  --windows-zip dist/BudgetManager_PORTABLE_WINDOWS.zip \
-  --linux-zip dist/BudgetManager_PORTABLE_LINUX.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.9 \
+  --windows-zip dist/BudgetManager-v2.0.28-portable.zip \
+  --linux-zip dist/BudgetManager-v2.0.28-portable.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.28 \
   --out latest.json
 ```
 
 Danach lädst du folgende Assets ins GitHub Release hoch:
-- `BudgetManager_PORTABLE_*.zip`
+- `BudgetManager-v2.0.28-portable.zip`
 - `latest.json`
 
 Der Updater prüft dann automatisch die **SHA256** aus dem Manifest.

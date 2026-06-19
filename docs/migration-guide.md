@@ -1,8 +1,8 @@
-# Migration Guide — BudgetManager v2.0.8
+# Migration Guide — BudgetManager v2.0.28
 
 ## Grundsatz
 
-BudgetManager speichert Nutzdaten lokal in SQLite. Migrationen laufen beim Start automatisch über `model/migrations.py`.
+BudgetManager speichert Nutzdaten lokal in SQLite. Migrationen laufen beim Start automatisch über `model/migrations.py`. Beim Öffnen einer verschlüsselten Datenbank wird vor einer Migration ein Sicherheitsbackup angelegt.
 
 ## Vor einem Update
 
@@ -21,7 +21,15 @@ Der Installer überschreibt bestehende `data/budgetmanager_settings.json` nicht.
 
 ## Settings-Migration
 
-`settings.py` merged geladene Einstellungen über aktuelle Defaults. Dadurch bleiben ältere Teil-Settings kompatibel und neue Keys wie `budget_overview_drag_drop` erhalten sinnvolle Standardwerte.
+`settings.py` merged geladene Einstellungen über aktuelle Defaults. Dadurch bleiben ältere Teil-Settings kompatibel und neue Keys erhalten sinnvolle Standardwerte.
+
+## Wichtig für v2.0.28
+
+- Unter Wayland nutzt die App standardmäßig `xcb`, um Qt-Textinput-Abstürze zu vermeiden.
+- Budgetwarnungen und Cockpit-Aktionen sind Teil des aktuellen Release-Stands.
+- Restore-Fehler durch falschen Wiederherstellungscode führen nicht mehr in eine Sackgasse; der Assistent setzt sauber zurück.
+- Defekte oder nicht mehr öffnende Konten blockieren die App nicht mehr dauerhaft, sondern bieten eine Selbstheilung an.
+- Alte Zwischenstandsberichte sind aus dem Release-Paket entfernt; die Historie steht im `CHANGELOG.md`.
 
 ## Versionsprüfung
 

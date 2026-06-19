@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 from settings import Settings
 
 from model.category_model import CategoryModel, Category
+from model.crypto import suspend_after_commit_autosave
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from utils.icons import get_icon
 from views.ui_colors import ui_colors
@@ -694,43 +695,44 @@ class CategoriesTab(QWidget):
 
         self._set_loading(True)
         try:
-            for item in editable:
-                cat_id = int(item.data(self.COL_NAME, self.ROLE_ID))
+            with suspend_after_commit_autosave(self.conn):
+                for item in editable:
+                    cat_id = int(item.data(self.COL_NAME, self.ROLE_ID))
 
-                kwargs = {}
-                if fix_choice == 1:
-                    kwargs["is_fix"] = True
-                elif fix_choice == 2:
-                    kwargs["is_fix"] = False
+                    kwargs = {}
+                    if fix_choice == 1:
+                        kwargs["is_fix"] = True
+                    elif fix_choice == 2:
+                        kwargs["is_fix"] = False
 
-                if rec_choice == 1:
-                    kwargs["is_recurring"] = True
-                elif rec_choice == 2:
-                    kwargs["is_recurring"] = False
+                    if rec_choice == 1:
+                        kwargs["is_recurring"] = True
+                    elif rec_choice == 2:
+                        kwargs["is_recurring"] = False
 
-                if set_day:
-                    kwargs["is_recurring"] = True
-                    kwargs["recurring_day"] = day_val
+                    if set_day:
+                        kwargs["is_recurring"] = True
+                        kwargs["recurring_day"] = day_val
 
-                if not kwargs:
-                    continue
+                    if not kwargs:
+                        continue
 
-                try:
-                    self.model.update_flags(cat_id, **kwargs)
-                    changed += 1
+                    try:
+                        self.model.update_flags(cat_id, **kwargs)
+                        changed += 1
 
-                    if "is_fix" in kwargs:
-                        item.setCheckState(self.COL_FIX, Qt.CheckState.Checked if kwargs["is_fix"] else Qt.CheckState.Unchecked)
+                        if "is_fix" in kwargs:
+                            item.setCheckState(self.COL_FIX, Qt.CheckState.Checked if kwargs["is_fix"] else Qt.CheckState.Unchecked)
 
-                    if "is_recurring" in kwargs:
-                        item.setCheckState(self.COL_REC, Qt.CheckState.Checked if kwargs["is_recurring"] else Qt.CheckState.Unchecked)
-                        if not kwargs["is_recurring"]:
-                            item.setText(self.COL_DAY, "")
+                        if "is_recurring" in kwargs:
+                            item.setCheckState(self.COL_REC, Qt.CheckState.Checked if kwargs["is_recurring"] else Qt.CheckState.Unchecked)
+                            if not kwargs["is_recurring"]:
+                                item.setText(self.COL_DAY, "")
 
-                    if "recurring_day" in kwargs:
-                        item.setText(self.COL_DAY, str(kwargs["recurring_day"]))
-                except Exception as e:
-                    logger.debug("self.model.update_flags(cat_id, **kwargs): %s", e)
+                        if "recurring_day" in kwargs:
+                            item.setText(self.COL_DAY, str(kwargs["recurring_day"]))
+                    except Exception as e:
+                        logger.debug("self.model.update_flags(cat_id, **kwargs): %s", e)
         finally:
             self._set_loading(False)
 

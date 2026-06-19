@@ -99,7 +99,9 @@
     "goto_savings": "Aller aux &objectifs",
     "goto_cockpit": "Aller au cockpit",
     "show_tabs": "Afficher/masquer les onglets",
-    "cockpit_panels": "Panneaux du cockpit"
+    "cockpit_panels": "Panneaux du cockpit",
+    "account_data": "Compte et données",
+    "account_data_tip": "Compte, emplacement des données, sauvegarde et réinitialisation au même endroit"
   },
   "tab": {
     "budget": "Budget",
@@ -116,7 +118,8 @@
     "filter": "🔍 Filtre",
     "transactions": "📋 Transactions",
     "budget_table": "Aperçu",
-    "cockpit": "Cockpit"
+    "cockpit": "Cockpit",
+    "account": "Compte"
   },
   "btn": {
     "add": "Ajouter",
@@ -209,7 +212,7 @@
     "date": "Date :",
     "type": "Type :",
     "category": "Catégorie :",
-    "tag": "Tag:",
+    "tag": "Tag :",
     "details": "Détails :",
     "amount": "Montant :",
     "entries": "Entrées",
@@ -224,7 +227,7 @@
     "year": "Année :",
     "month": "Mois :",
     "description": "Remarque",
-    "name": "Name",
+    "name": "Nom",
     "color": "Couleur",
     "status": "Status",
     "budget": "Budget",
@@ -454,8 +457,8 @@
     "wurde_importiert": " a été importé !",
     "die_anwendung_muss_danach": "(L'application doit ensuite être redémarrée.)",
     "die_tagzuweisungen_werden_entfernt": "(Les affectations d'étiquettes sont supprimées, les transactions sont conservées.)",
-    "keine_profile_vorhanden": "(Aucun profil disponible)",
-    "keine_passenden_profile": "(Aucun profil correspondant)",
+    "keine_profile_vorhanden": "(Keine Profile vorhanden)",
+    "keine_passenden_profile": "(Keine passenden Profile)",
     "tipp_eigene_themes_koennen": "(Conseil : les thèmes personnalisés peuvent être supprimés.)",
     "und_lenselected_10_weitere": "... et {count} autres",
     "b_existiert_noch_nicht": "</b> n'existe pas encore.",
@@ -503,7 +506,7 @@
     "kategorie_nicht_gefunden": "Catégorie introuvable",
     "keine_auswahl": "Aucune sélection",
     "keine_kategorie": "Aucune catégorie",
-    "keine_statistiken": "Aucune statistique",
+    "keine_statistiken": "Keine Statistiken",
     "letzten_geoeffneten_reiter_merken": "Mémoriser le dernier onglet ouvert",
     "loeschvorgaenge_bestaetigen_lassen": "Confirmer les opérations de suppression",
     "mehrere_tags_zu_einem": "Fusionner plusieurs tags en un",
@@ -511,7 +514,7 @@
     "moechten_sie_fortfahren": "Souhaitez-vous continuer ?",
     "moechten_sie_wirklich_fortfahren": "Voulez-vous vraiment continuer ?",
     "nicht_erlaubt": "Nicht erlaubt",
-    "nicht_genug_tags": "Nicht genug Tags",
+    "nicht_genug_tags": "Pas assez de tags",
     "nur_ueberfaellige": "Uniquement en retard",
     "nur_ueberschreiben_wenn_zelle": "Écraser uniquement si la cellule est vide",
     "restorekey_ungueltig": "Clé de restauration invalide",
@@ -544,7 +547,7 @@
     "uebergeordnet": "Parent :",
     "uebernehmen": "Appliquer",
     "ueberschussdefizitvorschlag_ab": "Suggestion de surplus/déficit à partir de",
-    "keine_hauptkategorie": "— Aucune (catégorie principale) —",
+    "keine_hauptkategorie": "— Keine (Hauptkategorie) —",
     "nicht_aendern": "— Ne pas modifier —",
     "zuruecksetzen_1": "↺ Réinitialiser",
     "datenbank_zuruecksetzen_1": "⚠️ Réinitialiser la base de données",
@@ -605,7 +608,8 @@
     "restore_users_title": "Restaurer les comptes utilisateurs ?",
     "restore_users_question": "Cette sauvegarde contient des données de compte utilisateur (users.json).\n\nVoulez-vous également restaurer les comptes ?\n\n(Recommandé pour une nouvelle installation)",
     "create_account": "Configurer le compte",
-    "restore_key_intro_quick": "<b>Votre clé de restauration</b><br><br>Avec cette clé, vous pouvez restaurer votre base chiffrée.<br><b style='color:{color}'>Notez-la et conservez-la en lieu sûr !</b>"
+    "restore_key_intro_quick": "<b>Votre clé de restauration</b><br><br>Avec cette clé, vous pouvez restaurer votre base chiffrée.<br><b style='color:{color}'>Notez-la et conservez-la en lieu sûr !</b>",
+    "unknown_category": "La catégorie « {name} » n’existe pas pour ce type. Veuillez choisir une catégorie existante dans la liste."
   },
   "msg": {
     "really_delete": "Vraiment supprimer ?",
@@ -680,7 +684,15 @@
     "setup_budget_template_failed": "La structure budgétaire n’a pas pu être créée :\n{e}",
     "help_opened": "Aide ouverte : {path}",
     "help_not_found": "L’aide locale est introuvable. Vérifiez que docs/help existe dans le dossier du programme ou du bundle.",
-    "app_already_running": "BudgetManager est déjà ouvert. Veuillez utiliser la fenêtre existante."
+    "app_already_running": "BudgetManager est déjà ouvert. Veuillez utiliser la fenêtre existante.",
+    "settings_saved": "Paramètres enregistrés",
+    "budget_saved": "Budget enregistré",
+    "view_refreshed": "Vue actualisée",
+    "fullscreen_enabled": "Mode plein écran activé",
+    "fullscreen_disabled": "Mode plein écran désactivé",
+    "window_maximized": "Fenêtre maximisée",
+    "window_normalized": "Fenêtre restaurée",
+    "theme_changed_to": "Thème modifié : {theme}"
   },
   "chk": {
     "autosave": "Enregistrement automatique",
@@ -761,7 +773,23 @@
     "budget_overview_drag_drop_tip": "Permet de modifier la hiérarchie des catégories directement dans l’aperçu du budget : déposer sur une catégorie = sous-catégorie, déposer sur un en-tête de type = catégorie principale.",
     "number_format": "Format des nombres",
     "number_format_tip": "Séparateur décimal et de milliers pour les montants.",
-    "auto_backup_default_note": "L'enregistrement automatique et la sauvegarde automatique sont actifs dès le premier démarrage. Modifiable dans les réglages."
+    "auto_backup_default_note": "L'enregistrement automatique et la sauvegarde automatique sont actifs dès le premier démarrage. Modifiable dans les réglages.",
+    "data_dir_group": "Emplacement des données",
+    "data_dir_portable_placeholder": "Portable (dossier à côté du programme)",
+    "choose_data_dir": "Parcourir…",
+    "reset_data_dir_portable": "Réinitialiser en portable",
+    "data_dir_restart_hint": "Remarque : une modification ne prend effet qu'après un redémarrage. Les données existantes ne sont pas déplacées automatiquement – copiez vos fichiers dans le nouveau dossier si nécessaire.",
+    "data_dir_effective": "Actuellement actif : {path}",
+    "data_dir_changed_title": "Emplacement des données modifié",
+    "data_dir_changed_msg": "Le nouvel emplacement sera utilisé après le redémarrage de BudgetManager. Les données existantes ne sont pas déplacées automatiquement – copiez vos fichiers existants dans le nouveau dossier si nécessaire.",
+    "data_dir_migrate_title": "Transférer les données ?",
+    "data_dir_migrate_question": "Transférer les données existantes vers le nouveau dossier ?\n\nDe :\n{old}\n\nVers :\n{new}\n\nUne sauvegarde de sécurité est créée au préalable. Le dossier précédent reste inchangé.",
+    "data_dir_migrate_done_title": "Données transférées",
+    "data_dir_migrate_done_msg": "{count} éléments ont été copiés.\n\nSauvegarde de sécurité :\n{backup}\n\nNouvel emplacement (actif après redémarrage) :\n{new}\n\nVeuillez redémarrer BudgetManager. Le dossier précédent est conservé comme sauvegarde supplémentaire.",
+    "data_dir_migrate_failed_title": "Transfert impossible",
+    "data_dir_migrate_failed_msg": "Les données n'ont pas pu être transférées : {error}\n\nL'emplacement n'a pas été modifié ; vos données existantes restent actives.",
+    "data_dir_target_has_data_msg": "Le dossier sélectionné contient déjà des données. Elles seront utilisées après un redémarrage. Vos données existantes n'ont pas été modifiées.",
+    "account_data": "Compte et données"
   },
   "radio": {
     "cat_manager": "Utiliser le gestionnaire de catégories (dans le programme)",
@@ -1071,7 +1099,8 @@
       "parent_has_children": "Cette catégorie a des sous-catégories.\n\nLes valeurs mensuelles sont la somme (enfants + tampon).",
       "total_parent_readonly": "Le total est en lecture seule pour les catégories parentes.",
       "no_categories_create_main": "Il n’y a pas encore de catégories. Veuillez d’abord créer une catégorie principale.",
-      "category_missing": "La catégorie est introuvable dans la base de données. Rechargez la vue puis réessayez."
+      "category_missing": "La catégorie est introuvable dans la base de données. Rechargez la vue puis réessayez.",
+      "remove_rows_confirm": "Supprimer {count} lignes de budget pour {year} ? Les catégories elles-mêmes seront conservées."
     },
     "title": {
       "rename_category": "Renommer la catégorie",
@@ -1098,7 +1127,10 @@
       "favorite": "⭐ Marquer comme favori",
       "section_budget": "💰 Budget",
       "edit_budget": "💰 Modifier le budget…",
-      "copy_row_all_months": "Copier la ligne sur tous les mois"
+      "copy_row_all_months": "Copier la ligne sur tous les mois",
+      "multi_section": "{count} catégories sélectionnées",
+      "delete_rows_this_year_count": "Supprimer {count} lignes de budget pour cette année",
+      "delete_categories_count": "Supprimer {count} catégories globalement"
     },
     "overview": {
       "single": "Aperçu : {typ} {year}  |  Budget annuel : {year_budget}  |  Mois Ø : {month_avg}",
@@ -1112,6 +1144,10 @@
     },
     "parent": {
       "marker": "+"
+    },
+    "coverage": {
+      "warning_months": "⚠ Avertissement de couverture budget {year} : dépenses + épargne dépassent les revenus pendant {months} mois. Plus grand écart : {month} {deficit}. {suggestion}",
+      "warning_annual": "⚠ Avertissement de couverture budget {year} : le plan annuel n’est pas couvert. Écart : {deficit}. {suggestion}"
     }
   },
   "tracking": {
@@ -1148,7 +1184,8 @@
       "goal_still_saving": "L'objectif d'épargne «{goal_name}» est encore en statut <b>En cours d'épargne</b>.",
       "goal_consumption_info": "Cette réservation sera enregistrée comme consommation de l'objectif d'épargne libéré <b>«{goal_name}»</b>.\n\nMontant libéré : {current}\nRetrait : {withdrawal}",
       "fixcosts_missing": "{count} coûts fixes manquants en {month} {year}.",
-      "no_means_book_all": "(Non = réserver directement tous les manquants)"
+      "no_means_book_all": "(Non = réserver directement tous les manquants)",
+      "savings_negative_prompt": "Vous saisissez <b>{amount}</b> en négatif sur la catégorie avec l’objectif d’épargne actif <b>« {goal} »</b>.\n\nMontant actuel : {current} / {target}\n\n<b>Quelle est la raison ?</b>"
     },
     "title": {
       "set_tags": "🏷️ Définir les tags",
@@ -1188,7 +1225,10 @@
       "tip_open": "Double-clic : ouvrir l'objectif"
     },
     "category_placeholder": "Rechercher ou sélectionner une catégorie …",
-    "category_tip": "Les favoris restent en haut. Les catégories normales suivent par fréquence de saisie manuelle. Les catégories fixes/récurrentes ont leurs propres groupes et ne remontent pas à cause des écritures automatiques."
+    "category_tip": "Les favoris restent en haut. Les catégories normales suivent par fréquence de saisie manuelle. Les catégories fixes/récurrentes ont leurs propres groupes et ne remontent pas à cause des écritures automatiques.",
+    "coverage": {
+      "warning": "⚠ Avertissement de couverture suivi : dépenses + épargne comptabilisées dépassent les revenus comptabilisés de {deficit}. {suggestion}"
+    }
   },
   "tab_ui": {
     "keine_daten": " (aucune donnée)",
@@ -1200,12 +1240,12 @@
     "bitte_zuerst_kategorien_auswaehlen_1": "Veuillez d'abord sélectionner des catégories.",
     "bitte_zuerst_eine_kategorie": "Veuillez d'abord sélectionner une catégorie.",
     "erhoehungen": "Augmentations :",
-    "keine_flags": "Aucun indicateur",
+    "keine_flags": "Keine Flags",
     "keine_offenen_betraege": "Aucun montant ouvert",
     "name_der_unterkategorie_typ": "Nom de la sous-catégorie ({typ}) :",
     "name_der_neuen_kategorie": "Nom de la nouvelle catégorie ({typ}) :",
     "nicht_aendern": "Ne pas modifier",
-    "verteilung_nach_typ": "Verteilung nach Typ",
+    "verteilung_nach_typ": "Répartition par type",
     "vorschlaegebanner_konnte_nicht_geladen": "La bannière de suggestions n'a pas pu être chargée : %s",
     "get_flags_fehlgeschlagen_fuer_ss": "Échec de get_flags pour %s/%s : %s",
     "aenderungen_auf_bleneditableb_ausgewaehlte": "Appliquer les modifications à <b>{count}</b> catégorie(s) sélectionnée(s) :",
@@ -1231,7 +1271,7 @@
     "geloescht": "Supprimé",
     "hier_kannst_du_deinen": "Vous pouvez modifier votre nom d'affichage ici.",
     "kein_restorekey_verfuegbar": "Aucune clé de restauration disponible.",
-    "keine_benutzer_vorhanden": "Aucun utilisateur disponible.",
+    "keine_benutzer_vorhanden": "Keine Benutzer vorhanden.",
     "kopieren_nicht_moeglich": "Copie impossible.",
     "maximaler_schutz_mit_passwort": "Protection maximale avec mot de passe.",
     "name_konnte_nicht_gespeichert": "Le nom n'a pas pu être enregistré.",
@@ -1261,7 +1301,15 @@
     "pin_length": "Le code PIN doit comporter 4 à 8 chiffres.",
     "password_min_length": "Le mot de passe doit comporter au moins 4 caractères.",
     "quick_login_failed": "Échec de la connexion rapide.",
-    "quick_no_protection_warn": "⚠️ Sans mot de passe : toute personne ayant accès à vos fichiers peut ouvrir vos données. Pratique, mais non protégé."
+    "quick_no_protection_warn": "⚠️ Sans mot de passe : toute personne ayant accès à vos fichiers peut ouvrir vos données. Pratique, mais non protégé.",
+    "msg": {
+      "delete_user_confirm": "Supprimer vraiment « {name} » ?\n\n⚠️ La base de données chiffrée ({db}) sera supprimée !\nCette action NE PEUT PAS être annulée !"
+    },
+    "display_name_label": "Nom d’affichage :",
+    "username_label": "Nom d’utilisateur :",
+    "current_secret_label": "{mode_label} actuel :",
+    "new_secret_label": "Nouveau {mode_label} :",
+    "repeat_secret_label": "Répéter :"
   },
   "backup": {
     "btn_restore": "Restaurer la sauvegarde",
@@ -1316,9 +1364,23 @@
   },
   "savings": {
     "msg": {
-      "select_goal": "Veuillez sélectionner un objectif."
+      "select_goal": "Veuillez sélectionner un objectif.",
+      "spent_since_release": "\nDépensé depuis la libération : {amount}\n",
+      "complete_confirm": "Clôturer vraiment l’objectif d’épargne « {name} » ?\n\nMontant actuel : {amount}\n{extra}L’objectif sera archivé et ne pourra plus recevoir d’écritures.\nIl peut être rouvert à tout moment."
     },
-    "workflow_hint": "💡 Fil rouge : planifier dans Budget → saisir l'épargne dans Suivi → vérifier l'avancement → libérer → saisir les retraits comme consommation → clôturer."
+    "workflow_hint": "💡 Fil rouge : planifier dans Budget → saisir l'épargne dans Suivi → vérifier l'avancement → libérer → saisir les retraits comme consommation → clôturer.",
+    "bounds": {
+      "title": "Limite de l’objectif d’épargne atteinte",
+      "withdraw_too_much": "Cette écriture n’a pas été enregistrée.\n\nL’objectif d’épargne « {goal_name} » contient actuellement {current_amount}. Vous vouliez retirer {attempted_amount}. Cela ferait passer le solde à {resulting_amount}.\n\nVous pouvez retirer au maximum {max_allowed}. Un objectif d’épargne ne peut pas passer sous 0.",
+      "deposit_too_much": "Cette écriture n’a pas été enregistrée.\n\nL’objectif d’épargne « {goal_name} » a un objectif de {target_amount}. Solde actuel : {current_amount}. Vous vouliez verser {attempted_amount}. Cela ferait passer le solde à {resulting_amount}.\n\nVous pouvez encore verser au maximum {max_allowed}. Un objectif d’épargne ne peut pas dépasser 100 %."
+    },
+    "tooltip": {
+      "status": "Statut : {status}",
+      "category": "Catégorie : {category}",
+      "deadline": "Échéance : {deadline}",
+      "released": "Libéré : {date}",
+      "note": "Note : {note}"
+    }
   },
   "export": {
     "success_title": "Export réussi",
@@ -1353,7 +1415,8 @@
     "about_name": "Nom",
     "about_version": "Version",
     "enc_info": "🔒 Votre base de données est chiffrée.\nLe chemin et la base de données sont gérés via la gestion des comptes.",
-    "version_unknown": "(Version inconnue)"
+    "version_unknown": "(Version inconnue)",
+    "data_dir_current": "Emplacement :"
   },
   "update": {
     "hint_staging": "Remarque : « Vérifier & télécharger » télécharge une mise à jour et la place dans « updates/staging/ ».",
@@ -1418,7 +1481,15 @@
     "auto_backup_notice": "Une sauvegarde automatique sera créée.\n\n{extra}",
     "backup_created": "Sauvegarde créée : {name}\n\n{extra}",
     "error_title": "Erreur",
-    "hints_title": "Conseils"
+    "hints_title": "Conseils",
+    "user_line": {
+      "active": "Utilisateur actif : {name} ({security})\n",
+      "plain": "Utilisateur actif : (base non chiffrée / pas de mode utilisateur)\n"
+    },
+    "msg": {
+      "restore_restart_prompt": "La base de données a été restaurée.\n\n{user_line}La base active a été remplacée :\n{target}\n\nIMPORTANT : un redémarrage est nécessaire pour charger la nouvelle base.\n\nQuitter l’application maintenant ?",
+      "reset_confirm": "AVERTISSEMENT : cela supprime TOUTES les données !\n\nLa base de données sera réinitialisée aux valeurs par défaut.\nUne sauvegarde automatique sera créée.\n\nVoulez-vous vraiment continuer ?"
+    }
   },
   "cat": {
     "default": {
@@ -1574,6 +1645,9 @@
     "restore_key_prompt": "Cette sauvegarde est chiffrée et provient probablement d'un autre compte.\n\nVeuillez entrer le code de récupération (Restore-Key).",
     "restore_key_title": "Restore-Key",
     "restore_aborted_no_key": "Restauration annulée (aucun Restore-Key saisi).",
+    "restore_retry_from_start": "Veuillez recommencer : créez un nouvel utilisateur ou réimportez la sauvegarde.",
+    "recover_title": "Le compte ne peut pas être ouvert",
+    "recover_question": "La base de données de ce compte ne peut pas être ouverte :\n\n{reason}\n\nVoulez-vous supprimer le compte et relancer la configuration initiale (par ex. pour réimporter la sauvegarde) ?\n\nLes fichiers de sauvegarde existants restent intacts.",
     "import_title": "Succès"
   },
   "create_user": {
@@ -1601,45 +1675,45 @@
       "411_budgetmanager_konnte_nicht_gestarte_8ae862ce": "Budgetmanager n'a pas pu démarrer :\n\n{value_0}\n\nVoir budgetmanager.log pour plus de détails."
     },
     "settings_dialog": {
-      "146_start_bedienung_809e5573": "Démarrage & Utilisation",
-      "182_eingabe_workflow_c2c724ba": "Saisie & Flux de travail",
+      "146_start_bedienung_809e5573": "Start & Bedienung",
+      "182_eingabe_workflow_c2c724ba": "Eingabe & Workflow",
       "212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5": "Jour préféré pour les nouvelles catégories/transactions récurrentes.\nDéfini automatiquement lorsque vous marquez une catégorie comme récurrente.\nFin de mois = dernier jour du mois.",
       "226_mindestanzahl_aufeinanderfolgender__c912895e": "Nombre minimal de mois consécutifs avec la même tendance\navant qu'une suggestion d'ajustement ne soit affichée.",
       "237_ab_welchem_monat_soll_der_uebertrag_6ec46422": "À partir de quel mois le report doit-il être cumulé ?\nExemple : à partir de mars → janv./févr. n'ont pas de report,\nle cumul ne commence qu'en mars.",
       "246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac": "À partir de quelle année le report doit-il être cumulé ?\nLe report est transféré d'une année à l'autre.\nExemple : année de début 2025, mois de début mars →\nle cumul commence en mars 2025 et se poursuit\nsur toutes les années suivantes.",
-      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Afficher un onglet Catégories séparé",
+      "260_separaten_kategorien_tab_anzeigen_e55079e5": "Afficher l’onglet Catégories séparé",
       "262_aktiviert_den_separaten_kategorien__7db32e53": "Active l'onglet Catégories distinct pour une gestion avancée des catégories.\n\nPar défaut : désactivé – les catégories sont créées et gérées directement dans la boîte de dialogue du budget.\nL'onglet distinct est utile pour l'édition en masse, les filtres et les options avancées.\n\nLa modification nécessite un redémarrage de l'application.",
       "270_small_i_hinweis_kategorien_koennen__5859fbbe": "<small><i>Remarque : les catégories peuvent aussi être créées et modifiées directement dans la boîte de dialogue du budget via le menu ⚙.</i></small>",
-      "310_tabellen_listen_d0cf90f1": "Tableaux & Listes",
+      "310_tabellen_listen_d0cf90f1": "Tabellen & Listen",
       "328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c": "<i>Cliquez sur un raccourci et appuyez sur la combinaison de touches souhaitée. Les champs vides désactivent le raccourci.</i>",
       "485_budgetmanager_11c4305b": "Budgetmanager",
-      "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "Base de données SQLite (*.db *.sqlite *.sqlite3);;Tous les fichiers (*)",
-      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Sauvegarde créée avec succès :\n{value_0}\n\nEmplacement : {value_1}"
+      "696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4": "Base SQLite (*.db *.sqlite *.sqlite3);;Tous les fichiers (*)",
+      "777_backup_erfolgreich_erstellt_value_0_a8f58abf": "Backup erfolgreich erstellt:\n{value_0}\n\nOrt: {value_1}"
     },
     "views_budget_entry_dialog_extended": {
       "82_kategorie_details_6ef68b34": "Détails de la catégorie",
       "90_b_value_0_b_ee6c93f4": "<b>{value_0}</b>",
       "95_hauptkategorie_kein_parent_883e571a": "— Catégorie principale (sans parent) —",
-      "110_eigenschaften_902ad0b9": "Propriétés",
+      "110_eigenschaften_902ad0b9": "Eigenschaften",
       "140_kategorie_erstellen_d45dd95d": "Créer une catégorie",
       "164_eine_kategorie_mit_dem_namen_value__2fba299b": "Une catégorie nommée « {value_0} » existe déjà.",
       "184_konnte_kategorie_nicht_erstellen_va_dce4d9f6": "Impossible de créer la catégorie :\n{value_0}",
       "220_kategorie_optionen_e050bea2": "Options de catégorie",
-      "225_neue_unterkategorie_e01e0b00": "Nouvelle sous-catégorie…",
+      "225_neue_unterkategorie_e01e0b00": "Neue Unterkategorie…",
       "314_name_der_neuen_kategorie_value_0_399f599a": "Nom de la nouvelle catégorie ({value_0}) :",
       "333_konnte_kategorie_nicht_erstellen_va_12bb8446": "Impossible de créer la catégorie :\n{value_0}",
       "358_parent_kategorie_23016e6b": "Catégorie parente",
       "375_name_der_neuen_unterkategorie_unter_655e15ec": "Nom de la nouvelle sous-catégorie sous « {value_0} » :",
       "394_konnte_unterkategorie_nicht_erstell_10c56189": "Impossible de créer la sous-catégorie :\n{value_0}",
-      "404_umbenennen_6ad211f7": "Renommer",
+      "404_umbenennen_6ad211f7": "Umbenennen",
       "405_neuer_name_fuer_value_0_ac7dc2c9": "Nouveau nom pour « {value_0} » :",
       "425_kategorie_umbenannt_value_0_value_1_ac33fb77": "Catégorie renommée : « {value_0} » → « {value_1} »\nToutes les entrées de budget et de suivi ont été mises à jour.",
-      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Échec du renommage :\n{value_0}",
+      "429_umbenennen_fehlgeschlagen_value_0_5f1ed952": "Umbenennen fehlgeschlagen:\n{value_0}",
       "506_tag_im_monat_fuer_value_0_1_31_1fcfbede": "Jour du mois pour « {value_0} » (1-31) :",
       "516_faelligkeitstag_fuer_value_0_auf_va_02c90616": "Jour d'échéance pour « {value_0} » fixé au {value_1}.\n(Récurrent a été activé automatiquement)",
       "616_z_b_1200_00_ad178edd": "z.B. 1200.00",
       "620_monat_88dd17e2": "Mois",
-      "620_bereich_8b22d123": "Bereich",
+      "620_bereich_8b22d123": "Période",
       "715_fehlt_2f708b3e": "Manquant"
     },
     "views_language_select_dialog": {
@@ -1648,9 +1722,9 @@
       "57_ok_6128635b": "✓  OK"
     },
     "views_database_management_dialog": {
-      "54_datenbank_verwaltung_de01b445": "🗄️ Gestion de la base de données",
+      "54_datenbank_verwaltung_de01b445": "🗄️ Datenbank-Verwaltung",
       "83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4": "Supprime les entrées orphelines, les données invalides et optimise la base de données.\nCette opération est sûre et ne supprime aucune donnée importante.",
-      "89_datenbank_bereinigen_031c950d": "🧹 Nettoyer la base de données",
+      "89_datenbank_bereinigen_031c950d": "🧹 Datenbank bereinigen",
       "101_b_achtung_b_diese_aktion_loescht_da_28422052": "<b>ATTENTION :</b> cette action supprime des données !\nUne sauvegarde est créée automatiquement.",
       "118_budget_kategorien_zuruecksetzen_buc_e2fafa90": "Réinitialiser le budget et les catégories (conserver les transactions)",
       "207_value_0_details_value_1_c4c562a1": "{value_0}\n\nDetails:\n{value_1}"
@@ -1667,43 +1741,43 @@
       "54_zu_exportierende_daten_263da15e": "Données à exporter",
       "57_tracking_daten_transaktionen_e754548e": "📊 Données de suivi (transactions)",
       "61_budget_daten_d0bbdcff": "💰 Données de budget",
-      "72_zeitraum_91c1e2b4": "Période",
+      "72_zeitraum_91c1e2b4": "Zeitraum",
       "94_optionen_21208517": "Optionen",
-      "111_exportieren_f9fcfb6d": "Exporter...",
-      "146_export_speichern_unter_7108d72d": "Enregistrer l’export sous",
+      "111_exportieren_f9fcfb6d": "Exportieren...",
+      "146_export_speichern_unter_7108d72d": "Export speichern unter",
       "147_value_0_value_1_3c09bb8d": "{value_0}.{value_1}"
     },
     "views_account_management_dialog": {
       "58_value_0_ce49c534": "👤 {value_0}",
       "78_profil_a112e8f0": "Profil",
-      "80_passwort_pin_2e7b87ff": "Mot de passe / PIN",
-      "123_namen_speichern_3c32107f": "Enregistrer le nom",
+      "80_passwort_pin_2e7b87ff": "Passwort / PIN",
+      "123_namen_speichern_3c32107f": "Namen speichern",
       "145_info_80dc0679": "Info",
       "151_value_0_3a8da07a": "👤 {value_0}",
-      "153_gespeichert_1672f513": "Enregistré",
+      "153_gespeichert_1672f513": "Gespeichert",
       "172_dein_konto_hat_aktuell_b_keinen_pas_1282d8ba": "⚡ Votre compte n'a actuellement <b>aucune protection par mot de passe</b>.\n\nPour définir un mot de passe ou un PIN, changez d'abord\nle niveau de sécurité dans l'onglet « 🔒 Niveau de sécurité ».\n\n<b>Important :</b> même sans mot de passe, il existe une <b>clé de restauration</b>. Elle vous permet de rouvrir une sauvegarde chiffrée.",
       "186_b_nur_an_einem_sicheren_ort_speiche_b5321905": "⚠️ <b>Conservez-la uniquement dans un endroit sûr.</b>\nPerdre le PIN ou la clé de restauration = la base de données ne peut plus être déchiffrée.",
-      "237_aktuelles_value_0_eingeben_53722645": "Saisir le {value_0} actuel",
+      "237_aktuelles_value_0_eingeben_53722645": "Aktuelles {value_0} eingeben",
       "257_value_0_wiederholen_679c9574": "{value_0} wiederholen",
       "360_wechsle_die_sicherheitsstufe_deines_f6de7988": "Modifiez le niveau de sécurité de votre compte.\nLa base de données est conservée.",
-      "378_neue_sicherheitsstufe_3f613920": "Nouveau niveau de sécurité",
+      "378_neue_sicherheitsstufe_3f613920": "Neue Sicherheitsstufe",
       "385_schneller_zugriff_ohne_eingabe_schu_5c56399c": "Accès rapide sans saisie.\nProtège contre les erreurs — pas en cas de perte de la clé USB.",
-      "415_aktuelles_passwort_38b1f100": "Mot de passe actuel :",
-      "427_neues_passwort_d5fba2a0": "Nouveau mot de passe :",
+      "415_aktuelles_passwort_38b1f100": "Aktuelles Passwort:",
+      "427_neues_passwort_d5fba2a0": "Neues Passwort:",
       "513_quick_modus_entfernt_den_passwortsc_84601067": "⚠️ Le mode rapide supprime la protection par mot de passe !\nToute personne ayant accès à vos fichiers peut ouvrir les données.",
       "525_value_0_oder_restore_key_verlieren__81330d27": "⚠️ Perdre le {value_0} ou la clé de restauration = base de données perdue à jamais !",
-      "538_aktuelle_stufe_5d6746d9": "(Niveau actuel)",
-      "542_wechseln_zu_value_0_c4af1f8b": "Passer à : {value_0}",
+      "538_aktuelle_stufe_5d6746d9": "(Aktuelle Stufe)",
+      "542_wechseln_zu_value_0_c4af1f8b": "Wechseln zu: {value_0}",
       "558_info_c90436c3": "Info",
-      "606_schutz_entfernen_0233ca15": "Supprimer la protection",
+      "606_schutz_entfernen_0233ca15": "Schutz entfernen",
       "634_value_0_value_1_erstellt_value_2_08181f59": "{value_0} {value_1}  •  Erstellt: {value_2}",
       "653_sicherheitsstufe_geaendert_zu_value_de978174": "Niveau de sécurité changé en « {value_0} ».",
       "692_b_wichtig_b_dein_restore_key_hat_si_aa706b0f": "⚠️ <b>IMPORTANT :</b> votre clé de restauration a changé !<br>Notez cette clé en lieu sûr — c'est votre accès d'urgence.<br>Sans cette clé et sans mot de passe/PIN, vos données sont <b>perdues</b> !",
-      "705_dein_neuer_restore_key_0417e1e7": "Votre nouvelle clé de récupération :",
-      "720_in_zwischenablage_kopieren_a988f8aa": "Copier dans le presse-papiers",
+      "705_dein_neuer_restore_key_0417e1e7": "Dein neuer Restore-Key:",
+      "720_in_zwischenablage_kopieren_a988f8aa": "In Zwischenablage kopieren",
       "736_ich_habe_den_key_notiert_9961ef11": "J'ai noté la clé",
-      "754_kopiert_833acc01": "Copié !",
-      "757_in_zwischenablage_kopieren_a4a61e69": "Copier dans le presse-papiers"
+      "754_kopiert_833acc01": "Kopiert!",
+      "757_in_zwischenablage_kopieren_a4a61e69": "In Zwischenablage kopieren"
     },
     "views_budget_adjustment_dialog": {
       "366_value_0_e619e83b": "{value_0}%",
@@ -1728,7 +1802,7 @@
     "views_budget_entry_dialog": {
       "102_z_b_1200_00_d7c96b70": "z.B. 1200.00",
       "105_monat_069d7526": "Mois",
-      "105_bereich_1f8db464": "Bereich",
+      "105_bereich_1f8db464": "Période",
       "120_neue_kategorie_erstellen_2cbb61c0": "Créer une nouvelle catégorie",
       "145_diese_kategorie_ist_eine_monatlich__584b29cb": "Cette catégorie est une dépense mensuelle fixe",
       "290_value_0_b601d60d": "  ↳ {value_0}",
@@ -1747,11 +1821,11 @@
       "1089_budget_bearbeiten_45efb7d1": "Budget &bearbeiten...",
       "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Créer des lignes depuis les &catégories",
       "1103_jahr_kopieren_a5365b5b": "&Copier l’année...",
-      "1111_budget_zeile_entfernen_2116ca10": "Supprimer la &ligne de budget",
-      "1125_neue_hauptkategorie_4edd9c24": "Nouvelle &catégorie principale...",
-      "1131_neue_unterkategorie_51ea953c": "Nouvelle &sous-catégorie...",
+      "1111_budget_zeile_entfernen_2116ca10": "Budget-&Zeile entfernen",
+      "1125_neue_hauptkategorie_4edd9c24": "Neue &Hauptkategorie...",
+      "1131_neue_unterkategorie_51ea953c": "Neue &Unterkategorie...",
       "1144_massenbearbeitung_aa0c33a1": "&Massenbearbeitung...",
-      "1156_fixkosten_buchen_61d1976c": "&Fixkosten buchen...",
+      "1156_fixkosten_buchen_61d1976c": "Comptabiliser les &frais fixes...",
       "1166_daten_aktualisieren_6e5a0ee6": "&Actualiser les données",
       "1577_info_a7110986": "Info",
       "1578_kontoverwaltung_ist_nur_bei_verschl_381922cb": "La gestion des comptes n'est disponible que pour les comptes chiffrés.",
@@ -1759,57 +1833,57 @@
       "1615_value_0_value_1_value_2_81323b29": "{value_0} {value_1} — {value_2}",
       "1625_value_0_value_1_value_2_1999fbaa": "{value_0} — {value_1} {value_2}",
       "1629_value_0_value_1_value_2_943d4260": "{value_0} {value_1} — {value_2}",
-      "1788_neustart_erforderlich_288778eb": "Redémarrage requis",
+      "1788_neustart_erforderlich_288778eb": "Neustart erforderlich",
       "1789_bitte_starten_sie_die_anwendung_neu_e67d74c9": "Veuillez redémarrer l'application pour appliquer les modifications."
     },
     "views_savings_goals_dialog": {
       "42_bearbeiten_ba02fd7d": "Modifier",
       "47_sync_0d895102": "Sync",
-      "51_abschliessen_dfbbbdb2": "Terminer",
+      "51_abschliessen_dfbbbdb2": "Abschliessen",
       "58_sparziel_freigeben_der_aktuelle_sta_cc2b88a8": "Débloquer l'objectif d'épargne : le solde actuel est gelé.\nDès lors, des dépenses peuvent être enregistrées sur cet objectif.",
       "62_sparziel_abschliessen_wird_archivie_010ae566": "Terminer l'objectif d'épargne : il est archivé et marqué comme terminé.",
       "65_sparziel_wieder_zum_sparen_oeffnen__a747e4b3": "Rouvrir l'objectif d'épargne pour épargner.\nLe statut de déblocage est réinitialisé.",
-      "75_ziel_value_0_4affdb3b": "Objectif ({value_0})",
-      "75_aktuell_value_0_30c65ab2": "Actuel ({value_0})",
-      "76_restbetrag_86038dcb": "Montant restant",
-      "77_verbraucht_f5ec0888": "Consommé",
+      "75_ziel_value_0_4affdb3b": "Ziel ({value_0})",
+      "75_aktuell_value_0_30c65ab2": "Aktuell ({value_0})",
+      "76_restbetrag_86038dcb": "Restbetrag",
+      "77_verbraucht_f5ec0888": "Verbraucht",
       "105_lebenszyklus_b_sparend_b_b_freigege_b8234217": "💡 Cycle de vie : <b>Épargne</b> → <b>Débloqué</b> (retraits possibles) → <b>Terminé</b> (archive)",
-      "161_freigeben_a27ef668": "Libérer…",
-      "164_abschliessen_786dc795": "Terminer…",
+      "161_freigeben_a27ef668": "Freigeben…",
+      "164_abschliessen_786dc795": "Abschliessen…",
       "282_value_0_f11eb723": "-{value_0}",
       "350_sparziel_value_0_wirklich_loeschen_a0a55e23": "Supprimer vraiment l'objectif d'épargne « {value_0} » ?",
       "378_dieses_sparziel_ist_mit_keiner_kate_b42a28db": "Cet objectif d'épargne n'est lié à aucune catégorie.",
-      "386_synchronisiert_2f5168bf": "Synchronisé",
+      "386_synchronisiert_2f5168bf": "Synchronisiert",
       "387_sparziel_value_0_wurde_mit_tracking_3a7d4952": "L'objectif d'épargne « {value_0} » a été synchronisé avec le suivi.\n\nCatégorie : {value_1}\nAvant : {value_2}\nAprès : {value_3}\nDifférence : {value_4}",
       "409_sparziel_freigeben_adf2825a": "Libérer l’objectif d’épargne",
       "410_sparziel_value_0_freigeben_aktuelle_7e8d5f78": "Débloquer l'objectif d'épargne « {value_0} » ?\n\nSolde actuel : {value_1}\nObjectif : {value_2}\n\nLe solde actuel ({value_3}) sera gelé.\nDès lors, les transactions négatives sont enregistrées comme des retraits.\n\nContinuer ?",
       "425_sparziel_value_0_wurde_freigegeben__f6d8c79d": "L'objectif d'épargne « {value_0} » a été débloqué.\n\nMontant gelé : {value_1}\nVous pouvez maintenant enregistrer des dépenses sur cet objectif.",
-      "444_sparziel_abschliessen_81af1e70": "Terminer l’objectif d’épargne",
+      "444_sparziel_abschliessen_81af1e70": "Clore l’objectif d’épargne",
       "465_sparziel_value_0_wieder_zum_sparen__1510830d": "Rouvrir l'objectif d'épargne « {value_0} » pour épargner ?\n\nLe statut de déblocage et le montant gelé seront réinitialisés.\nContinuer ?",
-      "506_keine_8218b1ac": "(Aucun)",
+      "506_keine_8218b1ac": "(Keine)",
       "516_value_0_value_1_e61189ab": "{value_0} / {value_1}",
       "519_value_0_value_1_016e0b40": "{value_0} / {value_1}",
       "560_i_small_tipp_wenn_eine_kategorie_au_ddfbcc66": "<i><small>💡 Astuce : lorsqu'une catégorie est sélectionnée, la progression est automatiquement synchronisée avec les transactions d'épargne de cette catégorie.</small></i>",
-      "612_aktuell_value_0_05ac9b67": "Actuel : {value_0}",
-      "613_ziel_value_0_3aea07af": "Objectif : {value_0}",
-      "614_restbetrag_value_0_711be043": "Montant restant : {value_0}",
+      "612_aktuell_value_0_05ac9b67": "Aktuell: {value_0}",
+      "613_ziel_value_0_3aea07af": "Ziel: {value_0}",
+      "614_restbetrag_value_0_711be043": "Restbetrag: {value_0}",
       "616_status_freigegeben_eingef_value_0_6728eed9": "Status: 🔓 Freigegeben (eingef. {value_0})"
     },
     "views_theme_editor_dialog": {
-      "103_hell_66974dd7": "clair",
-      "103_dunkel_b0351793": "sombre",
-      "297_neues_theme_7b9881d9": "Nouveau thème",
-      "297_theme_name_e4293a7f": "Nom du thème :",
-      "316_theme_duplizieren_610b8173": "Dupliquer le thème",
-      "317_neuer_name_771ef819": "Nouveau nom :",
+      "103_hell_66974dd7": "hell",
+      "103_dunkel_b0351793": "dunkel",
+      "297_neues_theme_7b9881d9": "Neues Theme",
+      "297_theme_name_e4293a7f": "Theme-Name:",
+      "316_theme_duplizieren_610b8173": "Theme duplizieren",
+      "317_neuer_name_771ef819": "Neuer Name:",
       "318_value_0_kopie_7305d694": "{value_0} (Kopie)",
-      "388_theme_importieren_3afd6b46": "Importer un thème",
+      "388_theme_importieren_3afd6b46": "Theme importieren",
       "388_json_json_90618946": "JSON (*.json)",
-      "403_name_existiert_4dd02b77": "Le nom existe",
-      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Le nom du thème existe déjà. Nouveau nom :",
+      "403_name_existiert_4dd02b77": "Name existiert",
+      "404_theme_name_existiert_bereits_neuer__ebc86c02": "Theme-Name existiert bereits. Neuer Name:",
       "405_value_0_import_6030fc3e": "{value_0} (Import)",
       "418_import_fehlgeschlagen_value_0_17d04026": "Import fehlgeschlagen:\n{value_0}",
-      "426_theme_exportieren_30cdc637": "Exporter le thème",
+      "426_theme_exportieren_30cdc637": "Theme exportieren",
       "427_value_0_json_05d9a4f0": "{value_0}.json",
       "428_json_json_7142e86c": "JSON (*.json)",
       "444_export_fehlgeschlagen_value_0_b3ec54e6": "Export fehlgeschlagen:\n{value_0}"
@@ -1830,7 +1904,7 @@
       "249_tag_value_0_wurde_erstellt_3d280c8d": "L'étiquette « {value_0} » a été créée.",
       "255_tag_konnte_nicht_erstellt_werden_955e67d7": "L'étiquette n'a pas pu être créée.",
       "269_tag_bearbeiten_5fd01a35": "Modifier l'étiquette",
-      "270_neuer_name_ada4af32": "Nouveau nom :",
+      "270_neuer_name_ada4af32": "Neuer Name:",
       "283_tag_existiert_1725866c": "L'étiquette existe",
       "284_ein_tag_mit_dem_namen_value_0_exist_126d57ed": "Une étiquette nommée « {value_0} » existe déjà.",
       "296_tag_wurde_umbenannt_in_value_0_a29907d3": "L'étiquette a été renommée en « {value_0} ».",
@@ -1844,7 +1918,7 @@
       "471_tags_wurden_erfolgreich_zusammengef_c25182ec": "Les étiquettes ont été fusionnées avec succès.",
       "477_tags_konnten_nicht_zusammengefuehrt_5b23f4a0": "Les étiquettes n'ont pas pu être fusionnées.",
       "488_es_sind_noch_keine_tags_mit_buchung_502ddf34": "Il n'y a pas encore d'étiquettes avec des transactions.",
-      "501_anzahl_buchungen_d50207ae": "Nombre d’écritures",
+      "501_anzahl_buchungen_d50207ae": "Anzahl Buchungen",
       "501_gesamtbetrag_034bb324": "Gesamtbetrag"
     },
     "views_shortcuts_dialog": {
@@ -1856,7 +1930,7 @@
       "415_export_fehlgeschlagen_value_0_208f6ca9": "Export fehlgeschlagen:\n{value_0}",
       "468_import_fehlgeschlagen_value_0_fabf2450": "Import fehlgeschlagen:\n{value_0}",
       "706_datenbank_wurde_wiederhergestellt_v_442b01cf": "La base de données a été restaurée.\n\n{value_0}Base active :\n{value_1}\n\nLes données sont actives immédiatement — aucun redémarrage requis.",
-      "722_neustart_erforderlich_5f2fbae8": "Redémarrage requis",
+      "722_neustart_erforderlich_5f2fbae8": "Neustart erforderlich",
       "811_datenbank_wurde_zurueckgesetzt_back_48960617": "La base de données a été réinitialisée.\n\nSauvegarde créée : budgetmanager_before_reset_{value_0}.bmr\n\nVeuillez redémarrer l'application.",
       "820_reset_fehlgeschlagen_value_0_9b562dab": "Reset fehlgeschlagen:\n{value_0}",
       "830_notfall_reset_31e1b16e": "🆘 NOTFALL-RESET",
@@ -1872,9 +1946,9 @@
       "472_noch_kein_benutzer_eingerichtet_ers_0a15a1a4": "Aucun utilisateur configuré.\n\nCréez un utilisateur pour commencer.",
       "499_starten_00906f67": "Starten",
       "520_anmelden_e04d6ff2": "Anmelden",
-      "531_restore_key_verwenden_3cecdcdd": "Utiliser la clé de récupération",
+      "531_restore_key_verwenden_3cecdcdd": "Restore-Key verwenden",
       "568_anmelden_2adc1609": "Anmelden",
-      "579_restore_key_verwenden_3077a331": "Utiliser la clé de récupération",
+      "579_restore_key_verwenden_3077a331": "Restore-Key verwenden",
       "599_starten_3071b86d": "Starten",
       "608_anmelden_da7d6295": "Anmelden",
       "645_anmelden_08c3b10b": "Anmelden",
@@ -1926,11 +2000,11 @@
       "536_b_value_0_i_value_1_r_value_2_25a9e209": "B: {value_0}\nI: {value_1}\nR: {value_2}"
     },
     "views_tabs_categories_tab": {
-      "68_neu_hauptkategorie_d317a531": "Nouveau (catégorie principale)",
-      "69_neu_unterkategorie_577581bc": "Nouveau (sous-catégorie)",
-      "344_neu_hauptkategorie_852d2884": "Nouveau (catégorie principale)",
-      "346_neu_unterkategorie_18e330b2": "Nouveau (sous-catégorie)",
-      "349_umbenennen_4ad27303": "Renommer",
+      "68_neu_hauptkategorie_d317a531": "Neu (Hauptkategorie)",
+      "69_neu_unterkategorie_577581bc": "Neu (Unterkategorie)",
+      "344_neu_hauptkategorie_852d2884": "Neu (Hauptkategorie)",
+      "346_neu_unterkategorie_18e330b2": "Neu (Unterkategorie)",
+      "349_umbenennen_4ad27303": "Umbenennen",
       "647_setzen_ja_f86a5233": "Setzen: Ja",
       "647_setzen_nein_60c1ccf6": "Setzen: Nein",
       "651_setzen_ja_63aa1520": "Setzen: Ja",
@@ -1955,19 +2029,19 @@
       "1934_favorit_6f4adb2a": "Favorit",
       "1943_favorit_a9b8479f": "Favorit",
       "1944_value_0_wurde_aus_favoriten_entfern_56aa3cd9": "☆ « {value_0} » a été retiré des favoris.",
-      "2115_alles_aufklappen_d750a09b": "Alles aufklappen",
-      "2116_alles_zuklappen_nur_hauptkategorien_4f06f19e": "Alles zuklappen (nur Hauptkategorien)",
+      "2115_alles_aufklappen_d750a09b": "Tout développer",
+      "2116_alles_zuklappen_nur_hauptkategorien_4f06f19e": "Tout réduire (catégories principales seulement)",
       "2118_nur_ebene_0_anzeigen_b996cf39": "Nur Ebene 0 anzeigen",
-      "2119_bis_ebene_1_anzeigen_ec306d04": "Bis Ebene 1 anzeigen",
-      "2120_bis_ebene_2_anzeigen_52a77975": "Bis Ebene 2 anzeigen",
+      "2119_bis_ebene_1_anzeigen_ec306d04": "Afficher jusqu’au niveau 1",
+      "2120_bis_ebene_2_anzeigen_52a77975": "Afficher jusqu’au niveau 2",
       "2123_baum_einblenden_auf_zuklappen_0f72e127": "Baum einblenden (Auf/Zuklappen)",
       "2124_baum_ausblenden_pfad_anzeigen_508ded75": "Baum ausblenden (Pfad anzeigen)"
     },
     "views_tabs_tracking_tab": {
-      "56_nur_letzte_value_0_tage_48196fae": "Uniquement les {value_0} derniers jours",
+      "56_nur_letzte_value_0_tage_48196fae": "Nur letzte {value_0} Tage",
       "119_id_db302b9b": "_id",
-      "457_nur_letzte_value_0_tage_be9a083a": "Uniquement les {value_0} derniers jours",
-      "582_nur_letzte_value_0_tage_a8e14b8a": "Uniquement les {value_0} derniers jours",
+      "457_nur_letzte_value_0_tage_be9a083a": "Nur letzte {value_0} Tage",
+      "582_nur_letzte_value_0_tage_a8e14b8a": "Nur letzte {value_0} Tage",
       "682_diese_buchung_wird_als_verbrauch_vo_54220c3f": "Cette transaction est enregistrée comme un retrait de l'objectif d'épargne débloqué <b>«{value_0}»</b>.\n\nMontant débloqué : {value_1}\nRetrait : {value_2}"
     }
   },
@@ -2074,7 +2148,47 @@
     "customize_intro": "Choisissez les sections visibles et triez-les avec Haut/Bas. Le cockpit reste compact mais personnel.",
     "move_up": "↑ Monter",
     "move_down": "↓ Descendre",
-    "reset_order": "Réinitialiser l’ordre"
+    "reset_order": "Réinitialiser l’ordre",
+    "panel": {
+      "kpis": "Statut mensuel",
+      "quick_actions": "Accès rapides",
+      "favorites": "Favoris en vue",
+      "savings": "Objectifs actifs",
+      "warnings": "Statut budget",
+      "missing": "Écritures mensuelles ouvertes",
+      "recent": "10 dernières écritures",
+      "budget_warnings": "Alertes budget"
+    },
+    "month_feeling": "Ressenti mensuel",
+    "action_quick_add": "➕ Ajouter une écriture",
+    "action_quick_add_tip": "Saisir une nouvelle recette, dépense ou épargne.",
+    "action_fixcosts": "📅 Comptabiliser fixe/récurrent",
+    "action_fixcosts_tip": "Vérifier et comptabiliser les écritures mensuelles ouvertes/coûts fixes.",
+    "action_check_budget": "💰 Vérifier le budget",
+    "action_check_budget_tip": "Aller à l’onglet Budget.",
+    "action_budget_warnings": "🚨 Alertes budget",
+    "action_budget_warnings_tip": "Ouvrir les alertes budget et les propositions.",
+    "action_savings": "🎯 Objectifs",
+    "action_savings_tip": "Gérer les objectifs d’épargne.",
+    "action_overview": "📈 Aperçu",
+    "action_overview_tip": "Aller à l’analyse.",
+    "kpi_budget": "Budget {amount}",
+    "balance_positive": "positif",
+    "balance_warning": "Attention : dépenses/épargne supérieures aux recettes",
+    "empty_favorites": "Aucun favori défini. Les favoris servent aux catégories que vous voulez toujours surveiller.",
+    "empty_warnings": "Aucun point budgétaire notable pour ce mois.",
+    "empty_missing": "Aucun coût fixe/aucune écriture récurrente ouverte trouvé(e).",
+    "empty_recent": "Aucune écriture pour le moment.",
+    "doubleclick_book": "Double-clic : comptabiliser",
+    "warning_exceeded": "dépassé",
+    "warning_near_limit": "proche de la limite",
+    "warning_goal_open": "objectif ouvert",
+    "warning_suggestion": "proposition",
+    "warning_percent": "utilisé : {percent}",
+    "warning_suggestion_amount": "proposition : {amount}",
+    "warning_repeated": "signalé {count}× lors des contrôles",
+    "warning_underused": "peu utilisé",
+    "empty_budget_warnings": "Aucune alerte budget pour ce mois."
   },
   "db": {
     "created_title": "Base de données créée",
@@ -2083,7 +2197,27 @@
     "updated_body": "La base de données a été mise à jour vers la version actuelle.",
     "backup_created": "Copie de sécurité créée.",
     "details": "Détails",
-    "version_line": "v{old} → v{new}"
+    "version_line": "v{old} → v{new}",
+    "info": {
+      "title_html": "<h3>Informations sur la base de données</h3>",
+      "file": "Fichier",
+      "path": "Chemin",
+      "size": "Taille",
+      "schema": "Version du schéma",
+      "migration_status": "Statut de migration",
+      "migration_needed": "⚠️ Migration requise",
+      "missing_tables": "Tables manquantes",
+      "current": "✓ La base de données est à jour",
+      "data_stats": "Statistiques des données",
+      "categories": "Catégories",
+      "budget_entries": "Entrées de budget",
+      "tracking_entries": "Écritures de suivi",
+      "savings_goals": "Objectifs d’épargne",
+      "budget_years": "Années avec budget",
+      "tracking_years": "Années avec suivi",
+      "no_years": "Aucune",
+      "available_tables": "Tables disponibles"
+    }
   },
   "keine_auswahl": "Aucune sélection",
   "picker": {
@@ -2105,10 +2239,122 @@
     "kind_variable_fixed_short": "Fixe variable",
     "kind_variable_recurring_short": "Réc. variable",
     "btn_real_fixed_only": "Seulement vrais frais fixes",
-    "status": {
-      "days": "{days} jours",
-      "today": "Aujourd’hui",
-      "in_days": "dans {days} j"
+    "kind_optional": "Postes budgétaires optionnels",
+    "kind_optional_short": "Optionnel",
+    "filter_type_tip": "Filtre la liste de comptabilisation automatique par revenus, dépenses, épargne ou tous les comptes.",
+    "filter_kind_label": "Type :",
+    "filter_kind_all": "Tous les types",
+    "filter_kind_tip": "Filtre par postes optionnels, récurrents, fixe/variable ou vrais frais fixes."
+  },
+  "col": {
+    "typ": "Type",
+    "kategorie": "Catégorie",
+    "budget": "Budget",
+    "gebucht": "Comptabilisé",
+    "rest": "Reste",
+    "status": "Statut",
+    "hinweis": "Remarque",
+    "faelligkeit": "Échéance",
+    "aktion": "Action",
+    "datum": "Date",
+    "betrag": "Montant",
+    "bemerkung": "Remarque",
+    "auslastung": "Utilisation",
+    "empfehlung": "Recommandation"
+  },
+  "quickadd": {
+    "savings_negative_tip": "Pour l'épargne, les montants négatifs sont autorisés : ils sortent de l'argent d'un objectif d'épargne.",
+    "amount_must_not_be_zero": "Veuillez saisir un montant différent de 0. Les retraits d'objectif d'épargne peuvent être négatifs.",
+    "negative_only_savings": "Dans la saisie rapide, les montants négatifs ne sont autorisés que pour les retraits d'épargne.",
+    "savings_still_saving_confirm": "Vous saisissez {withdrawal} en négatif sur l'objectif d'épargne «{goal_name}».\n\nMontant actuel : {current}\n\nL'objectif n'est pas encore libéré. Bonne pratique : libérer l'objectif d'abord, puis retirer.\n\nSaisir quand même comme correction/retrait ?",
+    "category_search_placeholder": "Rechercher une catégorie, p. ex. loyer, salaire, courses …",
+    "category_search_tip": "La saisie filtre la liste des catégories. Choisissez ensuite la bonne catégorie dans le menu déroulant.",
+    "category_dropdown_tip": "Menu déroulant filtré. Seules les catégories du compte sélectionné sont affichées.",
+    "no_category_matches": "Aucune catégorie correspondante trouvée."
+  },
+  "coverage": {
+    "suggestion_single": "Suggestion : retirer/réduire {amount} de « {category} » pour couvrir l’écart.",
+    "suggestion_combined": "Suggestion : réduire plusieurs épargnes : {categories}.",
+    "no_savings_suggestion": "Aucune catégorie d’épargne ne couvre seule l’écart ; vérifier les dépenses ou plusieurs postes d’épargne."
+  },
+  "account_hub": {
+    "intro": "Tout ce qui concerne votre compte et vos données au même endroit : emplacement des données, sauvegarde et réinitialisation.",
+    "group_account": "Compte",
+    "btn_manage_account": "Gérer le compte…",
+    "account_summary": "Connecté en tant que : {name}",
+    "unknown_user": "—",
+    "btn_apply_location": "Appliquer l'emplacement",
+    "group_backup": "Sauvegarde",
+    "backup_desc": "Créer, restaurer, exporter ou importer des sauvegardes.",
+    "btn_backup": "Sauvegarde et restauration…",
+    "group_reset": "Réinitialisation et maintenance",
+    "reset_desc": "Réinitialiser la base de données (totalement ou partiellement), statistiques et nettoyage.",
+    "btn_reset_db": "Réinitialiser la base de données et statistiques…"
+  },
+  "data_location": {
+    "error": {
+      "identical": "Le dossier source et le dossier cible sont identiques.",
+      "nested": "Le dossier source et le dossier cible ne doivent pas être imbriqués.",
+      "no_source_data": "Aucune donnée n’a été trouvée dans l’ancien dossier.",
+      "target_has_data": "Le dossier cible contient déjà des données."
     }
+  },
+  "crypto": {
+    "corrupt_salt_short": "Fichier corrompu : sel trop court",
+    "decrypt_failed_wrong_key": "Échec du déchiffrement — clé incorrecte"
+  },
+  "budget_entry": {
+    "msg": {
+      "category_missing_create": "La catégorie \"{category}\" n’existe pas encore.\n\nVoulez-vous la créer maintenant ?"
+    }
+  },
+  "tags": {
+    "msg": {
+      "delete_used_confirm": "Le tag '{tag}' est utilisé par {count} écriture(s).\n\nVoulez-vous vraiment supprimer ce tag ?\nLes affectations de tags seront supprimées."
+    },
+    "dialog": {
+      "color_title": "Choisir une couleur pour '{tag}'"
+    },
+    "target_tag_label": "Tag cible :"
+  },
+  "theme": {
+    "msg": {
+      "builtin_delete_forbidden": "Les thèmes fournis ne peuvent pas être supprimés.\n\nVous pouvez seulement réinitialiser les remplacements locaux.",
+      "delete_confirm": "Voulez-vous vraiment supprimer '{theme}' ?\n\nPour les thèmes fournis, seul le remplacement local est supprimé.",
+      "no_default_reset": "Ce thème n’a pas de profil standard fourni à réinitialiser.\nLes thèmes personnalisés peuvent être supprimés directement.",
+      "reset_confirm": "Voulez-vous vraiment réinitialiser '{theme}' ?\n\nToutes les modifications/remplacements locaux seront supprimés."
+    }
+  },
+  "about": {
+    "html": "<h2>{app_name}</h2>\n<p><b>Version :</b> {version}</p>\n<p><b>Développé avec :</b> PySide6 (Qt for Python)</p>\n<p><b>Base de données :</b> SQLite</p>\n<br>\n<p>Un gestionnaire de budget simple pour :</p>\n<ul>\n  <li>Planification du budget par catégorie</li>\n  <li>Suivi des revenus et dépenses</li>\n  <li>Visualisation et analyse</li>\n  <li>Objectifs d’épargne et favoris</li>\n  <li>Tags et alertes de budget</li>\n</ul>\n<br>\n<p><b>Points forts {app_version} :</b></p>\n<ul>\n  <li>Programme de mise à jour portable renforcé</li>\n  <li>Fichiers de lancement Windows/Linux stables dans le ZIP portable</li>\n  <li>Hub de compte et dossier de données sélectionnable</li>\n  <li>Renforcement du budget, du suivi et de l’i18n</li>\n</ul>"
+  },
+  "budget_adjustment": {
+    "header": {
+      "info_n": "ℹ️ {n} catégorie(s) avec remarques"
+    },
+    "income_warning": {
+      "title": "⚠️ Alerte de revenu",
+      "text": "Les augmentations de budget proposées dépassent le revenu budgété !",
+      "income": "Revenu (budget)",
+      "current": "Dépenses+épargne actuelles",
+      "after": "Dépenses+épargne après suggestions",
+      "deficit": "Déficit",
+      "action": "→ Réduire les dépenses ou augmenter les revenus !"
+    },
+    "recommendations": {
+      "title": "Recommandations générales",
+      "critical": "🔴 <strong>Critique :</strong> plusieurs catégories sont régulièrement dépassées. {text}",
+      "attention": "🟠 <strong>Attention :</strong> les budgets doivent être ajustés pour fixer des objectifs plus réalistes.",
+      "hint": "🟡 <strong>Remarque :</strong> les dépassements occasionnels sont normaux. {text}",
+      "category_exceeded": "💰 La catégorie <strong>{category}</strong> a été dépassée de {percent} %. Vérifiez s’il y a eu des dépenses inattendues."
+    },
+    "apply": {
+      "period_lines": "• Seulement {month:02d}/{year} : l’ajustement ne vaut que pour ce mois\n• Mois restants : l’ajustement vaut pour {month:02d}–12/{year} ({count} mois)",
+      "scope_remaining": "pour {month:02d}–12/{year} ({count} valeurs mensuelles)",
+      "scope_month": "pour {month:02d}/{year}"
+    }
+  },
+  "money": {
+    "invalid_amount": "Montant invalide."
   }
 }

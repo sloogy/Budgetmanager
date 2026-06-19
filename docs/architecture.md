@@ -7,7 +7,7 @@ Der BudgetManager folgt einer **MVC-Architektur** (Model-View-Controller), wobei
 - **Haupteinstieg**: `main.py` (Initialisierung, Login, MainWindow).
 - **Models**:
   - `database.py`: Verbindungshandling (SQLite, WAL-Mode).
-  - `migrations.py`: Schema-Versionierung (aktuell v10).
+  - `migrations.py`: Schema-Versionierung (aktuell v12).
   - `app_paths.py`: Zentrale Pfadverwaltung (Portable Mode).
   - `undo_redo_model.py`: Persistenter Aktions-Stack.
 - **Views**:
@@ -27,4 +27,4 @@ Der BudgetManager folgt einer **MVC-Architektur** (Model-View-Controller), wobei
 
 ---
 
-*Stand der Analyse: v0.4.8.0*
+*Stand der Analyse: v2.0.28 · 19. Juni 2026*

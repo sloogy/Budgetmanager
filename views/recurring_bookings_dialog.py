@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QHeaderView,
     QCheckBox,
     QFrame,
+    QComboBox,
 )
 
 from views.missing_bookings_dialog import PendingBooking
@@ -64,6 +65,8 @@ class SortablePendingItem:
     @property
     def should_be_preselected(self) -> bool:
         """Vorauswahl: Überfällig (bis 60 Tage) = angehakt, Zukunft = nicht angehakt"""
+        if not (self.is_fix or self.is_recurring):
+            return False  # Optionale Budgetposten nie automatisch vorauswählen.
         if not self.is_overdue:
             return False  # In der Zukunft: nicht angehakt
         # Überfällig: nur wenn <= 60 Tage
@@ -86,6 +89,7 @@ class RecurringBookingsDialog(QDialog):
         *,
         fix_items: list[PendingBooking],
         recurring_items: list[PendingBooking],
+        optional_items: list[PendingBooking] | None = None,
         title: str = "Fixkosten & Wiederkehrende",
     ):
         super().__init__(parent)
@@ -105,9 +109,11 @@ class RecurringBookingsDialog(QDialog):
                 return tr("booking.kind_real_fixed")
             if f:
                 return tr("booking.kind_variable_fixed")
+            if not r:
+                return tr("booking.kind_optional")
             return tr("booking.kind_variable_recurring")
 
-        for it in list(fix_items) + list(recurring_items):
+        for it in list(fix_items) + list(recurring_items) + list(optional_items or []):
             key = (it.category, it.typ)
             if key in seen:
                 continue
@@ -151,6 +157,27 @@ class RecurringBookingsDialog(QDialog):
         
         # Status-Zeile
         status_layout = QHBoxLayout()
+        status_layout.addWidget(QLabel(tr("lbl.type")))
+        self.filter_typ = QComboBox()
+        self.filter_typ.addItem(tr("typ.Alle"), "")
+        self.filter_typ.addItem(display_typ("Ausgaben"), "Ausgaben")
+        self.filter_typ.addItem(display_typ("Einkommen"), "Einkommen")
+        self.filter_typ.addItem(display_typ("Ersparnisse"), "Ersparnisse")
+        self.filter_typ.setToolTip(tr("booking.filter_type_tip"))
+        self.filter_typ.currentIndexChanged.connect(lambda _i: self._apply_filters())
+        status_layout.addWidget(self.filter_typ)
+
+        status_layout.addWidget(QLabel(tr("booking.filter_kind_label")))
+        self.filter_kind = QComboBox()
+        self.filter_kind.addItem(tr("booking.filter_kind_all"), "")
+        self.filter_kind.addItem(tr("booking.kind_real_fixed"), "real_fixed")
+        self.filter_kind.addItem(tr("booking.kind_variable_fixed"), "fix_only")
+        self.filter_kind.addItem(tr("booking.kind_variable_recurring"), "recurring_only")
+        self.filter_kind.addItem(tr("booking.kind_optional"), "optional")
+        self.filter_kind.setToolTip(tr("booking.filter_kind_tip"))
+        self.filter_kind.currentIndexChanged.connect(lambda _i: self._apply_filters())
+        status_layout.addWidget(self.filter_kind)
+        status_layout.addWidget(QLabel("|"))
         self.lbl_total = QLabel(trf("lbl.lbl_total", n=0))
         self.lbl_overdue = QLabel(tr("dlg.ueberfaellig_0"))
         self.lbl_overdue.setStyleSheet(f"color: {_c.negative}; font-weight: bold;")
@@ -244,6 +271,8 @@ class RecurringBookingsDialog(QDialog):
         for item in self._items:
             self._add_row(item)
 
+        self.table.itemChanged.connect(lambda _it: self._update_status())
+        self._apply_filters()
         self._update_status()
 
     def _add_row(self, item: SortablePendingItem) -> None:
@@ -270,9 +299,12 @@ class RecurringBookingsDialog(QDialog):
         elif item.is_fix:
             art_text = tr("booking.kind_variable_fixed_short")
             art_color = QColor(c.accent)
-        else:
+        elif item.is_recurring:
             art_text = tr("booking.kind_variable_recurring_short")
             art_color = QColor(c.type_color(tr("typ.Ersparnisse")))
+        else:
+            art_text = tr("booking.kind_optional_short")
+            art_color = QColor(c.text_dim)
         
         art_item = QTableWidgetItem(art_text)
         art_item.setForeground(art_color)
@@ -286,16 +318,16 @@ class RecurringBookingsDialog(QDialog):
         # Status
         if is_overdue:
             if days > 30:
-                status_text = "⚠️ " + trf("booking.status.days", days=days)
+                status_text = f"⚠️ {days} Tage"
                 status_color = QColor(c.danger)
             else:
-                status_text = "🔴 " + trf("booking.status.days", days=days)
+                status_text = f"🔴 {days} Tage"
                 status_color = QColor(c.negative)
         elif days == 0:
-            status_text = "📅 " + tr("booking.status.today")
+            status_text = "📅 Heute"
             status_color = QColor(c.warning)
         else:
-            status_text = "🟢 " + trf("booking.status.in_days", days=-days)
+            status_text = f"🟢 in {-days} T."
             status_color = QColor(c.ok)
 
         status_item = QTableWidgetItem(status_text)
@@ -334,8 +366,9 @@ class RecurringBookingsDialog(QDialog):
 
     def _update_status(self):
         """Aktualisiert die Statusanzeige"""
-        total = len(self._items)
-        overdue = sum(1 for it in self._items if it.is_overdue)
+        visible_items = [it for row, it in enumerate(self._items) if not self.table.isRowHidden(row)]
+        total = len(visible_items)
+        overdue = sum(1 for it in visible_items if it.is_overdue)
         upcoming = total - overdue
         selected = self._count_selected()
         
@@ -348,15 +381,55 @@ class RecurringBookingsDialog(QDialog):
         """Zählt ausgewählte Items"""
         count = 0
         for r in range(self.table.rowCount()):
+            if self.table.isRowHidden(r):
+                continue
             chk = self.table.item(r, 0)
             if chk and chk.checkState() == Qt.Checked:
                 count += 1
         return count
 
+    def _current_type_filter(self) -> str:
+        data = self.filter_typ.currentData() if hasattr(self, "filter_typ") else ""
+        return str(data or "")
+
+    def _current_kind_filter(self) -> str:
+        data = self.filter_kind.currentData() if hasattr(self, "filter_kind") else ""
+        return str(data or "")
+
+    @staticmethod
+    def _matches_kind_filter(item: SortablePendingItem, wanted: str) -> bool:
+        if not wanted:
+            return True
+        if wanted == "real_fixed":
+            return item.is_fix and item.is_recurring
+        if wanted == "fix_only":
+            return item.is_fix and not item.is_recurring
+        if wanted == "recurring_only":
+            return item.is_recurring and not item.is_fix
+        if wanted == "optional":
+            return not item.is_fix and not item.is_recurring
+        return True
+
+    def _apply_filters(self) -> None:
+        """Blendet Kandidaten nach Konto/Typ und Buchungsart ein oder aus."""
+        wanted_type = self._current_type_filter()
+        wanted_kind = self._current_kind_filter()
+        for row, item in enumerate(self._items):
+            hide_by_type = bool(wanted_type and item.booking.typ != wanted_type)
+            hide_by_kind = not self._matches_kind_filter(item, wanted_kind)
+            self.table.setRowHidden(row, hide_by_type or hide_by_kind)
+        self._update_status()
+
+    def _apply_type_filter(self) -> None:
+        """Kompatibilitätsalias für ältere Tests/Aufrufer."""
+        self._apply_filters()
+
     def _set_all(self, checked: bool) -> None:
         """Setzt alle Checkboxen"""
         state = Qt.Checked if checked else Qt.Unchecked
         for r in range(self.table.rowCount()):
+            if self.table.isRowHidden(r):
+                continue
             it = self.table.item(r, 0)
             if it is not None:
                 it.setCheckState(state)
@@ -365,6 +438,8 @@ class RecurringBookingsDialog(QDialog):
     def _select_overdue_only(self) -> None:
         """Wählt nur überfällige aus"""
         for r, item in enumerate(self._items):
+            if self.table.isRowHidden(r):
+                continue
             chk = self.table.item(r, 0)
             if chk is not None:
                 # Nur überfällige (max 60 Tage) auswählen
@@ -380,6 +455,8 @@ class RecurringBookingsDialog(QDialog):
         Schnellbutton versehentlich mit dem Restbetrag gebucht werden.
         """
         for r, item in enumerate(self._items):
+            if self.table.isRowHidden(r):
+                continue
             chk = self.table.item(r, 0)
             if chk is not None:
                 chk.setCheckState(Qt.Checked if (item.is_fix and item.is_recurring) else Qt.Unchecked)
@@ -391,6 +468,8 @@ class RecurringBookingsDialog(QDialog):
         out: list[PendingBooking] = []
 
         for r, item in enumerate(self._items):
+            if self.table.isRowHidden(r):
+                continue
             chk = self.table.item(r, 0)
             if chk is None or chk.checkState() != Qt.Checked:
                 continue

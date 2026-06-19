@@ -124,6 +124,9 @@ class Settings:
             "tab_position": "west",    # north / south / east / west
             "tab_bar_visible": True,   # Tab-Leiste anzeigen?
             # Datenbank und Backup Pfade
+            # data_directory: leer = portabel ({app}/data). Wenn gesetzt (absoluter
+            # Pfad), legt die App DB/Backups/verschlüsselte .enc-Dateien dort ab.
+            "data_directory": "",
             "database_path": "data/budgetmanager.db",  # Portable Default (relativ zum Programmordner)
             "backup_directory": "data/backups",  # Portable Default (relativ zum Programmordner)
 
@@ -252,6 +255,19 @@ class Settings:
     def recent_days(self, value: int):
         v = 30 if int(value) == 30 else 14
         self.set("recent_days", v)
+
+    @property
+    def data_directory(self) -> str:
+        """Frei wählbarer Datenordner (leer = portabel, {app}/data).
+
+        Wird beim Start von model.app_paths.data_dir() ausgewertet. Eine Änderung
+        wird erst nach einem Neustart wirksam (die aktive DB ist bereits geöffnet).
+        """
+        return str(self.get("data_directory", "") or "")
+
+    @data_directory.setter
+    def data_directory(self, value: str):
+        self.set("data_directory", str(value or "").strip())
 
     @property
     def database_path(self) -> str:

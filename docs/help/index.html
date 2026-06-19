@@ -10,17 +10,23 @@
 
 <p>Empfohlener roter Faden: Cockpit öffnen → Warnungen/offene Buchungen prüfen → bei Bedarf Buchung erfassen oder Fixkosten buchen → Budget/Sparziele/Übersicht nur öffnen, wenn Details nötig sind.</p>
 
-<p> v2.0.11</p>
+<p> v2.0.28</p>
 
 <p>&gt; Direkt anzeigbare Mindmap: `docs/help/mindmap.html` (Browser) · Mermaid-Quelle: `docs/help/mindmap.mmd`.</p>
 
 
-<p>Stand: 14. Juni 2026  </p>
-<p>Gültig für: BudgetManager 2.0.11</p>
+<p>Stand: 19. Juni 2026  </p>
+<p>Gültig für: BudgetManager 2.0.28</p>
 
 <p>Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore.</p>
 
 <hr>
+
+<h2>Ergänzung v2.0.28 – Cockpit und Stabilität</h2>
+
+<p>- Das Cockpit zeigt zusätzlich Budgetwarnungen und bietet per Rechtsklick sinnvolle Schnellaktionen.</p>
+<p>- Unter Wayland nutzt BudgetManager standardmäßig <code>xcb</code>, um bekannte Qt-TextInput-Abstürze zu vermeiden. Native Wayland-Nutzung ist mit <code>BM_ALLOW_WAYLAND=1</code> möglich.</p>
+<p>- Diagramme und Übersetzungen wurden für die Release-Abnahme bereinigt.</p>
 
 <h2>0. Der wichtigste Ablauf in einem Satz</h2>
 
@@ -604,8 +610,12 @@ Tracking/Buchungen = Realität: Ich habe Geld auf dieses Ziel gelegt oder wieder
 <p>3. **Einzahlung buchen** – im Tracking als Typ *Ersparnisse* mit positiver Summe.</p>
 <p>4. **Fortschritt prüfen** – Tracking zeigt aktive Ziele kompakt mit Balken; Übersicht zeigt die Gesamtsicht.</p>
 <p>5. **Freigeben** – wenn das Ziel erreicht/verwendbar ist. Der Betrag wird eingefroren.</p>
-<p>6. **Entnahme buchen** – negative Ersparnisse-Buchung auf die Ziel-Kategorie wird als Verbrauch geprüft.</p>
+<p>6. **Geld herausbuchen** – im Tracking eine **Ersparnisse-Buchung mit negativem Betrag** auf die Ziel-Kategorie erfassen, z. B. `-500 CHF`.</p>
 <p>7. **Abschließen** – wenn das Ziel erledigt oder verbraucht ist.</p>
+
+<p><strong>Wichtig zu negativen Beträgen:</strong> Negative Beträge sind nicht grundsätzlich gesperrt. Bei <strong>Ausgaben</strong> sind sie bewusst blockiert, damit Ausgaben nicht versehentlich falsch herum erfasst werden. Bei <strong>Ersparnisse</strong> sind negative Beträge erlaubt und bedeuten: <em>Geld aus einem Sparziel / einer Ersparnis herausnehmen</em>.</p>
+
+<p><strong>Grenzen:</strong> BudgetManager lässt den Sparziel-Stand nicht mehr unter <strong>0</strong> fallen und nicht über <strong>100 %</strong> steigen. Wenn du mehr entnehmen willst, als im Sparziel vorhanden ist, oder mehr einzahlen willst als bis zum Zielbetrag fehlt, wird die Buchung blockiert und du bekommst eine Meldung.</p>
 
 <p>Warum so? Dadurch bleibt das Budget sauber: Das Ziel ist geplant, aber echte Bewegungen entstehen erst durch Buchungen.</p>
 

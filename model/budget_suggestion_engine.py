@@ -39,10 +39,19 @@ v0.4.5.0 – Fixkosten-/0-Monats-Schutz:
 
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 import sqlite3
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, normalize_typ, is_income, rest_sign, ALL_TYPEN
+from model.typ_constants import (
+    TYP_INCOME,
+    TYP_EXPENSES,
+    TYP_SAVINGS,
+    normalize_typ,
+    is_income,
+    rest_sign,
+    ALL_TYPEN,
+)
 from dataclasses import dataclass
 from datetime import date
 from statistics import median
@@ -53,14 +62,14 @@ from typing import Optional, List, Tuple
 class SuggestionResult:
     typ: str
     category: str
-    direction: str                 # "surplus" oder "deficit"
+    direction: str  # "surplus" oder "deficit"
     months_considered: int
     streak_months: int
-    central_deviation: float       # Median der letzten N Abweichungen
-    avg_deviation: float           # Durchschnitt der letzten N Abweichungen
+    central_deviation: float  # Median der letzten N Abweichungen
+    avg_deviation: float  # Durchschnitt der letzten N Abweichungen
     current_budget: float
     suggested_budget: float
-    delta: float                   # suggested - current
+    delta: float  # suggested - current
 
 
 # Typen, deren Tracking-Beträge immer positiv interpretiert werden
@@ -141,7 +150,11 @@ class BudgetSuggestionEngine:
         # is_fix/is_recurring; damit brauchen wir für den Release-Fix kein
         # neues DB-Schema.
         is_fix, is_recurring = self._get_category_flags(typ, category)
-        fixed_like = bool(respect_fixed_costs) and (not self._is_income(typ)) and (is_fix or is_recurring)
+        fixed_like = (
+            bool(respect_fixed_costs)
+            and (not self._is_income(typ))
+            and (is_fix or is_recurring)
+        )
 
         # ── Startmonat für die Analyse bestimmen ──
         # Bei use_current_month=False starten wir einen Monat VOR dem Zielmonat,
@@ -151,9 +164,18 @@ class BudgetSuggestionEngine:
         else:
             analysis_year, analysis_month = self._prev_month(year, month)
 
+        # ── Datengrenze: nicht vor dem tatsächlichen Tracking-Beginn analysieren ──
+        # Spätester von (erste echte Buchung global, konfigurierter Startmonat).
+        # Monate davor sind keine "0-Ausgaben"-Monate, sondern liegen vor Beginn
+        # der Nutzung und dürfen keine Vorschläge auslösen. None = keine Grenze
+        # bekannt (keine Buchung UND kein Startmonat) → kein Clamping, damit die
+        # Langzeit-0-Reduktion (Budget gesetzt, nie gebucht) weiter greifen kann.
+        not_before = self._data_start_boundary()
+
         # Abweichungen sammeln (erweitert sich über Lücken hinweg)
         deviations = self._get_deviations_window(
-            typ, category, analysis_year, analysis_month, months_back
+            typ, category, analysis_year, analysis_month, months_back,
+            not_before=not_before,
         )
         if len(deviations) < months_back:
             return None
@@ -167,7 +189,13 @@ class BudgetSuggestionEngine:
         # inkrementelle/lumpy Fixkosten möglich, ohne dass 0-Monate senken.
         if fixed_like:
             deviations = self._get_deviations_window(
-                typ, category, analysis_year, analysis_month, months_back, active_only=True
+                typ,
+                category,
+                analysis_year,
+                analysis_month,
+                months_back,
+                active_only=True,
+                not_before=not_before,
             )
             if len(deviations) < min(3, months_back):
                 return None
@@ -179,16 +207,25 @@ class BudgetSuggestionEngine:
         # werden. Fixkosten/Rückstellungen sind oben geschützt.
         if enable_zero_reduction and (not self._is_income(typ)) and (not fixed_like):
             active_months = self._count_active_months(
-                typ, category, analysis_year, analysis_month, months_back
+                typ, category, analysis_year, analysis_month, months_back,
+                not_before=not_before,
             )
             if active_months == 0:
                 zero_streak = self._compute_zero_streak_months(
-                    typ, category, analysis_year, analysis_month
+                    typ, category, analysis_year, analysis_month,
+                    not_before=not_before,
                 )
                 if zero_streak >= 6:
                     return self._build_zero_reduction_result(
-                        typ, category, current_budget, floor, zero_streak,
-                        deviations, round_to, min_abs_change, min_pct_change,
+                        typ,
+                        category,
+                        current_budget,
+                        floor,
+                        zero_streak,
+                        deviations,
+                        round_to,
+                        min_abs_change,
+                        min_pct_change,
                     )
 
         # ── Stabilitätsprüfung: Vorzeichen-Konsistenz ──
@@ -227,7 +264,9 @@ class BudgetSuggestionEngine:
 
         # Schwellwerte (Änderung gross genug?)
         delta = suggested - current_budget
-        if abs(delta) < float(min_abs_change) and abs(delta) < (current_budget * float(min_pct_change)):
+        if abs(delta) < float(min_abs_change) and abs(delta) < (
+            current_budget * float(min_pct_change)
+        ):
             return None
 
         # Runden
@@ -244,13 +283,19 @@ class BudgetSuggestionEngine:
         # der Rundung, damit 10-CHF-Rauschen nicht als Vorschlag erscheint.
         if abs(delta) < 0.01:
             return None
-        if abs(delta) < float(min_abs_change) and abs(delta) < (current_budget * float(min_pct_change)):
+        if abs(delta) < float(min_abs_change) and abs(delta) < (
+            current_budget * float(min_pct_change)
+        ):
             return None
 
         # Streak
         streak = self._compute_streak_months(
-            typ, category, analysis_year, analysis_month,
+            typ,
+            category,
+            analysis_year,
+            analysis_month,
             sign=(1 if central > 0 else -1),
+            not_before=not_before,
         )
 
         return SuggestionResult(
@@ -270,8 +315,16 @@ class BudgetSuggestionEngine:
     # Hilfsmethoden: 0-Buchungen-Reduktion
     # ------------------------------------------------------------
     def _build_zero_reduction_result(
-        self, typ, category, current_budget, floor, zero_streak,
-        deviations, round_to, min_abs_change, min_pct_change,
+        self,
+        typ,
+        category,
+        current_budget,
+        floor,
+        zero_streak,
+        deviations,
+        round_to,
+        min_abs_change,
+        min_pct_change,
     ) -> Optional[SuggestionResult]:
         """Erstellt einen Vorschlag für Kategorien ohne jegliche Buchungen."""
         suggested = float(current_budget)
@@ -290,7 +343,9 @@ class BudgetSuggestionEngine:
             suggested = max(float(floor), float(suggested))
         delta = float(suggested) - float(current_budget)
 
-        if abs(delta) < float(min_abs_change) and abs(delta) < (float(current_budget) * float(min_pct_change)):
+        if abs(delta) < float(min_abs_change) and abs(delta) < (
+            float(current_budget) * float(min_pct_change)
+        ):
             return None
 
         central = float(median(deviations))
@@ -343,18 +398,30 @@ class BudgetSuggestionEngine:
 
             return (_as_bool(row[0]), _as_bool(row[1]))
         except Exception:
-            logger.exception("Kategorie-Flags konnten nicht gelesen werden: %s/%s", typ, category)
+            logger.exception(
+                "Kategorie-Flags konnten nicht gelesen werden: %s/%s", typ, category
+            )
             return (False, False)
 
     # ------------------------------------------------------------
     # Zähler
     # ------------------------------------------------------------
-    def _count_active_months(self, typ: str, category: str, year: int, month: int, months_back: int) -> int:
+    def _count_active_months(
+        self,
+        typ: str,
+        category: str,
+        year: int,
+        month: int,
+        months_back: int,
+        not_before: Optional[date] = None,
+    ) -> int:
         """Zählt, in wie vielen der letzten N Monate überhaupt Buchungen > 0 vorkamen."""
         active = 0
         base = date(year, month, 1)
         for i in range(months_back):
             d = self._subtract_months(base, i)
+            if not_before is not None and d < not_before:
+                break  # vor Tracking-Beginn → nicht weiter zurück
             b = self._get_budget_amount(d.year, d.month, typ, category)
             if b is None or b <= 0:
                 continue
@@ -363,12 +430,21 @@ class BudgetSuggestionEngine:
                 active += 1
         return active
 
-    def _compute_zero_streak_months(self, typ: str, category: str, year: int, month: int) -> int:
+    def _compute_zero_streak_months(
+        self,
+        typ: str,
+        category: str,
+        year: int,
+        month: int,
+        not_before: Optional[date] = None,
+    ) -> int:
         """Zählt Monate rückwärts *in Folge* ohne Buchungen (spent == 0)."""
         streak = 0
         base = date(year, month, 1)
         for i in range(0, 60):
             d = self._subtract_months(base, i)
+            if not_before is not None and d < not_before:
+                break  # vor Tracking-Beginn → Strähne endet hier
             b = self._get_budget_amount(d.year, d.month, typ, category)
             if b is None or b <= 0:
                 break
@@ -394,7 +470,9 @@ class BudgetSuggestionEngine:
             return year - 1, 12
         return year, month - 1
 
-    def _get_budget_amount(self, year: int, month: int, typ: str, category: str) -> Optional[float]:
+    def _get_budget_amount(
+        self, year: int, month: int, typ: str, category: str
+    ) -> Optional[float]:
         row = self.conn.execute(
             "SELECT amount FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
             (year, month, typ, category),
@@ -406,7 +484,9 @@ class BudgetSuggestionEngine:
         except Exception:
             return None
 
-    def _get_spent_amount(self, year: int, month: int, typ: str, category: str) -> float:
+    def _get_spent_amount(
+        self, year: int, month: int, typ: str, category: str
+    ) -> float:
         start = f"{year:04d}-{month:02d}-01"
         if month == 12:
             end = f"{year + 1:04d}-01-01"
@@ -434,9 +514,79 @@ class BudgetSuggestionEngine:
             y -= 1
         return date(y, m, 1)
 
+    # ------------------------------------------------------------
+    # Datengrenze (Tracking-Beginn)
+    # ------------------------------------------------------------
+    def _first_booking_month(self) -> Optional[Tuple[int, int]]:
+        """Frühester Monat mit irgendeiner echten Buchung (global, alle Kategorien).
+
+        Dient als automatische untere Analysegrenze: Monate davor liegen vor
+        Beginn der Nutzung. Robust: bei leerer/fehlender Tabelle → None.
+        """
+        try:
+            row = self.conn.execute("SELECT MIN(date) FROM tracking").fetchone()
+        except Exception:
+            return None
+        if not row or row[0] is None:
+            return None
+        s = str(row[0])
+        try:
+            y = int(s[0:4])
+            m = int(s[5:7])
+        except (ValueError, IndexError):
+            return None
+        if 1 <= m <= 12 and y >= 1:
+            return (y, m)
+        return None
+
+    def _configured_start_month(self) -> Optional[Tuple[int, int]]:
+        """Konfigurierter Startmonat (carryover_start_*), falls explizit gesetzt.
+
+        Nur gültig, wenn carryover_start_year > 0. Der Standard (Jahr 0) gilt als
+        "nicht gesetzt" → None. Robust gegen fehlende/fehlerhafte Settings.
+        """
+        try:
+            from settings import Settings
+
+            s = Settings()
+            y = int(s.get("carryover_start_year", 0) or 0)
+            m = int(s.get("carryover_start_month", 1) or 1)
+        except Exception:
+            return None
+        if y <= 0:
+            return None
+        m = max(1, min(12, m))
+        return (y, m)
+
+    def _data_start_boundary(self) -> Optional[date]:
+        """Untere Analysegrenze als ``date`` oder ``None``.
+
+        = der spätere von (erste echte Buchung, konfigurierter Startmonat).
+        ``None`` bedeutet: keine Grenze bekannt (keine Buchung UND kein
+        Startmonat). Dann wird NICHT geklammert, damit die Langzeit-0-Reduktion
+        (Budget gesetzt, nie gebucht) wie gewünscht weiter greifen kann.
+        """
+        bounds: List[Tuple[int, int]] = []
+        fb = self._first_booking_month()
+        if fb is not None:
+            bounds.append(fb)
+        cfg = self._configured_start_month()
+        if cfg is not None:
+            bounds.append(cfg)
+        if not bounds:
+            return None
+        y, m = max(bounds)  # Tupel-Vergleich (Jahr, Monat) ist chronologisch
+        return date(y, m, 1)
+
     def _get_deviations_window(
-        self, typ: str, category: str, year: int, month: int, months_back: int,
+        self,
+        typ: str,
+        category: str,
+        year: int,
+        month: int,
+        months_back: int,
         active_only: bool = False,
+        not_before: Optional[date] = None,
     ) -> List[float]:
         """Sammelt die letzten N Abweichungs-Datenpunkte.
 
@@ -456,6 +606,8 @@ class BudgetSuggestionEngine:
             if len(out) >= months_back:
                 break
             d = self._subtract_months(base, i)
+            if not_before is not None and d < not_before:
+                break  # vor Tracking-Beginn → nicht weiter zurück scannen
             b = self._get_budget_amount(d.year, d.month, typ, category)
             if b is None or b <= 0:
                 continue  # Lücke → überspringen, weiter suchen
@@ -472,13 +624,21 @@ class BudgetSuggestionEngine:
         return out
 
     def _compute_streak_months(
-        self, typ: str, category: str, year: int, month: int, sign: int,
+        self,
+        typ: str,
+        category: str,
+        year: int,
+        month: int,
+        sign: int,
+        not_before: Optional[date] = None,
     ) -> int:
         """Zählt Monate rückwärts mit konsistenter Abweichungsrichtung."""
         streak = 0
         base = date(year, month, 1)
         for i in range(0, 60):
             d = self._subtract_months(base, i)
+            if not_before is not None and d < not_before:
+                break  # vor Tracking-Beginn → Strähne endet hier
             b = self._get_budget_amount(d.year, d.month, typ, category)
             if b is None or b <= 0:
                 # Lücke: Streak nicht abbrechen, nur überspringen

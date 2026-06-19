@@ -18,6 +18,8 @@ from updater.common import (
     backup_current_zip,
     current_exe_filename,
     enable_utf8_console,
+    stable_exe_filename,
+    update_target_exe_filename,
     find_staged_root,
     is_windows,
     read_check_result,
@@ -126,14 +128,51 @@ def copy_new(src_root: Path, dst_root: Path, exclude: tuple[str, ...]) -> None:
 # Binary-Replace-Erkennung
 # ──────────────────────────────────────────────────────────────────────────
 def _staged_target_binary(src_root: Path) -> Path | None:
-    """Gibt die gestagete App-Binary zurück, falls das Update aus genau dieser
-    einen Binary besteht (Single-Binary-Update, der Normalfall bei one-file
-    PyInstaller-Builds). Sonst None (dann: Full-Tree-Update)."""
-    target_name = current_exe_filename()
-    candidate = src_root / target_name
-    if candidate.is_file():
-        return candidate
+    """Gibt die gestagete App-Binary zurück, wenn sie direkt erkennbar ist.
+
+    Unterstützt sowohl den aktuell laufenden Namen als auch den stabilen
+    Zielnamen. Damit können alte versionierte Portable-Builds sauber auf
+    ``BudgetManager.exe``/``BudgetManager`` migriert werden.
+    """
+    for target_name in dict.fromkeys((
+        update_target_exe_filename(),
+        current_exe_filename(),
+        stable_exe_filename(),
+    )):
+        candidate = src_root / target_name
+        if candidate.is_file():
+            return candidate
     return None
+
+
+def _launch_exe_filename(src_root: Path) -> str:
+    """Bestimmt die Binary, die nach dem Update gestartet werden soll."""
+    preferred = update_target_exe_filename()
+    if (src_root / preferred).is_file() or (app_dir() / preferred).exists():
+        return preferred
+    stable = stable_exe_filename()
+    if (src_root / stable).is_file() or (app_dir() / stable).exists():
+        return stable
+    return current_exe_filename()
+
+
+def _restart_after_update(src_root: Path) -> None:
+    """Startet die App nach einem erfolgreichen Linux/DEV-Update neu.
+
+    In Tests oder explizit deaktiviertem Modus wird nicht neu gestartet, damit
+    CI-Läufe nicht hängen bleiben.
+    """
+    if os.environ.get("BM_UPDATER_NO_RESTART") or os.environ.get("PYTEST_CURRENT_TEST"):
+        return
+    try:
+        if getattr(sys, "frozen", False):
+            exe = app_dir() / _launch_exe_filename(src_root)
+            if exe.exists():
+                subprocess.Popen([str(exe)], cwd=str(app_dir()), close_fds=True)
+        else:
+            subprocess.Popen([sys.executable, str(app_dir() / "main.py")], cwd=str(app_dir()), close_fds=True)
+    except Exception as e:
+        logger.warning("App-Neustart nach Update fehlgeschlagen: %s", e)
 
 
 def _replace_binary_inplace(new_binary: Path, target_path: Path) -> None:
@@ -162,7 +201,8 @@ def _replace_binary_inplace(new_binary: Path, target_path: Path) -> None:
 def _build_windows_helper_batch(
     src_root: Path,
     dst_dir: Path,
-    target_exe: str,
+    wait_exe: str,
+    launch_exe: str,
     log_path: Path,
 ) -> str:
     """Erzeugt den Inhalt eines Batch-Skripts, das das Update anwendet.
@@ -178,8 +218,9 @@ def _build_windows_helper_batch(
     """
     src = str(src_root)
     dst = str(dst_dir)
-    exe = target_exe
-    exe_path = str(dst_dir / target_exe)
+    exe = wait_exe
+    launch = launch_exe
+    launch_path = str(dst_dir / launch_exe)
     log = str(log_path)
 
     # WICHTIG: keine geschweiften Klammern im Batch (Format-Konflikte vermeiden).
@@ -193,7 +234,8 @@ set "LOGFILE=__LOG__"
 set "SRC=__SRC__"
 set "DST=__DST__"
 set "EXENAME=__EXE__"
-set "EXEPATH=__EXEPATH__"
+set "LAUNCHEXE=__LAUNCHEXE__"
+set "LAUNCHPATH=__LAUNCHPATH__"
 
 echo [%DATE% %TIME%] Update gestartet > "%LOGFILE%"
 echo.
@@ -211,6 +253,9 @@ ping -n 2 127.0.0.1 >nul 2>&1
 goto waitloop
 
 :copyphase
+if /I NOT "%EXENAME%"=="%LAUNCHEXE%" (
+  if exist "%DST%\%EXENAME%" del /f /q "%DST%\%EXENAME%" >> "%LOGFILE%" 2>&1
+)
 echo [%DATE% %TIME%] Kopiere neue Dateien... >> "%LOGFILE%"
 rem robocopy: /E inkl. Unterordner, data+updates ausschliessen,
 rem /R Retries + /W Wartezeit ueberbruecken kurzzeitige Sperren.
@@ -225,7 +270,7 @@ echo [%DATE% %TIME%] Update erfolgreich angewendet. >> "%LOGFILE%"
 echo.
 echo   Update abgeschlossen. App wird neu gestartet.
 timeout /t 2 /nobreak >nul 2>&1
-start "" "%EXEPATH%"
+start "" "%LAUNCHPATH%"
 
 rem --- Selbstloeschung des Batch-Skripts ---
 (goto) 2>nul & del "%~f0"
@@ -247,9 +292,40 @@ exit /b 1
         .replace("__SRC__", src)
         .replace("__DST__", dst)
         .replace("__EXE__", exe)
-        .replace("__EXEPATH__", exe_path)
+        .replace("__LAUNCHEXE__", launch)
+        .replace("__LAUNCHPATH__", launch_path)
     )
 
+
+
+
+def _apply_via_windows_installer(src_root: Path, marker: dict) -> int:
+    """Startet eine gestagete Setup-EXE fuer installierte Windows-Versionen.
+
+    Installer-Builds duerfen nicht wie Portable-ZIPs in den App-Ordner kopiert
+    werden: Program Files/Rechte, Uninstaller-Eintrag und Startmenue gehoeren
+    dem Setup. Deshalb startet der Updater hier die neue Setup-EXE und beendet
+    sich danach.
+    """
+    if not is_windows():
+        print("❌ Installer-Updates sind nur unter Windows erlaubt.")
+        return 10
+    candidates = sorted(src_root.rglob("BudgetManager_Setup*.exe"))
+    if not candidates:
+        candidates = sorted(src_root.rglob("*.exe"))
+    if not candidates:
+        print("❌ Keine Setup-EXE im Staging gefunden.")
+        return 11
+    setup = candidates[0]
+    print(f"⟲ Starte Windows-Installer: {setup}")
+    print("   Folge dem Setup-Fenster. Die App schließt sich jetzt.")
+    try:
+        subprocess.Popen([str(setup)], cwd=str(setup.parent), close_fds=True)
+    except Exception as e:
+        logger.exception("Windows-Installer konnte nicht gestartet werden")
+        print(f"❌ Windows-Installer konnte nicht gestartet werden: {e}")
+        return 12
+    return 0
 
 def _apply_via_windows_helper(src_root: Path) -> int:
     """Windows-Pfad: Backup erstellen, Helfer-Batch schreiben und starten.
@@ -259,6 +335,7 @@ def _apply_via_windows_helper(src_root: Path) -> int:
     damit der aktuelle Prozess sich beenden kann.
     """
     target_exe = current_exe_filename()
+    launch_exe = _launch_exe_filename(src_root)
     dst_dir = app_dir()
     upd = updates_dir()
 
@@ -273,7 +350,7 @@ def _apply_via_windows_helper(src_root: Path) -> int:
 
     log_path = upd / "update_apply.log"
     batch_path = upd / "apply_update.bat"
-    batch_text = _build_windows_helper_batch(src_root, dst_dir, target_exe, log_path)
+    batch_text = _build_windows_helper_batch(src_root, dst_dir, target_exe, launch_exe, log_path)
 
     # Batch als UTF-8 schreiben (chcp 65001 im Skript setzt passende Codepage).
     batch_path.write_text(batch_text, encoding="utf-8")
@@ -325,6 +402,9 @@ def main() -> int:
     if marker.get("download_url"):
         print(f"Quelle: {marker.get('download_url')}")
 
+    if str(marker.get("asset_type", "")).strip().lower() == "installer":
+        return _apply_via_windows_installer(src_root, marker)
+
     # ── Windows: Selbstsperre der laufenden EXE über externen Helfer lösen ──
     if is_windows():
         return _apply_via_windows_helper(src_root)
@@ -344,7 +424,7 @@ def main() -> int:
     if target_binary is not None:
         # Single-Binary-Update: nur die Binary atomar ersetzen (sicher, da
         # der restliche App-Ordner nicht angefasst wird).
-        target_path = app_dir() / current_exe_filename()
+        target_path = app_dir() / update_target_exe_filename()
         print(f"⟲ Ersetze Binary: {target_path.name}")
         try:
             _replace_binary_inplace(target_binary, target_path)
@@ -382,6 +462,7 @@ def main() -> int:
 
     print("✓ Update angewendet.")
     print("Starte die App jetzt neu.")
+    _restart_after_update(src_root)
     return 0
 
 

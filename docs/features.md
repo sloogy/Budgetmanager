@@ -1,4 +1,4 @@
-# BudgetManager v2.0.8 — Feature-Übersicht
+# BudgetManager v2.0.28 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
@@ -41,12 +41,19 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
 - Optionaler bevorzugter Standard-Buchungstag.
 - Einstellung „kein bevorzugter Tag“ für manuelle Pflege.
 
-### Sparziele und Auswertungen
+### Cockpit und Übersicht
 
-- Sparziele als eigener Bereich.
+- Ruhige Startseite mit Monatsstatus, Budget-Ampel, Budgetwarnungen, offenen Buchungen und letzten Buchungen.
+- Rechtsklick-Menüs im Cockpit mit echten Schnellaktionen.
 - Übersicht über Budget vs. Ist-Buchungen.
 - Diagramme und Tabellen im Übersichtstab.
 - Verschiebbare/skalierbare Panels.
+
+### Sparziele
+
+- Sparziele als eigener Bereich.
+- Zielbetrag, Fortschritt und Status auf einen Blick.
+- Sichtbar im Cockpit und in der Übersicht.
 
 ### Einstellungen und Komfort
 
@@ -57,17 +64,17 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
 - Backup/Restore inklusive Einstellungen.
 - Persistentes Undo/Redo.
 - Multi-Account-System mit Quick/PIN/Passwort-Modus.
+- Stabilitätsfallback unter Wayland über `xcb`, abschaltbar mit `BM_ALLOW_WAYLAND=1`.
 
-## Neu in v2.0.8
+## Neu bzw. release-relevant in v2.0.28
 
-- Versionsnummer und Release-Dateien auf `v2.0.8` konsolidiert.
-- Fixkosten-Forecast geschützt: 0-Monate senken Fixkosten nicht allein; echte wiederholte Buchungen bleiben auswertbar.
-- Installer-/Erststart-Abfrage für Sprache, Währung und bevorzugten Buchungstag bleibt korrekt verdrahtet.
-- Robustes Settings-Laden mit Default-Merge für Teil-JSONs.
-- Budgetübersicht: Drag & Drop optional ein-/ausschaltbar.
-- Einstellungen → Verhalten: Dropdown für Budgetvorschlags-Fenster.
-- Kategorien-Manager: Dropdown für Fälligkeitstage.
-- Release-Paket bereinigt: keine AI-Arbeitsordner, keine lokalen Settings, keine veralteten Merge-/Analyseberichte.
+- v2.0.28 als Basis mit Cockpit-, Budgetwarnungs-, Wayland-, i18n-, Restore- und Selbstheilungs-Fixes zusammengeführt.
+- Cockpit-Rechtsklick-Menüs sind wieder nutzbar und zeigen echte Cockpit-Aktionen.
+- Budgetwarnungen sind direkt im Cockpit sichtbar.
+- Harte Cockpit-Bezeichnungen wurden in Übersetzungsschlüssel überführt.
+- README, Installationsdoku, Feature-Übersicht, Hilfe, technische Dokumente und Manifest-Beispiele wurden auf v2.0.28 bereinigt.
+- CI prüft zusätzlich Formatierung im `model/` (`black --check model/`) und Typen im `model/` (`mypy model/`).
+- Alte Arbeitsberichte und Cache-Ordner wurden aus dem Release-Paket entfernt.
 
 ## Technik
 
@@ -83,5 +90,7 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
 ```bash
 python tools/sync_version.py --check
 python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+python tools/i18n_audit.py
+python tools/dau_first_run_check.py
 pytest tests/ -v
 ```

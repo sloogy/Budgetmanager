@@ -126,10 +126,32 @@ def _install_crash_diagnostics() -> None:
 
 
 def _configure_qt_platform() -> None:
-    """Optionaler Workaround für Wayland-TextInput-Crashes."""
+    """Stabiler Qt-Start unter Linux/Wayland.
+
+    In Qt/PySide kann Wayland beim Schließen kleiner Dialoge oder Kontextmenüs
+    mit ``qt.qpa.wayland.textinput ... surface 0x0`` in einen nativen
+    Segmentation Fault laufen. Python sieht diesen Fehler nicht mehr, deshalb
+    hilft nur ein QPA-Workaround VOR ``QApplication(...)``.
+
+    Best Practice für diese Desktop-App: Unter einer Wayland-Sitzung automatisch
+    das XCB/XWayland-Backend verwenden, solange der Nutzer nicht explizit
+    ``BM_ALLOW_WAYLAND=1`` setzt. ``BM_FORCE_XCB=1`` bleibt zusätzlich als
+    manueller Schalter erhalten.
+    """
     force_xcb = os.environ.get("BM_FORCE_XCB", "").strip().lower() in {"1", "true", "yes"}
-    if force_xcb and not os.environ.get("QT_QPA_PLATFORM"):
+    allow_wayland = os.environ.get("BM_ALLOW_WAYLAND", "").strip().lower() in {"1", "true", "yes"}
+    platform_already_set = bool(os.environ.get("QT_QPA_PLATFORM"))
+    is_wayland_session = (
+        os.environ.get("XDG_SESSION_TYPE", "").strip().lower() == "wayland"
+        or bool(os.environ.get("WAYLAND_DISPLAY"))
+    )
+
+    if not platform_already_set and (force_xcb or (is_wayland_session and not allow_wayland)):
         os.environ["QT_QPA_PLATFORM"] = "xcb"
+        logging.getLogger(__name__).info(
+            "Qt-Backend auf xcb gesetzt (Wayland-Stabilitätsfallback). "
+            "Native Wayland-Nutzung: BM_ALLOW_WAYLAND=1 setzen."
+        )
 
 
 def _setup_emoji_fonts(app) -> None:
@@ -225,6 +247,41 @@ def _run_updater_mode(argv: list[str]) -> int | None:
     return None
 
 
+
+def _apply_application_icon(app) -> None:
+    """Setzt das BudgetManager-App-Icon fuer Fenster/Taskbar.
+
+    Funktioniert im Source-Start und im PyInstaller-Onefile-Build:
+    - Source/portable Ordner: <app_dir>/resources/icons/...
+    - Frozen Onefile: sys._MEIPASS/resources/icons/...
+    """
+    try:
+        from PySide6.QtGui import QIcon
+        from model.app_paths import resolve_in_app
+
+        candidates = []
+        meipass = getattr(sys, "_MEIPASS", None)
+        if meipass:
+            base = Path(meipass)
+            candidates.extend([
+                base / "resources" / "icons" / "budgetmanager.ico",
+                base / "resources" / "icons" / "budgetmanager.png",
+            ])
+        candidates.extend([
+            resolve_in_app("resources/icons/budgetmanager.ico"),
+            resolve_in_app("resources/icons/budgetmanager.png"),
+        ])
+        for icon_path in candidates:
+            if icon_path.exists():
+                icon = QIcon(str(icon_path))
+                if not icon.isNull():
+                    app.setWindowIcon(icon)
+                    logging.getLogger(__name__).info("App-Icon gesetzt: %s", icon_path)
+                    return
+        logging.getLogger(__name__).debug("Kein App-Icon gefunden: %s", candidates)
+    except Exception as exc:
+        logging.getLogger(__name__).debug("App-Icon konnte nicht gesetzt werden: %s", exc)
+
 def main() -> int:
     # Logging initialisieren (vor allem anderen Code)
     from model.logging_config import setup_logging
@@ -256,7 +313,7 @@ def main() -> int:
     import traceback
 
     try:
-        from model.app_paths import resolve_in_app, data_dir
+        from model.app_paths import resolve_in_app, data_dir, configured_db_path, configured_backups_dir
         from PySide6.QtCore import QTimer
         from PySide6.QtWidgets import QApplication, QMessageBox
         from model.database import open_db, EncryptedSession
@@ -278,6 +335,7 @@ def main() -> int:
 
         app = QApplication(sys.argv)
         _setup_emoji_fonts(app)
+        _apply_application_icon(app)
 
         # Einstellungen laden
         from settings import Settings
@@ -337,74 +395,128 @@ def main() -> int:
         db_path = None
         active_user = None
 
-        if user_model.has_users():
-            users = user_model.list_users()
+        def _recover_broken_account(broken, reason: str) -> bool:
+            """Selbstheilung bei einem defekten/verwaisten Konto.
 
-            # Fall: 1 Quick-User → direkt rein (kein Dialog)
-            if len(users) == 1 and users[0].is_quick:
-                user = users[0]
-                db_key = user_model.authenticate_quick(user.username)
-                if not db_key:
-                    QMessageBox.critical(None, tr("msg.error"), tr("account.quick_login_failed"))
-                    return 1
-                active_user = user
-            else:
-                # Login-Dialog anzeigen
-                from views.login_dialog import LoginDialog
-                login_dlg = LoginDialog()
-                if login_dlg.exec() != LoginDialog.Accepted or not login_dlg.result:
-                    return 0  # Abgebrochen
-                active_user = login_dlg.result.user
-                db_key = login_dlg.result.db_key
-
-            # Verschlüsselte DB öffnen
+            Fragt, ob das nicht öffenbare Konto entfernt und die Ersteinrichtung
+            erneut gestartet werden soll. Bei Zustimmung wird das Konto inkl. der
+            verschlüsselten DB-Datei gelöscht und True zurückgegeben – so muss der
+            Nutzer NICHT manuell den data-Ordner leeren, um wieder hineinzukommen
+            (z. B. nach einem Erststart-Restore mit falschem Wiederherstellungscode).
+            """
+            if QMessageBox.question(
+                None,
+                tr("startup.recover_title"),
+                trf("startup.recover_question", reason=reason),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            ) != QMessageBox.Yes:
+                return False
             try:
-                encrypted_session = EncryptedSession.open_with_key(
-                    str(active_user.db_path), db_key, active_user.salt
-                )
-                conn = encrypted_session.conn
-                logger.info("DB geöffnet: %s (%s)",
-                            active_user.display_name, active_user.db_filename)
-            except Exception as e:
-                QMessageBox.critical(
-                    None, tr("msg.error"),
-                    trf("msg.db_open_failed", err=str(e))
-                )
-                return 1
+                user_model.delete_user(broken.username, delete_db=True)
+            except Exception as exc:
+                logger.warning("Defektes Konto konnte nicht regulär entfernt werden: %s", exc)
+            # Sicherstellen, dass keine verwaiste .enc zurückbleibt.
+            try:
+                if broken.db_path.exists():
+                    broken.db_path.unlink()
+            except Exception as exc:
+                logger.error("Verwaiste DB-Datei konnte nicht entfernt werden: %s", exc)
+                return False
+            logger.info("Defektes Konto '%s' entfernt – Ersteinrichtung wird erneut angeboten.",
+                        broken.username)
+            return True
 
-        else:
-            # Keine Benutzer → Erstbenutzer-Wizard ODER direkt starten
-            from model.crypto import is_crypto_available
+        while True:
+            if user_model.has_users():
+                users = user_model.list_users()
 
-            if is_crypto_available():
-                # Erststart-Assistent: User erstellen ODER Daten importieren
-                from views.startup_wizard import StartupWizard
-                wiz = StartupWizard(user_model=user_model)
-                if wiz.exec() == StartupWizard.Accepted and wiz.result:
-                    active_user = wiz.result.user
-                    db_key = wiz.result.db_key
-                    try:
-                        encrypted_session = EncryptedSession.open_with_key(
-                            str(active_user.db_path), db_key, active_user.salt
-                        )
-                        conn = encrypted_session.conn
-                    except Exception as e:
-                        QMessageBox.critical(None, tr("msg.error"), str(e))
+                # Fall: 1 Quick-User → direkt rein (kein Dialog)
+                if len(users) == 1 and users[0].is_quick:
+                    user = users[0]
+                    db_key = user_model.authenticate_quick(user.username)
+                    if not db_key:
+                        if _recover_broken_account(user, tr("account.quick_login_failed")):
+                            active_user = None
+                            continue
+                        QMessageBox.critical(None, tr("msg.error"), tr("account.quick_login_failed"))
                         return 1
+                    active_user = user
                 else:
-                    # Abgebrochen → Fallback auf unverschlüsselt
-                    pass
+                    # Login-Dialog anzeigen
+                    from views.login_dialog import LoginDialog
+                    login_dlg = LoginDialog()
+                    if login_dlg.exec() != LoginDialog.Accepted or not login_dlg.result:
+                        return 0  # Abgebrochen
+                    active_user = login_dlg.result.user
+                    db_key = login_dlg.result.db_key
 
-            if conn is None:
-                # Fallback: unverschlüsselte DB (wenn kein crypto oder abgebrochen)
-                db_path = resolve_in_app(settings.database_path)
-                db_path.parent.mkdir(parents=True, exist_ok=True)
-                db_existed_before = db_path.exists()
-                conn = open_db(str(db_path))
+                # Verschlüsselte DB öffnen
+                try:
+                    encrypted_session = EncryptedSession.open_with_key(
+                        str(active_user.db_path), db_key, active_user.salt
+                    )
+                    conn = encrypted_session.conn
+                    logger.info("DB geöffnet: %s (%s)",
+                                active_user.display_name, active_user.db_filename)
+                except Exception as e:
+                    # DB nicht öffenbar (defekt/verwaist). Bei einem EINZELNEN
+                    # Benutzer ohne öffenbare Daten Selbstheilung anbieten, statt
+                    # hart zu beenden (sonst: "komme nicht mehr rein bis data leer").
+                    single_user = (len(users) == 1)
+                    if single_user and _recover_broken_account(active_user, str(e)):
+                        active_user = None
+                        encrypted_session = None
+                        conn = None
+                        continue
+                    QMessageBox.critical(
+                        None, tr("msg.error"),
+                        trf("msg.db_open_failed", err=str(e))
+                    )
+                    return 1
+                break
+
+            else:
+                # Keine Benutzer → Erstbenutzer-Wizard ODER direkt starten
+                from model.crypto import is_crypto_available
+
+                if is_crypto_available():
+                    # Erststart-Assistent: User erstellen ODER Daten importieren
+                    from views.startup_wizard import StartupWizard
+                    wiz = StartupWizard(user_model=user_model)
+                    if wiz.exec() == StartupWizard.Accepted and wiz.result:
+                        active_user = wiz.result.user
+                        db_key = wiz.result.db_key
+                        try:
+                            encrypted_session = EncryptedSession.open_with_key(
+                                str(active_user.db_path), db_key, active_user.salt
+                            )
+                            conn = encrypted_session.conn
+                        except Exception as e:
+                            # Selbst der frisch eingerichtete Benutzer ließ sich nicht
+                            # öffnen → entfernen und Einrichtung erneut anbieten.
+                            if _recover_broken_account(active_user, str(e)):
+                                active_user = None
+                                encrypted_session = None
+                                conn = None
+                                continue
+                            QMessageBox.critical(None, tr("msg.error"), str(e))
+                            return 1
+                    else:
+                        # Abgebrochen → Fallback auf unverschlüsselt
+                        pass
+
+                if conn is None:
+                    # Fallback: unverschlüsselte DB (wenn kein crypto oder abgebrochen)
+                    db_path = configured_db_path(settings.database_path)
+                    db_path.parent.mkdir(parents=True, exist_ok=True)
+                    db_existed_before = db_path.exists()
+                    conn = open_db(str(db_path))
+                break
 
         # ── Migrations ──────────────────────────────
         if db_path:
-            backup_dir = str(resolve_in_app(settings.backup_directory))
+            backup_dir = str(configured_backups_dir(settings.backup_directory))
             Path(backup_dir).mkdir(parents=True, exist_ok=True)
             migration_info = migrate_all(conn, str(db_path), backup_dir)
         else:
@@ -420,7 +532,7 @@ def main() -> int:
                         from datetime import datetime as _dt
                         enc_src = Path(encrypted_session.enc_path)
                         if enc_src.exists():
-                            backup_dir_p = resolve_in_app(settings.backup_directory)
+                            backup_dir_p = configured_backups_dir(settings.backup_directory)
                             backup_dir_p.mkdir(parents=True, exist_ok=True)
                             stamp = _dt.now().strftime("%Y%m%d_%H%M%S")
                             enc_backup = backup_dir_p / f"pre_migration_{stamp}.enc"
@@ -464,6 +576,10 @@ def main() -> int:
         # ── MainWindow ──────────────────────────────
         from views.main_window import MainWindow
         win = MainWindow(conn, active_user=active_user, user_model=user_model)
+        try:
+            win.setWindowIcon(app.windowIcon())
+        except Exception:
+            pass
         win._single_instance_lock = single_lock
 
         if encrypted_session:
@@ -481,8 +597,25 @@ def main() -> int:
             win._save_timer = save_timer
 
         # Auto-Backup nach Event-Loop-Start prüfen (nicht in __init__,
-        # damit _encrypted_session korrekt gesetzt ist und kein Access Violation entsteht)
-        QTimer.singleShot(500, win._check_auto_backup)
+        # damit _encrypted_session korrekt gesetzt ist).
+        #
+        # WICHTIG v2.0.16 Hotfix:
+        # Beim echten Erststart läuft direkt danach der nicht-modale Setup-Assistent.
+        # Auf Fedora/Wayland über XCB kann gleichzeitiges Initialisieren eines
+        # Kinddialogs + verschlüsseltes Auto-Backup zu einem nativen Qt/PySide-
+        # Segfault führen (kein Python-Traceback). Deshalb wird das erste
+        # Auto-Backup bei aktivem Onboarding bis nach dem Assistenten verschoben.
+        setup_autostart_requested = (
+            bool(settings.get("show_onboarding", True))
+            and not bool(settings.get("setup_completed", False))
+        )
+        win._defer_startup_auto_backup_until_setup = bool(setup_autostart_requested)
+        win._startup_auto_backup_done = False
+
+        if setup_autostart_requested:
+            logger.info("Auto-Backup wird bis nach dem Setup-Assistenten verschoben.")
+        else:
+            QTimer.singleShot(500, win._check_auto_backup)
 
         # Hauptfenster genau einmal anzeigen. MainWindow._restore_window_state()
         # setzt nur Geometrie und merkt sich den gewünschten Zustand.
@@ -511,7 +644,10 @@ def main() -> int:
             except Exception:
                 db_existed = False
 
-        QTimer.singleShot(0, lambda: win._start_setup_assistant(
+        # Setup nicht im selben Event-Loop-Tick wie show() starten. Das gibt Qt
+        # Zeit, das Hauptfenster vollständig zu realisieren, bevor der Assistent
+        # als Kindfenster angezeigt wird.
+        QTimer.singleShot(250, lambda: win._start_setup_assistant(
             force=False, db_existed_before=db_existed
         ))
 

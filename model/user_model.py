@@ -11,8 +11,10 @@ DB ist IMMER verschlüsselt, auch bei Quick-Usern.
 
 Benutzerdaten in data/users.json.
 """
+
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 import json
@@ -25,19 +27,30 @@ from datetime import datetime
 
 from model.app_paths import data_dir
 from model.crypto import (
-    generate_salt, generate_db_key, hash_password, verify_password,
-    wrap_db_key, unwrap_db_key, db_key_to_restore_key, restore_key_to_db_key,
-    create_empty_encrypted_db, decrypt_db_from_file, save_memory_db,
-    encrypt_db_to_file, SALT_LENGTH,
+    generate_salt,
+    generate_db_key,
+    hash_password,
+    verify_password,
+    wrap_db_key,
+    unwrap_db_key,
+    unwrap_db_key_with_iterations,
+    db_key_to_restore_key,
+    restore_key_to_db_key,
+    create_empty_encrypted_db,
+    decrypt_db_from_file,
+    save_memory_db,
+    encrypt_db_to_file,
+    SALT_LENGTH,
+    PBKDF2_ITERATIONS,
 )
 
 
 USERS_FILE = "users.json"
 
 # Sicherheitsstufen
-SECURITY_QUICK = "quick"       # Ohne Passwort
-SECURITY_PIN = "pin"           # 4-8 Ziffern
-SECURITY_PASSWORD = "password" # Passwort
+SECURITY_QUICK = "quick"  # Ohne Passwort
+SECURITY_PIN = "pin"  # 4-8 Ziffern
+SECURITY_PASSWORD = "password"  # Passwort
 
 SECURITY_LABELS = {
     SECURITY_QUICK: "Ohne Passwort (Quick)",
@@ -54,12 +67,12 @@ SECURITY_ICONS = {
 
 @dataclass
 class User:
-    username: str               # Eindeutiger Slug (a-z, 0-9, _, -)
-    display_name: str           # Anzeigename frei wählbar ("Max Mustermann")
-    security: str               # "quick" | "pin" | "password"
-    salt_hex: str               # Salt als Hex
-    db_filename: str            # z.B. "christian_kraemer.enc"
-    created: str                # ISO-Datum
+    username: str  # Eindeutiger Slug (a-z, 0-9, _, -)
+    display_name: str  # Anzeigename frei wählbar ("Max Mustermann")
+    security: str  # "quick" | "pin" | "password"
+    salt_hex: str  # Salt als Hex
+    db_filename: str  # z.B. "christian_kraemer.enc"
+    created: str  # ISO-Datum
     # Für Quick: db_key direkt gespeichert (base64)
     db_key_b64: str = ""
     # Für PIN/PW: verschlüsselter db_key (base64 des Fernet-Tokens)
@@ -70,6 +83,9 @@ class User:
     restore_key_offered: bool = False
     # Standard-Benutzer (wird bei 1 User auto-login)
     is_default: bool = False
+    # PBKDF2-Runden für PIN/PW-Key-Wrapping. Alte User ohne Feld werden
+    # beim erfolgreichen Login automatisch auf PBKDF2_ITERATIONS gehoben.
+    kdf_iterations: int = PBKDF2_ITERATIONS
 
     @property
     def salt(self) -> bytes:
@@ -104,6 +120,15 @@ class User:
     def security_icon(self) -> str:
         return SECURITY_ICONS.get(self.security, "")
 
+    def get_db_key_and_iterations(self, secret: str = "") -> tuple[bytes, int]:
+        """Gibt db_key und tatsächlich genutzte PBKDF2-Runden zurück."""
+        import base64
+
+        if self.is_quick:
+            return self.db_key_b64.encode("ascii"), PBKDF2_ITERATIONS
+        wrapped = base64.urlsafe_b64decode(self.wrapped_db_key_b64)
+        return unwrap_db_key_with_iterations(wrapped, secret, self.salt)
+
     def get_db_key(self, secret: str = "") -> bytes:
         """Gibt den db_key zurück.
 
@@ -112,12 +137,8 @@ class User:
 
         Raises: ValueError bei falschem Secret
         """
-        import base64
-        if self.is_quick:
-            return self.db_key_b64.encode("ascii")
-        else:
-            wrapped = base64.urlsafe_b64decode(self.wrapped_db_key_b64)
-            return unwrap_db_key(wrapped, secret, self.salt)
+        db_key, _iterations = self.get_db_key_and_iterations(secret)
+        return db_key
 
     def get_db_key_with_restore(self, restore_key: str) -> bytes:
         """Gibt den db_key via Restore-Key zurück."""
@@ -131,6 +152,7 @@ def _users_file_path() -> Path:
 def _make_slug(name: str) -> str:
     """Erzeugt einen Dateinamen-sicheren Slug aus einem Display-Namen."""
     import unicodedata
+
     # Umlaute normalisieren
     nfkd = unicodedata.normalize("NFKD", name)
     ascii_str = nfkd.encode("ascii", "ignore").decode("ascii")
@@ -212,13 +234,14 @@ class UserModel:
     def set_default_user(self, username: str) -> None:
         """Setzt einen Benutzer als Standard."""
         for u in self._users.values():
-            u.is_default = (u.username == username)
+            u.is_default = u.username == username
         self._save()
 
     # ── Erstellen ────────────────────────────────
 
-    def create_user(self, display_name: str, security: str,
-                    secret: str = "") -> tuple[User, str]:
+    def create_user(
+        self, display_name: str, security: str, secret: str = ""
+    ) -> tuple[User, str]:
         """Erstellt einen neuen Benutzer.
 
         Args:
@@ -278,6 +301,7 @@ class UserModel:
             wrapped = wrap_db_key(db_key, secret, salt)
             user.wrapped_db_key_b64 = base64.urlsafe_b64encode(wrapped).decode("ascii")
             user.pw_hash = hash_password(secret, salt)
+            user.kdf_iterations = PBKDF2_ITERATIONS
             restore_key = db_key_to_restore_key(db_key)
 
         # Leere verschlüsselte DB erstellen
@@ -326,13 +350,39 @@ class UserModel:
             try:
                 user.db_path.unlink()
             except Exception as e:
-                logger.error("DB-Datei löschen fehlgeschlagen — Benutzer wird nicht entfernt: %s", e)
+                logger.error(
+                    "DB-Datei löschen fehlgeschlagen — Benutzer wird nicht entfernt: %s",
+                    e,
+                )
                 return False
 
         del self._users[username]
         self._save()
         logger.info("Benutzer '%s' gelöscht", username)
         return True
+
+    def _upgrade_user_kdf(self, user: User, db_key: bytes, secret: str) -> None:
+        """Hebt alte PIN/PW-Accounts nach erfolgreichem Login auf aktuelle PBKDF2-Runden.
+
+        Die Datenbankverschlüsselung selbst nutzt den zufälligen db_key; geändert
+        wird nur die lokale Verpackung dieses Schlüssels in users.json.
+        """
+        if user.is_quick:
+            return
+        try:
+            import base64
+            new_salt = generate_salt()
+            wrapped = wrap_db_key(db_key, secret, new_salt)
+            user.wrapped_db_key_b64 = base64.urlsafe_b64encode(wrapped).decode("ascii")
+            user.pw_hash = hash_password(secret, new_salt)
+            user.salt_hex = new_salt.hex()
+            user.kdf_iterations = PBKDF2_ITERATIONS
+            self._users[user.username] = user
+            self._save()
+            logger.info("PBKDF2-Parameter für Benutzer '%s' aktualisiert", user.username)
+        except Exception as e:
+            # Login darf nicht scheitern, nur weil die Härtungs-Migration nicht speichern konnte.
+            logger.warning("PBKDF2-Upgrade für Benutzer '%s' fehlgeschlagen: %s", user.username, e)
 
     # ── Authentifizierung ────────────────────────
 
@@ -346,7 +396,9 @@ class UserModel:
             return None
 
         try:
-            db_key = user.get_db_key(secret)
+            db_key, used_iterations = user.get_db_key_and_iterations(secret)
+            if (not user.is_quick) and used_iterations != PBKDF2_ITERATIONS:
+                self._upgrade_user_kdf(user, db_key, secret)
             return db_key
         except ValueError:
             logger.warning("Authentifizierung fehlgeschlagen für '%s'", username)
@@ -376,13 +428,16 @@ class UserModel:
                 conn.close()
             return db_key
         except Exception as e:
-            logger.warning("Restore-Key Authentifizierung fehlgeschlagen für '%s': %s", username, e)
+            logger.warning(
+                "Restore-Key Authentifizierung fehlgeschlagen für '%s': %s", username, e
+            )
             return None
 
     # ── Passwort/PIN ändern ──────────────────────
 
-    def change_secret(self, username: str, old_secret: str,
-                      new_secret: str, new_security: str = "") -> tuple[bool, str]:
+    def change_secret(
+        self, username: str, old_secret: str, new_secret: str, new_security: str = ""
+    ) -> tuple[bool, str]:
         """Ändert PIN/Passwort und optional die Sicherheitsstufe.
 
         Returns: (success, new_restore_key)
@@ -410,11 +465,13 @@ class UserModel:
             user.db_key_b64 = db_key.decode("ascii")
             user.wrapped_db_key_b64 = ""
             user.pw_hash = ""
+            user.kdf_iterations = PBKDF2_ITERATIONS
         else:
             wrapped = wrap_db_key(db_key, new_secret, new_salt)
             user.wrapped_db_key_b64 = base64.urlsafe_b64encode(wrapped).decode("ascii")
             user.pw_hash = hash_password(new_secret, new_salt)
             user.db_key_b64 = ""
+            user.kdf_iterations = PBKDF2_ITERATIONS
             restore_key = db_key_to_restore_key(db_key)
 
         user.security = new_security
@@ -430,8 +487,9 @@ class UserModel:
 
     # ── Upgrade Quick → PIN/PW ───────────────────
 
-    def upgrade_security(self, username: str, new_security: str,
-                         new_secret: str) -> tuple[bool, str]:
+    def upgrade_security(
+        self, username: str, new_security: str, new_secret: str
+    ) -> tuple[bool, str]:
         """Upgraded einen Quick-User zu PIN oder Passwort.
 
         Returns: (success, restore_key)
@@ -447,14 +505,16 @@ class UserModel:
         """Gibt einen Sicherheitsreport für alle Benutzer zurück."""
         report = []
         for u in self.list_users():
-            report.append({
-                "username": u.username,
-                "display_name": u.display_name,
-                "security": u.security,
-                "security_label": u.security_label,
-                "security_icon": u.security_icon,
-                "restore_offered": u.restore_key_offered,
-                "db_exists": u.db_path.exists(),
-                "needs_auth": u.needs_auth,
-            })
+            report.append(
+                {
+                    "username": u.username,
+                    "display_name": u.display_name,
+                    "security": u.security,
+                    "security_label": u.security_label,
+                    "security_icon": u.security_icon,
+                    "restore_offered": u.restore_key_offered,
+                    "db_exists": u.db_path.exists(),
+                    "needs_auth": u.needs_auth,
+                }
+            )
         return report

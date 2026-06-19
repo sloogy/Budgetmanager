@@ -10,11 +10,12 @@ from PySide6.QtCore import Qt, QTimer, QUrl, QPoint
 from PySide6.QtGui import QAction, QActionGroup, QIcon, QKeySequence, QShortcut, QDesktopServices
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QMenuBar, QMenu, QMessageBox,
-    QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication, QPushButton
+    QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication, QPushButton,
+    QFrame, QTableWidget
 )
 
 from app_info import APP_NAME, APP_VERSION, app_window_title, app_about_title, app_version_label
-from model.app_paths import resolve_in_app, data_dir
+from model.app_paths import resolve_in_app, data_dir, configured_db_path, configured_backups_dir
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
 from model.category_model import CategoryModel
 from model.shortcuts_config import load_shortcuts, save_shortcuts
@@ -53,29 +54,12 @@ class AboutDialog(QDialog):
 
         layout = QVBoxLayout()
 
-        html = f"""
-<h2>{APP_NAME}</h2>
-<p><b>Version:</b> {app_version_label()}</p>
-<p><b>Entwickelt mit:</b> PySide6 (Qt für Python)</p>
-<p><b>Datenbank:</b> SQLite</p>
-<br>
-<p>Ein einfacher Budgetmanager zur Verwaltung von:</p>
-<ul>
-  <li>Budget-Planung nach Kategorien</li>
-  <li>Tracking von Einnahmen und Ausgaben</li>
-  <li>Visualisierung und Auswertung</li>
-  <li>Sparziele und Favoriten</li>
-  <li>Tags und Budgetwarnungen</li>
-</ul>
-<br>
-<p><b>Highlights {APP_VERSION}:</b></p>
-<ul>
-  <li>Integrierte Kategorie-Verwaltung im Budget-Dialog</li>
-  <li>Management-Button mit allen Kategorie-Funktionen</li>
-  <li>Kategorien-Tab als optionaler Experten-Modus</li>
-  <li>Dashboard: Tabellarische Ansicht (Budget / Gebucht / Rest)</li>
-</ul>
-"""
+        html = trf(
+            "about.html",
+            app_name=APP_NAME,
+            version=app_version_label(),
+            app_version=APP_VERSION,
+        )
 
         info = QLabel(html)
         info.setTextFormat(Qt.RichText)
@@ -85,7 +69,7 @@ class AboutDialog(QDialog):
         buttons.accepted.connect(self.accept)
 
         # Update-Button direkt im Info/Über-Dialog
-        btn_updates = buttons.addButton("Updates...", QDialogButtonBox.ActionRole)
+        btn_updates = buttons.addButton(tr("update.title"), QDialogButtonBox.ActionRole)
         btn_updates.clicked.connect(self._open_updates)
 
         layout.addWidget(info)
@@ -141,6 +125,13 @@ class MainWindow(QMainWindow):
         self.tracking_tab = TrackingTab(conn, settings=self.settings)
         self.overview_tab = OverviewTab(conn, settings=self.settings)
         self.savings_tab = OverviewSavingsPanel(conn)
+
+        # Reiter „Konto" – zentraler Hub (Konto, Speicherort, Backup, Zurücksetzen).
+        # encrypted_mode anhand des aktiven Users (verschlüsselter Login).
+        from views.account_data_hub import AccountDataHub
+        self.account_tab = AccountDataHub(
+            self.settings, self, encrypted_mode=(self._active_user is not None),
+        )
         
         # Schnelleingabe-Signals von Tabs verbinden
         self.cockpit_tab.quick_add_requested.connect(self._show_quick_add)
@@ -151,6 +142,7 @@ class MainWindow(QMainWindow):
         self.cockpit_tab.goto_tracking_requested.connect(lambda: self._goto_tab(self.tracking_tab))
         self.cockpit_tab.goto_overview_requested.connect(lambda: self._goto_tab(self.overview_tab))
         self.cockpit_tab.goto_savings_requested.connect(lambda: self._goto_tab(self.savings_tab))
+        self.cockpit_tab.budget_warnings_requested.connect(lambda: self._check_budget_warnings())
         self.budget_tab.quick_add_requested.connect(self._show_quick_add)
         self.budget_tab.savings_goals_requested.connect(self._show_savings_goals)
         self.categories_tab.quick_add_requested.connect(self._show_quick_add)
@@ -182,6 +174,7 @@ class MainWindow(QMainWindow):
             2: ("fixed", tr("tab.tracking")),
             3: ("tr", "tab.overview"),
             4: ("tr", "tab.savings"),
+            6: ("tr", "tab.account"),
         }
         self._tab_definitions = {
             5: (self.cockpit_tab, tr("tab.cockpit")),
@@ -189,6 +182,7 @@ class MainWindow(QMainWindow):
             2: (self.tracking_tab, tr("tab.tracking")),
             3: (self.overview_tab, tr("tab.overview")),
             4: (self.savings_tab, tr("tab.savings")),
+            6: (self.account_tab, tr("tab.account")),
         }
         self._tab_visibility_keys = {
             5: "cockpit",
@@ -196,6 +190,7 @@ class MainWindow(QMainWindow):
             2: "tracking",
             3: "overview",
             4: "savings",
+            6: "account",
         }
         
         # Tabs in gespeicherter Reihenfolge hinzufügen
@@ -204,7 +199,9 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.tabs)
         
-        # Tab-Wechsel Signal verbinden (für dynamisches Bearbeiten-Menü)
+        # Tab-Wechsel Signal verbinden (für dynamisches Bearbeiten-Menü).
+        # _last_tab_widget erlaubt Speichern BEVOR der alte Tab verlassen wird.
+        self._last_tab_widget = self.tabs.currentWidget()
         self.tabs.currentChanged.connect(self._on_tab_changed)
         
         # Fenster-Geometrie und -Status wiederherstellen
@@ -368,15 +365,31 @@ class MainWindow(QMainWindow):
         einfachen Reiterflächen bekommt der Nutzer direkt dieselben Aktionen wie
         im Menü "Bearbeiten".
         """
-        for widget in [
+        widgets = [
             self.tabs,
             self.cockpit_tab,
             self.budget_tab,
             self.tracking_tab,
             self.overview_tab,
             self.savings_tab,
-        ]:
+        ]
+
+        # Cockpit: Rechtsklick soll auch auf Karten, Tabellen und leeren Panel-Flächen
+        # funktionieren. Sonst landet der Klick bei Child-Widgets und das Menü wirkt
+        # auf den Nutzer zufällig oder funktionslos.
+        try:
+            widgets.extend(self.cockpit_tab.findChildren(QFrame))
+            widgets.extend(self.cockpit_tab.findChildren(QTableWidget))
+        except Exception:
+            pass
+
+        seen: set[int] = set()
+        for widget in widgets:
             try:
+                ident = id(widget)
+                if ident in seen:
+                    continue
+                seen.add(ident)
                 widget.setContextMenuPolicy(Qt.CustomContextMenu)
                 widget.customContextMenuRequested.connect(
                     lambda pos, w=widget: self._show_edit_context_menu(w.mapToGlobal(pos))
@@ -385,7 +398,17 @@ class MainWindow(QMainWindow):
                 logger.debug("Edit-Kontextmenü konnte nicht installiert werden: %s", e)
 
     def _show_edit_context_menu(self, global_pos: QPoint) -> None:
-        """Zeigt eine Kontextmenü-Kopie der aktuell gültigen Bearbeiten-Aktionen."""
+        """Zeigt ein zum aktiven Reiter passendes Rechtsklick-Menü.
+
+        Für das Cockpit darf das Menü nicht die generischen
+        ``Neu/Bearbeiten/Löschen``-Einträge anzeigen: Diese delegieren an
+        Methoden, die das Cockpit bewusst nicht hat und wirken dadurch wie
+        "macht nichts". Das Cockpit bekommt deshalb eigene Schnellaktionen.
+        """
+        if self.tabs.currentWidget() is self.cockpit_tab:
+            self._show_cockpit_context_menu(global_pos)
+            return
+
         try:
             self._update_edit_menu()
         except Exception:
@@ -398,7 +421,7 @@ class MainWindow(QMainWindow):
                     menu.addSeparator()
                     last_sep = True
                 continue
-            if not act.isVisible():
+            if not act.isVisible() or not act.isEnabled():
                 continue
             menu.addAction(act)
             last_sep = False
@@ -407,6 +430,30 @@ class MainWindow(QMainWindow):
             menu.removeAction(menu.actions()[-1])
         if menu.actions():
             menu.exec(global_pos)
+
+    def _show_cockpit_context_menu(self, global_pos: QPoint) -> None:
+        """Nutzbares Rechtsklick-Menü für das Cockpit."""
+        menu = QMenu(self)
+
+        def add(label_key: str, icon: str, callback) -> None:
+            act = QAction(tr(label_key), self)
+            act.setIcon(get_icon(icon))
+            act.triggered.connect(lambda _checked=False, cb=callback: cb())
+            menu.addAction(act)
+
+        add("cockpit.action_quick_add", "➕", self._show_quick_add)
+        add("cockpit.action_fixcosts", "📅", self._tracking_add_fixcosts)
+        add("cockpit.action_budget_warnings", "🚨", self._check_budget_warnings)
+        menu.addSeparator()
+        add("cockpit.action_check_budget", "💰", lambda: self._goto_tab(self.budget_tab))
+        add("cockpit.action_overview", "📈", lambda: self._goto_tab(self.overview_tab))
+        add("cockpit.action_savings", "🎯", self._show_savings_goals)
+        menu.addSeparator()
+        add("cockpit.refresh", "🔄", self.cockpit_tab.refresh)
+        add("cockpit.customize", "⚙️", self.cockpit_tab._show_customize_menu)
+        add("cockpit.show_all", "🏠", self.cockpit_tab._show_all_panels)
+
+        menu.exec(global_pos)
 
     # ── Menü-Sektionen ──────────────────────────────────────────
 
@@ -464,6 +511,7 @@ class MainWindow(QMainWindow):
             (2, tr("tab.tracking")),
             (3, tr("tab.overview")),
             (4, tr("tab.savings")),
+            (6, tr("tab.account")),
         ]:
             act = QAction(title, self)
             act.setCheckable(True)
@@ -697,16 +745,8 @@ class MainWindow(QMainWindow):
         savings_action.triggered.connect(self._show_savings_goals)
         extras_menu.addAction(savings_action)
 
-        backup_action = QAction(tr("menu.backup"), self)
-        backup_action.setIcon(get_icon("💾"))
-        backup_action.setStatusTip(tr("menu.backup_tip"))
-        backup_action.triggered.connect(self._show_backup_restore)
-        extras_menu.addAction(backup_action)
-
-        db_manage_action = QAction(tr("menu.db_management"), self)
-        db_manage_action.setIcon(get_icon("🗄️"))
-        db_manage_action.triggered.connect(self._show_database_management)
-        extras_menu.addAction(db_manage_action)
+        # Backup & Datenbank-Verwaltung sind jetzt im Reiter „Konto" / unter
+        # Einstellungen → „Konto & Daten" gebündelt (kein verstreuter Extras-Eintrag mehr).
 
         extras_menu.addSeparator()
 
@@ -734,6 +774,14 @@ class MainWindow(QMainWindow):
         account_manage_action.setStatusTip(tr("menu.account_manage_tip"))
         account_manage_action.triggered.connect(self._show_account_management)
         account_menu.addAction(account_manage_action)
+
+        account_data_action = QAction(tr("menu.account_data"), self)
+        account_data_action.setIcon(get_icon("🗂️"))
+        account_data_action.setStatusTip(tr("menu.account_data_tip"))
+        account_data_action.triggered.connect(
+            lambda: self._goto_tab(self.account_tab)
+        )
+        account_menu.addAction(account_data_action)
 
         account_menu.addSeparator()
 
@@ -814,7 +862,7 @@ class MainWindow(QMainWindow):
                 dbp = Path(self._active_user.db_path)
             else:
                 try:
-                    dbp = resolve_in_app(self.settings.database_path)
+                    dbp = configured_db_path(self.settings.database_path)
                 except Exception:
                     dbp = Path("(unbekannt)")
 
@@ -862,7 +910,7 @@ class MainWindow(QMainWindow):
     def _load_tab_order(self):
         """Lädt Tabs in gespeicherter Reihenfolge und berücksichtigt ausgeblendete Reiter."""
         saved_order = list(self.settings.tab_order or [])
-        default_order = [5, 0, 2, 3, 4]
+        default_order = [5, 0, 2, 3, 4, 6]
         for tid in default_order:
             if tid not in saved_order:
                 saved_order.append(tid)
@@ -890,6 +938,8 @@ class MainWindow(QMainWindow):
                 self.tabs.setTabIcon(i, get_icon("📊"))
             elif hasattr(self, "savings_tab") and widget is self.savings_tab:
                 self.tabs.setTabIcon(i, get_icon("🎯"))
+            elif hasattr(self, "account_tab") and widget is self.account_tab:
+                self.tabs.setTabIcon(i, get_icon("👤"))
             else:
                 self.tabs.setTabIcon(i, QIcon())
     
@@ -1203,10 +1253,105 @@ class MainWindow(QMainWindow):
             
             if theme_changed:
                 self.statusBar().showMessage(
-                    f"Theme geändert zu: {new_settings['theme']}", 3000
+                    trf('msg.theme_changed_to', theme=new_settings['theme']), 3000
                 )
             else:
-                self.statusBar().showMessage("Einstellungen gespeichert", 2000)
+                self.statusBar().showMessage(tr("msg.settings_saved"), 2000)
+
+    def _handle_data_directory_change(self, new_raw: str) -> bool:
+        """Verarbeitet einen geänderten Datenordner inkl. optionaler Datenübernahme.
+
+        Ablauf:
+        - Liegen im alten Ordner Daten und ist der neue Ordner leer, wird die
+          Übernahme (Kopieren mit Sicherheits-Backup) angeboten.
+        - Bei Übernahme wird die aktive verschlüsselte Session vorher gesichert.
+        - Der neue Speicherort wird erst nach einem Neustart wirksam.
+        """
+        from model.app_paths import data_dir, resolve_data_dir
+        from model.data_location import (
+            has_user_data, migrate_data_dir, DataMigrationError,
+        )
+
+        old_eff = data_dir()  # aktuell wirksamer (alter) Ordner – VOR dem Setzen
+        new_eff = resolve_data_dir(new_raw)
+
+        def _persist():
+            self.settings.data_directory = new_raw
+
+        # Kein echter Ortswechsel (z.B. nur Schreibweise) -> nur speichern.
+        if old_eff.resolve() == new_eff.resolve():
+            _persist()
+            return True
+
+        migrated = False
+        if has_user_data(old_eff) and not has_user_data(new_eff):
+            ask = QMessageBox.question(
+                self,
+                tr("settings.data_dir_migrate_title"),
+                trf("settings.data_dir_migrate_question",
+                    old=str(old_eff), new=str(new_eff)),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if ask == QMessageBox.Yes:
+                # Aktive verschlüsselte Session vor dem Kopieren auf Platte sichern.
+                try:
+                    sess = getattr(self, "_encrypted_session", None)
+                    if sess is not None and hasattr(sess, "save"):
+                        sess.save()
+                except Exception as _e:
+                    logger.debug("Session-Flush vor Datenübernahme fehlgeschlagen: %s", _e)
+                try:
+                    result = migrate_data_dir(old_eff, new_eff, make_backup=True)
+                    _persist()
+                    migrated = True
+                    QMessageBox.information(
+                        self,
+                        tr("settings.data_dir_migrate_done_title"),
+                        trf("settings.data_dir_migrate_done_msg",
+                            count=len(result.copied),
+                            backup=str(result.backup_path or "-"),
+                            new=str(new_eff)),
+                    )
+                except DataMigrationError as exc:
+                    QMessageBox.warning(
+                        self,
+                        tr("settings.data_dir_migrate_failed_title"),
+                        trf("settings.data_dir_migrate_failed_msg", error=str(exc)),
+                    )
+                    return False  # Einstellung NICHT ändern -> alte Daten bleiben aktiv
+                except Exception as exc:
+                    logger.exception("Datenübernahme fehlgeschlagen")
+                    QMessageBox.warning(
+                        self,
+                        tr("settings.data_dir_migrate_failed_title"),
+                        trf("settings.data_dir_migrate_failed_msg", error=str(exc)),
+                    )
+                    return False
+            else:
+                _persist()
+        elif has_user_data(new_eff):
+            # Zielordner enthält bereits Daten -> diese werden nach Neustart genutzt.
+            _persist()
+            QMessageBox.information(
+                self,
+                tr("settings.data_dir_changed_title"),
+                tr("settings.data_dir_target_has_data_msg"),
+            )
+            return True
+        else:
+            _persist()
+
+        if not migrated:
+            try:
+                QMessageBox.information(
+                    self,
+                    tr("settings.data_dir_changed_title"),
+                    tr("settings.data_dir_changed_msg"),
+                )
+            except Exception as _e:
+                logger.debug("Datenordner-Hinweis konnte nicht angezeigt werden: %s", _e)
+        return True
 
     def _change_theme(self, theme: str):
         """Ändert das Theme über Menü"""
@@ -1392,7 +1537,17 @@ class MainWindow(QMainWindow):
         self._update_edit_menu()
     
     def _on_tab_changed(self, index: int):
-        """Wird aufgerufen wenn Tab gewechselt wird"""
+        """Wird aufgerufen wenn Tab gewechselt wird."""
+        previous = getattr(self, "_last_tab_widget", None)
+        current = self.tabs.currentWidget()
+
+        # Sicherheits-Autosave beim Verlassen eines Tabs.
+        # Besonders wichtig im verschlüsselten Modus: SQLite liegt im RAM; ohne
+        # expliziten Session-Save wären UI-Änderungen bei nativem Qt-Crash weg.
+        if previous is not None and previous is not current:
+            self._save_widget_before_leave(previous, reason="Tabwechsel")
+
+        self._last_tab_widget = current
         self._update_edit_menu()
         self._update_undo_redo_actions()
 
@@ -1400,6 +1555,24 @@ class MainWindow(QMainWindow):
         # Hintergrund: z.B. Budgetwarnungen/Übersicht wurden sonst erst nach
         # Neustart oder manuellem Refresh aktualisiert.
         self._refresh_current_tab_safe()
+
+    def _save_widget_before_leave(self, widget, *, reason: str) -> None:
+        """Speichert offene fachliche Änderungen eines Tabs robust und still.
+
+        Aktuell hat vor allem der Budget-Tab editierbare Tabellenzellen, die erst
+        beim Save in die DB geschrieben werden. Andere Dialoge/Modelle committen
+        direkt; deren verschlüsselte Persistenz übernimmt der Commit-Hook.
+        """
+        try:
+            if widget is getattr(self, "budget_tab", None) and getattr(self.settings, "auto_save", True):
+                if hasattr(self.budget_tab, "save"):
+                    self.budget_tab.save()
+                    logger.debug("Budget-Tab vor %s gespeichert.", reason)
+            # Auch wenn der Tab selbst nichts speichern musste: verschlüsselte
+            # Session auf Disk bringen, falls kurz vorher Model-Commits liefen.
+            self._save_encrypted_session()
+        except Exception as exc:
+            logger.warning("Autosave vor %s fehlgeschlagen: %s", reason, exc, exc_info=True)
 
     def _refresh_current_tab_safe(self) -> None:
         """Aktualisiert den aktuell sichtbaren Tab (robust, ohne UI-Crash)."""
@@ -1651,10 +1824,10 @@ class MainWindow(QMainWindow):
             self.overview_tab.set_subtab_visible(key, bool(checked))
 
     def _save_budget(self):
-        """Speichert das Budget"""
+        """Speichert das Budget inklusive verschlüsselter Session."""
         try:
-            self.budget_tab.save()
-            self.statusBar().showMessage("Budget gespeichert", 3000)
+            self._save_widget_before_leave(self.budget_tab, reason="manuelles Speichern")
+            self.statusBar().showMessage(tr("msg.budget_saved"), 3000)
             self._update_undo_redo_actions()
         except Exception as e:
             logger.error("Budget speichern fehlgeschlagen: %s", e, exc_info=True)
@@ -1666,10 +1839,10 @@ class MainWindow(QMainWindow):
         
         if hasattr(current_widget, 'refresh'):
             current_widget.refresh()
-            self.statusBar().showMessage("Ansicht aktualisiert", 2000)
+            self.statusBar().showMessage(tr("msg.view_refreshed"), 2000)
         elif hasattr(current_widget, 'load'):
             current_widget.load()
-            self.statusBar().showMessage("Ansicht aktualisiert", 2000)
+            self.statusBar().showMessage(tr("msg.view_refreshed"), 2000)
     
 
     def _update_undo_redo_actions(self) -> None:
@@ -1719,7 +1892,7 @@ class MainWindow(QMainWindow):
             if encrypted_session is not None:
                 active_file = Path(encrypted_session.enc_path)
             else:
-                active_file = resolve_in_app(self.settings.database_path)
+                active_file = configured_db_path(self.settings.database_path)
 
             # Migrations-Info
             migration_info = get_migration_info(self.conn)
@@ -1740,37 +1913,38 @@ class MainWindow(QMainWindow):
             years_t = [str(y) for y in db_stats.get('years_tracking', [])]
             
             # Dialog aufbauen
-            info = f"""<h3>Datenbank-Informationen</h3>
-            
-<p><b>Datei:</b> {active_file.name}<br>
-<b>Pfad:</b> {active_file}<br>
-<b>Größe:</b> {db_size:.1f} KB<br>
-<b>Schema-Version:</b> {migration_info['current_version']} / {CURRENT_VERSION}</p>
+            info = f"""{tr('db.info.title_html')}
 
-<h4>Migration-Status</h4>
+<p><b>{tr('db.info.file')}:</b> {active_file.name}<br>
+<b>{tr('db.info.path')}:</b> {active_file}<br>
+<b>{tr('db.info.size')}:</b> {db_size:.1f} KB<br>
+<b>{tr('db.info.schema')}:</b> {migration_info['current_version']} / {CURRENT_VERSION}</p>
+
+<h4>{tr('db.info.migration_status')}</h4>
 <p>"""
-            
+
             if migration_info['needs_migration']:
-                info += f"<span style='color: orange;'>⚠️ Migration erforderlich</span><br>"
+                info += f"<span style='color: orange;'>{tr('db.info.migration_needed')}</span><br>"
                 if migration_info['missing_tables']:
-                    info += f"<b>Fehlende Tabellen:</b> {', '.join(migration_info['missing_tables'])}"
+                    info += f"<b>{tr('db.info.missing_tables')}:</b> {', '.join(migration_info['missing_tables'])}"
             else:
-                info += "<span style='color: green;'>✓ Datenbank ist aktuell</span>"
-            
+                info += f"<span style='color: green;'>{tr('db.info.current')}</span>"
+
+            no_years = tr('db.info.no_years')
             info += f"""</p>
 
-<h4>Daten-Statistik</h4>
+<h4>{tr('db.info.data_stats')}</h4>
 <ul>
-<li>Kategorien: {category_count}</li>
-<li>Budget-Einträge: {budget_count}</li>
-<li>Tracking-Buchungen: {tracking_count}</li>
-<li>Sparziele: {savings_count}</li>
+<li>{tr('db.info.categories')}: {category_count}</li>
+<li>{tr('db.info.budget_entries')}: {budget_count}</li>
+<li>{tr('db.info.tracking_entries')}: {tracking_count}</li>
+<li>{tr('db.info.savings_goals')}: {savings_count}</li>
 </ul>
 
-<p><b>Jahre mit Budget:</b> {', '.join(years_b) if years_b else 'Keine'}<br>
-<b>Jahre mit Tracking:</b> {', '.join(years_t) if years_t else 'Keine'}</p>
+<p><b>{tr('db.info.budget_years')}:</b> {', '.join(years_b) if years_b else no_years}<br>
+<b>{tr('db.info.tracking_years')}:</b> {', '.join(years_t) if years_t else no_years}</p>
 
-<h4>Verfügbare Tabellen ({len(tables)})</h4>
+<h4>{tr('db.info.available_tables')} ({len(tables)})</h4>
 <p><small>{', '.join(tables)}</small></p>
 """
             
@@ -1943,6 +2117,7 @@ class MainWindow(QMainWindow):
         """Zeigt Schnelleingabe-Dialog (Strg+N)"""
         dialog = QuickAddDialog(self.conn, self)
         if dialog.exec() == QDialog.Accepted:
+            self._save_encrypted_session()
             # Tracking-Tab aktualisieren
             if hasattr(self.tracking_tab, 'refresh'):
                 self.tracking_tab.refresh()
@@ -1971,6 +2146,7 @@ class MainWindow(QMainWindow):
         """Zeigt Sparziele-Dialog (NEU v0.16)"""
         dialog = SavingsGoalsDialog(self, self.conn)
         dialog.exec()
+        self._save_encrypted_session()
         # Nach Schließen: alle relevanten Einstiege aktualisieren.
         for widget in (getattr(self, "savings_tab", None), getattr(self, "overview_tab", None), getattr(self, "tracking_tab", None)):
             try:
@@ -1981,6 +2157,10 @@ class MainWindow(QMainWindow):
     
     def _check_auto_backup(self):
         """Prüft ob ein automatisches Backup fällig ist und erstellt es ggf."""
+        if getattr(self, "_startup_auto_backup_done", False):
+            return
+        self._startup_auto_backup_done = True
+
         try:
             if not self.settings.get("auto_backup", False):
                 return
@@ -1990,7 +2170,7 @@ class MainWindow(QMainWindow):
             from model.restore_bundle import create_bundle
             from app_info import APP_NAME, APP_VERSION
 
-            backup_dir = resolve_in_app(
+            backup_dir = configured_backups_dir(
                 self.settings.get("backup_directory", "data/backups")
             )
 
@@ -2018,7 +2198,7 @@ class MainWindow(QMainWindow):
                         logger.debug("%s", e)
                     src_db = Path(encrypted_session.enc_path)
                 else:
-                    src_db = resolve_in_app(self.settings.database_path)
+                    src_db = configured_db_path(self.settings.database_path)
 
                 if src_db.exists():
                     backup_dir.mkdir(parents=True, exist_ok=True)
@@ -2069,7 +2249,7 @@ class MainWindow(QMainWindow):
         encrypted_session = getattr(self, "_encrypted_session", None)
         db_path = None
         if encrypted_session is None:
-            db_path = str(resolve_in_app(self.settings.database_path))
+            db_path = str(configured_db_path(self.settings.database_path))
         dialog = BackupRestoreDialog(
             self, self.conn, db_path, self.settings,
             encrypted_session=encrypted_session,
@@ -2105,7 +2285,7 @@ class MainWindow(QMainWindow):
         if encrypted_session is not None:
             db_path = str(Path(encrypted_session.enc_path))
         else:
-            db_path = str(resolve_in_app(self.settings.database_path))
+            db_path = str(configured_db_path(self.settings.database_path))
 
         dialog = DatabaseManagementDialog(db_path, parent=self, conn=self.conn,
                                           encrypted=encrypted_session is not None)
@@ -2159,6 +2339,7 @@ class MainWindow(QMainWindow):
             2: (self.tracking_tab, tr("tab.tracking")),
             3: (self.overview_tab, tr("tab.overview")),
             4: (self.savings_tab, tr("tab.savings")),
+            6: (self.account_tab, tr("tab.account")),
         }
         for i in range(self.tabs.count()):
             widget = self.tabs.widget(i)
@@ -2274,14 +2455,14 @@ class MainWindow(QMainWindow):
         """Toggle Vollbildmodus (F11)"""
         if checked:
             self.showFullScreen()
-            self.statusBar().showMessage("Vollbildmodus aktiviert", 2000)
+            self.statusBar().showMessage(tr("msg.fullscreen_enabled"), 2000)
         else:
             # Zurück zu Normal oder Maximiert
             if self.isMaximized():
                 self.showMaximized()
             else:
                 self.showNormal()
-            self.statusBar().showMessage("Vollbildmodus deaktiviert", 2000)
+            self.statusBar().showMessage(tr("msg.fullscreen_disabled"), 2000)
         
         self.settings.set("window_is_fullscreen", checked)
     
@@ -2294,10 +2475,10 @@ class MainWindow(QMainWindow):
         
         if checked:
             self.showMaximized()
-            self.statusBar().showMessage("Fenster maximiert", 2000)
+            self.statusBar().showMessage(tr("msg.window_maximized"), 2000)
         else:
             self.showNormal()
-            self.statusBar().showMessage("Fenster normalisiert", 2000)
+            self.statusBar().showMessage(tr("msg.window_normalized"), 2000)
         
         self.settings.set("window_is_maximized", checked)
 
@@ -2330,11 +2511,7 @@ class MainWindow(QMainWindow):
         
         # Wenn Auto-Save aktiv: Einfach speichern und schließen
         if hasattr(self, 'settings') and self.settings.auto_save:
-            try:
-                self.budget_tab.save()
-            except Exception as e:
-                logger.warning(tr("btn.budget_tabsave_beim_schliessen_fehlgeschlagen"), e)
-            self._save_encrypted_session()
+            self._save_widget_before_leave(getattr(self, "budget_tab", None), reason=tr("btn.close"))
             event.accept()
             return
         
@@ -2354,11 +2531,7 @@ class MainWindow(QMainWindow):
         )
         
         if reply == QMessageBox.Save:
-            try:
-                self.budget_tab.save()
-            except Exception as e:
-                logger.debug("self.budget_tab.save(): %s", e)
-            self._save_encrypted_session()
+            self._save_widget_before_leave(getattr(self, "budget_tab", None), reason=tr("btn.close"))
             event.accept()
         elif reply == QMessageBox.Discard:
             event.accept()
@@ -2400,7 +2573,7 @@ class MainWindow(QMainWindow):
                 db_existed = bool(db_existed_before)
             else:
                 try:
-                    db_path = Path(self.settings.get("database_path", "budgetmanager.db")).expanduser()
+                    db_path = configured_db_path(self.settings.get("database_path", "budgetmanager.db"))
                     db_existed = db_path.exists()
                 except Exception:
                     db_existed = True
@@ -2409,9 +2582,24 @@ class MainWindow(QMainWindow):
             # Referenz behalten: verhindert, dass der Assistent je nach Qt/Python-
             # Lebensdauer nach dem Start sofort verschwindet.
             self._setup_assistant_dialog = dlg
-            dlg.finished.connect(lambda *_: setattr(self, "_setup_assistant_dialog", None))
+
+            def _setup_finished(*_args) -> None:
+                setattr(self, "_setup_assistant_dialog", None)
+                if getattr(self, "_defer_startup_auto_backup_until_setup", False):
+                    self._defer_startup_auto_backup_until_setup = False
+                    logger.info("Setup-Assistent beendet; verschobenes Auto-Backup wird geprüft.")
+                    self._check_auto_backup()
+
+            dlg.finished.connect(_setup_finished)
             dlg.show()
-            dlg.raise_()
-            dlg.activateWindow()
+            # Kein raise_()/activateWindow() beim Autostart: Unter Wayland/XCB kann
+            # genau diese native Fokus-Aktivierung sporadisch segfaulten. Der
+            # Assistent ist Kind des Hauptfensters und wird auch ohne Forcieren
+            # sichtbar, bleibt aber stabiler.
+            logger.info("Setup-Assistent angezeigt (force=%s, db_existed_before=%s).", force, db_existed)
         except Exception as e:
+            logger.exception("Setup-Assistent konnte nicht gestartet werden")
+            if getattr(self, "_defer_startup_auto_backup_until_setup", False):
+                self._defer_startup_auto_backup_until_setup = False
+                self._check_auto_backup()
             QMessageBox.critical(self, tr('msg.error'), trf("msg.setup_assistent_fehler", e=str(e)))

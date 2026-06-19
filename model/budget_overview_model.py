@@ -4,8 +4,10 @@ Budget-Übersicht Modell: Kategoriebasierter Budget/Ist-Vergleich mit Carryover
 
 Version 0.3.2.0
 """
+
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 import sqlite3
@@ -16,12 +18,21 @@ from utils.money import format_money
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 from model.budget_suggestion_engine import BudgetSuggestionEngine
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, normalize_typ, is_income, rest_sign, ALL_TYPEN
+from model.typ_constants import (
+    TYP_INCOME,
+    TYP_EXPENSES,
+    TYP_SAVINGS,
+    normalize_typ,
+    is_income,
+    rest_sign,
+    ALL_TYPEN,
+)
 
 
 @dataclass
 class MonthBudgetRow:
     """Eine Zeile in der Budgetübersicht pro Monat + Typ/Kategorie."""
+
     year: int
     month: int
     typ: str
@@ -36,6 +47,7 @@ class MonthBudgetRow:
 @dataclass
 class MonthSummary:
     """Zusammenfassung eines Monats pro Typ."""
+
     year: int
     month: int
     typ: str
@@ -49,17 +61,18 @@ class MonthSummary:
 @dataclass
 class CategoryCarryoverRow:
     """Eine Zeile in der Kategorie-Carryover-Tabelle (Vormonat→Aktuell→Zukunft)."""
+
     category: str
     typ: str
     # Vormonat
-    prev_budget: float        # Budget des Vormonats
-    prev_rest: float          # Budget - Getracked Vormonat (positiv = unter Budget)
+    prev_budget: float  # Budget des Vormonats
+    prev_rest: float  # Budget - Getracked Vormonat (positiv = unter Budget)
     # Aktuell
-    curr_budget: float        # Budget des aktuellen Monats
+    curr_budget: float  # Budget des aktuellen Monats
     curr_budget_carry: float  # curr_budget + prev_rest (Budget + Übertrag)
-    curr_tracked: float       # Tatsächlich gebucht im aktuellen Monat
+    curr_tracked: float  # Tatsächlich gebucht im aktuellen Monat
     # Zukunft
-    next_budget: float        # Budget des Folgemonats
+    next_budget: float  # Budget des Folgemonats
     next_budget_carry: float  # (curr_budget_carry - curr_tracked) + next_budget
     # Vorschlag
     suggestion: float | None = None  # Vorgeschlagene Budget-Anpassung (oder None)
@@ -68,14 +81,15 @@ class CategoryCarryoverRow:
 @dataclass
 class BudgetSuggestion:
     """Vorschlag zur Budget-Anpassung bei dauerhaftem Überschuss/Defizit."""
+
     typ: str
     category: str
-    direction: str           # "surplus" oder "deficit"
-    avg_deviation: float     # Durchschnittliche monatliche Abweichung
+    direction: str  # "surplus" oder "deficit"
+    avg_deviation: float  # Durchschnittliche monatliche Abweichung
     consecutive_months: int  # Anzahl aufeinanderfolgender Monate
     suggested_amount: float  # Vorgeschlagener neuer Budget-Betrag
-    current_budget: float    # Aktuelles Budget
-    message: str             # Anzeigetext
+    current_budget: float  # Aktuelles Budget
+    message: str  # Anzeigetext
 
 
 # Typ-Normalisierung (gleiche Logik wie overview_tab)
@@ -90,6 +104,7 @@ _TYP_ALIASES = {
     "sparen": TYP_SAVINGS,
     "savings": TYP_SAVINGS,
 }
+
 
 def _norm_typ(s: str) -> str:
     return _TYP_ALIASES.get(str(s or "").strip().lower(), str(s or "").strip())
@@ -116,14 +131,14 @@ class BudgetOverviewModel:
         """
         Berechnet für jedes Monat im Jahr eine Zusammenfassung pro Typ
         mit Übertrag aus dem Vormonat – optional jahresübergreifend.
-        
+
         Args:
             year: Das angezeigte Jahr
             types: Filter auf Typen (None = alle: Ausgaben, Ersparnisse, Einkommen)
             months: Filter auf Monate (None = 1-12)
             start_month: Ab welchem Monat kumuliert wird (1-12)
             start_year: Ab welchem Jahr kumuliert wird (None = gleich wie year)
-        
+
         Returns:
             Liste von MonthSummary, sortiert nach Typ und Monat
         """
@@ -171,16 +186,18 @@ class BudgetOverviewModel:
                     show_carry = carry_over
 
                 if m in months:
-                    results.append(MonthSummary(
-                        year=year,
-                        month=m,
-                        typ=typ,
-                        budget_total=budget_total,
-                        actual_total=actual_total,
-                        rest=rest,
-                        carry_over=show_carry,
-                        cumulative_rest=cumulative,
-                    ))
+                    results.append(
+                        MonthSummary(
+                            year=year,
+                            month=m,
+                            typ=typ,
+                            budget_total=budget_total,
+                            actual_total=actual_total,
+                            rest=rest,
+                            carry_over=show_carry,
+                            cumulative_rest=cumulative,
+                        )
+                    )
 
                 # Übertrag für nächsten Monat
                 if year == start_year and m < start_month:
@@ -289,18 +306,20 @@ class BudgetOverviewModel:
             # Vorschlag
             sugg = suggestion_map.get(cat, None)
 
-            rows.append(CategoryCarryoverRow(
-                category=cat,
-                typ=typ,
-                prev_budget=pb,
-                prev_rest=prev_rest,
-                curr_budget=cb,
-                curr_budget_carry=curr_budget_carry,
-                curr_tracked=ca,
-                next_budget=nb,
-                next_budget_carry=next_budget_carry,
-                suggestion=sugg,
-            ))
+            rows.append(
+                CategoryCarryoverRow(
+                    category=cat,
+                    typ=typ,
+                    prev_budget=pb,
+                    prev_rest=prev_rest,
+                    curr_budget=cb,
+                    curr_budget_carry=curr_budget_carry,
+                    curr_tracked=ca,
+                    next_budget=nb,
+                    next_budget_carry=next_budget_carry,
+                    suggestion=sugg,
+                )
+            )
 
         return rows
 
@@ -334,11 +353,19 @@ class BudgetOverviewModel:
 
             rest = rest_sign(typ, b, a)
 
-            rows.append(MonthBudgetRow(
-                year=year, month=month, typ=typ, category=cat,
-                budget=b, actual=a, rest=rest,
-                carry_over=co, cumulative_rest=rest + co,
-            ))
+            rows.append(
+                MonthBudgetRow(
+                    year=year,
+                    month=month,
+                    typ=typ,
+                    category=cat,
+                    budget=b,
+                    actual=a,
+                    rest=rest,
+                    carry_over=co,
+                    cumulative_rest=rest + co,
+                )
+            )
 
         return rows
 
@@ -355,13 +382,13 @@ class BudgetOverviewModel:
         """
         Prüft ob Kategorien dauerhaft über oder unter Budget liegen
         und generiert Anpassungsvorschläge.
-        
+
         Logik (Einheitslogik):
         - Rolling Window über die letzten N Monate (min_consecutive_months)
         - Median statt Durchschnitt (robust gegen Ausreisser)
         - Kein "effective_min=1" → Vorschläge erst ab N Monaten
         - Schwellwerte verhindern Rauschen
-        
+
         Args:
             year: Das Jahr
             current_month: Bis zu welchem Monat geprüft wird
@@ -386,6 +413,7 @@ class BudgetOverviewModel:
             # typ → DB-internes Format (z.B. TYP_EXPENSES → TYP_EXPENSES)
             try:
                 from utils.i18n import db_typ_from_display
+
                 typ_db = db_typ_from_display(typ)
             except Exception:
                 typ_db = typ
@@ -413,7 +441,10 @@ class BudgetOverviewModel:
                 # ein einzelner Ausreisser-Monat den gesamten Vorschlag.
                 try:
                     from settings import Settings
-                    sign_ratio = float(Settings().get("budget_suggestion_sign_ratio", 0.7) or 0.7)
+
+                    sign_ratio = float(
+                        Settings().get("budget_suggestion_sign_ratio", 0.7) or 0.7
+                    )
                 except Exception:
                     sign_ratio = 0.7
                 try:
@@ -436,26 +467,48 @@ class BudgetOverviewModel:
                     continue
 
                 avg_dev = res.avg_deviation
-                consecutive = max(min_consecutive_months, res.streak_months)
+                # Ehrliche Häufigkeit: tatsächliche Strähne, NICHT künstlich auf
+                # das Fenster angehoben. Der frühere max(min_consecutive_months, …)
+                # erzwang mind. "N/N" und ließ im Dialog jede Empfehlung als
+                # "chronisch" gelten.
+                consecutive = max(1, res.streak_months)
                 direction = res.direction
                 current_budget = res.current_budget
                 suggested = res.suggested_budget
 
                 if direction == "surplus":
-                    msg = trf("suggestion.suggestion_surplus", typ=display_typ(typ_db), cat=cat, n=consecutive, amount=format_money(abs(avg_dev)), current=format_money(current_budget), suggested=format_money(suggested))
+                    msg = trf(
+                        "suggestion.suggestion_surplus",
+                        typ=display_typ(typ_db),
+                        cat=cat,
+                        n=consecutive,
+                        amount=format_money(abs(avg_dev)),
+                        current=format_money(current_budget),
+                        suggested=format_money(suggested),
+                    )
                 else:
-                    msg = trf("suggestion.suggestion_deficit", typ=display_typ(typ_db), cat=cat, n=consecutive, amount=format_money(abs(avg_dev)), current=format_money(current_budget), suggested=format_money(suggested))
+                    msg = trf(
+                        "suggestion.suggestion_deficit",
+                        typ=display_typ(typ_db),
+                        cat=cat,
+                        n=consecutive,
+                        amount=format_money(abs(avg_dev)),
+                        current=format_money(current_budget),
+                        suggested=format_money(suggested),
+                    )
 
-                suggestions.append(BudgetSuggestion(
-                    typ=typ_db,
-                    category=cat,
-                    direction=direction,
-                    avg_deviation=avg_dev,
-                    consecutive_months=consecutive,
-                    suggested_amount=suggested,
-                    current_budget=current_budget,
-                    message=msg,
-                ))
+                suggestions.append(
+                    BudgetSuggestion(
+                        typ=typ_db,
+                        category=cat,
+                        direction=direction,
+                        avg_deviation=avg_dev,
+                        consecutive_months=consecutive,
+                        suggested_amount=suggested,
+                        current_budget=current_budget,
+                        message=msg,
+                    )
+                )
 
         return suggestions
 
@@ -529,20 +582,38 @@ class BudgetOverviewModel:
                 continue
 
             if direction == "surplus":
-                msg = trf("suggestion.suggestion_surplus", typ=display_typ(typ), cat=tr("suggestion.total_label"), n=min_consecutive_months, amount=format_money(abs(avg_dev)), current=format_money(current_budget), suggested=format_money(suggested))
+                msg = trf(
+                    "suggestion.suggestion_surplus",
+                    typ=display_typ(typ),
+                    cat=tr("suggestion.total_label"),
+                    n=min_consecutive_months,
+                    amount=format_money(abs(avg_dev)),
+                    current=format_money(current_budget),
+                    suggested=format_money(suggested),
+                )
             else:
-                msg = trf("suggestion.suggestion_deficit", typ=display_typ(typ), cat=tr("suggestion.total_label"), n=min_consecutive_months, amount=format_money(abs(avg_dev)), current=format_money(current_budget), suggested=format_money(suggested))
+                msg = trf(
+                    "suggestion.suggestion_deficit",
+                    typ=display_typ(typ),
+                    cat=tr("suggestion.total_label"),
+                    n=min_consecutive_months,
+                    amount=format_money(abs(avg_dev)),
+                    current=format_money(current_budget),
+                    suggested=format_money(suggested),
+                )
 
-            suggestions.append(BudgetSuggestion(
-                typ=typ,
-                category="(Gesamt)",
-                direction=direction,
-                avg_deviation=avg_dev,
-                consecutive_months=min_consecutive_months,
-                suggested_amount=suggested,
-                current_budget=current_budget,
-                message=msg,
-            ))
+            suggestions.append(
+                BudgetSuggestion(
+                    typ=typ,
+                    category="(Gesamt)",
+                    direction=direction,
+                    avg_deviation=avg_dev,
+                    consecutive_months=min_consecutive_months,
+                    suggested_amount=suggested,
+                    current_budget=current_budget,
+                    message=msg,
+                )
+            )
 
         return suggestions
 
@@ -604,9 +675,25 @@ class BudgetOverviewModel:
         suggested = max(0, round(suggested, 2))
 
         if direction == "surplus":
-            msg = trf("suggestion.suggestion_surplus", typ=display_typ(typ), cat=cat, n=consecutive, amount=format_money(abs(avg_dev)), current=format_money(current_budget), suggested=format_money(suggested))
+            msg = trf(
+                "suggestion.suggestion_surplus",
+                typ=display_typ(typ),
+                cat=cat,
+                n=consecutive,
+                amount=format_money(abs(avg_dev)),
+                current=format_money(current_budget),
+                suggested=format_money(suggested),
+            )
         else:
-            msg = trf("suggestion.suggestion_deficit", typ=display_typ(typ), cat=cat, n=consecutive, amount=format_money(abs(avg_dev)), current=format_money(current_budget), suggested=format_money(suggested))
+            msg = trf(
+                "suggestion.suggestion_deficit",
+                typ=display_typ(typ),
+                cat=cat,
+                n=consecutive,
+                amount=format_money(abs(avg_dev)),
+                current=format_money(current_budget),
+                suggested=format_money(suggested),
+            )
 
         return BudgetSuggestion(
             typ=typ,
@@ -627,11 +714,11 @@ class BudgetOverviewModel:
     ) -> dict | None:
         """
         Prüft ob die vorgeschlagenen Budget-Anpassungen das Einkommen übersteigen.
-        
+
         Vergleicht:
         - Aktuelles Gesamt-Einkommen (Budget) für den Monat
         - Aktuelle Ausgaben+Ersparnisse Budgets PLUS vorgeschlagene Erhöhungen
-        
+
         Returns:
             None wenn alles ok, sonst dict mit Warn-Infos:
             {
@@ -678,11 +765,11 @@ class BudgetOverviewModel:
         deficit = suggested_total - income_budget
 
         return {
-            'income_budget': income_budget,
-            'current_expenses': current_total,
-            'suggested_expenses': suggested_total,
-            'deficit': deficit,
-            'deficit_categories': deficit_categories,
+            "income_budget": income_budget,
+            "current_expenses": current_total,
+            "suggested_expenses": suggested_total,
+            "deficit": deficit,
+            "deficit_categories": deficit_categories,
         }
 
     def _get_initial_carry_over(self, year: int, typ: str) -> float:
@@ -690,8 +777,7 @@ class BudgetOverviewModel:
         prev_year = year - 1
         # Prüfe ob es Budget-Daten im Vorjahr gibt
         row = self.conn.execute(
-            "SELECT COUNT(*) FROM budget WHERE year=? AND typ=?",
-            (prev_year, typ)
+            "SELECT COUNT(*) FROM budget WHERE year=? AND typ=?", (prev_year, typ)
         ).fetchone()
 
         if not row or row[0] == 0:
@@ -710,7 +796,7 @@ class BudgetOverviewModel:
         """Summe aller Budget-Einträge für Jahr/Monat/Typ."""
         row = self.conn.execute(
             "SELECT COALESCE(SUM(amount), 0) FROM budget WHERE year=? AND month=? AND typ=?",
-            (year, month, typ)
+            (year, month, typ),
         ).fetchone()
         return float(row[0]) if row else 0.0
 
@@ -726,7 +812,7 @@ class BudgetOverviewModel:
         row = self.conn.execute(
             "SELECT COALESCE(SUM(amount), 0) FROM tracking "
             "WHERE date >= ? AND date <= ? AND typ=?",
-            (start, end, typ)
+            (start, end, typ),
         ).fetchone()
         val = float(row[0]) if row else 0.0
         if typ == TYP_EXPENSES:
@@ -737,7 +823,7 @@ class BudgetOverviewModel:
         """Budget pro Kategorie."""
         cur = self.conn.execute(
             "SELECT category, amount FROM budget WHERE year=? AND month=? AND typ=?",
-            (year, month, typ)
+            (year, month, typ),
         )
         return {str(r[0]): float(r[1]) for r in cur.fetchall()}
 
@@ -749,7 +835,7 @@ class BudgetOverviewModel:
         cur = self.conn.execute(
             "SELECT category, SUM(amount) FROM tracking "
             "WHERE date >= ? AND date <= ? AND typ=? GROUP BY category",
-            (start, end, typ)
+            (start, end, typ),
         )
         result = {}
         for r in cur.fetchall():
@@ -759,19 +845,31 @@ class BudgetOverviewModel:
             result[str(r[0])] = val
         return result
 
-    def carry_over_by_category(self, year: int, month: int, typ: str,
-                               start_month: int = 1, start_year: int | None = None) -> dict[str, float]:
+    def carry_over_by_category(
+        self,
+        year: int,
+        month: int,
+        typ: str,
+        start_month: int = 1,
+        start_year: int | None = None,
+    ) -> dict[str, float]:
         """Öffentliche API für kumulierten Rest pro Kategorie von start_month bis month-1.
-        
+
         Wrapper um _carry_over_by_category() – Views sollen diese öffentliche Methode
         verwenden, nicht die private Variante.
         """
         return self._carry_over_by_category(year, month, typ, start_month, start_year)
 
-    def _carry_over_by_category(self, year: int, month: int, typ: str,
-                                  start_month: int = 1, start_year: int | None = None) -> dict[str, float]:
+    def _carry_over_by_category(
+        self,
+        year: int,
+        month: int,
+        typ: str,
+        start_month: int = 1,
+        start_year: int | None = None,
+    ) -> dict[str, float]:
         """Kumulierter Rest pro Kategorie von start_month bis month-1.
-        
+
         Args:
             year: Aktuelles Jahr
             month: Aktueller Monat (Carry-Over wird bis month-1 berechnet)
@@ -798,13 +896,20 @@ class BudgetOverviewModel:
         first_m_this_year = start_month if year == start_year else 1
         end_m = month - 1
         if end_m >= first_m_this_year:
-            carry = self._accumulate_carry_batch(carry, year, first_m_this_year, end_m, typ)
+            carry = self._accumulate_carry_batch(
+                carry, year, first_m_this_year, end_m, typ
+            )
 
         return carry
 
-    def _accumulate_carry_batch(self, carry: dict[str, float],
-                                 year: int, from_month: int, to_month: int,
-                                 typ: str) -> dict[str, float]:
+    def _accumulate_carry_batch(
+        self,
+        carry: dict[str, float],
+        year: int,
+        from_month: int,
+        to_month: int,
+        typ: str,
+    ) -> dict[str, float]:
         """Batch-Version: kumuliert Budget-Rest pro Kategorie über einen Monatsbereich.
         Verwendet nur 2 SQL-Queries statt 2 × Anzahl-Monate.
         """
@@ -816,7 +921,7 @@ class BudgetOverviewModel:
             "SELECT category, SUM(amount) FROM budget "
             "WHERE year=? AND month>=? AND month<=? AND typ=? "
             "GROUP BY category",
-            (year, from_month, to_month, typ)
+            (year, from_month, to_month, typ),
         )
         budget_totals = {str(r[0]): float(r[1]) for r in cur_b.fetchall()}
 
@@ -828,7 +933,7 @@ class BudgetOverviewModel:
             "SELECT category, SUM(amount) FROM tracking "
             "WHERE date >= ? AND date <= ? AND typ=? "
             "GROUP BY category",
-            (start_date, end_date, typ)
+            (start_date, end_date, typ),
         )
         actual_totals = {}
         for r in cur_a.fetchall():
@@ -860,7 +965,7 @@ class BudgetOverviewModel:
             f"SELECT category, SUM(amount) FROM budget "
             f"WHERE year=? AND month IN ({placeholders}) AND typ=? "
             f"GROUP BY category",
-            (year, *months, typ)
+            (year, *months, typ),
         )
         return {str(r[0]): float(r[1]) for r in cur.fetchall()}
 
@@ -882,7 +987,7 @@ class BudgetOverviewModel:
                 "SELECT category, SUM(amount) FROM tracking "
                 "WHERE date >= ? AND date <= ? AND typ=? "
                 "GROUP BY category",
-                (start_date, end_date, typ)
+                (start_date, end_date, typ),
             )
         else:
             # Nicht zusammenhängend → CAST(substr) für Monatsfilter
@@ -892,7 +997,7 @@ class BudgetOverviewModel:
                 f"WHERE date >= ? AND date <= ? AND typ=? "
                 f"AND CAST(substr(date, 6, 2) AS INTEGER) IN ({placeholders}) "
                 f"GROUP BY category",
-                (start_date, end_date, typ, *months)
+                (start_date, end_date, typ, *months),
             )
 
         result = {}

@@ -1,4 +1,4 @@
 # BudgetManager — Release-Build (PyInstaller, Packaging)
--r requirements.txt
+-r requirements.lock
 
 pyinstaller>=6.0.0

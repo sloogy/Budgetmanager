@@ -1,0 +1,20 @@
+# BudgetManager — Release-Lockfile
+# Stand: v2.0.28 / 19. Juni 2026
+#
+# Zweck:
+# - reproduzierbare Release-Builds
+# - Schutz vor überraschenden Breaking Changes durch neue Paketversionen
+#
+# Nutzung für Release-Builds:
+#   pip install -r requirements.lock
+#
+# Hinweis:
+# requirements.txt bleibt bewusst mit >= als Entwickler-/Kompatibilitätsdatei erhalten.
+# Wenn ein Release mit neueren Paketen gebaut und getestet wird, dieses Lockfile
+# nach erfolgreichem Smoke-Test gezielt aktualisieren.
+
+PySide6==6.7.3
+openpyxl==3.1.5
+cryptography==46.0.4
+requests==2.32.5
+packaging==25.0

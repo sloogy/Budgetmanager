@@ -13,6 +13,7 @@ Wichtig:
 
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 import hashlib
@@ -35,7 +36,7 @@ class BundleManifest:
     source_db_name: str = ""  # Originaldateiname, z.B. christian.enc
     note: str = ""
     has_settings: bool = False  # True wenn settings.json im Bundle
-    has_users: bool = False     # True wenn users.json im Bundle
+    has_users: bool = False  # True wenn users.json im Bundle
 
 
 def _sha256_file(path: Path) -> str:
@@ -46,14 +47,16 @@ def _sha256_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def create_bundle(*,
-                  source_db: Path,
-                  out_path: Path,
-                  app: str,
-                  app_version: str,
-                  note: str = "",
-                  settings_path: Path | None = None,
-                  users_json_path: Path | None = None) -> Path:
+def create_bundle(
+    *,
+    source_db: Path,
+    out_path: Path,
+    app: str,
+    app_version: str,
+    note: str = "",
+    settings_path: Path | None = None,
+    users_json_path: Path | None = None,
+) -> Path:
     """Erzeugt ein .bmr Restore-Bundle.
 
     source_db:        Pfad zur .db oder .enc
@@ -104,7 +107,9 @@ def create_bundle(*,
         tmp.unlink(missing_ok=True)
 
     with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-        zf.writestr("manifest.json", json.dumps(manifest.__dict__, indent=2, ensure_ascii=False))
+        zf.writestr(
+            "manifest.json", json.dumps(manifest.__dict__, indent=2, ensure_ascii=False)
+        )
         zf.write(source_db, arcname=db_file)
         if has_settings:
             zf.write(settings_file, arcname="settings.json")
@@ -114,9 +119,15 @@ def create_bundle(*,
             logger.debug("users.json in Backup aufgenommen: %s", users_file)
 
     os.replace(str(tmp), str(out_path))
-    logger.info("Backup erstellt: %s (DB: %s, Settings: %s, Users: %s)",
-                out_path.name, db_file, has_settings, has_users)
+    logger.info(
+        "Backup erstellt: %s (DB: %s, Settings: %s, Users: %s)",
+        out_path.name,
+        db_file,
+        has_settings,
+        has_users,
+    )
     return out_path
+
 
 def extract_settings(bundle_path: Path, dest_path: Path) -> bool:
     """Extrahiert settings.json aus einem .bmr Bundle, falls vorhanden.

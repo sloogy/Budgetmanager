@@ -1,8 +1,10 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 import sqlite3
 from typing import List, Tuple
+
 
 class FavoritesModel:
     def __init__(self, conn: sqlite3.Connection):
@@ -14,7 +16,7 @@ class FavoritesModel:
         try:
             self.conn.execute(
                 "INSERT INTO favorites (typ, category, sort_order) VALUES (?, ?, ?)",
-                (typ, category, max_order + 1)
+                (typ, category, max_order + 1),
             )
             self.conn.commit()
         except sqlite3.IntegrityError:
@@ -23,8 +25,7 @@ class FavoritesModel:
     def remove(self, typ: str, category: str) -> None:
         """Entfernt eine Kategorie aus Favoriten"""
         self.conn.execute(
-            "DELETE FROM favorites WHERE typ = ? AND category = ?",
-            (typ, category)
+            "DELETE FROM favorites WHERE typ = ? AND category = ?", (typ, category)
         )
         self.conn.commit()
         self._reorder(typ)
@@ -33,7 +34,7 @@ class FavoritesModel:
         """Prüft ob eine Kategorie ein Favorit ist"""
         cur = self.conn.execute(
             "SELECT COUNT(*) FROM favorites WHERE typ = ? AND category = ?",
-            (typ, category)
+            (typ, category),
         )
         return cur.fetchone()[0] > 0
 
@@ -41,7 +42,7 @@ class FavoritesModel:
         """Liste alle Favoriten für einen Typ"""
         cur = self.conn.execute(
             "SELECT category FROM favorites WHERE typ = ? ORDER BY sort_order, category",
-            (typ,)
+            (typ,),
         )
         return [row[0] for row in cur.fetchall()]
 
@@ -81,8 +82,7 @@ class FavoritesModel:
     def _get_max_order(self, typ: str) -> int:
         """Gibt die höchste sort_order zurück"""
         cur = self.conn.execute(
-            "SELECT MAX(sort_order) FROM favorites WHERE typ = ?",
-            (typ,)
+            "SELECT MAX(sort_order) FROM favorites WHERE typ = ?", (typ,)
         )
         result = cur.fetchone()[0]
         return result if result is not None else 0
@@ -97,6 +97,6 @@ class FavoritesModel:
         for i, cat in enumerate(categories):
             self.conn.execute(
                 "UPDATE favorites SET sort_order = ? WHERE typ = ? AND category = ?",
-                (i, typ, cat)
+                (i, typ, cat),
             )
         self.conn.commit()

@@ -318,6 +318,9 @@ class StartupWizard(QDialog):
 
     def _finish(self) -> None:
         name = self.edt_name.text().strip()
+        if not name:
+            QMessageBox.warning(self, tr("msg.info"), tr("account.bitte_einen_namen_eingeben"))
+            return
 
         if self.rb_quick.isChecked():
             security = SECURITY_QUICK
@@ -355,9 +358,34 @@ class StartupWizard(QDialog):
             except Exception as exc:
                 logger.warning("Rollback des neu erstellten Benutzers fehlgeschlagen: %s", exc)
 
-        # Restore-Key beim Erststart IMMER anzeigen – auch für Quick-User.
-        # Bei PIN/Passwort liefert create_user() den Key direkt; bei Quick wird
-        # er aus dem db_key abgeleitet (gleiches lesbares Format).
+        # ── Import / Restore ZUERST versuchen (falls gewählt) ──────────────
+        # Erst nach erfolgreicher Entschlüsselung wird fortgefahren. Schlägt sie
+        # fehl (falscher Restore-Key, Abbruch oder defektes Backup), wird der
+        # eben angelegte Benutzer sauber zurückgerollt und der Assistent kehrt
+        # zum Anfang zurück ("wieder von vorne": neuen Benutzer anlegen ODER das
+        # Backup erneut einspielen). So bleibt kein hängender Zwischenzustand und
+        # es entsteht kein Brick-Loop auf der Sicherheitsseite.
+        if self._import_src_path:
+            try:
+                self._restore_into_user(Path(self._import_src_path), user, db_key)
+            except Exception as exc:
+                _rollback_created_user()
+                logger.info("Erststart-Restore fehlgeschlagen – zurück zum Anfang: %s", exc)
+                QMessageBox.critical(
+                    self,
+                    tr("msg.error"),
+                    trf("startup.import_failed", exc=str(exc))
+                    + "\n\n"
+                    + tr("startup.restore_retry_from_start"),
+                )
+                self._reset_to_start()
+                return
+
+        # Restore-Key beim Erststart IMMER anzeigen – auch für Quick-User. Bei
+        # PIN/Passwort liefert create_user() den Key direkt; bei Quick wird er aus
+        # dem db_key abgeleitet (gleiches lesbares Format). Bei einem Import erst
+        # HIER, also NACH erfolgreicher Entschlüsselung – sonst würde der neue
+        # Schlüssel für einen wieder verworfenen Benutzer angezeigt.
         if not restore_key:
             try:
                 from model.crypto import db_key_to_restore_key
@@ -371,18 +399,29 @@ class StartupWizard(QDialog):
                 _rollback_created_user()
                 return  # user closed dialog without confirming
 
-        # Import / Restore if requested
         if self._import_src_path:
-            try:
-                self._restore_into_user(Path(self._import_src_path), user, db_key)
-            except Exception as exc:
-                _rollback_created_user()
-                QMessageBox.critical(self, tr("msg.error"), trf("startup.import_failed", exc=str(exc)))
-                return
             QMessageBox.information(self, tr("startup.import_title"), tr("startup.import_success"))
 
         self.result = StartupResult(user=user, db_key=db_key)
         self.accept()
+
+    def _reset_to_start(self) -> None:
+        """Setzt den Assistenten nach einem fehlgeschlagenen Restore sauber zurück.
+
+        Der gewählte Backup-Pfad wird verworfen und der Nutzer landet wieder auf
+        der Auswahlseite (neuen Benutzer anlegen ODER Backup einspielen). So kann
+        er es ohne hängenden Zwischenzustand erneut versuchen.
+        """
+        self._import_src_path = None
+        # Eingegebene Geheimnisse leeren, damit kein Rest hängen bleibt.
+        for fld in ("edt_secret", "edt_secret2"):
+            w = getattr(self, fld, None)
+            if w is not None:
+                try:
+                    w.clear()
+                except Exception:
+                    pass
+        self._goto(self._PAGE_CHOICE)
 
     def _show_restore_key(self, key: str, user: User) -> bool:
         """Zeigt den Restore-Key und verlangt Bestätigung. Gibt True zurück wenn bestätigt."""

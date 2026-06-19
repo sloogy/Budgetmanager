@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 import sqlite3
 from dataclasses import dataclass
@@ -13,8 +14,22 @@ und Bemerkung. Unterstützt Filter, Suche und Duplikaterkennung.
 
 # Undo/Redo (global)
 from model.undo_redo_model import UndoRedoModel
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, normalize_typ, is_income, rest_sign, ALL_TYPEN
+from model.typ_constants import (
+    TYP_INCOME,
+    TYP_EXPENSES,
+    TYP_SAVINGS,
+    normalize_typ,
+    is_income,
+    rest_sign,
+    ALL_TYPEN,
+)
 from model.database import db_transaction
+from model.savings_goals_model import (
+    STATUS_RELEASED,
+    STATUS_SAVING,
+    validate_savings_goal_bounds,
+)
+
 
 @dataclass(frozen=True)
 class TrackingRow:
@@ -25,17 +40,18 @@ class TrackingRow:
     amount: float
     details: str
     source: str = "manual"
-    
+
     # Aliases für Kompatibilität mit verschiedenen Code-Teilen
     @property
     def date(self) -> date:
         """Alias für d - für Kompatibilität"""
         return self.d
-    
+
     @property
     def description(self) -> str:
         """Alias für details - für Kompatibilität"""
         return self.details
+
 
 def _to_date_iso(d: date | str) -> str:
     if isinstance(d, date):
@@ -51,8 +67,10 @@ def _to_date_iso(d: date | str) -> str:
     # fallback assume already ISO
     return s
 
+
 def _from_iso(s: str) -> date:
     return date.fromisoformat(s)
+
 
 class TrackingModel:
     def __init__(self, conn: sqlite3.Connection):
@@ -61,7 +79,10 @@ class TrackingModel:
 
     def _cols(self, table: str) -> set[str]:
         try:
-            return {str(r[1]) for r in self.conn.execute(f"PRAGMA table_info({table})").fetchall()}
+            return {
+                str(r[1])
+                for r in self.conn.execute(f"PRAGMA table_info({table})").fetchall()
+            }
         except Exception as e:
             logger.debug("_cols(%s): %s", table, e)
             return set()
@@ -69,14 +90,33 @@ class TrackingModel:
     def _has_source_col(self) -> bool:
         return "source" in self._cols("tracking")
 
-    def add(self, d: date | str, typ: str, category: str, amount: float, details: str = "", source: str = "manual") -> None:
+    def add(
+        self,
+        d: date | str,
+        typ: str,
+        category: str,
+        amount: float,
+        details: str = "",
+        source: str = "manual",
+    ) -> None:
+        # Fachliche Sparziel-Grenzen vor dem INSERT prüfen.
+        if typ == TYP_SAVINGS:
+            self.validate_savings_goal_booking(category, float(amount))
+
         # Atomare Transaktion: INSERT + Sparziel-Sync
         source = (source or "manual").strip() or "manual"
         with db_transaction(self.conn):
             if self._has_source_col():
                 cur = self.conn.execute(
                     "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
-                    (_to_date_iso(d), typ, category, float(amount), details or "", source),
+                    (
+                        _to_date_iso(d),
+                        typ,
+                        category,
+                        float(amount),
+                        details or "",
+                        source,
+                    ),
                 )
             else:
                 # Fallback für sehr alte Datenbanken vor Migration.
@@ -92,32 +132,69 @@ class TrackingModel:
         # Undo/Redo: nach Commit (Metadaten, nicht geschäftskritisch)
         try:
             row = self.conn.execute(
-                "SELECT * FROM tracking WHERE id=?", (rid,),
+                "SELECT * FROM tracking WHERE id=?",
+                (rid,),
             ).fetchone()
             if row:
                 self.undo.record_operation("tracking", "INSERT", None, dict(row))
         except Exception as e:
-            logger.warning("Undo-Recording fehlgeschlagen nach INSERT (id=%s): %s", rid, e)
+            logger.warning(
+                "Undo-Recording fehlgeschlagen nach INSERT (id=%s): %s", rid, e
+            )
 
-    def update(self, row_id: int, d: date | str, typ: str, category: str, amount: float, details: str = "") -> None:
+    def update(
+        self,
+        row_id: int,
+        d: date | str,
+        typ: str,
+        category: str,
+        amount: float,
+        details: str = "",
+    ) -> None:
         # Alte Werte für Undo + Sparziel-Korrektur LESEN (vor Transaktion)
         old_full = self.conn.execute(
             "SELECT * FROM tracking WHERE id=?", (int(row_id),)
         ).fetchone()
 
+        if old_full:
+            old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(old_full)
+            deltas: dict[str, float] = {}
+            if old_typ == TYP_SAVINGS:
+                deltas[old_cat] = deltas.get(old_cat, 0.0) - old_amt
+            if typ == TYP_SAVINGS:
+                deltas[category] = deltas.get(category, 0.0) + float(amount)
+            for delta_category, delta in deltas.items():
+                if abs(delta) > 1e-9:
+                    self._validate_savings_goal_category_delta(delta_category, delta)
+
         # Atomare Transaktion: UPDATE + Sparziel-Korrekturen
         with db_transaction(self.conn):
             self.conn.execute(
                 "UPDATE tracking SET date=?, typ=?, category=?, amount=?, details=? WHERE id=?",
-                (_to_date_iso(d), typ, category, float(amount), details or "", int(row_id)),
+                (
+                    _to_date_iso(d),
+                    typ,
+                    category,
+                    float(amount),
+                    details or "",
+                    int(row_id),
+                ),
             )
 
             # Sparziel-Synchronisation
             if old_full:
                 if isinstance(old_full, sqlite3.Row):
-                    old_typ, old_cat, old_amt = str(old_full["typ"]), str(old_full["category"]), float(old_full["amount"])
+                    old_typ, old_cat, old_amt = (
+                        str(old_full["typ"]),
+                        str(old_full["category"]),
+                        float(old_full["amount"]),
+                    )
                 else:
-                    old_typ, old_cat, old_amt = str(old_full[2]), str(old_full[3]), float(old_full[4])
+                    old_typ, old_cat, old_amt = (
+                        str(old_full[2]),
+                        str(old_full[3]),
+                        float(old_full[4]),
+                    )
 
                 if old_typ == TYP_SAVINGS:
                     self._sync_savings(old_cat, old_amt, add=False)
@@ -130,9 +207,13 @@ class TrackingModel:
                 "SELECT * FROM tracking WHERE id=?", (int(row_id),)
             ).fetchone()
             if old_full and new_full:
-                self.undo.record_operation("tracking", "UPDATE", dict(old_full), dict(new_full))
+                self.undo.record_operation(
+                    "tracking", "UPDATE", dict(old_full), dict(new_full)
+                )
         except Exception as e:
-            logger.warning("Undo-Recording fehlgeschlagen nach UPDATE (id=%s): %s", row_id, e)
+            logger.warning(
+                "Undo-Recording fehlgeschlagen nach UPDATE (id=%s): %s", row_id, e
+            )
 
     def delete(self, row_id: int) -> None:
         # Alte Werte lesen (vor Transaktion)
@@ -140,15 +221,28 @@ class TrackingModel:
             "SELECT * FROM tracking WHERE id=?", (int(row_id),)
         ).fetchone()
 
+        if old_full:
+            old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(old_full)
+            if old_typ == TYP_SAVINGS:
+                self._validate_savings_goal_category_delta(old_cat, -old_amt)
+
         # Atomare Transaktion: DELETE + Sparziel-Korrektur
         with db_transaction(self.conn):
             self.conn.execute("DELETE FROM tracking WHERE id=?", (int(row_id),))
 
             if old_full:
                 if isinstance(old_full, sqlite3.Row):
-                    old_typ, old_cat, old_amt = str(old_full["typ"]), str(old_full["category"]), float(old_full["amount"])
+                    old_typ, old_cat, old_amt = (
+                        str(old_full["typ"]),
+                        str(old_full["category"]),
+                        float(old_full["amount"]),
+                    )
                 else:
-                    old_typ, old_cat, old_amt = str(old_full[2]), str(old_full[3]), float(old_full[4])
+                    old_typ, old_cat, old_amt = (
+                        str(old_full[2]),
+                        str(old_full[3]),
+                        float(old_full[4]),
+                    )
                 if old_typ == TYP_SAVINGS:
                     self._sync_savings(old_cat, old_amt, add=False)
 
@@ -157,9 +251,13 @@ class TrackingModel:
             if old_full:
                 self.undo.record_operation("tracking", "DELETE", dict(old_full), None)
         except Exception as e:
-            logger.warning("Undo-Recording fehlgeschlagen nach DELETE (id=%s): %s", row_id, e)
+            logger.warning(
+                "Undo-Recording fehlgeschlagen nach DELETE (id=%s): %s", row_id, e
+            )
 
-    def exists_in_month(self, *, year: int, month: int, typ: str, category: str) -> bool:
+    def exists_in_month(
+        self, *, year: int, month: int, typ: str, category: str
+    ) -> bool:
         """True, wenn im gegebenen Monat bereits mindestens 1 Eintrag für typ+category existiert."""
         ym = f"{int(year):04d}-{int(month):02d}"
         row = self.conn.execute(
@@ -223,7 +321,7 @@ class TrackingModel:
     ) -> list[TrackingRow]:
         """
         Flexible Filtermethode für Tracking-Einträge.
-        
+
         Args:
             typ: Filter nach Typ (Ausgaben/Einkommen/Ersparnisse)
             category: Filter nach Kategorie
@@ -235,8 +333,8 @@ class TrackingModel:
             year: Filter nach Jahr
             tag_id: Filter nach Tag (entry_tags JOIN)
         """
-        where_parts = []
-        params = []
+        where_parts: list[str] = []
+        params: list[object] = []
 
         if typ:
             where_parts.append("typ = ?")
@@ -252,7 +350,7 @@ class TrackingModel:
             where_parts.append("category = ?")
             params.append(category)
         elif categories:
-            placeholders = ','.join(['?'] * len(categories))
+            placeholders = ",".join(["?"] * len(categories))
             where_parts.append(f"category IN ({placeholders})")
             params.extend(categories)
 
@@ -277,18 +375,20 @@ class TrackingModel:
             search_pattern = f"%{search_text.lower()}%"
             params.append(search_pattern)
             params.append(search_pattern)
-        
+
         if year is not None:
             where_parts.append("substr(date,1,4) = ?")
             params.append(f"{int(year):04d}")
 
         # Tag-Filter: über Subquery auf entry_tags
         if tag_id is not None:
-            where_parts.append("id IN (SELECT entry_id FROM entry_tags WHERE tag_id = ?)")
+            where_parts.append(
+                "id IN (SELECT entry_id FROM entry_tags WHERE tag_id = ?)"
+            )
             params.append(int(tag_id))
 
         where_clause = " AND ".join(where_parts) if where_parts else "1=1"
-        
+
         query = f"""
             SELECT id, date, typ, category, amount, COALESCE(details,'') AS details
             FROM tracking
@@ -311,7 +411,9 @@ class TrackingModel:
             )
         return out
 
-    def category_usage_counts(self, typ: str | None = None, *, manual_only: bool = False) -> dict[str, int]:
+    def category_usage_counts(
+        self, typ: str | None = None, *, manual_only: bool = False
+    ) -> dict[str, int]:
         """Zählt Buchungen je Kategorie.
 
         Args:
@@ -337,7 +439,9 @@ class TrackingModel:
                 )
             return {str(r[0]): int(r[1]) for r in cur.fetchall()}
 
-        source_expr = "COALESCE(t.source, 'manual')" if self._has_source_col() else "'manual'"
+        source_expr = (
+            "COALESCE(t.source, 'manual')" if self._has_source_col() else "'manual'"
+        )
         where = ["1=1"]
         args: list[object] = []
         if typ:
@@ -366,15 +470,24 @@ class TrackingModel:
             details = str(r["details"] if isinstance(r, sqlite3.Row) else r[2])
             source = str(r["source"] if isinstance(r, sqlite3.Row) else r[3])
             is_fix = bool(r["is_fix"] if isinstance(r, sqlite3.Row) else r[4])
-            is_recurring = bool(r["is_recurring"] if isinstance(r, sqlite3.Row) else r[5])
-            if self._is_automatic_usage(details=details, category=category, source=source, is_flagged=(is_fix or is_recurring)):
+            is_recurring = bool(
+                r["is_recurring"] if isinstance(r, sqlite3.Row) else r[5]
+            )
+            if self._is_automatic_usage(
+                details=details,
+                category=category,
+                source=source,
+                is_flagged=(is_fix or is_recurring),
+            ):
                 continue
             counts[category] = counts.get(category, 0) + 1
 
         return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].casefold())))
 
     @staticmethod
-    def _is_automatic_usage(*, details: str, category: str, source: str, is_flagged: bool) -> bool:
+    def _is_automatic_usage(
+        *, details: str, category: str, source: str, is_flagged: bool
+    ) -> bool:
         """Bestimmt, ob eine Buchung für Nutzungs-Ranking als automatisch gilt."""
         src = (source or "manual").strip().lower()
         if src.startswith("auto"):
@@ -390,9 +503,46 @@ class TrackingModel:
         if not is_flagged or not det or not category:
             return False
         month_names = {
-            "januar", "februar", "märz", "maerz", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "dezember",
-            "january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december",
-            "janvier", "février", "fevrier", "mars", "avril", "mai", "juin", "juillet", "août", "aout", "septembre", "octobre", "novembre", "décembre", "decembre",
+            "januar",
+            "februar",
+            "märz",
+            "maerz",
+            "april",
+            "mai",
+            "juni",
+            "juli",
+            "august",
+            "september",
+            "oktober",
+            "november",
+            "dezember",
+            "january",
+            "february",
+            "march",
+            "april",
+            "may",
+            "june",
+            "july",
+            "august",
+            "september",
+            "october",
+            "november",
+            "december",
+            "janvier",
+            "février",
+            "fevrier",
+            "mars",
+            "avril",
+            "mai",
+            "juin",
+            "juillet",
+            "août",
+            "aout",
+            "septembre",
+            "octobre",
+            "novembre",
+            "décembre",
+            "decembre",
         }
         low = det.casefold()
         cat = category.strip().casefold()
@@ -400,7 +550,6 @@ class TrackingModel:
             return False
         prefix, suffix = low.split(" - ", 1)
         return prefix.strip() in month_names and suffix.strip() == cat
-
 
     def last_n_by_abs_amount(self, n: int = 5) -> list[TrackingRow]:
         cur = self.conn.execute(
@@ -422,7 +571,9 @@ class TrackingModel:
             )
         return out
 
-    def sum_by_typ(self, year: int | None = None, month: int | None = None) -> dict[str, float]:
+    def sum_by_typ(
+        self, year: int | None = None, month: int | None = None
+    ) -> dict[str, float]:
         where = []
         args = []
         if year is not None:
@@ -448,12 +599,14 @@ class TrackingModel:
         cur = self.conn.execute(
             "SELECT COALESCE(SUM(amount), 0) AS total FROM tracking "
             "WHERE date >= ? AND date < ? AND typ = ? AND category = ?",
-            (start_date, end_date, typ, category)
+            (start_date, end_date, typ, category),
         )
         row = cur.fetchone()
         return float(row["total"] if row else 0.0)
 
-    def sum_by_category(self, typ: str, year: int | None = None, month: int | None = None) -> dict[str, float]:
+    def sum_by_category(
+        self, typ: str, year: int | None = None, month: int | None = None
+    ) -> dict[str, float]:
         where = ["typ=?"]
         args = [typ]
         if year is not None:
@@ -482,29 +635,28 @@ class TrackingModel:
             tuple(args),
         )
         out = {int(r["m"]): float(r["s"] or 0.0) for r in cur.fetchall()}
-        for m in range(1,13):
+        for m in range(1, 13):
             out.setdefault(m, 0.0)
         return out
-
 
     def years(self) -> list[int]:
         cur = self.conn.execute(
             "SELECT DISTINCT CAST(substr(date,1,4) AS INTEGER) AS y FROM tracking ORDER BY y"
         )
         return [int(r["y"]) for r in cur.fetchall()]
-    
+
     def get_available_years(self) -> list[int]:
         """Alias für years() - für Kompatibilität mit overview_tab"""
         return self.years()
-    
+
     def get_entries_in_range(self, date_from: date, date_to: date) -> list[TrackingRow]:
         """
         Gibt alle Einträge in einem Datumsbereich zurück.
-        
+
         Args:
             date_from: Start-Datum (inklusiv)
             date_to: End-Datum (inklusiv)
-            
+
         Returns:
             Liste von TrackingRow Objekten
         """
@@ -522,36 +674,75 @@ class TrackingModel:
             tuple(args),
         )
         out = {int(r["m"]): float(r["s"] or 0.0) for r in cur.fetchall()}
-        for m in range(1,13):
+        for m in range(1, 13):
             out.setdefault(m, 0.0)
         return out
 
+    def _tracking_row_type_category_amount(self, row) -> tuple[str, str, float]:
+        """Liest Typ/Kategorie/Betrag robust aus sqlite3.Row oder Tupel."""
+        if isinstance(row, sqlite3.Row):
+            return str(row["typ"]), str(row["category"]), float(row["amount"])
+        return str(row[2]), str(row[3]), float(row[4])
+
+    def _validate_savings_goal_category_delta(self, category: str, delta: float) -> None:
+        goals = self.conn.execute(
+            """
+            SELECT name, current_amount, target_amount
+            FROM savings_goals
+            WHERE category = ? AND status IN (?, ?)
+            """,
+            (category, STATUS_SAVING, STATUS_RELEASED),
+        ).fetchall()
+        for goal in goals:
+            current = float(goal[1])
+            target = float(goal[2])
+            validate_savings_goal_bounds(
+                goal_name=str(goal[0]),
+                target_amount=target,
+                current_amount=current,
+                resulting_amount=current + float(delta),
+                delta_amount=float(delta),
+            )
+
     def _sync_savings(self, category: str, amount: float, *, add: bool) -> None:
-        """Synchronisiert Sparziele innerhalb einer laufenden Transaktion.
+        """Synchronisiert aktive Sparziele innerhalb einer laufenden Transaktion.
+
+        Fachregel: Der Sparziel-Stand darf nicht unter 0 und nicht über den
+        Zielbetrag steigen. Die Validierung passiert vor dem UPDATE, damit die
+        komplette Buchungstransaktion sauber zurückgerollt wird.
 
         Args:
             category: Kategorie-Name
             amount:   Betrag
             add:      True = addieren, False = subtrahieren
         """
+        delta = float(amount) if add else -float(amount)
+        self._validate_savings_goal_category_delta(category, delta)
+
         goals = self.conn.execute(
-            "SELECT id, current_amount FROM savings_goals WHERE category = ?",
-            (category,),
+            """
+            SELECT id, current_amount
+            FROM savings_goals
+            WHERE category = ? AND status IN (?, ?)
+            """,
+            (category, STATUS_SAVING, STATUS_RELEASED),
         ).fetchall()
 
         for goal in goals:
             goal_id, current = goal[0], float(goal[1])
-            if add:
-                new_amount = current + amount
-            else:
-                # Kein max(0) – negative Stände sind gültig (Entnahme / Undo).
-                # max(0) würde Korrekturbuchungen und Undo-Operationen still verfälschen.
-                new_amount = current - amount
             self.conn.execute(
                 "UPDATE savings_goals SET current_amount = ? WHERE id = ?",
-                (new_amount, goal_id),
+                (current + delta, goal_id),
             )
         # KEIN commit() – wird von db_transaction erledigt
+
+    def validate_savings_goal_booking(self, category: str, amount: float) -> None:
+        """Prüft eine geplante Ersparnisse-Buchung gegen aktive Sparziele.
+
+        Wird von der UI vor der eigentlichen Buchung genutzt, damit eine klare
+        Meldung erscheint, bevor eine Bestätigung für Entnahmen abgefragt wird.
+        """
+        self._validate_savings_goal_category_delta(category, float(amount))
 
     def check_savings_goal_conflict(self, category: str, amount: float) -> dict | None:
         """Prüft ob eine negative Buchung auf eine Spar-Kategorie mit aktivem Sparziel kollidiert.
@@ -589,11 +780,11 @@ class TrackingModel:
             return None
 
         return {
-            'goal_id': row[0],
-            'goal_name': row[1],
-            'goal_status': row[2],
-            'current_amount': float(row[3]),
-            'target_amount': float(row[4]),
+            "goal_id": row[0],
+            "goal_name": row[1],
+            "goal_status": row[2],
+            "current_amount": float(row[3]),
+            "target_amount": float(row[4]),
         }
 
     # Legacy-Aliases – VERALTET, nicht innerhalb db_transaction verwenden!
@@ -607,7 +798,6 @@ class TrackingModel:
         """VERALTET: Nutze stattdessen _sync_savings(category, amount, add=False) innerhalb db_transaction."""
         self._sync_savings(category, amount, add=False)
         self.conn.commit()
-
 
     def count(self) -> int:
         """Anzahl der Tracking-Buchungen."""

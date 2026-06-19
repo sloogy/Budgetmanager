@@ -19,7 +19,7 @@ from utils.money import parse_money, currency_header
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 def parse_amount(text: str) -> float:
-    return parse_money(text)
+    return parse_money(text, empty_is_zero=False)
 
 @dataclass(frozen=True)
 class TrackingInput:
@@ -189,13 +189,27 @@ class TrackerDialog(QDialog):
                     self.cb_cat.setCurrentIndex(i)
                     break
 
+    def _selected_typ(self) -> str:
+        return normalize_typ(self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText()))
+
+    def _selected_category(self) -> str:
+        from views.category_picker import resolve_combo_category
+
+        category = resolve_combo_category(self.cb_cat)
+        resolved = self.cats.resolve_name(self._selected_typ(), category)
+        return resolved or category
+
     def _validate_and_accept(self) -> None:
-        typ = self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
+        typ = self._selected_typ()
         if not typ:
             QMessageBox.warning(self, tr('auto.views_tracker_dialog.162_fehlt_fb898654'), tr("dlg.bitte_typ_auswaehlen"))
             return
-        if not (self.cb_cat.currentData() or self.cb_cat.currentText().strip()):
+        category = self._selected_category()
+        if not category:
             QMessageBox.warning(self, tr('auto.views_tracker_dialog.165_fehlt_a7f19cb1'), tr("dlg.bitte_kategorie_auswaehlen"))
+            return
+        if not self.cats.resolve_name(typ, category):
+            QMessageBox.warning(self, tr("dlg.hinweis"), trf("dlg.unknown_category", name=category))
             return
         try:
             amt = parse_amount(self.ed_amount.text())
@@ -209,9 +223,8 @@ class TrackerDialog(QDialog):
 
     def get_input(self) -> TrackingInput:
         d = self.ed_date.date().toPython()
-        typ = self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
-        from views.category_picker import resolve_combo_category
-        cat = resolve_combo_category(self.cb_cat)
+        typ = self._selected_typ()
+        cat = self._selected_category()
         amt = parse_amount(self.ed_amount.text())
         details = self.ed_details.text() or ""
         return TrackingInput(d, typ, cat, float(amt), details)

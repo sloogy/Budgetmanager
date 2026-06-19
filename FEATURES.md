@@ -1,9 +1,21 @@
 # BudgetManager
 
-## Neu: Cockpit-Startseite
+## Neu in v2.0.28
+
+- Final-Release-Härtung für Update-Dialog, Frozen-CLI und portable ZIP-Struktur.
+- Stabile Startdateien im Portable-ZIP: `BudgetManager.exe` und `BudgetManager`.
+- Doku-/Help-/Manifest-Versionen synchron auf v2.0.28.
+- Zusätzliche dynamische Dialogtexte über i18n statt harter deutscher Strings.
+- Konto-Hub für Konto, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
+- Frei wählbarer Datenordner mit optionaler sicherer Datenübernahme.
+- PBKDF2-Härtung mit automatischem Legacy-Upgrade für Vorab-Konten.
+- Autobuchungs-Artfilter, optionale Budgetposten und Deckungswarnungen.
+- Schnelleingabe mit Suche/Dropdown und validierter Kategorieauflösung.
+
+## Cockpit-Startseite
 
 Das Cockpit fasst die wichtigsten Punkte zusammen: Monatsstatus, Favoriten, aktive Sparziele, Budget-Ampel, offene Monatsbuchungen und letzte 10 Buchungen. Es ist bewusst kompakt und frei gestaltbar: Bereiche lassen sich im Cockpit oder unter `Ansicht → Anzeigen` ein-/ausblenden. Auch Hauptreiter können ausgeblendet werden, damit Einsteiger nicht von zu vielen Tabs erschlagen werden.
- v2.0.11 — Feature-Übersicht
+## v2.0.28 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
@@ -63,9 +75,14 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
 - Persistentes Undo/Redo.
 - Multi-Account-System mit Quick/PIN/Passwort-Modus.
 
-## Neu in v2.0.11
+## Release-Härtungen
 
-- Versionsnummer und Release-Dateien auf `v2.0.11` konsolidiert.
+- Cockpit-Rechtsklick-Menüs, Budgetwarnungen, Wayland/xcb-Fallback und Keine-Daten-Hinweise sind enthalten.
+- Restore-/Selbstheilungslogik verhindert Sackgassen nach falschem Restore-Key oder defektem Konto.
+- Reproduzierbarkeit ist über `requirements.lock`, Versions-Sync, i18n-Audit und Regressionstests abgesichert.
+
+## Wichtige Grundfunktionen
+
 - Fixkosten/Wiederkehrend sauber getrennt:
   - Fix + Wiederkehrend = echter fixer Monatsbetrag.
   - Fix ohne Wiederholung = variable Rückstellung/Kostenblock, Betrag editierbar.
@@ -109,6 +126,14 @@ Ziel: Ausreißer und Trends erkennen, ohne die Übersicht zu überladen.
 ### Sparziele im Workflow
 
 Sparziele sind jetzt klarer eingebettet: im Budget gibt es einen kleinen 🎯-Einstieg, im Tracking erscheint bei aktiven Zielen ein ausblendbares Panel mit Fortschrittsbalken und Doppelklick zum Ziel, und die Übersicht bleibt die Kontrollstelle.
+
+### Sparziel-Entnahme / Geld herausbuchen
+
+Geld aus einem Sparziel wird als **negative Ersparnisse-Buchung** auf die mit dem Sparziel verknüpfte Kategorie gebucht, z. B. `-500 CHF` auf `Ersparnisse → Hochzeit`. Negative Beträge sind dafür bei `Ersparnisse` erlaubt; bei `Ausgaben` bleiben negative Beträge bewusst gesperrt.
+
+Sparziele haben jetzt echte Grenzen: Eine Entnahme darf den Stand nicht unter `0 CHF` ziehen, und eine Einzahlung darf das Ziel nicht über `100 %` füllen. Bei beiden Fällen wird die Buchung blockiert und eine Meldung angezeigt.
+
+Best Practice: Sparziel zuerst **freigeben**, dann die Entnahme buchen und das Ziel abschließen, wenn es erledigt ist.
 
 ### Sicherer Start
 

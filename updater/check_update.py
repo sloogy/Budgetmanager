@@ -7,7 +7,9 @@ from updater.common import (
     asset_is_zip,
     cache_zip_path,
     current_exe_filename,
+    update_target_exe_filename,
     detect_platform_key,
+    preferred_asset_keys,
     download_file,
     enable_utf8_console,
     fetch_manifest,
@@ -37,15 +39,19 @@ def main() -> int:
         return 2
 
     platform_key = detect_platform_key()
-    asset = manifest.assets.get(platform_key)
+    preferred_keys = preferred_asset_keys(platform_key)
+    asset_key = next((key for key in preferred_keys if key in manifest.assets), "")
+    asset = manifest.assets.get(asset_key) if asset_key else None
     if not asset:
         print(f"❌ Kein Asset im Manifest für Plattform '{platform_key}'")
+        print(f"   Erwartete Keys: {', '.join(preferred_keys)}")
         write_check_result({
             "available": False,
             "error": f"Kein Asset für Plattform {platform_key}",
             "current": current,
             "remote": manifest.version,
             "release_tag": manifest.release_tag,
+            "asset_keys_tried": preferred_keys,
         })
         return 3
 
@@ -62,10 +68,12 @@ def main() -> int:
 
     print(f"⬇️  Update verfügbar: {remote} (Tag: {manifest.release_tag or 'n/a'})")
     zip_path = cache_zip_path(remote)
+    if asset.asset_type.strip().lower() == "installer":
+        zip_path = zip_path.with_suffix(".exe")
 
     # Download
     try:
-        print(f"Lade: {asset.url}")
+        print(f"Lade ({asset_key}/{asset.asset_type}): {asset.url}")
         download_file(asset.url, zip_path)
         print(f"✓ Download: {zip_path}")
     except Exception as e:
@@ -94,7 +102,19 @@ def main() -> int:
     else:
         try:
             staging.mkdir(parents=True, exist_ok=True)
-            if asset_is_zip(asset.url, asset.asset_type):
+            asset_type = asset.asset_type.strip().lower()
+            if asset_type == "installer":
+                # ── Windows-Installer: Setup-EXE stagen; apply_update startet sie.
+                import shutil
+                from urllib.parse import urlparse
+
+                url_name = Path(urlparse(asset.url).path).name or f"BudgetManager_Setup_{remote}.exe"
+                if not url_name.lower().endswith(".exe"):
+                    url_name = f"BudgetManager_Setup_{remote}.exe"
+                target = staging / url_name
+                shutil.copy2(zip_path, target)
+                print(f"✓ Installer gestaged als: {target.name}")
+            elif asset_is_zip(asset.url, asset.asset_type):
                 # ── ZIP-Asset: sicher entpacken ──
                 safe_extract_zip(zip_path, staging)
                 root = find_staged_root(staging)
@@ -110,7 +130,7 @@ def main() -> int:
                 #    unter dem die App installiert ist (z.B. BudgetManager.exe).
                 import shutil
 
-                target_name = current_exe_filename()
+                target_name = update_target_exe_filename()
                 target = staging / target_name
                 shutil.copy2(zip_path, target)
                 # Unter Linux: Ausführbar-Bit setzen (geht unter Windows ins Leere)
@@ -138,6 +158,7 @@ def main() -> int:
         "remote": remote,
         "staged_version": remote,
         "release_tag": manifest.release_tag,
+        "asset_key": asset_key,
         "asset_type": asset.asset_type,
         "asset_url": asset.url,
     })

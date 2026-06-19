@@ -316,9 +316,7 @@ class TagsManagerDialog(QDialog):
             reply = QMessageBox.warning(
                 self,
                 tr("btn.tag_loeschen"),
-                f"Das Tag '{tag_name}' wird von {usage_count} Buchung(en) verwendet.\n\n"
-                f"Möchten Sie das Tag wirklich löschen?\n" +
-                tr("dlg.die_tagzuweisungen_werden_entfernt"),
+                trf("tags.msg.delete_used_confirm", tag=tag_name, count=usage_count),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No
             )
@@ -373,7 +371,7 @@ class TagsManagerDialog(QDialog):
             
         # Farbdialog
         initial_color = current_color if current_color else QColor(ui_colors(self).accent)
-        qcolor = QColorDialog.getColor(initial_color, self, f"Farbe für '{tag_name}' wählen")
+        qcolor = QColorDialog.getColor(initial_color, self, trf("tags.dialog.color_title", tag=tag_name))
         
         if not qcolor.isValid():
             return
@@ -424,7 +422,7 @@ class TagsManagerDialog(QDialog):
         target_combo = QComboBox()
         for tag in tags:
             target_combo.addItem(tag["name"], tag["id"])
-        form.addRow("Ziel-Tag:", target_combo)
+        form.addRow(tr("tags.target_tag_label"), target_combo)
         
         # Quell-Tags (mehrere)
         source_combo = QComboBox()

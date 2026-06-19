@@ -218,15 +218,23 @@ def currency_header() -> str:
 
 # ── Parsing ───────────────────────────────────────────────────────────
 
-def parse_money(text: str) -> float:
+def parse_money(text: str, *, empty_is_zero: bool = True) -> float:
     """Parst einen Geld-String zurück zu ``float``.
 
-    Robust gegenüber gemischten Eingaben.  Wenn das aktive Format ein
+    Robust gegenüber gemischten Eingaben. Wenn das aktive Format ein
     eindeutiges Dezimalzeichen hat und nur dieses vorkommt, wird es bevorzugt
     interpretiert – so wird ``"1.234"`` im Format 'german' korrekt als 1234
     (nicht 1.234) gelesen.
+
+    Release-Härtung v2.0.28:
+    Nicht-numerische Eingaben wie ``"abc"`` oder ``"CHF"`` lösen jetzt
+    ``ValueError`` aus, statt still zu ``0.0`` zu werden. Leere Tabellenzellen
+    können aus Rückwärtskompatibilität weiter als 0 interpretiert werden;
+    Dialoge setzen dafür ``empty_is_zero=False`` und warnen den Nutzer.
     """
-    s = (text or "").strip()
+    original = text
+    original_stripped = (text or "").strip()
+    s = original_stripped
 
     # Alle bekannten Währungssymbole entfernen
     for cfg in CURRENCIES.values():
@@ -237,7 +245,9 @@ def parse_money(text: str) -> float:
         s = s.replace(ch, "")
 
     if not s:
-        return 0.0
+        if empty_is_zero and not original_stripped:
+            return 0.0
+        raise ValueError("Betrag fehlt oder enthält nur Währungssymbole")
 
     has_comma = "," in s
     has_dot = "." in s
@@ -269,8 +279,8 @@ def parse_money(text: str) -> float:
 
     try:
         return float(s)
-    except (ValueError, TypeError):
-        return 0.0
+    except (ValueError, TypeError) as exc:
+        raise ValueError(f"Ungültiger Geldbetrag: {original!r}") from exc
 
 
 def _looks_like_thousands(s: str, sep: str) -> bool:

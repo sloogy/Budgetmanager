@@ -12,6 +12,7 @@ Struktur je Thema:
 ``body`` ist Markdown und wird via QTextBrowser.setMarkdown() gerendert.
 Fehlt eine Sprache, fällt der Dialog auf Deutsch (HELP_FALLBACK_LANG) zurück.
 """
+
 from __future__ import annotations
 
 HELP_FALLBACK_LANG = "de"
@@ -23,7 +24,8 @@ HELP_TOPIC_DATABASE = "datenbank"
 HELP_TOPICS = [
     # ── Einstieg ────────────────────────────────────────────────
     {
-        "id": "einstieg", "icon": "🚀",
+        "id": "einstieg",
+        "icon": "🚀",
         "title": {"de": "Einstieg", "en": "Getting started", "fr": "Premiers pas"},
         "body": {
             "de": (
@@ -69,8 +71,13 @@ HELP_TOPICS = [
     },
     # ── Kategorien ──────────────────────────────────────────────
     {
-        "id": "kategorien", "icon": "🗂️",
-        "title": {"de": "Kategorien & Struktur", "en": "Categories & structure", "fr": "Catégories & structure"},
+        "id": "kategorien",
+        "icon": "🗂️",
+        "title": {
+            "de": "Kategorien & Struktur",
+            "en": "Categories & structure",
+            "fr": "Catégories & structure",
+        },
         "body": {
             "de": (
                 "# Kategorien & Struktur\n\n"
@@ -121,7 +128,8 @@ HELP_TOPICS = [
     },
     # ── Drag & Drop ─────────────────────────────────────────────
     {
-        "id": "draganddrop", "icon": "🖱️",
+        "id": "draganddrop",
+        "icon": "🖱️",
         "title": {"de": "Drag & Drop", "en": "Drag & drop", "fr": "Glisser-déposer"},
         "body": {
             "de": (
@@ -169,8 +177,13 @@ HELP_TOPICS = [
     },
     # ── Budget ──────────────────────────────────────────────────
     {
-        "id": "budget", "icon": "📊",
-        "title": {"de": "Budget & Vorschläge", "en": "Budget & suggestions", "fr": "Budget & suggestions"},
+        "id": "budget",
+        "icon": "📊",
+        "title": {
+            "de": "Budget & Vorschläge",
+            "en": "Budget & suggestions",
+            "fr": "Budget & suggestions",
+        },
         "body": {
             "de": (
                 "# Budget & Vorschläge\n\n"
@@ -219,8 +232,13 @@ HELP_TOPICS = [
     },
     # ── Cockpit ─────────────────────────────────────────────────
     {
-        "id": "cockpit", "icon": "🏠",
-        "title": {"de": "Cockpit / Startseite", "en": "Cockpit / start page", "fr": "Cockpit / accueil"},
+        "id": "cockpit",
+        "icon": "🏠",
+        "title": {
+            "de": "Cockpit / Startseite",
+            "en": "Cockpit / start page",
+            "fr": "Cockpit / accueil",
+        },
         "body": {
             "de": (
                 "# Cockpit / Startseite\n\n"
@@ -240,11 +258,15 @@ HELP_TOPICS = [
             "fr": "# Cockpit / accueil\n\nUn onglet d'accueil compact avec indicateurs, favoris, objectifs actifs, alertes budget, écritures mensuelles manquantes et dernières opérations. Les panneaux et onglets peuvent être masqués via Affichage → Afficher.",
         },
     },
-
     # ── Buchungen ───────────────────────────────────────────────
     {
-        "id": "buchungen", "icon": "🧾",
-        "title": {"de": "Buchungen / Tracking", "en": "Transactions / tracking", "fr": "Opérations / suivi"},
+        "id": "buchungen",
+        "icon": "🧾",
+        "title": {
+            "de": "Buchungen / Tracking",
+            "en": "Transactions / tracking",
+            "fr": "Opérations / suivi",
+        },
         "body": {
             "de": (
                 "# Buchungen / Tracking\n\n"
@@ -286,8 +308,13 @@ HELP_TOPICS = [
     },
     # ── Fixkosten (Flaggschiff) ─────────────────────────────────
     {
-        "id": "fixkosten", "icon": "📌",
-        "title": {"de": "Fixkosten (das Häkchen)", "en": "Fixed costs (the checkbox)", "fr": "Charges fixes (la case)"},
+        "id": "fixkosten",
+        "icon": "📌",
+        "title": {
+            "de": "Fixkosten (das Häkchen)",
+            "en": "Fixed costs (the checkbox)",
+            "fr": "Charges fixes (la case)",
+        },
         "body": {
             "de": (
                 "# Fixkosten – was das Häkchen auslöst\n\n"
@@ -364,8 +391,13 @@ HELP_TOPICS = [
     },
     # ── Wiederkehrend ───────────────────────────────────────────
     {
-        "id": "wiederkehrend", "icon": "🔁",
-        "title": {"de": "Wiederkehrende Buchungen", "en": "Recurring transactions", "fr": "Opérations récurrentes"},
+        "id": "wiederkehrend",
+        "icon": "🔁",
+        "title": {
+            "de": "Wiederkehrende Buchungen",
+            "en": "Recurring transactions",
+            "fr": "Opérations récurrentes",
+        },
         "body": {
             "de": (
                 "# Wiederkehrende Buchungen\n\n"
@@ -402,7 +434,8 @@ HELP_TOPICS = [
     },
     # ── Übersicht ───────────────────────────────────────────────
     {
-        "id": "uebersicht", "icon": "📈",
+        "id": "uebersicht",
+        "icon": "📈",
         "title": {"de": "Übersicht", "en": "Overview", "fr": "Aperçu"},
         "body": {
             "de": (
@@ -440,8 +473,13 @@ HELP_TOPICS = [
     },
     # ── Sparziele ───────────────────────────────────────────────
     {
-        "id": "sparziele", "icon": "🎯",
-        "title": {"de": "Sparziele – wann, wie, wo", "en": "Savings goals – when, how, where", "fr": "Objectifs – quand, comment, où"},
+        "id": "sparziele",
+        "icon": "🎯",
+        "title": {
+            "de": "Sparziele – wann, wie, wo",
+            "en": "Savings goals – when, how, where",
+            "fr": "Objectifs – quand, comment, où",
+        },
         "body": {
             "de": (
                 "# Sparziele – wann, wie, wo\n\n"
@@ -458,10 +496,20 @@ HELP_TOPICS = [
                 "3. Einzahlungen als Tracking-Buchungen unter **Ersparnisse** buchen.\n"
                 "4. Fortschritt in Tracking und Übersicht prüfen.\n"
                 "5. Bei Erreichen **freigeben**. Dann ist der erreichte Stand eingefroren.\n"
-                "6. Spätere Entnahmen werden als Verbrauch gegen das freigegebene Ziel geprüft.\n"
+                "6. Geld herausbuchen: im Tracking Typ **Ersparnisse** wählen, die Ziel-Kategorie wählen "
+                "und den Betrag **negativ** erfassen, z. B. `-500 CHF`.\n"
                 "7. Wenn erledigt: **abschließen**.\n\n"
-                "**Wie verfolgen:** Der Fortschritt wird als Betrag/Prozent angezeigt. Ziele werden "
-                "beim Umbenennen/Löschen von Kategorien sauber mitgeführt und sind Teil des Backups."
+                "**Ist eine negative Zahl gesperrt?** Nein, nicht für Ersparnisse. Negative Beträge "
+                "sind bei **Ersparnisse** erlaubt und bedeuten Entnahme aus Sparziel/Ersparnis. "
+                "Bei **Ausgaben** bleiben negative Beträge gesperrt, weil Ausgaben positiv erfasst werden sollen.\n\n"
+                "**Nicht verwechseln:** Das Herausbuchen erfolgt über die Ersparnisse-Kategorie des Ziels. "
+                "Eine echte Ausgabe kannst du zusätzlich separat buchen, wenn sie in der Ausgabenstatistik erscheinen soll.\n\n"
+                "**Grenzen:** Der Sparziel-Stand darf nicht unter 0 fallen und nicht über 100 % steigen. "
+                "Wenn du mehr entnehmen willst, als aktuell vorhanden ist, oder mehr einzahlen willst, "
+                "als bis zum Zielbetrag noch fehlt, blockiert BudgetManager die Buchung und zeigt eine Meldung. "
+                "Beispiele: Stand `300 CHF`, Entnahme `-500 CHF` → blockiert. Ziel `1’000 CHF`, "
+                "Stand `900 CHF`, Einzahlung `200 CHF` → blockiert. "
+                "Ziele werden beim Umbenennen/Löschen von Kategorien sauber mitgeführt und sind Teil des Backups."
             ),
             "en": (
                 "# Savings goals – when, how, where\n\n"
@@ -473,7 +521,9 @@ HELP_TOPICS = [
                 "1. Open *Manage*, add a new goal.\n"
                 "2. Enter a **name** and **target amount**, optionally a **target date**.\n"
                 "3. Optionally **link a category** (or *None*).\n\n"
-                "**How to track:** progress is shown as amount/percent. Goals are carried correctly "
+                "**Limits:** the savings goal balance cannot fall below 0 and cannot go above 100%. "
+                "If you try to withdraw more than currently saved, or deposit more than the remaining target amount, "
+                "BudgetManager blocks the booking and shows a message. Goals are carried correctly "
                 "when categories are renamed/deleted and are part of the backup."
             ),
             "fr": (
@@ -486,15 +536,22 @@ HELP_TOPICS = [
                 "1. Ouvrez *Gérer*, ajoutez un objectif.\n"
                 "2. Saisissez un **nom** et un **montant cible**, éventuellement une **date**.\n"
                 "3. Liez éventuellement une **catégorie** (ou *Aucune*).\n\n"
-                "**Suivi :** la progression s'affiche en montant/pourcentage. Les objectifs suivent les "
+                "**Limites :** le solde d’un objectif ne peut pas passer sous 0 ni dépasser 100 %. "
+                "Si vous tentez de retirer plus que le montant disponible ou de verser plus que le reste à atteindre, "
+                "BudgetManager bloque l’écriture et affiche un message. Les objectifs suivent les "
                 "renommages/suppressions de catégories et font partie de la sauvegarde."
             ),
         },
     },
     # ── Favoriten ───────────────────────────────────────────────
     {
-        "id": "favoriten", "icon": "⭐",
-        "title": {"de": "Favoriten – wofür?", "en": "Favorites – what for?", "fr": "Favoris – à quoi ?"},
+        "id": "favoriten",
+        "icon": "⭐",
+        "title": {
+            "de": "Favoriten – wofür?",
+            "en": "Favorites – what for?",
+            "fr": "Favoris – à quoi ?",
+        },
         "body": {
             "de": (
                 "# Favoriten – wofür ist das gut?\n\n"
@@ -536,7 +593,8 @@ HELP_TOPICS = [
     },
     # ── Tags ────────────────────────────────────────────────────
     {
-        "id": "tags", "icon": "🏷️",
+        "id": "tags",
+        "icon": "🏷️",
         "title": {"de": "Tags / Labels", "en": "Tags / labels", "fr": "Étiquettes"},
         "body": {
             "de": (
@@ -575,8 +633,13 @@ HELP_TOPICS = [
     },
     # ── Undo/Redo ───────────────────────────────────────────────
     {
-        "id": "undoredo", "icon": "↩️",
-        "title": {"de": "Rückgängig / Wiederholen", "en": "Undo / redo", "fr": "Annuler / rétablir"},
+        "id": "undoredo",
+        "icon": "↩️",
+        "title": {
+            "de": "Rückgängig / Wiederholen",
+            "en": "Undo / redo",
+            "fr": "Annuler / rétablir",
+        },
         "body": {
             "de": (
                 "# Rückgängig / Wiederholen\n\n"
@@ -612,8 +675,13 @@ HELP_TOPICS = [
     },
     # ── Backup ──────────────────────────────────────────────────
     {
-        "id": "backup", "icon": "💾",
-        "title": {"de": "Backup & Wiederherstellung", "en": "Backup & restore", "fr": "Sauvegarde & restauration"},
+        "id": "backup",
+        "icon": "💾",
+        "title": {
+            "de": "Backup & Wiederherstellung",
+            "en": "Backup & restore",
+            "fr": "Sauvegarde & restauration",
+        },
         "body": {
             "de": (
                 "# Backup & Wiederherstellung\n\n"
@@ -653,8 +721,13 @@ HELP_TOPICS = [
     },
     # ── Datenbank & Schlüssel ───────────────────────────────────
     {
-        "id": "datenbank", "icon": "🔑",
-        "title": {"de": "Datenbank & Schlüssel", "en": "Database & key", "fr": "Base de données & clé"},
+        "id": "datenbank",
+        "icon": "🔑",
+        "title": {
+            "de": "Datenbank & Schlüssel",
+            "en": "Database & key",
+            "fr": "Base de données & clé",
+        },
         "body": {
             "de": (
                 "# Datenbank & Schlüssel\n\n"
@@ -714,8 +787,13 @@ HELP_TOPICS = [
     },
     # ── Konten & Sicherheit ─────────────────────────────────────
     {
-        "id": "konten", "icon": "👤",
-        "title": {"de": "Konten & Sicherheit", "en": "Accounts & security", "fr": "Comptes & sécurité"},
+        "id": "konten",
+        "icon": "👤",
+        "title": {
+            "de": "Konten & Sicherheit",
+            "en": "Accounts & security",
+            "fr": "Comptes & sécurité",
+        },
         "body": {
             "de": (
                 "# Konten & Sicherheit\n\n"
@@ -755,7 +833,8 @@ HELP_TOPICS = [
     },
     # ── Updates ─────────────────────────────────────────────────
     {
-        "id": "update", "icon": "⬆️",
+        "id": "update",
+        "icon": "⬆️",
         "title": {"de": "Updates", "en": "Updates", "fr": "Mises à jour"},
         "body": {
             "de": (
@@ -787,8 +866,13 @@ HELP_TOPICS = [
     },
     # ── Währung & Zahlenformat ──────────────────────────────────
     {
-        "id": "datenformat", "icon": "🌍",
-        "title": {"de": "Währung & Zahlenformat", "en": "Currency & number format", "fr": "Devise & format des nombres"},
+        "id": "datenformat",
+        "icon": "🌍",
+        "title": {
+            "de": "Währung & Zahlenformat",
+            "en": "Currency & number format",
+            "fr": "Devise & format des nombres",
+        },
         "body": {
             "de": (
                 "# Währung & Zahlenformat\n\n"
@@ -833,77 +917,80 @@ def help_topic_haystack(topic: dict, lang: str) -> str:
     """Durchsuchbarer Text (Titel + Body) für die Suche."""
     return (help_topic_title(topic, lang) + "\n" + help_topic_body(topic, lang)).lower()
 
+
 # Zusätzlicher Laufplan: bewusst als eigenes Thema am Ende ergänzt, damit die
 # vorhandene dreisprachige Hilfe stabil bleibt und die Mindmap auffindbar ist.
-HELP_TOPICS.append({
-    "id": "mindmap",
-    "icon": "🧭",
-    "title": {
-        "de": "Informations-Laufplan / Mindmap",
-        "en": "Information flow / mind map",
-        "fr": "Parcours d’information / mindmap",
-    },
-    "body": {
-        "de": (
-            "# Informations-Laufplan / Mindmap\n\n"
-            "Die Mindmap zeigt den sinnvollsten Weg durch das Programm:\n\n"
-            "```text\n"
-            "BudgetManager\n"
-            "├─ Erststart\n"
-            "│  ├─ Sprache / Währung / Zahlenformat\n"
-            "│  ├─ Benutzerkonto\n"
-            "│  ├─ Restore-Key sichern\n"
-            "│  └─ Setup-Assistent\n"
-            "├─ Kategorien\n"
-            "│  ├─ Einnahmen / Ausgaben / Ersparnisse\n"
-            "│  ├─ Haupt- und Unterkategorien\n"
-            "│  ├─ Fixkosten / Wiederkehrend / Fälligkeitstag\n"
-            "│  └─ Drag & Drop\n"
-            "├─ Cockpit / Startseite\n"
-            "│  ├─ Monatsstatus / Favoriten / Sparziele\n"
-            "│  ├─ Budget-Ampel / offene Buchungen / letzte 10\n"
-            "│  └─ frei gestaltbar: Bereiche und Reiter ausblendbar\n"
-            "├─ Budget\n"
-            "│  ├─ Monatswerte planen\n"
-            "│  ├─ Jahr kopieren\n"
-            "│  └─ Budget ist Plan, keine Buchung\n"
-            "├─ Buchungen / Tracking\n"
-            "│  ├─ Manuell buchen\n"
-            "│  ├─ Schnelleingabe\n"
-            "│  └─ Fix/Wiederkehrend buchen\n"
-            "├─ Übersicht\n"
-            "│  ├─ Plan/Ist\n"
-            "│  ├─ Verlauf / Ranking / letzte Buchungen\n"
-            "│  └─ Budgetvorschläge\n"
-            "├─ Sparziele\n"
-            "│  ├─ Anlegen\n"
-            "│  ├─ Fortschritt / Sync\n"
-            "│  └─ Freigeben / Abschließen\n"
-            "└─ Sicherheit\n"
-            "   ├─ Datenordner\n"
-            "   ├─ Backup .bmr\n"
-            "   ├─ Restore-Key anzeigen\n"
-            "   └─ Updates\n"
-            "```\n\n"
-            "Direkt anzeigbare Version: **Hilfe → Informations-Laufplan / Mindmap anzeigen…** "
-            "oder im Handbuch unten auf **Mindmap anzeigen** klicken. Die Datei liegt lokal unter "
-            "`docs/help/mindmap.html` und funktioniert im Browser ohne Mermaid-Plugin."
-        ),
-        "en": (
-            "# Information flow / mind map\n\n"
-            "The mind map shows the recommended path through the app: setup, categories, budget, "
-            "tracking, overview, savings goals and backup/restore.\n\n"
-            "Open the directly viewable version via **Help → Show information flow / mind map…** "
-            "or the **Show mind map** button in this handbook. The local file is "
-            "`docs/help/mindmap.html` and works in a browser without a Mermaid plugin."
-        ),
-        "fr": (
-            "# Parcours d’information / mindmap\n\n"
-            "La mindmap montre le chemin conseillé dans l’application : démarrage, catégories, "
-            "budget, suivi, aperçu, objectifs d’épargne et sauvegarde/restauration.\n\n"
-            "Ouvrez la version directement consultable via **Aide → Afficher le parcours / la mindmap…** "
-            "ou le bouton **Afficher la mindmap** dans ce manuel. Le fichier local est "
-            "`docs/help/mindmap.html` et fonctionne dans un navigateur sans plugin Mermaid."
-        ),
-    },
-})
+HELP_TOPICS.append(
+    {
+        "id": "mindmap",
+        "icon": "🧭",
+        "title": {
+            "de": "Informations-Laufplan / Mindmap",
+            "en": "Information flow / mind map",
+            "fr": "Parcours d’information / mindmap",
+        },
+        "body": {
+            "de": (
+                "# Informations-Laufplan / Mindmap\n\n"
+                "Die Mindmap zeigt den sinnvollsten Weg durch das Programm:\n\n"
+                "```text\n"
+                "BudgetManager\n"
+                "├─ Erststart\n"
+                "│  ├─ Sprache / Währung / Zahlenformat\n"
+                "│  ├─ Benutzerkonto\n"
+                "│  ├─ Restore-Key sichern\n"
+                "│  └─ Setup-Assistent\n"
+                "├─ Kategorien\n"
+                "│  ├─ Einnahmen / Ausgaben / Ersparnisse\n"
+                "│  ├─ Haupt- und Unterkategorien\n"
+                "│  ├─ Fixkosten / Wiederkehrend / Fälligkeitstag\n"
+                "│  └─ Drag & Drop\n"
+                "├─ Cockpit / Startseite\n"
+                "│  ├─ Monatsstatus / Favoriten / Sparziele\n"
+                "│  ├─ Budget-Ampel / offene Buchungen / letzte 10\n"
+                "│  └─ frei gestaltbar: Bereiche und Reiter ausblendbar\n"
+                "├─ Budget\n"
+                "│  ├─ Monatswerte planen\n"
+                "│  ├─ Jahr kopieren\n"
+                "│  └─ Budget ist Plan, keine Buchung\n"
+                "├─ Buchungen / Tracking\n"
+                "│  ├─ Manuell buchen\n"
+                "│  ├─ Schnelleingabe\n"
+                "│  └─ Fix/Wiederkehrend buchen\n"
+                "├─ Übersicht\n"
+                "│  ├─ Plan/Ist\n"
+                "│  ├─ Verlauf / Ranking / letzte Buchungen\n"
+                "│  └─ Budgetvorschläge\n"
+                "├─ Sparziele\n"
+                "│  ├─ Anlegen\n"
+                "│  ├─ Fortschritt / Sync\n"
+                "│  └─ Freigeben / Abschließen\n"
+                "└─ Sicherheit\n"
+                "   ├─ Datenordner\n"
+                "   ├─ Backup .bmr\n"
+                "   ├─ Restore-Key anzeigen\n"
+                "   └─ Updates\n"
+                "```\n\n"
+                "Direkt anzeigbare Version: **Hilfe → Informations-Laufplan / Mindmap anzeigen…** "
+                "oder im Handbuch unten auf **Mindmap anzeigen** klicken. Die Datei liegt lokal unter "
+                "`docs/help/mindmap.html` und funktioniert im Browser ohne Mermaid-Plugin."
+            ),
+            "en": (
+                "# Information flow / mind map\n\n"
+                "The mind map shows the recommended path through the app: setup, categories, budget, "
+                "tracking, overview, savings goals and backup/restore.\n\n"
+                "Open the directly viewable version via **Help → Show information flow / mind map…** "
+                "or the **Show mind map** button in this handbook. The local file is "
+                "`docs/help/mindmap.html` and works in a browser without a Mermaid plugin."
+            ),
+            "fr": (
+                "# Parcours d’information / mindmap\n\n"
+                "La mindmap montre le chemin conseillé dans l’application : démarrage, catégories, "
+                "budget, suivi, aperçu, objectifs d’épargne et sauvegarde/restauration.\n\n"
+                "Ouvrez la version directement consultable via **Aide → Afficher le parcours / la mindmap…** "
+                "ou le bouton **Afficher la mindmap** dans ce manuel. Le fichier local est "
+                "`docs/help/mindmap.html` et fonctionne dans un navigateur sans plugin Mermaid."
+            ),
+        },
+    }
+)

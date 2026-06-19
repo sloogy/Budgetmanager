@@ -15,7 +15,7 @@ class CopyYearRequest:
     src_year: int
     dst_year: int
     carry_amounts: bool
-    scope_typ: str  # "Alle", tr("kpi.expenses"), tr("kpi.income"), tr("typ.Ersparnisse")
+    scope_typ: str  # DB type; empty string = all
 
 class CopyYearDialog(QDialog):
     def __init__(self, parent=None, *, default_src: int, known_years: list[int] | None = None):
@@ -33,7 +33,10 @@ class CopyYearDialog(QDialog):
         self.dst.setValue(default_src + 1)
 
         self.scope = QComboBox()
-        self.scope.addItems([tr('typ.Alle'), tr("kpi.expenses"), tr("kpi.income"), tr("typ.Ersparnisse")])
+        self.scope.addItem(tr('typ.Alle'), "")
+        self.scope.addItem(tr("kpi.expenses"), "Ausgaben")
+        self.scope.addItem(tr("kpi.income"), "Einkommen")
+        self.scope.addItem(tr("typ.Ersparnisse"), "Ersparnisse")
 
         self.carry = QCheckBox(tr("chk.copy_amounts"))
         self.carry.setChecked(True)
@@ -46,9 +49,9 @@ class CopyYearDialog(QDialog):
         self.btn_cancel.setDefault(False)
 
         form = QFormLayout()
-        form.addRow("Quelljahr", self.src)
-        form.addRow("Zieljahr", self.dst)
-        form.addRow("Bereich", self.scope)
+        form.addRow(tr("copy.src_year"), self.src)
+        form.addRow(tr("copy.dst_year"), self.dst)
+        form.addRow(tr("copy.scope"), self.scope)
         form.addRow("", self.carry)
 
         btns = QHBoxLayout()
@@ -69,5 +72,5 @@ class CopyYearDialog(QDialog):
             src_year=int(self.src.value()),
             dst_year=int(self.dst.value()),
             carry_amounts=bool(self.carry.isChecked()),
-            scope_typ=str(self.scope.currentText()),
+            scope_typ=str(self.scope.currentData() or ""),
         )

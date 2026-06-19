@@ -20,16 +20,41 @@ REQUIRED = ["qtbase_de.qm", "qtbase_fr.qm"]
 OPTIONAL = ["qt_de.qm", "qt_fr.qm"]
 
 
-def _source_dir() -> Path | None:
+def _source_dirs() -> list[Path]:
+    """Übersetzungsverzeichnisse der Entwicklungs-/Build-Qt-Installation.
+
+    Nutzt dieselbe Suchstrategie wie utils.qt_translator, damit der Gate nicht
+    fälschlich scheitert, wenn QLibraryInfo leer ist, die Kataloge aber im
+    PySide6-Paket unter PySide6/translations oder PySide6/Qt/translations liegen.
+    """
+    dirs: list[Path] = []
     try:
         from PySide6.QtCore import QLibraryInfo
         try:
             p = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
         except Exception:
             p = QLibraryInfo.location(QLibraryInfo.TranslationsPath)  # type: ignore[attr-defined]
-        return Path(p) if p else None
+        if p:
+            dirs.append(Path(p))
     except Exception:
-        return None
+        pass
+
+    try:
+        import PySide6
+        base = Path(PySide6.__file__).resolve().parent
+        dirs.append(base / "translations")
+        dirs.append(base / "Qt" / "translations")
+    except Exception:
+        pass
+
+    seen: set[str] = set()
+    out: list[Path] = []
+    for d in dirs:
+        key = str(d)
+        if key not in seen and d.is_dir():
+            seen.add(key)
+            out.append(d)
+    return out
 
 
 def _build_dirs(root: Path) -> list[Path]:
@@ -72,9 +97,8 @@ def main() -> int:
         print(f"Modus: Build-Ordner ({root})\n")
         dirs = _build_dirs(root)
     else:
-        src = _source_dir()
         print("Modus: Qt-Installation (Entwicklung)\n")
-        dirs = [src] if src else []
+        dirs = _source_dirs()
 
     ok = check(dirs)
     print("\n" + ("✅ R2 erfüllt: native Kontextmenüs werden DE/FR lokalisiert."

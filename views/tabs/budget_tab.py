@@ -3,12 +3,12 @@ import logging
 logger = logging.getLogger(__name__)
 import sqlite3
 
-from PySide6.QtCore import Qt, QEvent, Signal, QTimer
+from PySide6.QtCore import Qt, Signal, QTimer, QCoreApplication, QEvent
 from PySide6.QtGui import QKeySequence, QShortcut, QBrush, QColor, QPalette
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QComboBox, QTableWidget, QTableWidgetItem,
     QPushButton, QMessageBox, QLabel, QSpinBox, QAbstractItemView, QCheckBox, QDialog,
-    QMenu, QInputDialog
+    QMenu, QInputDialog, QApplication, QAbstractItemDelegate
 )
 
 from utils.i18n import tr, trf
@@ -19,6 +19,9 @@ from model.category_model import CategoryModel, Category
 from model.budget_model import BudgetModel
 from model.favorites_model import FavoritesModel
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
+from model.budget_modes import BUDGET_MODE_MONTH, BUDGET_MODE_ALL, BUDGET_MODE_RANGE, normalize_budget_mode
+from model.coverage_model import budget_year_coverage, CoverageResult
+from model.crypto import suspend_after_commit_autosave
 from views.copy_year_dialog import CopyYearDialog
 from views.budget_entry_dialog import BudgetEntryDialog, BudgetEntryRequest
 # Erweiterter Dialog mit integrierter Kategorie-Verwaltung
@@ -45,7 +48,7 @@ from views.ui_colors import ui_colors
 from views.category_delete_dialog import ask_category_delete_decision
 
 def parse_amount(text: str) -> float:
-    return parse_money(text)
+    return parse_money(text, empty_is_zero=True)
 
 
 def fmt_amount(val: float) -> str:
@@ -73,6 +76,83 @@ class _BudgetDragTableWidget(QTableWidget):
     def __init__(self, owner: "BudgetTab"):
         super().__init__(owner)
         self._owner = owner
+        self._closing_editor_guard = False
+
+    def _focus_widget_inside_table(self):
+        """Liefert den aktiven Zell-Editor, falls der Fokus in der Tabelle liegt."""
+        app = QApplication.instance()
+        focus = app.focusWidget() if app is not None else None
+        if focus is None:
+            return None
+        try:
+            if focus is self or focus is self.viewport():
+                return focus
+            if self.isAncestorOf(focus) or self.viewport().isAncestorOf(focus):
+                return focus
+        except RuntimeError:
+            return None
+        except Exception:
+            return None
+        return None
+
+    def safe_close_active_editor(self, *, reason: str = "") -> None:
+        """Beendet einen aktiven Inline-Editor deterministisch vor Rebuild/Fokuswechsel.
+
+        Hintergrund: Unter Python 3.14 + PySide6/Qt 6.10 kann ein QTableWidget
+        native segfaulten, wenn ein nachgereichtes commitData-Event einen bereits
+        freigegebenen Zell-Editor erreicht. Deshalb wird vor setRowCount(),
+        load(), Tabwechsel-Save und fokussierenden Aktionen der Editor bewusst
+        geschlossen und seine posted Events werden verarbeitet, solange das
+        C++-Editorobjekt noch lebt.
+        """
+        if self._closing_editor_guard:
+            return
+        self._closing_editor_guard = True
+        old_triggers = self.editTriggers()
+        try:
+            self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+            editor = self._focus_widget_inside_table()
+
+            if editor is not None and editor is not self and editor is not self.viewport():
+                try:
+                    # commitData/closeEditor jetzt erledigen, bevor die Tabelle
+                    # durch setRowCount(0) oder reload Items/Editoren verliert.
+                    self.closeEditor(editor, QAbstractItemDelegate.EndEditHint.NoHint)
+                except RuntimeError:
+                    editor = None
+                except Exception as exc:
+                    logger.debug("Budget-Editor konnte nicht direkt geschlossen werden (%s): %s", reason, exc)
+                    try:
+                        editor.clearFocus()
+                    except Exception:
+                        pass
+
+            try:
+                self.clearFocus()
+                self.viewport().clearFocus()
+            except Exception:
+                pass
+
+            # Wichtig: posted commitData/DeferredDelete gezielt abarbeiten,
+            # solange der Editor noch nicht durch den Tabellen-Rebuild verwaist ist.
+            # Kein globales processEvents(): das würde beliebige User-/Qt-Events
+            # reentrant ausführen. Wir drainen nur Editor/View-nahe Events.
+            try:
+                if editor is not None:
+                    QCoreApplication.sendPostedEvents(editor, 0)
+                    QCoreApplication.sendPostedEvents(self, 0)
+                    QCoreApplication.sendPostedEvents(self.viewport(), 0)
+                    QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+            except RuntimeError:
+                pass
+            except Exception as exc:
+                logger.debug("Budget-Editor Event-Drain übersprungen (%s): %s", reason, exc)
+        finally:
+            try:
+                self.setEditTriggers(old_triggers)
+            except Exception:
+                pass
+            self._closing_editor_guard = False
 
     def dropEvent(self, event):  # noqa: N802 (Qt naming)
         if not getattr(self._owner, "_category_drag_enabled", False):
@@ -86,6 +166,21 @@ class _BudgetDragTableWidget(QTableWidget):
             event.acceptProposedAction()
             return
         event.ignore()
+
+    def keyPressEvent(self, event):  # noqa: N802 (Qt naming)
+        """Stabile Enter-Navigation ohne QObject.installEventFilter.
+
+        Das frühere EventFilter-Wiring konnte bei Qt6/PySide6 nach Dialogen
+        native closeEditor-Crashes auslösen. Wenn ein Zell-Editor aktiv ist,
+        landet Return normalerweise beim Editor/Delegate; hier behandeln wir nur
+        die Tabellen-Navigation im Nicht-Editierzustand.
+        """
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            owner = getattr(self, "_owner", None)
+            if owner is not None and owner._handle_budget_enter_key():
+                event.accept()
+                return
+        super().keyPressEvent(event)
 
 
 class BudgetTab(QWidget):
@@ -171,6 +266,12 @@ class BudgetTab(QWidget):
         self.lbl_overview = QLabel("")
         self.lbl_overview.setToolTip(tr("budget.tip.overview"))
 
+        # Deckungswarnung: Ausgaben + Ersparnisse dürfen Einkommen nicht übersteigen.
+        self.lbl_coverage_warning = QLabel("")
+        self.lbl_coverage_warning.setWordWrap(True)
+        self.lbl_coverage_warning.setVisible(False)
+        self.lbl_coverage_warning.setTextFormat(Qt.RichText)
+
         # Bezeichnung + Fix + Wiederh. + Tag + 12 Monate + Total
         self.table = _BudgetDragTableWidget(self)
         self.table.setColumnCount(17)
@@ -188,9 +289,9 @@ class BudgetTab(QWidget):
         self.table.setColumnWidth(2, 35)   # Wiederh-Symbol (schmal)
         self.table.setColumnWidth(3, 45)   # Tag (schmal)
         self.table.setAlternatingRowColors(True)
-        self.table.setSelectionBehavior(QAbstractItemView.SelectItems)
-        self.table.setSelectionMode(QAbstractItemView.SingleSelection)
-        self.table.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed | QAbstractItemView.SelectedClicked)
+        self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
+        self.table.setEditTriggers(QAbstractItemView.DoubleClicked | QAbstractItemView.EditKeyPressed)
         self._category_drag_enabled = False
         try:
             from settings import Settings
@@ -202,9 +303,11 @@ class BudgetTab(QWidget):
         self.table.itemChanged.connect(self._on_item_changed)
         self.table.cellDoubleClicked.connect(self._on_cell_double_clicked)
         self.table.cellClicked.connect(self._on_cell_clicked)  # NEU: Fix/Wiederkehrend Toggle
-        # Defer installEventFilter until after Qt event loop starts to avoid
-        # "Cannot filter events for objects in a different thread" warning
-        QTimer.singleShot(0, lambda: self.table.installEventFilter(self))
+        # Kein QObject.installEventFilter mehr: Unter PySide6/Qt6 auf Fedora/XCB
+        # konnte das nach Dialogen zu "Cannot filter events for objects in a
+        # different thread" und anschließendem nativen closeEditor-Segfault
+        # führen. Enter-Navigation wird stattdessen im Tabellen-Subclass
+        # behandelt.
         
         # Rechtsklick-Kontextmenü
         self.table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -244,6 +347,7 @@ class BudgetTab(QWidget):
         summary.addWidget(self.lbl_overview)
         summary.addStretch(1)
         root.addLayout(summary)
+        root.addWidget(self.lbl_coverage_warning)
 
         root.addWidget(self.table)
         self.setLayout(root)
@@ -287,6 +391,19 @@ class BudgetTab(QWidget):
             )
         except Exception as e:
             logger.debug("Budget Drag&Drop konnte nicht umgeschaltet werden: %s", e)
+
+    def _close_table_editor(self, reason: str = "") -> None:
+        """Schließt aktive Budget-Zell-Editoren vor Reload/Fokuswechseln.
+
+        Diese zentrale Schleuse verhindert die bekannte Qt/PySide-Reentrancy-
+        Kette commitData -> closeEditor -> installEventFilter auf einem bereits
+        freigegebenen Editor. Alle riskanten Wege laufen über diese Methode.
+        """
+        try:
+            if hasattr(self.table, "safe_close_active_editor"):
+                self.table.safe_close_active_editor(reason=reason)
+        except Exception as exc:
+            logger.debug("Budget-Tabelleneditor konnte nicht geschlossen werden (%s): %s", reason, exc)
 
     def _category_obj_from_row(self, row: int) -> Category | None:
         """Liefert die Kategorie zu einer Tabellenzeile."""
@@ -384,31 +501,59 @@ class BudgetTab(QWidget):
         return True
 
     # --- Komfort: Enter -> nächste Zelle ---
-    def eventFilter(self, obj, event):
-        if obj is self.table and event.type() == QEvent.KeyPress:
-            key = event.key()
-            if key in (Qt.Key_Return, Qt.Key_Enter):
-                r = self.table.currentRow()
-                c = self.table.currentColumn()
-                if r < 0 or c < 0:
-                    return False
-                # Spalten: 0=Bezeichnung, 1=Fix, 2=∞, 3=Tag, 4-15=Monate, 16=Total
-                if c < 4:
-                    # Von Bezeichnung/Fix/∞/Tag -> erste Monatsspalte
-                    # QTimer.singleShot: verhindert Segfault durch Qt-Reentrancy
-                    # (setCurrentCell innerhalb von eventFilter → commitData → installEventFilter → eventFilter)
-                    QTimer.singleShot(0, lambda: self.table.setCurrentCell(r, 4))
-                else:
-                    next_c = c + 1
-                    next_r = r
-                    if next_c > 16:  # nach Total -> nächste Zeile
-                        next_c = 4  # Zurück zur ersten Monatsspalte
-                        next_r = r + 1
-                    if next_r >= self.table.rowCount():
-                        next_r = self.table.rowCount() - 1
-                    QTimer.singleShot(0, lambda: self.table.setCurrentCell(next_r, next_c))
-                return True
-        return super().eventFilter(obj, event)
+    def _handle_budget_enter_key(self) -> bool:
+        r = self.table.currentRow()
+        c = self.table.currentColumn()
+        if r < 0 or c < 0:
+            return False
+
+        # Spalten: 0=Bezeichnung, 1=Fix, 2=∞, 3=Tag, 4-15=Monate, 16=Total
+        if c < 4:
+            next_r, next_c = r, 4
+        else:
+            next_c = c + 1
+            next_r = r
+            if next_c > 16:
+                next_c = 4
+                next_r = min(r + 1, max(0, self.table.rowCount() - 1))
+
+        self._safe_set_current_cell(next_r, next_c, delay_ms=0, reason="Enter-Navigation")
+        return True
+
+    def _safe_set_current_cell(self, row: int, column: int, *, delay_ms: int = 75, reason: str = "") -> None:
+        """Setzt den Tabellenfokus defensiv und nur im GUI-Thread.
+
+        setCurrentCell() kann intern den aktuellen Editor schließen. Genau dort
+        zeigte der Crash-Stack QAbstractItemView::closeEditor. Deshalb wird
+        nicht fokussiert, solange Qt die Tabelle als EditingState führt.
+        """
+
+        def _set_focus() -> None:
+            try:
+                if self.table.thread() is not self.thread():
+                    logger.warning(
+                        "Budget-Fokus übersprungen (%s): Tabelle und Widget liegen in verschiedenen Qt-Threads.",
+                        reason,
+                    )
+                    return
+                try:
+                    state_enum = getattr(QAbstractItemView, "State", QAbstractItemView)
+                    editing_state = getattr(state_enum, "EditingState", None)
+                    if editing_state is not None and self.table.state() == editing_state:
+                        logger.debug("Budget-Fokus übersprungen (%s): Tabelleneditor ist noch aktiv.", reason)
+                        return
+                except Exception:
+                    pass
+                if 0 <= row < self.table.rowCount() and 0 <= column < self.table.columnCount():
+                    self._close_table_editor(f"Fokuswechsel: {reason}")
+                    self.table.setCurrentCell(row, column)
+            except Exception as exc:
+                logger.debug("Budget-Fokus konnte nicht gesetzt werden (%s): %s", reason, exc)
+
+        if delay_ms <= 0:
+            _set_focus()
+        else:
+            QTimer.singleShot(delay_ms, _set_focus)
 
     # -----------------------------
     # Helpers: Row meta
@@ -722,9 +867,86 @@ class BudgetTab(QWidget):
                 it_total.setToolTip(
                     trf('auto.views_tabs_budget_tab.574_value_0_value_1_value_2_value_3_val_4a746a83', value_0=(tr('lbl.annual_income')), value_1=(fmt_amount(jahr_ein)), value_2=(tr('lbl.annual_expenses')), value_3=(fmt_amount(jahr_aus)), value_4=(tr('lbl.annual_savings')), value_5=(fmt_amount(jahr_ers)), value_6=(tr('lbl.annual_balance')), value_7=(fmt_amount(jahr_saldo)))
                 )
+            self._update_budget_coverage_warning()
         finally:
             self._internal_change = _prev
     
+
+    def _format_coverage_suggestion(self, result: CoverageResult) -> str:
+        """Formatiert einen vorsichtigen Spar-Vorschlag zur Deckungslücke."""
+        singles = result.single_savings_suggestions()
+        if singles:
+            top = singles[0]
+            return trf(
+                "coverage.suggestion_single",
+                category=tr_category_name(top.category),
+                amount=fmt_amount(result.deficit),
+            )
+        combined = result.combined_savings_suggestions()
+        if combined:
+            parts = ", ".join(
+                f"{tr_category_name(s.category)} {fmt_amount(s.amount)}" for s in combined[:4]
+            )
+            if len(combined) > 4:
+                parts += " …"
+            return trf("coverage.suggestion_combined", categories=parts)
+        return tr("coverage.no_savings_suggestion")
+
+    def _update_budget_coverage_warning(self) -> None:
+        """Zeigt eine Budget-Deckungswarnung, wenn Ausgaben+Ersparnisse > Einnahmen."""
+        try:
+            report = budget_year_coverage(self.budget, int(self.year_spin.value()))
+            if not report.is_overdrawn:
+                self.lbl_coverage_warning.clear()
+                self.lbl_coverage_warning.setVisible(False)
+                return
+
+            c = ui_colors(self)
+            self.lbl_coverage_warning.setStyleSheet(
+                f"color: {c.negative}; background-color: {c.error_bg}; "
+                "font-weight: bold; padding: 6px; border-radius: 4px;"
+            )
+
+            worst = report.worst_month
+            if worst is not None:
+                month, result = worst
+                month_name = tr(f"month_short.{month}")
+                text = trf(
+                    "budget.coverage.warning_months",
+                    year=report.year,
+                    months=len(report.negative_months),
+                    month=month_name,
+                    deficit=fmt_amount(result.deficit),
+                    suggestion=self._format_coverage_suggestion(result),
+                )
+            else:
+                text = trf(
+                    "budget.coverage.warning_annual",
+                    year=report.year,
+                    deficit=fmt_amount(report.annual.deficit),
+                    suggestion=self._format_coverage_suggestion(report.annual),
+                )
+
+            tooltip_lines = []
+            for month in report.negative_months:
+                result = report.months[month]
+                tooltip_lines.append(
+                    f"{tr(f'month.{month}')}: {tr('lbl.saldo')} {fmt_amount(result.balance)} "
+                    f"({tr('kpi.income')} {fmt_amount(result.income)} - "
+                    f"{tr('kpi.expenses')} {fmt_amount(result.expenses)} - "
+                    f"{tr('typ.Ersparnisse')} {fmt_amount(result.savings)})"
+                )
+            if report.annual.is_overdrawn:
+                tooltip_lines.append(
+                    f"{tr('lbl.annual_balance')}: {fmt_amount(report.annual.balance)}"
+                )
+            self.lbl_coverage_warning.setText(text)
+            self.lbl_coverage_warning.setToolTip("\n".join(tooltip_lines))
+            self.lbl_coverage_warning.setVisible(True)
+        except Exception as exc:
+            logger.debug("Budget-Deckungswarnung konnte nicht berechnet werden: %s", exc)
+            self.lbl_coverage_warning.clear()
+            self.lbl_coverage_warning.setVisible(False)
 
     def seed_from_categories(self):
         year = int(self.year_spin.value())
@@ -734,14 +956,16 @@ class BudgetTab(QWidget):
         else:
             types = [typ]
 
-        for t in types:
-            names = self.cats.list_names(t)
-            self.budget.seed_year_from_categories(year, t, names, amount=0.0)
+        with suspend_after_commit_autosave(self.conn):
+            for t in types:
+                names = self.cats.list_names(t)
+                self.budget.seed_year_from_categories(year, t, names, amount=0.0)
 
         QMessageBox.information(self, tr("msg.success"), trf("budget.msg.seed_done", typ=display_typ(typ), year=year))
         self.load()
 
     def load(self):
+        self._close_table_editor("Budget-Tabelle neu laden")
         year = int(self.year_spin.value())
         typ = self._current_typ_db()
 
@@ -754,6 +978,7 @@ class BudgetTab(QWidget):
 
         _prev_ic = self._internal_change
         self._internal_change = True
+        self.table.setUpdatesEnabled(False)
         try:
             self.table.setRowCount(0)
 
@@ -959,6 +1184,7 @@ class BudgetTab(QWidget):
             self.table.resizeColumnsToContents()
             self._update_overview_bar()
         finally:
+            self.table.setUpdatesEnabled(True)
             self._internal_change = _prev_ic
 
     # Einheitliches API: MainWindow kann beim Tab-Wechsel `refresh()` nutzen.
@@ -1376,7 +1602,7 @@ class BudgetTab(QWidget):
             self._internal_change = _prev_flag
 
         _, is_rec, _day = self.cats.get_flags(typ, cat)
-        default_mode = "Alle" if is_rec else "Monat"
+        default_mode = BUDGET_MODE_ALL if is_rec else BUDGET_MODE_MONTH
         dlg = BudgetEntryDialog(
             self,
             default_year=int(self.year_spin.value()),
@@ -1477,45 +1703,84 @@ class BudgetTab(QWidget):
             self._internal_change = _prev
 
     def save(self):
+        self._close_table_editor("Budget speichern")
         year = int(self.year_spin.value())
         data_rows = self._row_count_data()
+        _commit_autosave_suspended = self._suspend_encrypted_commit_autosave()
 
-        for r in range(data_rows):
-            if self._is_header_row(r):
-                continue
-            if self._is_total_row(r):
-                continue  # Total-Zeile nicht speichern
-            cat = self._row_cat_real(r)
-            if not cat:
-                continue
-            typ = self._row_typ(r)
-            has_children = self._row_has_children(r)
+        try:
+            for r in range(data_rows):
+                if self._is_header_row(r):
+                    continue
+                if self._is_total_row(r):
+                    continue  # Total-Zeile nicht speichern
+                cat = self._row_cat_real(r)
+                if not cat:
+                    continue
+                typ = self._row_typ(r)
+                has_children = self._row_has_children(r)
 
-            # Parent mit Children: Monatszellen zeigen Total, speichern wäre falsch.
-            # Buffer wurde beim Edit sofort gespeichert.
-            if has_children:
-                continue
+                # Parent mit Children: Monatszellen zeigen Total, speichern wäre falsch.
+                # Buffer wurde beim Edit sofort gespeichert.
+                if has_children:
+                    continue
 
-            for m in range(1, 13):  # Logische Monate 1-12
-                col_idx = m + 3  # Spalten 4-15
-                it = self.table.item(r, col_idx)
-                amt = parse_amount(it.text() if it else "")
-                if typ == TYP_EXPENSES and amt < 0:
-                    amt = abs(amt)
-                self.budget.set_amount(year, m, typ, cat, amt)
-            self._recalc_row_total(r)
+                for m in range(1, 13):  # Logische Monate 1-12
+                    col_idx = m + 3  # Spalten 4-15
+                    it = self.table.item(r, col_idx)
+                    amt = parse_amount(it.text() if it else "")
+                    if typ == TYP_EXPENSES and amt < 0:
+                        amt = abs(amt)
+                    self.budget.set_amount(year, m, typ, cat, amt)
+                self._recalc_row_total(r)
+        finally:
+            self._resume_encrypted_commit_autosave(_commit_autosave_suspended)
 
-        # Total-Zeile aktualisieren (wenn vorhanden)
+        # Total-Zeile und Deckungswarnung aktualisieren (wenn vorhanden)
         if self._is_all_filter():
             self._update_total_row()
+        else:
+            self._update_budget_coverage_warning()
         
         # Automatische Budgetwarnungen erstellen (90% Schwelle)
         self._create_auto_warnings(year)
+        self._flush_encrypted_session("Budget-Tab Save")
         
         # Keine störende MessageBox mehr - Speichern erfolgt still
         self.budget_data_changed.emit()
 
+    def _suspend_encrypted_commit_autosave(self) -> bool:
+        """Bündelt viele DB-Commits zu einem verschlüsselten Disk-Save."""
+        try:
+            if hasattr(self.conn, "suspend_after_commit"):
+                self.conn.suspend_after_commit()
+                return True
+        except Exception as exc:
+            logger.debug("Commit-Auto-Save konnte nicht pausiert werden: %s", exc)
+        return False
+
+    def _resume_encrypted_commit_autosave(self, suspended: bool) -> None:
+        if not suspended:
+            return
+        try:
+            if hasattr(self.conn, "resume_after_commit"):
+                self.conn.resume_after_commit()
+        except Exception as exc:
+            logger.debug("Commit-Auto-Save konnte nicht fortgesetzt werden: %s", exc)
+
+    def _flush_encrypted_session(self, reason: str) -> None:
+        """Schreibt verschlüsselte In-Memory-DB sofort auf Disk, falls vorhanden."""
+        try:
+            win = self.window()
+            if hasattr(win, "_save_encrypted_session"):
+                win._save_encrypted_session()
+                logger.debug("Budget-Änderung persistiert (%s).", reason)
+        except Exception as exc:
+            logger.debug("Budget-Session-Save übersprungen/fehlgeschlagen (%s): %s", reason, exc)
+
     def _apply_request(self, req: BudgetEntryRequest):
+        self._close_table_editor("Budget-Anfrage anwenden")
+        logger.info("Budget-Anfrage anwenden: Jahr=%s Typ=%s Kategorie=%s Modus=%s Betrag=%s", req.year, req.typ, req.category, req.mode, req.amount)
         # Kategorie wird jetzt automatisch im Dialog erstellt
         # Falls sie trotzdem fehlt (z.B. alter Dialog), erstellen wir sie hier
         if req.category not in self.cats.list_names(req.typ):
@@ -1535,34 +1800,48 @@ class BudgetTab(QWidget):
                 )
                 return
 
-        self.budget.seed_year_from_categories(req.year, req.typ, [req.category], amount=0.0)
-
-        if req.mode == "Alle":
+        mode = normalize_budget_mode(req.mode)
+        if mode == BUDGET_MODE_ALL:
             months = list(range(1, 13))
-        elif req.mode == "Bereich":
+        elif mode == BUDGET_MODE_RANGE:
             a, b = sorted([req.from_month, req.to_month])
             months = list(range(a, b + 1))
         else:
             months = [req.month]
 
-        for m in months:
-            amt = abs(req.amount) if (req.typ == TYP_EXPENSES and req.amount < 0) else req.amount
+        _commit_autosave_suspended = self._suspend_encrypted_commit_autosave()
+        try:
+            self.budget.seed_year_from_categories(req.year, req.typ, [req.category], amount=0.0)
 
-            if req.only_if_empty:
-                mat = self.budget.get_matrix(req.year, req.typ)
-                current = mat.get(req.category, {}).get(m, 0.0)
-                if abs(float(current)) > 1e-9:
-                    continue
+            for m in months:
+                amt = abs(req.amount) if (req.typ == TYP_EXPENSES and req.amount < 0) else req.amount
 
-            self.budget.set_amount(req.year, m, req.typ, req.category, amt)
+                if req.only_if_empty:
+                    mat = self.budget.get_matrix(req.year, req.typ)
+                    current = mat.get(req.category, {}).get(m, 0.0)
+                    if abs(float(current)) > 1e-9:
+                        continue
+
+                self.budget.set_amount(req.year, m, req.typ, req.category, amt)
+        finally:
+            self._resume_encrypted_commit_autosave(_commit_autosave_suspended)
 
         self.year_spin.setValue(req.year)
         _key_to_set = "" if req.typ == "Alle" else req.typ
         _idx = self.typ_cb.findData(_key_to_set)
-        if _idx >= 0:
-            self.typ_cb.setCurrentIndex(_idx)
+        if _idx >= 0 and self.typ_cb.currentIndex() != _idx:
+            old_block = self.typ_cb.blockSignals(True)
+            try:
+                self.typ_cb.setCurrentIndex(_idx)
+            finally:
+                self.typ_cb.blockSignals(old_block)
+        # Nach den Model-Commits sofort persistieren. Der Commit-Hook erledigt
+        # das normalerweise bereits; dieser explizite Save ist ein zusätzlicher
+        # Sicherheitsgurt für native Qt/PySide-Crashes direkt nach dem Dialog.
+        self._flush_encrypted_session("Budget erfassen/bearbeiten")
         self.load()
-        self._focus_category_month(req.category, months[0])
+        self._focus_category_month(req.category, months[0], typ=req.typ)
+        logger.info("Budget-Anfrage angewendet: %s/%s", req.typ, req.category)
 
     def _focus_category_month(self, category: str, month: int, typ: str | None = None) -> bool:
         data_rows = self._row_count_data()
@@ -1575,12 +1854,17 @@ class BudgetTab(QWidget):
             if typ and self._row_typ(r) != typ:
                 continue
             col = max(4, min(15, month + 3))
-            self.table.setCurrentCell(r, col)
+
+            # Nicht synchron direkt nach load()/Dialog setzen: Qt kann sonst bei
+            # bestimmten XCB/Wayland-Konstellationen nativ crashen. Zusätzlich
+            # wird nicht fokussiert, solange Qt noch einen Zell-Editor schließt.
+            self._safe_set_current_cell(r, col, delay_ms=150, reason="Kategorie/Monat fokussieren")
             return True
         return False
 
     def focus_budget_entry(self, *, typ: str, category: str, year: int, month: int, open_dialog: bool = False) -> bool:
         """Fokussiert einen Budgeteintrag für externe Navigation (z.B. Übersicht-Tab)."""
+        self._close_table_editor("Externe Budget-Navigation")
         self.year_spin.setValue(int(year))
         idx = self.typ_cb.findData(typ or "")
         if idx < 0:
@@ -1594,6 +1878,8 @@ class BudgetTab(QWidget):
         return found
 
     def open_entry_dialog(self):
+        self._close_table_editor("Budget-Erfassen-Dialog öffnen")
+        logger.info("Budget-Erfassen-Dialog wird geöffnet")
         year = int(self.year_spin.value())
 
         # wenn "Alle": versuche typ vom aktuell selektierten Row zu nehmen
@@ -1620,10 +1906,13 @@ class BudgetTab(QWidget):
             preset=preset
         )
         if dlg.exec() != QDialog.Accepted:
+            logger.info("Budget-Erfassen-Dialog abgebrochen")
             return
+        logger.info("Budget-Erfassen-Dialog bestätigt")
         self._apply_request(dlg.get_request())
 
     def open_edit_dialog(self):
+        self._close_table_editor("Budget-Bearbeiten-Dialog öffnen")
         r = self.table.currentRow()
         c = self.table.currentColumn()
         if r < 0 or c < 4 or c > 15:
@@ -1652,7 +1941,7 @@ class BudgetTab(QWidget):
         year = int(self.year_spin.value())
 
         _, is_rec, _day = self.cats.get_flags(typ, cat)
-        default_mode = "Alle" if is_rec else "Monat"
+        default_mode = BUDGET_MODE_ALL if is_rec else BUDGET_MODE_MONTH
 
         # Verwende den erweiterten Dialog mit integrierter Kategorie-Verwaltung
         dlg = BudgetEntryDialogExtended(
@@ -1663,7 +1952,9 @@ class BudgetTab(QWidget):
             preset={"category": cat, "amount": current_val, "month": c - 3, "mode": default_mode, "only_if_empty": False},
         )
         if dlg.exec() != QDialog.Accepted:
+            logger.info("Budget-Bearbeiten-Dialog abgebrochen")
             return
+        logger.info("Budget-Bearbeiten-Dialog bestätigt")
         self._apply_request(dlg.get_request())
 
     def _selected_category(self) -> tuple[str, str] | None:
@@ -1678,23 +1969,41 @@ class BudgetTab(QWidget):
         typ = self._row_typ(r)
         return (typ, cat)
 
+    def _selected_categories(self, *, fallback_row: int | None = None) -> list[tuple[str, str]]:
+        """Liefert eindeutige Kategoriezeilen aus der aktuellen Mehrfachauswahl.
+
+        Rückgabeformat: ``[(typ, category), ...]`` in Tabellenreihenfolge.
+        Header, Footer und Typ-Summen werden übersprungen.
+        """
+        rows = {idx.row() for idx in self.table.selectedIndexes()}
+        if fallback_row is not None and fallback_row >= 0:
+            rows.add(int(fallback_row))
+        if not rows:
+            row = self.table.currentRow()
+            if row >= 0:
+                rows.add(row)
+
+        out: list[tuple[str, str]] = []
+        seen: set[tuple[str, str]] = set()
+        for r in sorted(rows):
+            if self._is_footer_row(r) or self._is_header_row(r) or self._is_total_row(r):
+                continue
+            cat = self._row_cat_real(r)
+            if not cat:
+                continue
+            typ = self._row_typ(r)
+            key = (typ, cat)
+            if key not in seen:
+                seen.add(key)
+                out.append(key)
+        return out
+
     def remove_budget_row(self):
-        sel = self._selected_category()
-        if not sel:
+        selected = self._selected_categories()
+        if not selected:
             QMessageBox.information(self, tr("msg.info"), tr("budget.msg.select_category_row"))
             return
-        typ, cat = sel
-        year = int(self.year_spin.value())
-
-        if QMessageBox.question(
-            self,
-            tr("msg.remove_budget_row"),
-            trf("budget.msg.remove_row_confirm", category=cat, typ=display_typ(typ), year=year),
-        ) != QMessageBox.Yes:
-            return
-
-        self.budget.delete_category_for_year(year, typ, cat)
-        self.load()
+        self._delete_budget_rows_for_categories(selected)
 
     def delete_category_global(self):
         """Kategorie global sicher löschen.
@@ -1705,28 +2014,54 @@ class BudgetTab(QWidget):
         dieser Button nun über den zentralen Kategorie-Löschdialog und
         CategoryModel.delete_category_safely().
         """
-        sel = self._selected_category()
-        if not sel:
+        selected = self._selected_categories()
+        if not selected:
             QMessageBox.information(self, tr("msg.info"), tr("budget.msg.select_category_row"))
             return
-        typ, cat = sel
+        self._delete_categories_with_confirm(selected)
 
-        cat_obj = next((c for c in self.cats.list(typ) if c.name == cat), None)
-        if cat_obj is None:
+    def _delete_budget_rows_for_categories(self, selected: list[tuple[str, str]]) -> None:
+        """Löscht Budgetpositionen im aktuellen Jahr für eine oder mehrere Kategorien."""
+        if not selected:
+            return
+        year = int(self.year_spin.value())
+        if len(selected) == 1:
+            typ, cat = selected[0]
+            msg = trf("budget.msg.remove_row_confirm", category=cat, typ=display_typ(typ), year=year)
+        else:
+            msg = trf("budget.msg.remove_rows_confirm", count=len(selected), year=year)
+
+        if QMessageBox.question(self, tr("msg.remove_budget_row"), msg) != QMessageBox.Yes:
+            return
+
+        for typ, cat in selected:
+            self.budget.delete_category_for_year(year, typ, cat)
+        self.load()
+
+    def _delete_categories_with_confirm(self, selected: list[tuple[str, str]]) -> None:
+        """Löscht eine oder mehrere Kategorien über den zentralen Sicherheitsdialog."""
+        cat_ids: list[int] = []
+        for typ, cat in selected:
+            cat_obj = next((c for c in self.cats.list(typ) if c.name == cat), None)
+            if cat_obj is not None:
+                cat_ids.append(int(cat_obj.id))
+
+        if not cat_ids:
             QMessageBox.warning(self, tr("msg.warning"), tr("budget.msg.category_missing"))
             return
 
-        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=[cat_obj.id])
+        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=cat_ids)
         if decision is None:
             return
 
         try:
-            self.cats.delete_category_safely(
-                cat_obj.id,
-                data_action=decision.action,
-                reassign_to_id=decision.reassign_to_id,
-                promote_children=True,
-            )
+            for cat_id in sorted(set(cat_ids), reverse=True):
+                self.cats.delete_category_safely(
+                    cat_id,
+                    data_action=decision.action,
+                    reassign_to_id=decision.reassign_to_id,
+                    promote_children=True,
+                )
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("msg.delete_failed", e=e))
             return
@@ -1744,14 +2079,15 @@ class BudgetTab(QWidget):
             QMessageBox.warning(self, tr("msg.warning"), tr("budget.msg.copy_year_diff"))
             return
 
-        typ = None if req.scope_typ == "Alle" else req.scope_typ
-        self.budget.copy_year(req.src_year, req.dst_year, carry_amounts=req.carry_amounts, typ=typ)
+        typ = None if not req.scope_typ else req.scope_typ
+        with suspend_after_commit_autosave(self.conn):
+            self.budget.copy_year(req.src_year, req.dst_year, carry_amounts=req.carry_amounts, typ=typ)
 
-        if typ is None:
-            for t in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
-                self.budget.seed_year_from_categories(req.dst_year, t, self.cats.list_names(t), amount=0.0)
-        else:
-            self.budget.seed_year_from_categories(req.dst_year, typ, self.cats.list_names(typ), amount=0.0)
+            if typ is None:
+                for t in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
+                    self.budget.seed_year_from_categories(req.dst_year, t, self.cats.list_names(t), amount=0.0)
+            else:
+                self.budget.seed_year_from_categories(req.dst_year, typ, self.cats.list_names(typ), amount=0.0)
 
         QMessageBox.information(self, tr("msg.success"), trf("budget.msg.copy_year_done", src=req.src_year, dst=req.dst_year))
         self.year_spin.setValue(req.dst_year)
@@ -1776,6 +2112,26 @@ class BudgetTab(QWidget):
         cat = self._row_cat_real(row)
         typ = self._row_typ(row)
         if not cat:
+            return
+
+        selected = self._selected_categories(fallback_row=row)
+        selected_set = set(selected)
+        if (typ, cat) not in selected_set:
+            selected = [(typ, cat)]
+        if len(selected) > 1:
+            menu = QMenu(self)
+            menu.addSection(trf("budget.ctx.multi_section", count=len(selected)))
+            act_delete_budget_multi = menu.addAction(
+                trf("budget.ctx.delete_rows_this_year_count", count=len(selected))
+            )
+            act_delete_cat_multi = menu.addAction(
+                trf("budget.ctx.delete_categories_count", count=len(selected))
+            )
+            action = menu.exec(self.table.viewport().mapToGlobal(pos))
+            if action == act_delete_budget_multi:
+                self._delete_budget_rows_for_categories(selected)
+            elif action == act_delete_cat_multi:
+                self._delete_categories_with_confirm(selected)
             return
         
         # Kategorie-Infos laden
@@ -2044,47 +2400,11 @@ class BudgetTab(QWidget):
     
     def _delete_budget_row_for_category(self, cat: str, typ: str) -> None:
         """Löscht nur die Budget-Zeile für dieses Jahr."""
-        year = int(self.year_spin.value())
-        
-        if QMessageBox.question(
-            self,
-            tr("msg.remove_budget_row"),
-            trf("budget.msg.remove_row_confirm_short", category=cat, year=year)
-        ) != QMessageBox.Yes:
-            return
-        
-        self.budget.delete_category_for_year(year, typ, cat)
-        self.load()
+        self._delete_budget_rows_for_categories([(typ, cat)])
     
     def _delete_category_with_confirm(self, cat: str, typ: str) -> None:
         """Löscht Kategorie mit Bestätigung."""
-        # Unterkategorien prüfen
-        all_cats = self.cats.list(typ)
-        cat_obj = None
-        children = []
-        
-        for c in all_cats:
-            if c.name == cat:
-                cat_obj = c
-            elif c.parent_id:
-                parent = next((p for p in all_cats if p.id == c.parent_id), None)
-                if parent and parent.name == cat:
-                    children.append(c.name)
-        
-        if not cat_obj:
-            return
-
-        decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=[cat_obj.id])
-        if decision is None:
-            return
-
-        self.cats.delete_category_safely(
-            cat_obj.id,
-            data_action=decision.action,
-            reassign_to_id=decision.reassign_to_id,
-            promote_children=True,
-        )
-        self.load()
+        self._delete_categories_with_confirm([(typ, cat)])
     
     def _copy_row_to_all_months(self, row: int) -> None:
         """Kopiert den ersten Monatswert in alle Monate."""
@@ -2110,8 +2430,9 @@ class BudgetTab(QWidget):
         
         year = int(self.year_spin.value())
         
-        for m in range(1, 13):
-            self.budget.set_amount(year, m, typ, cat, first_val)
+        with suspend_after_commit_autosave(self.conn):
+            for m in range(1, 13):
+                self.budget.set_amount(year, m, typ, cat, first_val)
         
         self.load()
         QMessageBox.information(
@@ -2143,19 +2464,20 @@ class BudgetTab(QWidget):
             from model.tracking_model import TrackingModel
             tracking = TrackingModel(self.conn)
             
-            for month in range(1, 13):
-                for typ in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
-                    matrix = self.budget.get_matrix(year, typ)
-                    spent_map = tracking.sum_by_category(typ, year=year, month=month)
-                    
-                    for category, amounts in matrix.items():
-                        budget_val = amounts.get(month, 0.0)
-                        if budget_val > 0:
-                            raw_spent = float(spent_map.get(category, 0.0))
-                            spent = raw_spent if is_income(typ) else abs(raw_spent)
-                            is_warn = (spent < budget_val) if is_income(typ) else (spent > budget_val)
-                            if is_warn:
-                                self.warnings.create(year, month, typ, category, threshold_percent=100)
+            with suspend_after_commit_autosave(self.conn):
+                for month in range(1, 13):
+                    for typ in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
+                        matrix = self.budget.get_matrix(year, typ)
+                        spent_map = tracking.sum_by_category(typ, year=year, month=month)
+                        
+                        for category, amounts in matrix.items():
+                            budget_val = amounts.get(month, 0.0)
+                            if budget_val > 0:
+                                raw_spent = float(spent_map.get(category, 0.0))
+                                spent = raw_spent if is_income(typ) else abs(raw_spent)
+                                is_warn = (spent < budget_val) if is_income(typ) else (spent > budget_val)
+                                if is_warn:
+                                    self.warnings.create(year, month, typ, category, threshold_percent=100)
         except Exception as e:
             logger.debug("operation: %s", e)
 

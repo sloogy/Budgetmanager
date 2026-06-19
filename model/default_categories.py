@@ -17,6 +17,7 @@ startet.
 DB-Konvention: ``typ`` ist ein DB-Schlüssel (Einkommen/Ausgaben/Ersparnisse,
 siehe model/typ_constants.py) und wird nie übersetzt.
 """
+
 from __future__ import annotations
 
 import json
@@ -50,7 +51,9 @@ _FALLBACK: tuple[DefaultCategory, ...] = (
     DefaultCategory(TYP_INCOME, "Sonstige Einnahmen"),
     DefaultCategory(TYP_EXPENSES, "Miete/Hypothek", is_fix=True, is_recurring=True),
     DefaultCategory(TYP_EXPENSES, "Nebenkosten", is_fix=True, is_recurring=True),
-    DefaultCategory(TYP_EXPENSES, "Krankenversicherung", is_fix=True, is_recurring=True),
+    DefaultCategory(
+        TYP_EXPENSES, "Krankenversicherung", is_fix=True, is_recurring=True
+    ),
     DefaultCategory(TYP_EXPENSES, "Versicherungen", is_fix=True, is_recurring=True),
     DefaultCategory(TYP_EXPENSES, "Steuern", is_fix=True, is_recurring=True),
     DefaultCategory(TYP_EXPENSES, "Lebensmittel"),
@@ -74,6 +77,7 @@ def _candidate_paths() -> list[Path]:
     # 3. Portable: data/-Ordner neben der EXE (erlaubt Nutzer-Anpassung)
     try:
         from model.app_paths import app_dir
+
         paths.append(app_dir() / "data" / _JSON_NAME)
     except Exception as e:
         logger.debug("app_dir() für default_categories nicht verfügbar: %s", e)
@@ -89,7 +93,9 @@ def _parse_entry(c: dict, parent_typ: str | None = None) -> DefaultCategory | No
     typ = str(c.get("typ", parent_typ or "")).strip()
     name = str(c.get("name", "")).strip()
     if typ not in ALL_TYPEN or not name:
-        logger.warning("default_categories.json: Eintrag übersprungen (typ=%r, name=%r)", typ, name)
+        logger.warning(
+            "default_categories.json: Eintrag übersprungen (typ=%r, name=%r)", typ, name
+        )
         return None
     if not c.get("enabled", True):
         return None
@@ -130,13 +136,23 @@ def load_default_categories() -> list[DefaultCategory]:
                     out.append(parsed)
             if out:
                 total = sum(1 + len(d.children) for d in out)
-                logger.info("Default-Kategorien geladen: %d Top-Level (%d gesamt) aus %s",
-                            len(out), total, path)
+                logger.info(
+                    "Default-Kategorien geladen: %d Top-Level (%d gesamt) aus %s",
+                    len(out),
+                    total,
+                    path,
+                )
                 return out
-            logger.warning("default_categories.json gefunden, aber leer/ungültig: %s", path)
+            logger.warning(
+                "default_categories.json gefunden, aber leer/ungültig: %s", path
+            )
         except Exception as e:
-            logger.warning("default_categories.json konnte nicht geladen werden (%s): %s", path, e)
-    logger.warning("Keine gültige default_categories.json gefunden — eingebauter Fallback wird verwendet")
+            logger.warning(
+                "default_categories.json konnte nicht geladen werden (%s): %s", path, e
+            )
+    logger.warning(
+        "Keine gültige default_categories.json gefunden — eingebauter Fallback wird verwendet"
+    )
     return list(_FALLBACK)
 
 
@@ -179,18 +195,42 @@ def insert_default_categories(conn, recurring_day_override: int | None = None) -
                 "INSERT OR IGNORE INTO categories"
                 "(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
                 "VALUES(?,?,?,?,?,?,?,?)",
-                (dc.typ, dc.name, parent_id, int(dc.is_fix), int(dc.is_recurring),
-                 int(recurring_day_override if dc.is_recurring and recurring_day_override else dc.recurring_day), None, sort_order),
+                (
+                    dc.typ,
+                    dc.name,
+                    parent_id,
+                    int(dc.is_fix),
+                    int(dc.is_recurring),
+                    int(
+                        recurring_day_override
+                        if dc.is_recurring and recurring_day_override
+                        else dc.recurring_day
+                    ),
+                    None,
+                    sort_order,
+                ),
             )
         elif has_flags:
             cur.execute(
                 "INSERT OR IGNORE INTO categories(typ,name,is_fix,is_recurring,recurring_day) "
                 "VALUES(?,?,?,?,?)",
-                (dc.typ, dc.name, int(dc.is_fix), int(dc.is_recurring),
-                 int(recurring_day_override if dc.is_recurring and recurring_day_override else dc.recurring_day)),
+                (
+                    dc.typ,
+                    dc.name,
+                    int(dc.is_fix),
+                    int(dc.is_recurring),
+                    int(
+                        recurring_day_override
+                        if dc.is_recurring and recurring_day_override
+                        else dc.recurring_day
+                    ),
+                ),
             )
         else:
-            cur.execute("INSERT OR IGNORE INTO categories(typ,name) VALUES(?,?)", (dc.typ, dc.name))
+            cur.execute(
+                "INSERT OR IGNORE INTO categories(typ,name) VALUES(?,?)",
+                (dc.typ, dc.name),
+            )
 
         if cur.rowcount and cur.rowcount > 0:
             inserted += 1
