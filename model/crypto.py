@@ -169,7 +169,9 @@ def coalesced_commits(conn: sqlite3.Connection):
     finally:
         if suspended:
             try:
-                conn.resume_after_commit()
+                resume = getattr(conn, "resume_after_commit", None)
+                if callable(resume):
+                    resume()
             except Exception as exc:  # pragma: no cover - defensiv
                 logger.debug(
                     "coalesced_commits: resume_after_commit fehlgeschlagen: %s", exc
