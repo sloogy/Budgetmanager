@@ -1,4 +1,4 @@
-# BudgetManager 2.0.30 – Benutzeranleitung
+# BudgetManager 2.0.31 – Benutzeranleitung
 
 ## 1. Grundidee
 

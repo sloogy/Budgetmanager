@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.0.30
+# 💰 BudgetManager v2.0.31
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.0.30-blue)
+![Version](https://img.shields.io/badge/version-2.0.31-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -36,12 +36,12 @@ Alternativ:
 
 ---
 
-## Neu in v2.0.30
+## Neu in v2.0.31
 
 - Final-Release-Härtung für den In-App-Updater: Frozen-Builds starten jetzt die echten `--check-update`/`--apply-update`-Pfade.
 - Portable-ZIP nutzt stabile Startdateien (`BudgetManager.exe` / `BudgetManager`), während GitHub-Assets weiterhin versioniert bleiben.
 - Windows-Update migriert alte versionierte Portable-Binaries auf den stabilen Startpunkt und startet danach die neue App.
-- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.0.30 synchronisiert.
+- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.0.31 synchronisiert.
 - i18n-Härtung für mehrere dynamische Dialogtexte in Budget, Tracking, Backup, Konto, Tags, Themes und Sparzielen.
 - Konto & Daten sind in einem eigenen Hub gebündelt: Konto verwalten, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
 - Der Datenordner ist frei wählbar; beim Wechsel kann die App bestehende Nutzerdaten sicher kopieren, inklusive Sicherheits-ZIP.
@@ -111,18 +111,12 @@ Diese Version ist als Release-Ready-Source-Candidate gedacht. Vor Veröffentlich
 
 Details stehen im [CHANGELOG.md](CHANGELOG.md).
 
-### Anleitung in Deutsch / English / Français
-
-- Deutsch: [docs/USER_GUIDE.de.md](docs/USER_GUIDE.de.md)
-- English: [docs/USER_GUIDE.en.md](docs/USER_GUIDE.en.md)
-- Français: [docs/USER_GUIDE.fr.md](docs/USER_GUIDE.fr.md)
-
 ### Hilfe / Wissensdatenbank / Mindmap
 
 - `F1` öffnet das durchsuchbare In-App-Handbuch.
 - `Ctrl+F1` öffnet die Tastenkürzel.
 - `Hilfe → HTML-Wissensdatenbank öffnen…` öffnet die vollständige lokale HTML-Hilfe unter `docs/help/index.html`.
-- `Hilfe → Informations-Laufplan / Mindmap anzeigen…` öffnet die lokale Mindmap passend zur App-Sprache (`docs/help/mindmap.de.html`, `docs/help/mindmap.en.html`, `docs/help/mindmap.fr.html`). `docs/help/mindmap.html` bleibt als deutsche Fallback-Datei für alte Links erhalten. Alle Varianten sind ohne Mermaid-Plugin sichtbar und können gedruckt oder als PDF gespeichert werden.
+- `Hilfe → Informations-Laufplan / Mindmap anzeigen…` öffnet `docs/help/mindmap.html` direkt im Browser. Diese Mindmap ist ohne Mermaid-Plugin sichtbar und kann gedruckt oder als PDF gespeichert werden.
 - `Hilfe → Restore-Key anzeigen…` zeigt den Datenbank-/Restore-Key der aktuell geöffneten Datenbank.
 
 Die Wissensdatenbank erklärt alle Kernfunktionen: Erststart, Restore-Key, Datenbank, Backup, Kategorien, Drag & Drop, Budget, Buchungen/Tracking, Fixkosten, Wiederkehrend, Übersicht, Sparziele, Favoriten, Tags, Export, Updates und typische Stolperfallen.
@@ -204,7 +198,7 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.0.30"
+APP_VERSION = "2.0.31"
 APP_RELEASE_DATE = "19. Juni 2026"
 ```
 
@@ -243,12 +237,12 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.0.30 \
-  --release-tag v2.0.30 \
+  --version 2.0.31 \
+  --release-tag v2.0.31 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.0.30-portable.zip \
-  --linux-zip dist/BudgetManager-v2.0.30-portable.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.30 \
+  --windows-zip dist/BudgetManager-v2.0.31-portable.zip \
+  --linux-zip dist/BudgetManager-v2.0.31-portable.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.31 \
   --out latest.json
 ```
 
@@ -267,8 +261,7 @@ Alle Daten bleiben lokal. Standardmäßig nutzt BudgetManager den portablen Date
 - [README_INSTALLATION.md](README_INSTALLATION.md) — Installation, Start und Update.
 - [docs/help/index.html](docs/help/index.html) — vollständige lokale HTML-Wissensdatenbank.
 - [docs/help/README.md](docs/help/README.md) — Markdown-Version der Wissensdatenbank.
-- [docs/help/mindmap.html](docs/help/mindmap.html) — deutsche Fallback-Mindmap / Informations-Laufplan.
-- [docs/help/mindmap.en.html](docs/help/mindmap.en.html) / [docs/help/mindmap.fr.html](docs/help/mindmap.fr.html) — englische und französische Mindmap.
+- [docs/help/mindmap.html](docs/help/mindmap.html) — direkt anzeigbare Mindmap / Informations-Laufplan.
 - [FEATURES.md](FEATURES.md) — Funktionsübersicht.
 - [CHANGELOG.md](CHANGELOG.md) — Änderungen nach Version.
 - [docs/OFFENE_PUNKTE_FINAL_RELEASE.md](docs/OFFENE_PUNKTE_FINAL_RELEASE.md) — Release-Befund und Abnahmehinweise.

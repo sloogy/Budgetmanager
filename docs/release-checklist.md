@@ -1,4 +1,4 @@
-# Release-Checkliste — BudgetManager v2.0.30
+# Release-Checkliste — BudgetManager v2.0.31
 
 ## Lokal prüfen
 
@@ -29,10 +29,10 @@ pytest tests/ -v
 ```bash
 git status
 git add .
-git commit -m "Release v2.0.30 audit hardening"
+git commit -m "Release v2.0.31 audit hardening"
 git push origin main
-git tag -a v2.0.30 -m "BudgetManager v2.0.30"
-git push origin v2.0.30
+git tag -a v2.0.31 -m "BudgetManager v2.0.31"
+git push origin v2.0.31
 ```
 
 ## Nach GitHub Actions
