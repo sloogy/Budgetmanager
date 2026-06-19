@@ -44,6 +44,7 @@ from model.crypto import (
     PBKDF2_ITERATIONS,
 )
 
+
 USERS_FILE = "users.json"
 
 # Sicherheitsstufen

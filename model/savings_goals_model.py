@@ -11,6 +11,7 @@ from model.undo_redo_model import UndoRedoModel
 from model.database import db_transaction
 from model.crypto import suspend_after_commit_autosave
 
+
 """Sparziele-Datenmodell.
 
 Verwaltet Sparziele mit Lebenszyklusstatus (sparend, freigegeben, abgeschlossen),
