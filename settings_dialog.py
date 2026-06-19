@@ -17,7 +17,7 @@ from PySide6.QtGui import QFont
 from theme_manager import ThemeManager
 from views.theme_editor_dialog import ThemeEditorDialog
 from model.shortcuts_config import (
-    SHORTCUT_DEFS, load_shortcuts, save_shortcuts, default_key,
+    SHORTCUT_DEFS, group_for, label_for, load_shortcuts, save_shortcuts, default_key,
     shortcut_display_name, all_action_ids
 )
 
@@ -361,7 +361,9 @@ class SettingsDialog(QDialog):
         self._shortcut_editors: dict[str, QKeySequenceEdit] = {}
 
         self.tbl_shortcuts.setRowCount(len(SHORTCUT_DEFS))
-        for i, (aid, dkey, label, group) in enumerate(SHORTCUT_DEFS):
+        for i, (aid, dkey, _label_key, _group_key) in enumerate(SHORTCUT_DEFS):
+            label = label_for(aid)
+            group = group_for(aid)
             # Aktion (read-only)
             act_item = QTableWidgetItem(label)
             act_item.setFlags(act_item.flags() & ~Qt.ItemIsEditable)

@@ -1,13 +1,13 @@
-# 📦 BudgetManager v2.0.31 — Installation, Start & Update
+# 📦 BudgetManager v2.0.32 — Installation, Start & Update
 
 
-## Hinweis zu v2.0.31
+## Hinweis zu v2.0.32
 
-Diese README gehört zu v2.0.31. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
+Diese README gehört zu v2.0.32. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
 
 ## Windows Portable
 
-1. `BudgetManager-v2.0.31-portable.zip` herunterladen.
+1. `BudgetManager-v2.0.32-portable.zip` herunterladen.
 2. ZIP in einen eigenen Ordner entpacken, z. B. `C:\BudgetManager` oder auf einen USB-Stick.
 3. `BudgetManager.exe` starten.
 
@@ -15,7 +15,7 @@ Standardmäßig liegen die Nutzerdaten im Ordner `data/` neben der Anwendung. Ü
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.0.31.exe` starten, falls ein Installer-Asset gebaut wurde.
+1. `BudgetManager_Setup_2.0.32.exe` starten, falls ein Installer-Asset gebaut wurde.
 2. Installation abschließen.
 3. BudgetManager über Startmenü/Desktop starten.
 

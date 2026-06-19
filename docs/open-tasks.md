@@ -1,4 +1,4 @@
-# Open Tasks — BudgetManager v2.0.31
+# Open Tasks — BudgetManager v2.0.32
 
 Stand: 19. Juni 2026
 
@@ -40,10 +40,10 @@ pytest tests/ -v
 
 ## Nach Release
 
-- GitHub-Tag eindeutig setzen: `v2.0.31`.
+- GitHub-Tag eindeutig setzen: `v2.0.32`.
 - Nicht mehrere Release-Tags auf denselben alten Commit zeigen lassen.
 - Release-Assets prüfen:
-  - `BudgetManager-v2.0.31-portable.zip`
-  - `BudgetManager-v2.0.31-windows.exe`
-  - `BudgetManager-v2.0.31-linux`
+  - `BudgetManager-v2.0.32-portable.zip`
+  - `BudgetManager-v2.0.32-windows.exe`
+  - `BudgetManager-v2.0.32-linux`
   - `latest.json`

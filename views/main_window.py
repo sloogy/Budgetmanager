@@ -244,16 +244,19 @@ class MainWindow(QMainWindow):
         x = self.settings.get("window_x", 100)
         y = self.settings.get("window_y", 100)
         
-        # Validiere Position (verhindert Off-Screen-Fenster)
-        screen = QApplication.primaryScreen()
-        if screen:
-            screen_rect = screen.availableGeometry()
-            # Falls Fenster komplett außerhalb des Screens wäre, reset auf Defaults
-            if x + width < 0 or x > screen_rect.width() or \
-               y + height < 0 or y > screen_rect.height():
-                x, y = 100, 100
-        
-        # Position und Größe setzen
+        # Validiere Position/Groesse (verhindert Off-Screen- und DPI-Wechsel-Probleme)
+        try:
+            from utils.ui_scaling import clamp_geometry_to_available_screen
+            x, y, width, height = clamp_geometry_to_available_screen(x, y, width, height)
+        except Exception as e:
+            logger.debug("Fenstergeometrie konnte nicht DPI-sicher geklemmt werden: %s", e)
+            screen = QApplication.primaryScreen()
+            if screen:
+                screen_rect = screen.availableGeometry()
+                if x + width < 0 or x > screen_rect.width() or y + height < 0 or y > screen_rect.height():
+                    x, y = 100, 100
+
+        # Position und Groesse setzen
         self.setGeometry(x, y, width, height)
         
         # Maximiert/Fullscreen-Status nur merken, aber hier NICHT anzeigen.
@@ -1094,10 +1097,33 @@ class MainWindow(QMainWindow):
     }
 
     def _apply_tab_position(self) -> None:
-        """Setzt Tab-Position aus Settings."""
-        pos_key = self.settings.get("tab_position", "west")
-        qt_pos = self._TAB_POS_MAP.get(pos_key, QTabWidget.West)
+        """Setzt Tab-Position aus Settings.
+
+        v2.0.32: Die frühere Default-Position links/west war auf Windows und
+        unter DPI-/RDP-/Portable-Skalierung sehr anfällig für abgeschnittene
+        vertikale Beschriftungen. Neuer sicherer Standard ist oben/north.
+        Bestehende alte Default-Settings werden einmalig migriert; wer die
+        Position danach bewusst ändert, behält seine Auswahl.
+        """
+        pos_key = self.settings.get("tab_position", None)
+        migrated = bool(self.settings.get("tab_position_scaling_migrated_v2031", False))
+        explicit = bool(self.settings.get("tab_position_user_selected", False))
+        if not pos_key:
+            pos_key = "north"
+        elif pos_key == "west" and not explicit and not migrated:
+            pos_key = "north"
+            try:
+                self.settings.set("tab_position", pos_key)
+                self.settings.set("tab_position_scaling_migrated_v2031", True)
+            except Exception:
+                pass
+        qt_pos = self._TAB_POS_MAP.get(pos_key, QTabWidget.North)
         self.tabs.setTabPosition(qt_pos)
+        try:
+            self.tabs.tabBar().setUsesScrollButtons(True)
+            self.tabs.tabBar().setElideMode(Qt.ElideNone)
+        except Exception:
+            pass
 
     def _apply_tab_bar_visibility(self) -> None:
         """Zeigt/versteckt die Tab-Leiste gemäß Settings."""
@@ -1107,6 +1133,7 @@ class MainWindow(QMainWindow):
     def _on_tab_position_changed(self, pos_key: str) -> None:
         """Wird aufgerufen wenn Nutzer eine neue Tab-Position wählt."""
         self.settings.set("tab_position", pos_key)
+        self.settings.set("tab_position_user_selected", True)
         self.settings.save()
         self._apply_tab_position()
 
@@ -2512,12 +2539,14 @@ class MainWindow(QMainWindow):
         # Wenn Auto-Save aktiv: Einfach speichern und schließen
         if hasattr(self, 'settings') and self.settings.auto_save:
             self._save_widget_before_leave(getattr(self, "budget_tab", None), reason=tr("btn.close"))
+            self._is_closing = True
             event.accept()
             return
         
         # In Tests / headless: blockierenden Bestätigungsdialog überspringen.
         # exec() würde ohne Display ewig warten und den Prozess aufhängen.
         if getattr(self, "_suppress_close_confirm", False):
+            self._is_closing = True
             event.accept()
             return
 
@@ -2532,10 +2561,13 @@ class MainWindow(QMainWindow):
         
         if reply == QMessageBox.Save:
             self._save_widget_before_leave(getattr(self, "budget_tab", None), reason=tr("btn.close"))
+            self._is_closing = True
             event.accept()
         elif reply == QMessageBox.Discard:
+            self._is_closing = True
             event.accept()
         else:  # Cancel
+            self._is_closing = False
             event.ignore()
 
     def _save_encrypted_session(self):

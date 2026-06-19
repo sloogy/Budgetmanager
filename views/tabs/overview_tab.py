@@ -237,7 +237,7 @@ class OverviewTab(QWidget):
     def _create_header(self) -> QWidget:
         header = QFrame()
         header.setFrameStyle(QFrame.StyledPanel)
-        header.setMaximumHeight(55)
+        header.setMinimumHeight(55)  # kein Maximum: DPI/Schrift darf wachsen
         layout = QHBoxLayout(header)
         layout.setContentsMargins(10, 6, 10, 6)
 
@@ -255,31 +255,31 @@ class OverviewTab(QWidget):
         layout.addWidget(QLabel(tr("lbl.period")))
         self.range_combo = QComboBox()
         self.range_combo.addItems(_range_items())
-        self.range_combo.setFixedWidth(140)
+        self.range_combo.setMinimumWidth(140)
         layout.addWidget(self.range_combo)
 
         layout.addWidget(QLabel(tr("lbl.year")))
         self.year_combo = QComboBox()
         self._reload_years()
-        self.year_combo.setFixedWidth(70)
+        self.year_combo.setMinimumWidth(80)
         layout.addWidget(self.year_combo)
 
         layout.addWidget(QLabel(tr("lbl.month")))
         self.month_combo = QComboBox()
         self.month_combo.addItems(_month_items())
         self.month_combo.setCurrentIndex(min(date.today().month, 12))
-        self.month_combo.setFixedWidth(120)
+        self.month_combo.setMinimumWidth(120)
         layout.addWidget(self.month_combo)
 
         self.btn_refresh = QPushButton("")
         self.btn_refresh.setIcon(get_icon("🔄"))
-        self.btn_refresh.setFixedWidth(35)
+        self.btn_refresh.setMinimumWidth(35)
         self.btn_refresh.setToolTip(tr("overview.tip.refresh"))
         layout.addWidget(self.btn_refresh)
 
         self.btn_toggle_right = QPushButton("")
         self.btn_toggle_right.setIcon(get_icon("📋"))
-        self.btn_toggle_right.setFixedWidth(35)
+        self.btn_toggle_right.setMinimumWidth(35)
         self.btn_toggle_right.setToolTip(tr("overview.tip.toggle_sidebar"))
         self.btn_toggle_right.setCheckable(True)
         self.btn_toggle_right.setChecked(True)

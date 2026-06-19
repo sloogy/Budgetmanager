@@ -201,6 +201,10 @@ jobs:
           @echo off
           setlocal EnableExtensions
           set "DIR=%~dp0"
+          rem DPI/Scaling: System-Skalierung verwenden, Fractional Scaling nicht grob runden.
+          set "QT_ENABLE_HIGHDPI_SCALING=1"
+          set "QT_AUTO_SCREEN_SCALE_FACTOR=1"
+          set "QT_SCALE_FACTOR_ROUNDING_POLICY=PassThrough"
           start "" "%DIR%BudgetManager.exe"
           STARTWIN
 
@@ -208,6 +212,10 @@ jobs:
           cat > portable/start-linux.sh <<'STARTER'
           #!/usr/bin/env bash
           DIR="$(cd "$(dirname "$0")" && pwd)"
+          # DPI/Scaling: System-Skalierung verwenden, Fractional Scaling nicht grob runden.
+          export QT_ENABLE_HIGHDPI_SCALING="${QT_ENABLE_HIGHDPI_SCALING:-1}"
+          export QT_AUTO_SCREEN_SCALE_FACTOR="${QT_AUTO_SCREEN_SCALE_FACTOR:-1}"
+          export QT_SCALE_FACTOR_ROUNDING_POLICY="${QT_SCALE_FACTOR_ROUNDING_POLICY:-PassThrough}"
           chmod +x "$DIR/BudgetManager"
           exec "$DIR/BudgetManager" "$@"
           STARTER

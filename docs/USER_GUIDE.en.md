@@ -1,4 +1,4 @@
-# BudgetManager 2.0.31 – User guide
+# BudgetManager 2.0.32 – User guide
 
 ## 1. Core idea
 

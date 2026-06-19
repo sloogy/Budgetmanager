@@ -1072,7 +1072,7 @@
     "msg": {
       "seed_done": "Lignes budgétaires pour {typ} {year} générées.",
       "select_month_cell": "Veuillez sélectionner une cellule mensuelle (Jan–Déc) à modifier.",
-      "select_category_row": "Veuillez sélectionner une ligne de catégorie (pas TOTAL/en-tête).",
+      "select_category_row": "Veuillez sélectionner une ligne de catégorie (pas total/en-tête).",
       "copy_year_diff": "L'année source et l'année cible doivent être différentes.",
       "copy_year_done": "Budget {src} → {dst} copié.",
       "delete_global_warn_1": "ATTENTION : Cela supprime la catégorie GLOBALEMENT de la liste des catégories et supprime toutes les entrées budgétaires ",
@@ -1722,9 +1722,9 @@
       "57_ok_6128635b": "✓  OK"
     },
     "views_database_management_dialog": {
-      "54_datenbank_verwaltung_de01b445": "🗄️ Datenbank-Verwaltung",
+      "54_datenbank_verwaltung_de01b445": "🗄️ Gestion de la base de données",
       "83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4": "Supprime les entrées orphelines, les données invalides et optimise la base de données.\nCette opération est sûre et ne supprime aucune donnée importante.",
-      "89_datenbank_bereinigen_031c950d": "🧹 Datenbank bereinigen",
+      "89_datenbank_bereinigen_031c950d": "🧹 Nettoyer la base de données",
       "101_b_achtung_b_diese_aktion_loescht_da_28422052": "<b>ATTENTION :</b> cette action supprime des données !\nUne sauvegarde est créée automatiquement.",
       "118_budget_kategorien_zuruecksetzen_buc_e2fafa90": "Réinitialiser le budget et les catégories (conserver les transactions)",
       "207_value_0_details_value_1_c4c562a1": "{value_0}\n\nDetails:\n{value_1}"
@@ -1818,7 +1818,7 @@
       "1043_redo_2dcd731a": "↪️ &Redo",
       "1064_bearbeiten_4fc85ded": "&Modifier...",
       "1083_budget_erfassen_d622e1c6": "Budget &erfassen...",
-      "1089_budget_bearbeiten_45efb7d1": "Budget &bearbeiten...",
+      "1089_budget_bearbeiten_45efb7d1": "&Modifier le budget...",
       "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Créer des lignes depuis les &catégories",
       "1103_jahr_kopieren_a5365b5b": "&Copier l’année...",
       "1111_budget_zeile_entfernen_2116ca10": "Budget-&Zeile entfernen",
@@ -2356,5 +2356,41 @@
   },
   "money": {
     "invalid_amount": "Montant invalide."
+  },
+  "shortcut": {
+    "group": {
+      "general": "Général",
+      "navigation": "Navigation",
+      "functions": "Fonctions",
+      "table": "Tableau"
+    },
+    "key": {
+      "ctrl": "Ctrl",
+      "shift": "Maj",
+      "alt": "Alt",
+      "meta": "Meta"
+    },
+    "action": {
+      "help": "Ouvrir l’aide / la base de connaissances",
+      "shortcuts": "Afficher les raccourcis clavier",
+      "refresh": "Actualiser la vue actuelle",
+      "save": "Enregistrer le budget",
+      "settings": "Ouvrir les paramètres",
+      "quit": "Quitter le programme",
+      "tab_budget": "Passer à l’onglet Budget",
+      "tab_categories": "Passer à l’onglet Catégories",
+      "tab_tracking": "Passer à l’onglet Suivi",
+      "tab_overview": "Passer à la vue d’ensemble",
+      "current_year": "Charger l’année en cours",
+      "search": "Ouvrir la recherche globale",
+      "quick_add": "Saisie rapide",
+      "undo": "Annuler",
+      "redo": "Rétablir",
+      "export": "Ouvrir le dialogue d’export",
+      "import": "Ouvrir le dialogue d’import",
+      "favorites": "Vue d’ensemble des favoris",
+      "fullscreen": "Activer/désactiver le plein écran",
+      "maximize": "Maximiser la fenêtre"
+    }
   }
 }

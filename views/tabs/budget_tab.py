@@ -41,6 +41,7 @@ ROLE_HAS_CHILDREN = Qt.UserRole + 3 # bool
 ROLE_PATH = Qt.UserRole + 4         # str
 ROLE_COLLAPSED = Qt.UserRole + 5     # bool (für Baum-Zuklappen)
 ROLE_TYP = Qt.UserRole + 10         # str (bereits im alten Code genutzt)
+ROLE_ROW_KIND = Qt.UserRole + 11    # str: "header"/"footer"
 
 
 from utils.money import parse_money, format_short
@@ -560,7 +561,9 @@ class BudgetTab(QWidget):
     # -----------------------------
     def _is_footer_row(self, r: int) -> bool:
         it = self.table.item(r, 0)
-        return bool(it and it.text() == "TOTAL")
+        if not it:
+            return False
+        return bool(it.data(ROLE_ROW_KIND) == "footer")
 
     def _is_header_row(self, r: int) -> bool:
         it = self.table.item(r, 0)
@@ -570,8 +573,7 @@ class BudgetTab(QWidget):
 
     def _row_count_data(self) -> int:
         for r in range(self.table.rowCount()):
-            it = self.table.item(r, 0)
-            if it and it.text() == "TOTAL":
+            if self._is_footer_row(r):
                 return r
         return self.table.rowCount()
 
@@ -1342,8 +1344,7 @@ class BudgetTab(QWidget):
     def _recalc_footer_inner(self):
         # remove existing footer row
         for r in range(self.table.rowCount()):
-            it = self.table.item(r, 0)
-            if it and it.text() == "TOTAL":
+            if self._is_footer_row(r):
                 self.table.removeRow(r)
                 break
 
@@ -1353,7 +1354,8 @@ class BudgetTab(QWidget):
         footer = self.table.rowCount()
         self.table.insertRow(footer)
 
-        title = QTableWidgetItem("TOTAL")
+        title = QTableWidgetItem(tr("header.total"))
+        title.setData(ROLE_ROW_KIND, "footer")
         title.setFlags(title.flags() & ~Qt.ItemIsEditable)
         self.table.setItem(footer, 0, title)
 
@@ -1584,7 +1586,19 @@ class BudgetTab(QWidget):
         self._recalc_footer()
 
     def _handle_leaf_ask_due(self, item: QTableWidgetItem, r: int, c: int, month: int, typ: str, cat: str) -> None:
-        """Leaf-Zelle mit ask_due-Dialog: zeigt Detaileingabe-Dialog."""
+        """Leaf-Zelle mit Detaildialog.
+
+        WICHTIG / Windows-Crashfix v2.0.32:
+        Den BudgetEntryDialog niemals direkt im ``itemChanged``-Signal bzw.
+        während eines aktiven QTableWidget-Editors öffnen. Genau dieser
+        Reentrancy-Pfad führte unter Windows/PyInstaller sporadisch zu nativen
+        Qt/PySide ``access violation``-Crashes.
+
+        Deshalb: Zelle sofort auf den DB-Wert zurücksetzen und den Dialog erst
+        im nächsten Event-Loop-Tick nicht-blockierend öffnen. Dadurch sind
+        commitData/closeEditor und itemChanged vollständig abgeschlossen, bevor
+        ein neues Modal-Fenster entsteht.
+        """
         try:
             typed = parse_amount(item.text())
         except Exception:
@@ -1601,17 +1615,74 @@ class BudgetTab(QWidget):
         finally:
             self._internal_change = _prev_flag
 
-        _, is_rec, _day = self.cats.get_flags(typ, cat)
-        default_mode = BUDGET_MODE_ALL if is_rec else BUDGET_MODE_MONTH
-        dlg = BudgetEntryDialog(
-            self,
-            default_year=int(self.year_spin.value()),
-            default_typ=typ,
-            categories=(self.cats.list_names_tree(typ) if hasattr(self.cats, "list_names_tree") else self.cats.list_names(typ)),
-            preset={"category": cat, "amount": typed, "month": month, "mode": default_mode, "only_if_empty": False},
-        )
-        if dlg.exec() == QDialog.Accepted:
-            self._apply_request(dlg.get_request())
+        # Mehrfachauslösung abfangen, falls Qt noch weitere commitData-Events
+        # aus demselben Editor nachschiebt.
+        if getattr(self, "_ask_due_dialog_pending", False):
+            return
+        self._ask_due_dialog_pending = True
+
+        year = int(self.year_spin.value())
+        amount = float(typed)
+        QTimer.singleShot(0, lambda y=year, t=typ, ca=cat, mo=month, am=amount: self._open_leaf_ask_due_dialog(y, t, ca, mo, am))
+
+    def _open_leaf_ask_due_dialog(self, year: int, typ: str, cat: str, month: int, typed: float) -> None:
+        """Öffnet den ask_due-Budgetdialog stabil ausserhalb von itemChanged."""
+        try:
+            self._ask_due_dialog_pending = False
+            if not self.isVisible():
+                return
+
+            # Falls doch noch ein Zell-Editor lebt: deterministisch schließen,
+            # bevor der Dialog die Fokus-/Fensterhierarchie verändert.
+            try:
+                if hasattr(self.table, "safe_close_active_editor"):
+                    self.table.safe_close_active_editor(reason="ask_due_dialog")
+            except Exception as exc:
+                logger.debug("Aktiver Budget-Editor konnte vor ask_due nicht geschlossen werden: %s", exc)
+
+            _, is_rec, _day = self.cats.get_flags(typ, cat)
+            default_mode = BUDGET_MODE_ALL if is_rec else BUDGET_MODE_MONTH
+            categories = (
+                self.cats.list_names_tree(typ)
+                if hasattr(self.cats, "list_names_tree")
+                else self.cats.list_names(typ)
+            )
+
+            dlg = BudgetEntryDialog(
+                self,
+                default_year=int(year),
+                default_typ=typ,
+                categories=list(categories),
+                preset={"category": cat, "amount": typed, "month": month, "mode": default_mode, "only_if_empty": False},
+                category_model=self.cats,
+            )
+            # Referenz halten: PySide darf den Python-Wrapper nicht einsammeln,
+            # solange das native Dialogfenster offen ist.
+            self._active_budget_entry_dialog = dlg
+
+            def _accepted() -> None:
+                try:
+                    self._apply_request(dlg.get_request())
+                except Exception:
+                    logger.exception("Budget-Detaildialog konnte nicht übernommen werden")
+                    QMessageBox.critical(self, tr("msg.error"), tr("msg.error"))
+
+            def _finished(*_args) -> None:
+                try:
+                    self._active_budget_entry_dialog = None
+                except Exception:
+                    pass
+
+            dlg.accepted.connect(_accepted)
+            dlg.finished.connect(_finished)
+            dlg.open()
+        except RuntimeError:
+            # QWidget wurde während eines verzögerten QTimer-Callbacks zerstört.
+            self._ask_due_dialog_pending = False
+        except Exception:
+            self._ask_due_dialog_pending = False
+            logger.exception("Budget-Detaildialog konnte nicht geöffnet werden")
+            QMessageBox.critical(self, tr("msg.error"), tr("msg.error"))
 
     def _handle_normal_edit(self, item: QTableWidgetItem, r: int, c: int, typ: str) -> None:
         """Standard-Zelledit: Normalisieren, Totals aktualisieren, ggf. Auto-Save."""

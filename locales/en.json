@@ -1072,7 +1072,7 @@
     "msg": {
       "seed_done": "Created budget rows for {typ} {year}.",
       "select_month_cell": "Please select a month cell (Jan–Dec) you want to edit.",
-      "select_category_row": "Please select a category row (not TOTAL/header).",
+      "select_category_row": "Please select a category row (not total/header).",
       "copy_year_diff": "Source year and target year must be different.",
       "copy_year_done": "Copied budget {src} → {dst}.",
       "delete_global_warn_1": "WARNING: This removes the category globally and deletes all budget entries ",
@@ -1722,9 +1722,9 @@
       "57_ok_6128635b": "✓  OK"
     },
     "views_database_management_dialog": {
-      "54_datenbank_verwaltung_de01b445": "🗄️ Datenbank-Verwaltung",
+      "54_datenbank_verwaltung_de01b445": "🗄️ Database management",
       "83_entfernt_verwaiste_eintraege_unguel_8dbb0cd4": "Removes orphaned entries, invalid data and optimises the database.\nThis operation is safe and does not delete important data.",
-      "89_datenbank_bereinigen_031c950d": "🧹 Datenbank bereinigen",
+      "89_datenbank_bereinigen_031c950d": "🧹 Clean up database",
       "101_b_achtung_b_diese_aktion_loescht_da_28422052": "<b>CAUTION:</b> This action deletes data!\nA backup is created automatically.",
       "118_budget_kategorien_zuruecksetzen_buc_e2fafa90": "Reset budget & categories (keep transactions)",
       "207_value_0_details_value_1_c4c562a1": "{value_0}\n\nDetails:\n{value_1}"
@@ -1818,7 +1818,7 @@
       "1043_redo_2dcd731a": "↪️ &Redo",
       "1064_bearbeiten_4fc85ded": "&Edit...",
       "1083_budget_erfassen_d622e1c6": "Budget &erfassen...",
-      "1089_budget_bearbeiten_45efb7d1": "Budget &bearbeiten...",
+      "1089_budget_bearbeiten_45efb7d1": "Edit &budget...",
       "1097_zeilen_aus_kategorien_erzeugen_f04f27f9": "Create rows from &categories",
       "1103_jahr_kopieren_a5365b5b": "&Copy year...",
       "1111_budget_zeile_entfernen_2116ca10": "Budget-&Zeile entfernen",
@@ -2356,5 +2356,41 @@
   },
   "money": {
     "invalid_amount": "Invalid amount."
+  },
+  "shortcut": {
+    "group": {
+      "general": "General",
+      "navigation": "Navigation",
+      "functions": "Functions",
+      "table": "Table"
+    },
+    "key": {
+      "ctrl": "Ctrl",
+      "shift": "Shift",
+      "alt": "Alt",
+      "meta": "Meta"
+    },
+    "action": {
+      "help": "Open help / knowledge base",
+      "shortcuts": "Show keyboard shortcuts",
+      "refresh": "Refresh current view",
+      "save": "Save budget",
+      "settings": "Open settings",
+      "quit": "Quit application",
+      "tab_budget": "Switch to Budget tab",
+      "tab_categories": "Switch to Categories tab",
+      "tab_tracking": "Switch to Tracking tab",
+      "tab_overview": "Switch to Overview",
+      "current_year": "Load current year",
+      "search": "Open global search",
+      "quick_add": "Quick add",
+      "undo": "Undo",
+      "redo": "Redo",
+      "export": "Open export dialog",
+      "import": "Open import dialog",
+      "favorites": "Favorites overview",
+      "fullscreen": "Toggle fullscreen",
+      "maximize": "Maximize window"
+    }
   }
 }

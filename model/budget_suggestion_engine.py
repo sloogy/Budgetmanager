@@ -174,11 +174,7 @@ class BudgetSuggestionEngine:
 
         # Abweichungen sammeln (erweitert sich über Lücken hinweg)
         deviations = self._get_deviations_window(
-            typ,
-            category,
-            analysis_year,
-            analysis_month,
-            months_back,
+            typ, category, analysis_year, analysis_month, months_back,
             not_before=not_before,
         )
         if len(deviations) < months_back:
@@ -188,42 +184,54 @@ class BudgetSuggestionEngine:
         # Bei Fixkosten/wiederkehrenden Kategorien bedeutet "0 gebucht" nicht
         # automatisch "Budget zu hoch". Es kann auch heissen: Buchung fehlt,
         # Zahlung kommt später, Jahres-/Quartalsrechnung oder Importlücke.
-        # Deshalb werden 0-Monate für Budgetänderungen ignoriert. Nur echte
-        # Buchungsmonate dürfen dort einen Vorschlag auslösen. So bleiben
-        # inkrementelle/lumpy Fixkosten möglich, ohne dass 0-Monate senken.
+        #
+        # Release-Regel v2.0.30:
+        # - 0-Monate dürfen keine Senkung beweisen.
+        # - Aktive Einzelzahlungen über Monatsbudget dürfen aber auch keine
+        #   Erhöhung beweisen, solange das Gesamtbudget des Fensters ausreicht.
+        #   Beispiel: Budget 200, Ist 250/250/250/0/0/0 → 750 Ist gegen
+        #   1200 Budget. Das ist keine Unterdeckung und darf nicht auf 240
+        #   hochvorschlagen.
+        # - Wenn es 0-Monate gibt, wird eine Erhöhung nur aus der gesamten
+        #   Fensterdeckung abgeleitet (Summe Ist > Summe Budget), nicht aus
+        #   den aktiven Monaten allein. So bleiben lumpy/inkrementelle
+        #   Fixkosten stabil.
         if fixed_like:
-            deviations = self._get_deviations_window(
-                typ,
-                category,
-                analysis_year,
-                analysis_month,
-                months_back,
-                active_only=True,
+            active_months = self._count_active_months(
+                typ, category, analysis_year, analysis_month, months_back,
                 not_before=not_before,
             )
-            if len(deviations) < min(3, months_back):
+            if active_months < min(3, months_back):
                 return None
+
             # Zero-Reduction für Fixkosten hart deaktivieren.
             enable_zero_reduction = False
+
+            if active_months < months_back:
+                # Es gibt echte 0-Monate im aktuellen Analysefenster.
+                # Deshalb: keine Senkung, und Erhöhung nur bei Gesamtunterdeckung.
+                total_deviation = float(sum(deviations))
+                if total_deviation >= 0:
+                    return None
+
+                avg_window_deviation = total_deviation / float(len(deviations))
+                # Normale Sign-Ratio/Median-Logik wäre bei lumpy Fixkosten
+                # irreführend (0-Monate haben positives Vorzeichen). Wir nutzen
+                # stattdessen die durchschnittliche Gesamtunterdeckung pro Monat
+                # als konservativen Anpassungswert.
+                deviations = [avg_window_deviation for _ in deviations]
 
         # ── 0-Buchungen-Handling ──
         # Nur flexible Kategorien dürfen wegen wiederholten 0-Monaten reduziert
         # werden. Fixkosten/Rückstellungen sind oben geschützt.
         if enable_zero_reduction and (not self._is_income(typ)) and (not fixed_like):
             active_months = self._count_active_months(
-                typ,
-                category,
-                analysis_year,
-                analysis_month,
-                months_back,
+                typ, category, analysis_year, analysis_month, months_back,
                 not_before=not_before,
             )
             if active_months == 0:
                 zero_streak = self._compute_zero_streak_months(
-                    typ,
-                    category,
-                    analysis_year,
-                    analysis_month,
+                    typ, category, analysis_year, analysis_month,
                     not_before=not_before,
                 )
                 if zero_streak >= 6:

@@ -1,4 +1,4 @@
-Budgetmanager Version 2.0.31
+Budgetmanager Version 2.0.32
 Datum: 19. Juni 2026
 
 

@@ -42,7 +42,7 @@ class CompactKPICard(QFrame):
 
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
         self.setCursor(QCursor(Qt.PointingHandCursor))
-        self.setFixedHeight(90)
+        self.setMinimumHeight(90)
         self.setMinimumWidth(150)
 
         layout = QVBoxLayout(self)
@@ -109,13 +109,13 @@ class CompactProgressBar(QWidget):
         layout.setSpacing(8)
 
         self.label = QLabel(label)
-        self.label.setFixedWidth(80)
+        self.label.setMinimumWidth(80)
         layout.addWidget(self.label)
 
         self.progress = QProgressBar()
         self.progress.setRange(0, 100)
         self.progress.setTextVisible(True)
-        self.progress.setFixedHeight(20)
+        self.progress.setMinimumHeight(20)
         layout.addWidget(self.progress)
 
     def set_values(self, current: float, maximum: float) -> None:

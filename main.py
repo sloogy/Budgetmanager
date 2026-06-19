@@ -297,6 +297,11 @@ def main() -> int:
     # Globalen Exception-Handler installieren (fängt Fehler in Qt-Signals)
     _install_excepthook()
     _configure_qt_platform()
+    try:
+        from utils.ui_scaling import configure_qt_scaling_environment
+        configure_qt_scaling_environment()
+    except Exception as _scale_exc:
+        logger.debug("Qt-Skalierung konnte nicht vorbereitet werden: %s", _scale_exc)
     logger.info(
         "Qt-Umgebung: XDG_SESSION_TYPE=%s, QT_QPA_PLATFORM=%s, WAYLAND_DISPLAY=%s, DISPLAY=%s",
         os.environ.get("XDG_SESSION_TYPE", ""),
@@ -615,7 +620,28 @@ def main() -> int:
         if setup_autostart_requested:
             logger.info("Auto-Backup wird bis nach dem Setup-Assistenten verschoben.")
         else:
-            QTimer.singleShot(500, win._check_auto_backup)
+            # Auch hier keinen statischen SingleShot ohne QObject-Parent nutzen:
+            # beim schnellen Schließen direkt nach Start darf der Callback nicht
+            # auf ein bereits zerstörtes MainWindow zeigen.
+            backup_timer = QTimer(win)
+            backup_timer.setSingleShot(True)
+
+            def _check_auto_backup_safely() -> None:
+                try:
+                    if QApplication.instance() is not None and not getattr(win, "_is_closing", False):
+                        win._check_auto_backup()
+                except RuntimeError:
+                    logger.debug("Auto-Backup übersprungen: MainWindow wurde bereits zerstört.")
+                except Exception:
+                    logger.exception("Startup-Auto-Backup konnte nicht geprüft werden")
+                finally:
+                    try:
+                        backup_timer.deleteLater()
+                    except Exception:
+                        pass
+
+            backup_timer.timeout.connect(_check_auto_backup_safely)
+            backup_timer.start(500)
 
         # Hauptfenster genau einmal anzeigen. MainWindow._restore_window_state()
         # setzt nur Geometrie und merkt sich den gewünschten Zustand.
@@ -647,9 +673,35 @@ def main() -> int:
         # Setup nicht im selben Event-Loop-Tick wie show() starten. Das gibt Qt
         # Zeit, das Hauptfenster vollständig zu realisieren, bevor der Assistent
         # als Kindfenster angezeigt wird.
-        QTimer.singleShot(250, lambda: win._start_setup_assistant(
-            force=False, db_existed_before=db_existed
-        ))
+        #
+        # Windows-Crashfix v2.0.32:
+        # Kein unparented QTimer.singleShot(lambda) verwenden. In PyInstaller/Qt
+        # kann ein statischer SingleShot mit Python-Lambda während Start/Shutdown
+        # noch auf ein bereits zerstörtes Fenster zeigen und als native
+        # ``access violation`` enden. Der Timer hängt jetzt als QObject-Kind am
+        # MainWindow und wird beim Fenster zuverlässig mitzerstört.
+        setup_timer = QTimer(win)
+        setup_timer.setSingleShot(True)
+
+        def _start_setup_assistant_safely() -> None:
+            try:
+                if QApplication.instance() is None:
+                    return
+                if getattr(win, "_is_closing", False):
+                    return
+                win._start_setup_assistant(force=False, db_existed_before=db_existed)
+            except RuntimeError:
+                logger.debug("Setup-Assistent übersprungen: MainWindow wurde bereits zerstört.")
+            except Exception:
+                logger.exception("Setup-Assistent konnte verzögert nicht gestartet werden")
+            finally:
+                try:
+                    setup_timer.deleteLater()
+                except Exception:
+                    pass
+
+        setup_timer.timeout.connect(_start_setup_assistant_safely)
+        setup_timer.start(350)
 
         rc = app.exec()
 

@@ -249,3 +249,72 @@ def test_new_release_i18n_keys_exist_in_all_languages():
         flat = flatten(data)
         missing = required - set(flat)
         assert not missing, f"{lang}.json missing: {sorted(missing)}"
+
+
+def test_budget_footer_is_translated_not_visible_total_literal():
+    src = (ROOT / "views" / "tabs" / "budget_tab.py").read_text(encoding="utf-8")
+    assert 'QTableWidgetItem("TOTAL")' not in src
+    assert 'QTableWidgetItem(tr("header.total"))' in src
+    assert 'ROLE_ROW_KIND' in src
+    assert '"footer"' in src
+
+
+def test_windows_installer_pages_are_de_en_fr_localised():
+    iss = (ROOT / "installer" / "budgetmanager_setup.iss").read_text(encoding="utf-8")
+    assert 'Name: "french"; MessagesFile: "compiler:Languages\\French.isl"' in iss
+    for lang in ("german", "english", "french"):
+        for key in (
+            "DataDirTitle",
+            "DataDirSubtitle",
+            "PrefsTitle",
+            "PrefsSubtitle",
+            "LanguageLabel",
+            "CurrencyLabel",
+            "CurrencyCHF",
+            "PreferredDayLabel",
+            "PreferredDayNone",
+            "PreferredDayEndOfMonth",
+        ):
+            assert f"{lang}.{key}=" in iss
+    assert "CustomMessage('DataDirTitle')" in iss
+    assert "CustomMessage('PrefsTitle')" in iss
+    assert "else if ActiveLanguage = 'french'" in iss
+
+
+def test_user_guides_exist_in_de_en_fr_and_explain_charts_forecast_updater():
+    required_terms = {
+        "de": ["Forecast", "Diagramme erklärt", "Updates", "Fixkosten"],
+        "en": ["Forecast", "Chart guide", "Updates", "Fixed cost"],
+        "fr": ["Prévisions", "Explication des graphiques", "Mises à jour", "Charge fixe"],
+    }
+    for lang, terms in required_terms.items():
+        path = ROOT / "docs" / f"USER_GUIDE.{lang}.md"
+        assert path.exists()
+        text = path.read_text(encoding="utf-8")
+        import app_info
+        assert app_info.APP_VERSION in text
+        for term in terms:
+            assert term in text
+
+def test_inno_pascal_comments_do_not_contain_nested_braces():
+    """Inno Pascal comments use braces; constants like {app} inside them break compilation."""
+    script = (ROOT / "installer" / "budgetmanager_setup.iss").read_text(encoding="utf-8")
+    in_code = False
+    for lineno, line in enumerate(script.splitlines(), start=1):
+        stripped = line.strip()
+        if stripped.lower() == "[code]":
+            in_code = True
+            continue
+        if in_code and stripped.startswith("[") and stripped.endswith("]"):
+            in_code = False
+        if not in_code:
+            continue
+        first = line.find("{")
+        if first == -1:
+            continue
+        closing = line.find("}", first + 1)
+        if closing == -1:
+            continue
+        nested = line.find("{", first + 1, closing)
+        assert nested == -1, f"Nested '{{' in Inno Pascal comment at line {lineno}: {line}"
+

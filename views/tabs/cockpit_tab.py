@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
     QTableWidget, QTableWidgetItem, QHeaderView, QProgressBar, QGridLayout,
     QScrollArea, QMenu, QSizePolicy, QDialog, QListWidget, QListWidgetItem,
-    QDialogButtonBox
+    QDialogButtonBox, QAbstractScrollArea
 )
 
 from model.favorites_model import FavoritesModel
@@ -34,8 +34,10 @@ class _Card(QFrame):
         lay = QVBoxLayout(self)
         lay.setContentsMargins(10, 8, 10, 8)
         self.lbl_title = QLabel(title, self)
+        self.lbl_title.setWordWrap(True)
         self.lbl_title.setStyleSheet("font-weight: 600;")
         self.lbl_value = QLabel(value, self)
+        self.lbl_value.setWordWrap(True)
         self.lbl_value.setStyleSheet("font-size: 18px; font-weight: 700;")
         self.lbl_hint = QLabel(hint, self)
         self.lbl_hint.setWordWrap(True)
@@ -131,7 +133,9 @@ class CockpitTab(QWidget):
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         body = QWidget()
+        body.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         self.body_layout = QVBoxLayout(body)
         self.body_layout.setContentsMargins(14, 14, 14, 14)
         self.body_layout.setSpacing(12)
@@ -166,27 +170,39 @@ class CockpitTab(QWidget):
         self.card_expenses = _Card(display_typ(TYP_EXPENSES), "–")
         self.card_savings = _Card(display_typ(TYP_SAVINGS), "–")
         self.card_balance = _Card(tr("cockpit.month_feeling"), "–")
+        # 2x2 statt 4 nebeneinander: deutlich robuster bei Windows 125/150 %,
+        # kleinen Notebook-Displays und portabler Nutzung an fremden Monitoren.
         for i, card in enumerate([self.card_income, self.card_expenses, self.card_savings, self.card_balance]):
             card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
-            kpi_lay.addWidget(card, 0, i)
+            card.setMinimumWidth(0)
+            row, col = divmod(i, 2)
+            kpi_lay.addWidget(card, row, col)
+        kpi_lay.setColumnStretch(0, 1)
+        kpi_lay.setColumnStretch(1, 1)
         self._add_panel("kpis", self.kpi_panel)
 
         # Quick actions
         self.actions_panel = self._section(tr("cockpit.panel.quick_actions"))
-        act_lay = QHBoxLayout(self.actions_panel)
-        for label, slot, tip in [
+        act_lay = QGridLayout(self.actions_panel)
+        act_lay.setContentsMargins(10, 28, 10, 10)
+        act_lay.setHorizontalSpacing(8)
+        act_lay.setVerticalSpacing(8)
+        for i, (label, slot, tip) in enumerate([
             (tr("cockpit.action_quick_add"), self.quick_add_requested.emit, tr("cockpit.action_quick_add_tip")),
             (tr("cockpit.action_fixcosts"), self.fixcost_requested.emit, tr("cockpit.action_fixcosts_tip")),
             (tr("cockpit.action_check_budget"), self.goto_budget_requested.emit, tr("cockpit.action_check_budget_tip")),
             (tr("cockpit.action_budget_warnings"), self.budget_warnings_requested.emit, tr("cockpit.action_budget_warnings_tip")),
             (tr("cockpit.action_savings"), self.savings_requested.emit, tr("cockpit.action_savings_tip")),
             (tr("cockpit.action_overview"), self.goto_overview_requested.emit, tr("cockpit.action_overview_tip")),
-        ]:
+        ]):
             b = QPushButton(label)
             b.setToolTip(tip)
+            b.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             b.clicked.connect(slot)
-            act_lay.addWidget(b)
-        act_lay.addStretch(1)
+            row, col = divmod(i, 3)
+            act_lay.addWidget(b, row, col)
+        for col in range(3):
+            act_lay.setColumnStretch(col, 1)
         self._add_panel("quick_actions", self.actions_panel)
 
         # Main grid-ish rows
@@ -241,6 +257,7 @@ class CockpitTab(QWidget):
     def _section(self, title: str) -> QFrame:
         frame = QFrame()
         frame.setFrameShape(QFrame.StyledPanel)
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         lbl = QLabel(title, frame)
         lbl.move(10, 6)
         lbl.setStyleSheet("font-weight: 700;")
@@ -249,6 +266,7 @@ class CockpitTab(QWidget):
     def _table_section(self, title: str, headers: list[str]) -> QFrame:
         frame = QFrame()
         frame.setFrameShape(QFrame.StyledPanel)
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
         lay = QVBoxLayout(frame)
         lay.setContentsMargins(10, 8, 10, 10)
         lbl = QLabel(title)
@@ -259,8 +277,15 @@ class CockpitTab(QWidget):
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QTableWidget.NoEditTriggers)
         table.setSelectionBehavior(QTableWidget.SelectRows)
-        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.MinimumExpanding)
+        table.setSizeAdjustPolicy(QAbstractScrollArea.AdjustIgnored)
+        table.setWordWrap(False)
         table.setMinimumHeight(150)
+        table.setMinimumWidth(640)
+        header = table.horizontalHeader()
+        header.setStretchLastSection(True)
+        header.setMinimumSectionSize(72)
+        header.setSectionResizeMode(QHeaderView.Interactive)
         lay.addWidget(lbl)
         lay.addWidget(table)
         return frame
@@ -329,6 +354,7 @@ class CockpitTab(QWidget):
             table.setItem(0, 0, item)
             for c in range(1, table.columnCount()):
                 table.setItem(0, c, QTableWidgetItem(""))
+            self._stabilize_table_columns(table)
             return
         table.setRowCount(len(rows))
         for r, row in enumerate(rows):
@@ -336,6 +362,29 @@ class CockpitTab(QWidget):
                 item = QTableWidgetItem(str(val))
                 item.setFlags(item.flags() & ~Qt.ItemIsEditable)
                 table.setItem(r, c, item)
+        self._stabilize_table_columns(table)
+
+    def _stabilize_table_columns(self, table: QTableWidget) -> None:
+        """Robuste Cockpit-Tabellenbreiten für Windows/Linux/macOS + HiDPI.
+
+        QHeaderView.Stretch kann bei leeren/kurzen Tabellen in Frozen-Builds
+        unter Windows sehr kleine Header-Sektionen liefern. Wir setzen deshalb
+        bewusst Mindestbreiten und lassen die letzte Spalte den Rest füllen.
+        """
+        try:
+            header = table.horizontalHeader()
+            header.setSectionResizeMode(QHeaderView.Interactive)
+            header.setStretchLastSection(True)
+            fm = table.fontMetrics()
+            for c in range(table.columnCount()):
+                text = table.horizontalHeaderItem(c).text() if table.horizontalHeaderItem(c) else ""
+                min_w = max(72, fm.horizontalAdvance(str(text)) + 28)
+                # Kategorie/Bemerkung/Empfehlung brauchen auf skalierten Displays mehr Platz.
+                if c in (1, table.columnCount() - 1):
+                    min_w = max(min_w, 140)
+                table.setColumnWidth(c, min_w)
+        except Exception as exc:
+            logger.debug("Cockpit-Tabellenspalten konnten nicht stabilisiert werden: %s", exc)
 
     def _refresh_favorites(self, y: int, m: int) -> None:
         favs = FavoritesModel(self.conn).list_all()[:12]

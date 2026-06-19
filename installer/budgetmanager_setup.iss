@@ -11,7 +11,7 @@
 ; - PyInstaller EXE im dist/ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "2.0.31"
+#define MyAppVersion "2.0.32"
 #define MyAppPublisher "Christian"
 #define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"
@@ -248,7 +248,7 @@ begin
       '  "version": "{#MyAppVersion}"' + #13#10 +
       '}', False);
 
-    { Die App liest ihre Einstellungen aus {app}\data\budgetmanager_settings.json }
+    { Die App liest ihre Einstellungen aus dem App-data-Ordner. }
     ForceDirectories(ExpandConstant('{app}\data'));
     SettingsFile := ExpandConstant('{app}\data\budgetmanager_settings.json');
 

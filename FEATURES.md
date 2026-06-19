@@ -1,10 +1,10 @@
 # BudgetManager
 
-## Neu in v2.0.31
+## Neu in v2.0.32
 
 - Final-Release-Härtung für Update-Dialog, Frozen-CLI und portable ZIP-Struktur.
 - Stabile Startdateien im Portable-ZIP: `BudgetManager.exe` und `BudgetManager`.
-- Doku-/Help-/Manifest-Versionen synchron auf v2.0.31.
+- Doku-/Help-/Manifest-Versionen synchron auf v2.0.32.
 - Zusätzliche dynamische Dialogtexte über i18n statt harter deutscher Strings.
 - Konto-Hub für Konto, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
 - Frei wählbarer Datenordner mit optionaler sicherer Datenübernahme.
@@ -15,7 +15,7 @@
 ## Cockpit-Startseite
 
 Das Cockpit fasst die wichtigsten Punkte zusammen: Monatsstatus, Favoriten, aktive Sparziele, Budget-Ampel, offene Monatsbuchungen und letzte 10 Buchungen. Es ist bewusst kompakt und frei gestaltbar: Bereiche lassen sich im Cockpit oder unter `Ansicht → Anzeigen` ein-/ausblenden. Auch Hauptreiter können ausgeblendet werden, damit Einsteiger nicht von zu vielen Tabs erschlagen werden.
-## v2.0.31 — Feature-Übersicht
+## v2.0.32 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 

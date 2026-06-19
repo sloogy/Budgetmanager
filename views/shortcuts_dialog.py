@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QVBoxLayout
 )
 
-from model.shortcuts_config import SHORTCUT_DEFS, load_shortcuts, shortcut_display_name
+from model.shortcuts_config import SHORTCUT_DEFS, group_for, label_for, load_shortcuts, shortcut_display_name
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 class ShortcutsDialog(QDialog):
@@ -49,7 +49,9 @@ class ShortcutsDialog(QDialog):
         # Zeilen aufbauen – mit Gruppen-Trennern
         rows: list[tuple[str, str, str]] = []  # (key_display, label, group)
         last_group = ""
-        for aid, _dkey, label, group in SHORTCUT_DEFS:
+        for aid, _dkey, _label_key, _group_key in SHORTCUT_DEFS:
+            label = label_for(aid)
+            group = group_for(aid)
             if group != last_group:
                 if last_group:
                     rows.append(("", "", ""))  # Leerzeile als Trenner
@@ -59,9 +61,9 @@ class ShortcutsDialog(QDialog):
 
         # Zusätzliche Hinweise (nicht konfigurierbar)
         rows.append(("", "", ""))
-        rows.append(("Enter", tr("dlg.in_tabelle_naechste_zelle"), "Tabelle"))
-        rows.append(("Tab", tr("dlg.zum_naechsten_feld"), "Tabelle"))
-        rows.append(("Escape", tr("btn.dialog_schliessen"), "Tabelle"))
+        rows.append(("Enter", tr("dlg.in_tabelle_naechste_zelle"), tr("shortcut.group.table")))
+        rows.append(("Tab", tr("dlg.zum_naechsten_feld"), tr("shortcut.group.table")))
+        rows.append(("Escape", tr("btn.dialog_schliessen"), tr("shortcut.group.table")))
 
         self.table.setRowCount(len(rows))
         bold = QFont()

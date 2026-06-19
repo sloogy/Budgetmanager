@@ -12,41 +12,44 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from utils.i18n import tr
+
 logger = logging.getLogger(__name__)
 
 # ── Shortcut-Definitionen ──────────────────────────────────────────
-# Jedes Tupel: (action_id, default_key, label, group)
-# `group` dient nur zur optischen Gruppierung in Hilfe / Settings.
+# Jedes Tupel: (action_id, default_key, label_key, group_key)
+# Label und Gruppe sind i18n-Keys. Dadurch bleiben Settings- und Hilfe-Dialog
+# in DE/EN/FR vollständig übersetzt.
 
 SHORTCUT_DEFS: list[tuple[str, str, str, str]] = [
-    # --- Allgemein ---
-    ("help", "F1", "Hilfe / Wissensdatenbank öffnen", "Allgemein"),
-    ("shortcuts", "Ctrl+F1", "Tastenkürzel anzeigen", "Allgemein"),
-    ("refresh", "F5", "Aktuelle Ansicht aktualisieren", "Allgemein"),
-    ("save", "Ctrl+S", "Budget speichern", "Allgemein"),
-    ("settings", "Ctrl+,", "Einstellungen öffnen", "Allgemein"),
-    ("quit", "Ctrl+Q", "Programm beenden", "Allgemein"),
+    # --- General ---
+    ("help", "F1", "shortcut.action.help", "shortcut.group.general"),
+    ("shortcuts", "Ctrl+F1", "shortcut.action.shortcuts", "shortcut.group.general"),
+    ("refresh", "F5", "shortcut.action.refresh", "shortcut.group.general"),
+    ("save", "Ctrl+S", "shortcut.action.save", "shortcut.group.general"),
+    ("settings", "Ctrl+,", "shortcut.action.settings", "shortcut.group.general"),
+    ("quit", "Ctrl+Q", "shortcut.action.quit", "shortcut.group.general"),
     # --- Navigation ---
-    ("tab_budget", "Ctrl+1", "Zum Budget-Tab wechseln", "Navigation"),
-    ("tab_categories", "Ctrl+2", "Zum Kategorien-Tab wechseln", "Navigation"),
-    ("tab_tracking", "Ctrl+3", "Zum Tracking-Tab wechseln", "Navigation"),
-    ("tab_overview", "Ctrl+4", "Zur Übersicht wechseln", "Navigation"),
-    # --- Funktionen ---
-    ("current_year", "Ctrl+Y", "Aktuelles Jahr laden", "Funktionen"),
-    ("search", "Ctrl+F", "Globale Suche öffnen", "Funktionen"),
-    ("quick_add", "Ctrl+N", "Schnelleingabe (Quick-Add)", "Funktionen"),
-    ("undo", "Ctrl+Z", "Rückgängig (Undo)", "Funktionen"),
-    ("redo", "Ctrl+Shift+Z", "Wiederholen (Redo)", "Funktionen"),
-    ("export", "Ctrl+E", "Export-Dialog öffnen", "Funktionen"),
-    ("import", "Ctrl+I", "Import-Dialog öffnen", "Funktionen"),
-    ("favorites", "F12", "Favoriten-Übersicht", "Funktionen"),
-    ("fullscreen", "F11", "Vollbild umschalten", "Funktionen"),
-    ("maximize", "F10", "Fenster maximieren", "Funktionen"),
+    ("tab_budget", "Ctrl+1", "shortcut.action.tab_budget", "shortcut.group.navigation"),
+    ("tab_categories", "Ctrl+2", "shortcut.action.tab_categories", "shortcut.group.navigation"),
+    ("tab_tracking", "Ctrl+3", "shortcut.action.tab_tracking", "shortcut.group.navigation"),
+    ("tab_overview", "Ctrl+4", "shortcut.action.tab_overview", "shortcut.group.navigation"),
+    # --- Functions ---
+    ("current_year", "Ctrl+Y", "shortcut.action.current_year", "shortcut.group.functions"),
+    ("search", "Ctrl+F", "shortcut.action.search", "shortcut.group.functions"),
+    ("quick_add", "Ctrl+N", "shortcut.action.quick_add", "shortcut.group.functions"),
+    ("undo", "Ctrl+Z", "shortcut.action.undo", "shortcut.group.functions"),
+    ("redo", "Ctrl+Shift+Z", "shortcut.action.redo", "shortcut.group.functions"),
+    ("export", "Ctrl+E", "shortcut.action.export", "shortcut.group.functions"),
+    ("import", "Ctrl+I", "shortcut.action.import", "shortcut.group.functions"),
+    ("favorites", "F12", "shortcut.action.favorites", "shortcut.group.functions"),
+    ("fullscreen", "F11", "shortcut.action.fullscreen", "shortcut.group.functions"),
+    ("maximize", "F10", "shortcut.action.maximize", "shortcut.group.functions"),
 ]
 
-# Schneller Lookup: action_id → (default_key, label, group)
+# Schneller Lookup: action_id → (default_key, label_key, group_key)
 _LOOKUP: dict[str, tuple[str, str, str]] = {
-    aid: (key, label, grp) for aid, key, label, grp in SHORTCUT_DEFS
+    aid: (key, label_key, group_key) for aid, key, label_key, group_key in SHORTCUT_DEFS
 }
 
 
@@ -56,16 +59,27 @@ def default_key(action_id: str) -> str:
     return entry[0] if entry else ""
 
 
-def label_for(action_id: str) -> str:
-    """Beschreibungstext für *action_id*."""
+def label_key_for(action_id: str) -> str:
+    """i18n-Key für den Beschreibungstext von *action_id*."""
     entry = _LOOKUP.get(action_id)
     return entry[1] if entry else action_id
 
 
-def group_for(action_id: str) -> str:
-    """Gruppenname für *action_id*."""
+def group_key_for(action_id: str) -> str:
+    """i18n-Key für den Gruppennamen von *action_id*."""
     entry = _LOOKUP.get(action_id)
     return entry[2] if entry else ""
+
+
+def label_for(action_id: str) -> str:
+    """Lokalisierter Beschreibungstext für *action_id*."""
+    return tr(label_key_for(action_id)) if action_id in _LOOKUP else action_id
+
+
+def group_for(action_id: str) -> str:
+    """Lokalisierter Gruppenname für *action_id*."""
+    key = group_key_for(action_id)
+    return tr(key) if key else ""
 
 
 def all_action_ids() -> list[str]:
@@ -107,12 +121,14 @@ def save_shortcuts(settings: Any, mapping: dict[str, str]) -> None:
 
 
 def shortcut_display_name(key_string: str) -> str:
-    """Wandelt Qt-Key-Strings in lesbare deutsche Bezeichnungen um.
-
-    ``"Ctrl+S"`` → ``"Strg+S"``
-    """
-    return (
-        key_string.replace("Ctrl", "Strg")
-        .replace("Shift", "Umschalt")
-        .replace("Alt", "Alt")
-    )
+    """Wandelt Qt-Key-Strings in lokalisierte Anzeige-Bezeichnungen um."""
+    if not key_string:
+        return ""
+    replacements = {
+        "Ctrl": tr("shortcut.key.ctrl"),
+        "Control": tr("shortcut.key.ctrl"),
+        "Shift": tr("shortcut.key.shift"),
+        "Alt": tr("shortcut.key.alt"),
+        "Meta": tr("shortcut.key.meta"),
+    }
+    return "+".join(replacements.get(part, part) for part in key_string.split("+"))

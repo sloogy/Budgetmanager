@@ -1072,7 +1072,7 @@
     "msg": {
       "seed_done": "Budget-Zeilen für {typ} {year} erzeugt.",
       "select_month_cell": "Bitte eine Monatszelle (Jan–Dez) auswählen, die du bearbeiten willst.",
-      "select_category_row": "Bitte eine Kategorie-Zeile auswählen (nicht TOTAL/Header).",
+      "select_category_row": "Bitte eine Kategorie-Zeile auswählen (nicht Gesamt/Header).",
       "copy_year_diff": "Quelljahr und Zieljahr müssen verschieden sein.",
       "copy_year_done": "Budget {src} → {dst} kopiert.",
       "delete_global_warn_1": "ACHTUNG: Das entfernt die Kategorie GLOBAL aus der Kategorien-Liste und löscht alle Budget-Einträge ",
@@ -2356,5 +2356,41 @@
   },
   "money": {
     "invalid_amount": "Ungültiger Geldbetrag."
+  },
+  "shortcut": {
+    "group": {
+      "general": "Allgemein",
+      "navigation": "Navigation",
+      "functions": "Funktionen",
+      "table": "Tabelle"
+    },
+    "key": {
+      "ctrl": "Strg",
+      "shift": "Umschalt",
+      "alt": "Alt",
+      "meta": "Meta"
+    },
+    "action": {
+      "help": "Hilfe / Wissensdatenbank öffnen",
+      "shortcuts": "Tastenkürzel anzeigen",
+      "refresh": "Aktuelle Ansicht aktualisieren",
+      "save": "Budget speichern",
+      "settings": "Einstellungen öffnen",
+      "quit": "Programm beenden",
+      "tab_budget": "Zum Budget-Tab wechseln",
+      "tab_categories": "Zum Kategorien-Tab wechseln",
+      "tab_tracking": "Zum Tracking-Tab wechseln",
+      "tab_overview": "Zur Übersicht wechseln",
+      "current_year": "Aktuelles Jahr laden",
+      "search": "Globale Suche öffnen",
+      "quick_add": "Schnelleingabe (Quick-Add)",
+      "undo": "Rückgängig (Undo)",
+      "redo": "Wiederholen (Redo)",
+      "export": "Export-Dialog öffnen",
+      "import": "Import-Dialog öffnen",
+      "favorites": "Favoriten-Übersicht",
+      "fullscreen": "Vollbild umschalten",
+      "maximize": "Fenster maximieren"
+    }
   }
 }

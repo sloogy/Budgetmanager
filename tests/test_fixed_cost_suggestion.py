@@ -167,6 +167,39 @@ def test_fixed_cost_one_real_booking_plus_zeros_does_not_reduce(conn):
     assert res is None
 
 
+def test_fixed_incremental_over_budget_active_months_but_total_covered_no_increase(conn):
+    """Budget 200, Ist 250/250/250/0/0/0 ist total gedeckt und darf nicht erhöhen."""
+    months = _prev_months(2026, 7, 7)
+    # HISTORY_MONTHS in zeitlicher Reihenfolge: Juni, Mai, April, März, Februar, Januar.
+    history = _prev_months(2026, 6, 6)
+    _add_category(conn, "Versicherung", is_fix=True, is_recurring=True)
+    _set_budget(conn, "Versicherung", months, 200.0)
+    _book(conn, "Versicherung", history[3:], 250.0)  # Jan–März je 250, danach 0
+
+    res = BudgetSuggestionEngine(conn).compute_category_suggestion(
+        typ=TYP_EXPENSES, category="Versicherung", year=2026, month=7, months_back=6
+    )
+
+    assert res is None
+
+
+def test_fixed_incremental_total_undercovered_uses_window_average(conn):
+    """Bei lumpy Fixkosten wird Erhöhung aus Gesamtunterdeckung abgeleitet, nicht aus Einzelzahlung."""
+    months = _prev_months(2026, 7, 7)
+    history = _prev_months(2026, 6, 6)
+    _add_category(conn, "Versicherung", is_fix=True, is_recurring=True)
+    _set_budget(conn, "Versicherung", months, 200.0)
+    _book(conn, "Versicherung", history[3:], 450.0)  # 1350 Ist gegen 1200 Budget
+
+    res = BudgetSuggestionEngine(conn).compute_category_suggestion(
+        typ=TYP_EXPENSES, category="Versicherung", year=2026, month=7, months_back=6
+    )
+
+    assert res is not None
+    assert res.direction == "deficit"
+    assert res.suggested_budget == 220.0
+
+
 # ── T6: Wiederkehrend ohne is_fix wird ebenfalls geschützt ─────────
 
 def test_recurring_category_zero_months_do_not_reduce_budget(conn):
