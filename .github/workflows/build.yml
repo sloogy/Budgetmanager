@@ -65,7 +65,13 @@ jobs:
         run: python -m mypy model/
 
       - name: Run core tests
-        run: python -m pytest tests/ -v
+        shell: bash
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: utf-8
+        run: |
+          python -m pytest tests/ -v -ra --tb=short
 
       - name: Build with PyInstaller
         run: pyinstaller BudgetManager.spec --noconfirm
