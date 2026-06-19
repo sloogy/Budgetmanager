@@ -10,17 +10,17 @@ Das Cockpit ist die ruhige Startseite: Es zeigt das Wichtigste, ohne die Fachrei
 
 **Empfohlener roter Faden:** Cockpit öffnen → Warnungen/offene Buchungen prüfen → bei Bedarf Buchung erfassen oder Fixkosten buchen → Budget/Sparziele/Übersicht nur öffnen, wenn Details nötig sind.
 
-> Direkt anzeigbare Mindmap: `docs/help/mindmap.html` (Browser) · Mermaid-Quelle: `docs/help/mindmap.mmd`.
+> Direkt anzeigbare Mindmap: `docs/help/mindmap.de.html`, `docs/help/mindmap.en.html`, `docs/help/mindmap.fr.html` (Browser) · Mermaid-Quellen: `docs/help/mindmap.de.mmd`, `docs/help/mindmap.en.mmd`, `docs/help/mindmap.fr.mmd`. `mindmap.html` und `mindmap.mmd` bleiben als deutsche Fallback-Dateien erhalten.
 
 
 Stand: 19. Juni 2026  
-Gültig für: BudgetManager 2.0.28
+Gültig für: BudgetManager 2.0.30
 
 Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: **Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore**.
 
 ---
 
-## Ergänzung v2.0.28 – Cockpit und Stabilität
+## Ergänzung v2.0.30 – Cockpit und Stabilität
 
 - Das Cockpit zeigt zusätzlich Budgetwarnungen und bietet per Rechtsklick sinnvolle Schnellaktionen.
 - Unter Wayland nutzt BudgetManager standardmäßig `xcb`, um bekannte Qt-TextInput-Abstürze zu vermeiden. Native Wayland-Nutzung ist mit `BM_ALLOW_WAYLAND=1` möglich.

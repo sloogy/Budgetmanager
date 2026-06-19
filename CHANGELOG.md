@@ -1,6 +1,39 @@
 # Changelog
 
-### v2.0.28 – Release-Blocker-Fix Budget-Modi, Money-Validation und Hardcoded-Audit
+### v2.0.30 – Konsolidierung (CI-Build, Forecast-Verifikation, High-DPI)
+
+- **Drei divergierende Quellstände zusammengeführt:** i18n-/Shortcut-/Mindmap-Fixes (aus der Mindmap-Quelle) plus die gehärtete CI-Workflow-Datei (aus der Release-Quelle). `build.yml` setzt jetzt im Test-Job `QT_QPA_PLATFORM=offscreen`, `PYTHONUTF8=1`, `PYTHONIOENCODING=utf-8` und `pytest --tb=short`.
+- **Forecast-Fixkostenlogik unabhängig verifiziert:** Der v2.0.29-Hotfix (Gesamtfenster-Deckung statt nur aktive Monate) wurde gegen das *echte* `migrate_all`-Schema geprüft – 16 gezielte Edge Cases, alle Grenzfälle des neuen Mechanismus (exakt ausgeglichen, knapp drüber/drunter, echte Unterdeckung mit 0-Monaten, zu wenige aktive Monate) und 4000 randomisierte Property-Szenarien ohne Invarianten-Verletzung. Christians Fall (Budget 200, Ist 250/250/250/0/0/0 → 750 von 1200) erzeugt korrekt **keinen** Erhöhungsvorschlag.
+- **High-DPI-Skalierung (Windows):** `QApplication.setHighDpiScaleFactorRoundingPolicy(PassThrough)` wird vor der QApplication-Instanz gesetzt. Adressiert verzerrte Layouts/zu schmale Cockpit-Tabellen bei fraktionaler Anzeigeskalierung (125/150/175 %). **Hinweis: muss auf echter Windows-Hardware verifiziert werden** – im Container ist keine GUI lauffähig.
+- Versionsangaben, Anleitungen und Manifest-Vorlagen auf v2.0.30 synchronisiert.
+
+### v2.0.29 Hotfix – Forecast-Fixkostenlogik und Shortcut-i18n
+
+- Forecast: Fixkosten/wiederkehrende Kategorien mit inkrementellen Zahlungen erhöhen das Budget nicht mehr, solange die Summe im Analysefenster durch das Gesamtbudget gedeckt ist.
+- Regression: Budget 200 CHF, Ist 250/250/250/0/0/0 erzeugt keinen Erhöhungsvorschlag mehr.
+- Shortcut-Katalog: Beschreibungen, Gruppen und Tastenanzeigen sind jetzt vollständig über i18n-Keys lokalisiert.
+- Neue Tests: `test_fixed_incremental_over_budget_active_months_but_total_covered_no_increase`, `test_shortcut_catalog_is_localized_in_all_release_languages`.
+
+
+### v2.0.29 – Kritischer Release-Audit auf allen Ebenen, i18n-Lückenschluss
+
+- **Drei aktiv verdrahtete UI-Texte in EN/FR übersetzt:** `Budget &bearbeiten…` (Budget-Menü), `🗄️ Datenbank-Verwaltung` und `🧹 Datenbank bereinigen` (Datenbank-Dialog) erschienen in der englischen und französischen Oberfläche noch auf Deutsch (en.json/fr.json trugen nur die deutsche Kopie). Jetzt korrekt lokalisiert; i18n-Parität de=en=fr bleibt exakt bei 2040 Schlüsseln.
+- **DE-Anleitung um Sparziele ergänzt:** `docs/USER_GUIDE.de.md` erklärt jetzt – konsistent mit EN/FR – das Setzen und Verfolgen von Sparzielen inkl. der 0-/Ziel-Grenzen.
+- **Unabhängige Forecast-Denkfehler-Prüfung:** Neues Audit gegen das *echte* `migrate_all`-Schema mit isolierten Settings; 16 gezielte Edge Cases plus 4000 randomisierte Property-Szenarien (1456 erzeugte Vorschläge) ohne Invarianten-Verletzung (keine negativen/Unter-Floor-Budgets, keine 0-Monats-Senkung bei Fixkosten, korrekte Einkommensrichtung, Schutz vor Vor-Tracking-Monaten).
+- **Updater auf allen 5 Ebenen verifiziert:** Asset-Auflösung für Windows-Installer, Windows-Direct-EXE, Windows-Portable-ZIP, Linux-Direct-Binary und Linux-Portable-ZIP – jede Variante löst das korrekte Asset in `latest.json` auf.
+- **Eigener AST-Scanner für hartcodierte UI-Strings:** 0 echte hardcoded deutsche UI-Texte ausserhalb von `tr()/trf()` (Logger- und Migrationsnotizen korrekt ausgenommen).
+- **Qt-freie Regressionssuite ohne Fremdtools ausgeführt:** Eigene Harness (kein pytest/PySide6 im Container nötig) – 81 Tests grün, 0 Fehler; reine Qt-GUI-Tests bleiben Hardware-Smoke-Test.
+- Versionsangaben, Anleitungen und Manifest-Vorlagen auf v2.0.29 synchronisiert.
+
+### v2.0.30-postaudit – 100-Loop-Release-Härtung
+
+- 100-Loop-Release-Logiktest ergänzt (`tools/release_logic_audit_100.py`) und mit 100/100 PASS ausgeführt.
+- Dreisprachige Anwenderanleitung ergänzt: `docs/USER_GUIDE.de.md`, `docs/USER_GUIDE.en.md`, `docs/USER_GUIDE.fr.md`.
+- Windows-Installer-Seiten für Deutsch, Englisch und Französisch lokalisiert; Wizard-Texte nutzen jetzt `CustomMessage(...)`.
+- Budget-Footer von sichtbarem `TOTAL` entkoppelt und auf `tr("header.total")` umgestellt.
+- Regressionstests für Installer-Lokalisierung, Anleitung, Graph-/Forecast-/Updater-Erklärung und Budget-Footer ergänzt.
+
+### v2.0.30 – Release-Blocker-Fix Budget-Modi, Money-Validation und Hardcoded-Audit
 
 - Budget-Erfassungsmodus von sichtbaren Labels entkoppelt: Geschäftslogik nutzt jetzt stabile Werte `month`, `all`, `range`.
 - Legacy-/Anzeigewerte `Monat`, `Alle`, `Bereich`, `Month`, `All`, `Range`, `Mois`, `Tous`, `Période` werden robust normalisiert.
