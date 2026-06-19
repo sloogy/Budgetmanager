@@ -4,6 +4,7 @@ Die UI darf übersetzte Labels anzeigen, aber Geschäftslogik darf nie auf
 sichtbare Texte wie "Alle"/"All"/"Tous" prüfen. Dieses Modul hält die
 stabilen internen Werte zentral.
 """
+
 from __future__ import annotations
 
 BUDGET_MODE_MONTH = "month"

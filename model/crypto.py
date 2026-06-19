@@ -51,7 +51,9 @@ class CryptoUserError(ValueError):
             from utils.i18n import tr
 
             translated = tr(self.key)
-            return translated if translated and translated != self.key else self.fallback
+            return (
+                translated if translated and translated != self.key else self.fallback
+            )
         except Exception:
             return self.fallback
 
@@ -83,8 +85,6 @@ def is_crypto_available() -> bool:
         return True
     except ImportError:
         return False
-
-
 
 
 class AutosaveConnection(sqlite3.Connection):
@@ -171,7 +171,9 @@ def coalesced_commits(conn: sqlite3.Connection):
             try:
                 conn.resume_after_commit()
             except Exception as exc:  # pragma: no cover - defensiv
-                logger.debug("coalesced_commits: resume_after_commit fehlgeschlagen: %s", exc)
+                logger.debug(
+                    "coalesced_commits: resume_after_commit fehlgeschlagen: %s", exc
+                )
 
 
 @contextmanager
@@ -179,6 +181,7 @@ def suspend_after_commit_autosave(conn: sqlite3.Connection):
     """Rückwärtskompatibler Alias für :func:`coalesced_commits`."""
     with coalesced_commits(conn) as managed_conn:
         yield managed_conn
+
 
 # ── Konstanten ──────────────────────────────────────────────────
 
@@ -202,7 +205,9 @@ def generate_db_key() -> bytes:
     return base64.urlsafe_b64encode(raw)
 
 
-def derive_key_from_secret(secret: str, salt: bytes, iterations: int | None = None) -> bytes:
+def derive_key_from_secret(
+    secret: str, salt: bytes, iterations: int | None = None
+) -> bytes:
     """Leitet einen Fernet-Key aus einem Geheimnis (PIN/Passwort) + Salt ab."""
     raw = hashlib.pbkdf2_hmac(
         "sha256",
@@ -228,7 +233,9 @@ def wrap_db_key(db_key: bytes, secret: str, salt: bytes) -> bytes:
     return f.encrypt(db_key)
 
 
-def unwrap_db_key_with_iterations(wrapped: bytes, secret: str, salt: bytes) -> tuple[bytes, int]:
+def unwrap_db_key_with_iterations(
+    wrapped: bytes, secret: str, salt: bytes
+) -> tuple[bytes, int]:
     """Entschlüsselt den db_key und meldet die verwendete PBKDF2-Rundenzahl.
 
     Alte v2.0.23-Test-/Vorabdaten nutzten 200 000 Runden. Damit solche
@@ -271,7 +278,9 @@ def unwrap_db_key_with_restore(wrapped_restore: bytes, restore_key: str) -> byte
         raw = bytes.fromhex(restore_key.strip().replace(" ", "").replace("-", ""))
         return base64.urlsafe_b64encode(raw)
     except Exception:
-        raise CryptoUserError("account.ungueltiger_restorekey", "Ungültiger Restore-Key")
+        raise CryptoUserError(
+            "account.ungueltiger_restorekey", "Ungültiger Restore-Key"
+        )
 
 
 # ── Restore-Key ────────────────────────────────────────────────
@@ -323,7 +332,9 @@ def hash_password(password: str, salt: bytes, iterations: int | None = None) -> 
 def verify_password(password: str, salt: bytes, stored_hash: str) -> bool:
     """Prüft Passwort gegen gespeicherten Hash, inklusive Legacy-PBKDF2-Werte."""
     candidates = [hash_password(password, salt)]
-    candidates.extend(hash_password(password, salt, iterations=i) for i in LEGACY_PBKDF2_ITERATIONS)
+    candidates.extend(
+        hash_password(password, salt, iterations=i) for i in LEGACY_PBKDF2_ITERATIONS
+    )
     return any(hmac.compare_digest(candidate, stored_hash) for candidate in candidates)
 
 
@@ -388,13 +399,18 @@ def decrypt_db_from_file(enc_path: str | Path, db_key: bytes) -> sqlite3.Connect
     with open(enc_path, "rb") as f:
         salt = f.read(SALT_LENGTH)
         if len(salt) < SALT_LENGTH:
-            raise CryptoUserError("crypto.corrupt_salt_short", "Korrupte Datei: Salt zu kurz")
+            raise CryptoUserError(
+                "crypto.corrupt_salt_short", "Korrupte Datei: Salt zu kurz"
+            )
         token = f.read()
 
     try:
         dump_sql = decrypt_bytes(token, db_key).decode("utf-8")
     except Exception:
-        raise CryptoUserError("crypto.decrypt_failed_wrong_key", "Entschlüsselung fehlgeschlagen — falscher Schlüssel")
+        raise CryptoUserError(
+            "crypto.decrypt_failed_wrong_key",
+            "Entschlüsselung fehlgeschlagen — falscher Schlüssel",
+        )
 
     conn = sqlite3.connect(":memory:", factory=AutosaveConnection)
     conn.row_factory = sqlite3.Row

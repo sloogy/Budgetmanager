@@ -157,7 +157,9 @@ class TrackingModel:
         ).fetchone()
 
         if old_full:
-            old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(old_full)
+            old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(
+                old_full
+            )
             deltas: dict[str, float] = {}
             if old_typ == TYP_SAVINGS:
                 deltas[old_cat] = deltas.get(old_cat, 0.0) - old_amt
@@ -222,7 +224,9 @@ class TrackingModel:
         ).fetchone()
 
         if old_full:
-            old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(old_full)
+            old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(
+                old_full
+            )
             if old_typ == TYP_SAVINGS:
                 self._validate_savings_goal_category_delta(old_cat, -old_amt)
 
@@ -684,7 +688,9 @@ class TrackingModel:
             return str(row["typ"]), str(row["category"]), float(row["amount"])
         return str(row[2]), str(row[3]), float(row[4])
 
-    def _validate_savings_goal_category_delta(self, category: str, delta: float) -> None:
+    def _validate_savings_goal_category_delta(
+        self, category: str, delta: float
+    ) -> None:
         goals = self.conn.execute(
             """
             SELECT name, current_amount, target_amount

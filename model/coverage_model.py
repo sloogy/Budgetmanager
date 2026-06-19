@@ -59,7 +59,11 @@ class CoverageResult:
         remaining = self.deficit
         out: list[SavingsSuggestion] = []
         for cat, amount in sorted(
-            ((str(c), float(a)) for c, a in self.savings_by_category.items() if float(a) > EPS),
+            (
+                (str(c), float(a))
+                for c, a in self.savings_by_category.items()
+                if float(a) > EPS
+            ),
             key=lambda kv: (-kv[1], kv[0].casefold()),
         ):
             take = min(amount, remaining)
@@ -132,8 +136,14 @@ def budget_year_coverage(budget_model, year: int) -> BudgetYearCoverage:
     annual_savings_by_category: dict[str, float] = {}
 
     for month in range(1, 13):
-        income = sum(float(values.get(month, 0.0) or 0.0) for values in matrices[TYP_INCOME].values())
-        expenses = sum(float(values.get(month, 0.0) or 0.0) for values in matrices[TYP_EXPENSES].values())
+        income = sum(
+            float(values.get(month, 0.0) or 0.0)
+            for values in matrices[TYP_INCOME].values()
+        )
+        expenses = sum(
+            float(values.get(month, 0.0) or 0.0)
+            for values in matrices[TYP_EXPENSES].values()
+        )
         savings_by_category = {
             str(cat): float(values.get(month, 0.0) or 0.0)
             for cat, values in matrices[TYP_SAVINGS].items()
@@ -145,7 +155,11 @@ def budget_year_coverage(budget_model, year: int) -> BudgetYearCoverage:
         annual_expenses += expenses
         annual_savings += savings
         for cat, amount in savings_by_category.items():
-            annual_savings_by_category[cat] = annual_savings_by_category.get(cat, 0.0) + amount
+            annual_savings_by_category[cat] = (
+                annual_savings_by_category.get(cat, 0.0) + amount
+            )
 
-    annual = CoverageResult(annual_income, annual_expenses, annual_savings, annual_savings_by_category)
+    annual = CoverageResult(
+        annual_income, annual_expenses, annual_savings, annual_savings_by_category
+    )
     return BudgetYearCoverage(int(year), months, annual)

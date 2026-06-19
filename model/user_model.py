@@ -44,7 +44,6 @@ from model.crypto import (
     PBKDF2_ITERATIONS,
 )
 
-
 USERS_FILE = "users.json"
 
 # Sicherheitsstufen
@@ -371,6 +370,7 @@ class UserModel:
             return
         try:
             import base64
+
             new_salt = generate_salt()
             wrapped = wrap_db_key(db_key, secret, new_salt)
             user.wrapped_db_key_b64 = base64.urlsafe_b64encode(wrapped).decode("ascii")
@@ -379,10 +379,14 @@ class UserModel:
             user.kdf_iterations = PBKDF2_ITERATIONS
             self._users[user.username] = user
             self._save()
-            logger.info("PBKDF2-Parameter für Benutzer '%s' aktualisiert", user.username)
+            logger.info(
+                "PBKDF2-Parameter für Benutzer '%s' aktualisiert", user.username
+            )
         except Exception as e:
             # Login darf nicht scheitern, nur weil die Härtungs-Migration nicht speichern konnte.
-            logger.warning("PBKDF2-Upgrade für Benutzer '%s' fehlgeschlagen: %s", user.username, e)
+            logger.warning(
+                "PBKDF2-Upgrade für Benutzer '%s' fehlgeschlagen: %s", user.username, e
+            )
 
     # ── Authentifizierung ────────────────────────
 

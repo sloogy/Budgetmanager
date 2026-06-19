@@ -114,7 +114,12 @@ def db_path() -> Path:
     return data_dir() / "budgetmanager.db"
 
 
-_DEFAULT_DB_SETTINGS = {"", "budgetmanager.db", "data/budgetmanager.db", "./data/budgetmanager.db"}
+_DEFAULT_DB_SETTINGS = {
+    "",
+    "budgetmanager.db",
+    "data/budgetmanager.db",
+    "./data/budgetmanager.db",
+}
 _DEFAULT_BACKUP_SETTINGS = {"", "backups", "data/backups", "./data/backups"}
 
 

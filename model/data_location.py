@@ -50,8 +50,11 @@ class DataMigrationError(Exception):
     def __str__(self) -> str:
         try:
             from utils.i18n import tr
+
             translated = tr(self.key)
-            return translated if translated and translated != self.key else self.fallback
+            return (
+                translated if translated and translated != self.key else self.fallback
+            )
         except Exception:
             return self.fallback
 
@@ -134,26 +137,45 @@ def migrate_data_dir(
     new_resolved = new_dir.resolve()
 
     if old_resolved == new_resolved:
-        raise DataMigrationError("data_location.error.identical", "Quell- und Zielordner sind identisch.")
+        raise DataMigrationError(
+            "data_location.error.identical", "Quell- und Zielordner sind identisch."
+        )
 
     # Kein Verschachteln erlauben: sonst kann z.B. ein Ziel in old/backups
     # beim Kopieren des backups-Ordners rekursiv in sich selbst laufen oder
     # alte und neue Datenbestände vermischen.
     try:
-        if new_resolved.is_relative_to(old_resolved) or old_resolved.is_relative_to(new_resolved):
-            raise DataMigrationError("data_location.error.nested", "Quell- und Zielordner dürfen nicht ineinander liegen.")
+        if new_resolved.is_relative_to(old_resolved) or old_resolved.is_relative_to(
+            new_resolved
+        ):
+            raise DataMigrationError(
+                "data_location.error.nested",
+                "Quell- und Zielordner dürfen nicht ineinander liegen.",
+            )
     except AttributeError:  # pragma: no cover - Py<3.9 Fallback
         old_parts = old_resolved.parts
         new_parts = new_resolved.parts
-        if new_parts[:len(old_parts)] == old_parts or old_parts[:len(new_parts)] == new_parts:
-            raise DataMigrationError("data_location.error.nested", "Quell- und Zielordner dürfen nicht ineinander liegen.")
+        if (
+            new_parts[: len(old_parts)] == old_parts
+            or old_parts[: len(new_parts)] == new_parts
+        ):
+            raise DataMigrationError(
+                "data_location.error.nested",
+                "Quell- und Zielordner dürfen nicht ineinander liegen.",
+            )
 
     items = list_user_data(old_dir)
     if not items:
-        raise DataMigrationError("data_location.error.no_source_data", "Im bisherigen Ordner wurden keine Daten gefunden.")
+        raise DataMigrationError(
+            "data_location.error.no_source_data",
+            "Im bisherigen Ordner wurden keine Daten gefunden.",
+        )
 
     if has_user_data(new_dir):
-        raise DataMigrationError("data_location.error.target_has_data", "Der Zielordner enthält bereits Daten.")
+        raise DataMigrationError(
+            "data_location.error.target_has_data",
+            "Der Zielordner enthält bereits Daten.",
+        )
 
     new_dir.mkdir(parents=True, exist_ok=True)
 

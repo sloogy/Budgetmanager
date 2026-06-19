@@ -126,9 +126,14 @@ class EncryptedSession:
 
             save_memory_db(self.conn, self._enc_path, self._db_key, self._salt)
             if reason == "commit":
-                logger.debug("Verschlüsselte DB nach Commit gespeichert: %s", Path(self._enc_path).name)
+                logger.debug(
+                    "Verschlüsselte DB nach Commit gespeichert: %s",
+                    Path(self._enc_path).name,
+                )
             else:
-                logger.info("Verschlüsselte DB gespeichert: %s", Path(self._enc_path).name)
+                logger.info(
+                    "Verschlüsselte DB gespeichert: %s", Path(self._enc_path).name
+                )
         except Exception as e:
             logger.error("Fehler beim Speichern der verschlüsselten DB: %s", e)
         finally:
