@@ -233,7 +233,8 @@ class UndoRedoModel:
     # ------------------------------------------------------------
     def _ensure_tables(self) -> None:
         # undo_stack exists since v4, but we ensure columns for safety
-        self.conn.execute("""
+        self.conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS undo_stack(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ts TEXT NOT NULL,
@@ -243,8 +244,10 @@ class UndoRedoModel:
                 old_data TEXT,
                 new_data TEXT
             );
-            """)
-        self.conn.execute("""
+            """
+        )
+        self.conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS redo_stack(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ts TEXT NOT NULL,
@@ -254,7 +257,8 @@ class UndoRedoModel:
                 old_data TEXT,
                 new_data TEXT
             );
-            """)
+            """
+        )
 
         # Sicherstellen dass alle Spalten existieren (für alte DBs)
         cols = self._cols("undo_stack")

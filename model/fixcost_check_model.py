@@ -23,7 +23,8 @@ class FixcostCheckModel:
         cursor = conn.cursor()
 
         # Fixkosten-Tracking Tabelle
-        cursor.execute("""
+        cursor.execute(
+            """
             CREATE TABLE IF NOT EXISTS fixcost_tracking (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 category_id INTEGER NOT NULL,
@@ -35,7 +36,8 @@ class FixcostCheckModel:
                 FOREIGN KEY (category_id) REFERENCES categories(id),
                 UNIQUE(category_id, year, month)
             )
-        """)
+        """
+        )
 
         # Kategorie-Erweiterungen prüfen
         cursor.execute("PRAGMA table_info(categories)")
@@ -64,7 +66,8 @@ class FixcostCheckModel:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
 
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT 
                 id, 
                 name, 
@@ -74,7 +77,8 @@ class FixcostCheckModel:
             FROM categories 
             WHERE is_fixcost = 1
             ORDER BY name
-        """)
+        """
+        )
 
         categories = []
         for row in cursor.fetchall():
