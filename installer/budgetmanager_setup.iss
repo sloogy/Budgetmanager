@@ -244,7 +244,7 @@ begin
       '  "version": "{#MyAppVersion}"' + #13#10 +
       '}', False);
 
-    { Die App liest ihre Einstellungen aus {app}\data\budgetmanager_settings.json }
+    { Die App liest ihre Einstellungen aus dem App-Datenordner. }
     ForceDirectories(ExpandConstant('{app}\data'));
     SettingsFile := ExpandConstant('{app}\data\budgetmanager_settings.json');
 
