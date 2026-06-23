@@ -576,3 +576,34 @@ def preferred_asset_keys(platform_name: str) -> list[str]:
         ]
 
     return keys
+
+
+# --- v2.1.0 hotfix: tolerant installer marker parsing ---
+# Windows tests/installer markers may contain unescaped backslashes in
+# data_directory. The updater only needs install_type for asset priority here,
+# so fall back to a narrow regex if json.loads() cannot parse the full file.
+_read_install_type_json_first = read_install_type
+
+
+def read_install_type() -> str:
+    value = _read_install_type_json_first()
+    if value:
+        return value
+
+    try:
+        text = installation_marker_path().read_text(encoding="utf-8")
+    except Exception as e:
+        logger.debug("Installationsart konnte nicht gelesen werden: %s", e)
+        return ""
+
+    import re
+
+    match = re.search(
+        r'"install_type"\s*:\s*"(?P<install_type>[^"]+)"',
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+
+    return match.group("install_type").strip().lower()
