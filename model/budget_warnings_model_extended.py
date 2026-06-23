@@ -517,11 +517,13 @@ class BudgetWarningsModelExtended:
 
     def list_all(self) -> List[BudgetWarning]:
         """Liste alle Warnungen"""
-        cur = self.conn.execute("""
+        cur = self.conn.execute(
+            """
             SELECT id, year, month, typ, category, threshold_percent, enabled
             FROM budget_warnings
             ORDER BY year DESC, month DESC, typ, category
-            """)
+            """
+        )
         return [
             BudgetWarning(
                 id=row[0],

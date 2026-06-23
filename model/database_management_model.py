@@ -198,13 +198,16 @@ class DatabaseManagementModel:
         cursor = conn.cursor()
 
         # Prüfe ob categories Tabelle existiert
-        cursor.execute("""
+        cursor.execute(
+            """
             SELECT name FROM sqlite_master 
             WHERE type='table' AND name='categories'
-        """)
+        """
+        )
         if not cursor.fetchone():
             # Tabelle existiert nicht - erstellen
-            cursor.execute("""
+            cursor.execute(
+                """
                 CREATE TABLE categories (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     typ TEXT NOT NULL,
@@ -218,7 +221,8 @@ class DatabaseManagementModel:
                     UNIQUE(typ, name),
                     FOREIGN KEY (parent_id) REFERENCES categories(id)
                 )
-            """)
+            """
+            )
 
         # Zentrale Quelle (v1.0.30): identisch mit Erststart (ensure_defaults),
         # damit Reset und Erststart dieselben Kategorien erzeugen.
@@ -263,14 +267,16 @@ class DatabaseManagementModel:
             _existing = {row[0] for row in cursor.fetchall()}
 
             # 1. Lösche Budget-Einträge für nicht existierende Kategorien
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM budget 
                 WHERE NOT EXISTS (
                     SELECT 1 FROM categories 
                     WHERE categories.typ = budget.typ 
                     AND categories.name = budget.category
                 )
-            """)
+            """
+            )
             stats["deleted_orphaned_budgets"] = cursor.rowcount
 
             # 2. Lösche reservierte Kategorien
@@ -280,18 +286,22 @@ class DatabaseManagementModel:
                 stats["deleted_reserved_categories"] += cursor.rowcount
 
             # 3. Lösche verwaiste Tags
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM entry_tags 
                 WHERE entry_id NOT IN (SELECT id FROM tracking)
-            """)
+            """
+            )
             stats["deleted_orphaned_tags"] = cursor.rowcount
 
             # 4. Lösche Tracking-Einträge mit ungültigen Daten
-            cursor.execute("""
+            cursor.execute(
+                """
                 DELETE FROM tracking 
                 WHERE date IS NULL 
                 OR date NOT GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
-            """)
+            """
+            )
             stats["deleted_invalid_dates"] = cursor.rowcount
 
             # 5. Undo-Stack auf letzte MAX_UNDO Einträge kürzen
