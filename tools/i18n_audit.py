@@ -109,6 +109,46 @@ def _flatten_json_keys(obj: object, prefix: str = "") -> Set[str]:
     return keys
 
 
+def _flatten_json_values(obj: object, prefix: str = "") -> Dict[str, str]:
+    values: Dict[str, str] = {}
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            k_str = str(k)
+            full = f"{prefix}.{k_str}" if prefix else k_str
+            if isinstance(v, dict):
+                values.update(_flatten_json_values(v, full))
+            elif isinstance(v, str):
+                values[full] = v
+    return values
+
+
+GERMAN_RESIDUAL_RE = re.compile(
+    r"\b("
+    r"Bitte|Fehler|Warnung|Erfolgreich|erfolgreich|fehlgeschlagen|Löschen|Bearbeiten|"
+    r"Hinzufügen|Ausgaben|Einkommen|Ersparnisse|Kategorie|Betrag|Monat|Jahr|"
+    r"Wiederkehrend|Fixkosten|Überschuss|Datenbank|Sicherung|Abbrechen|Speichern|"
+    r"Übernehmen|Kopieren|Deutsch|Schweiz|Monatslohn|Passwort|Aktuelles|Neues|"
+    r"Namen|anzeigen|auswählen|Sicherheitsstufe|Zeitraum|Optionen|Exportieren|"
+    r"Gespeichert|Ordner|Pfad|Schlüssel|Währung|Sprache|Bedienung|Tabellen|Listen|"
+    r"Umbenennen|Eigenschaften|Unterkategorie|Keine|Hauptkategorie|Benutzer|Statistiken|"
+    r"erlaubt|Öffnen|Schließen|Schliessen|Weiter|Zurück|Eingabe|wiederholen|Aktuelle|Stufe|Wechseln|Schutz|entfernen|Entfernen|Erstellt|Dein|Zwischenablage|Kopiert|Erstellen|speichern|unter|verwenden|Zeile|Aktuell|keine|Neuer|existiert|bereits|Startfehler"
+    r")\b"
+)
+
+
+def _find_german_residual_values(values: Dict[str, str], referenced: Set[str]) -> Dict[str, str]:
+    findings: Dict[str, str] = {}
+    for key in sorted(referenced):
+        if "language_select_dialog" in key:
+            # This dialog intentionally displays all three languages before the
+            # active locale is known. Do not treat it as an EN/FR residual.
+            continue
+        val = values.get(key)
+        if isinstance(val, str) and GERMAN_RESIDUAL_RE.search(val):
+            findings[key] = val
+    return findings
+
+
 def _load_locale_json(path: Path) -> Dict:
     try:
         with path.open("r", encoding="utf-8") as f:
@@ -190,6 +230,7 @@ def main(argv: List[str]) -> int:
 
     # Load locales
     locale_keys: Dict[str, Set[str]] = {}
+    locale_values: Dict[str, Dict[str, str]] = {}
     try:
         for lang in langs:
             p = locales_dir / f"{lang}.json"
@@ -197,6 +238,7 @@ def main(argv: List[str]) -> int:
                 raise RuntimeError(f"Locale fehlt: {p}")
             data = _load_locale_json(p)
             locale_keys[lang] = _flatten_json_keys(data)
+            locale_values[lang] = _flatten_json_values(data)
     except Exception as e:
         print(f"[FATAL] {e}")
         return 2
@@ -262,6 +304,24 @@ def main(argv: List[str]) -> int:
                 out_lines.append(f"  ... (+{len(extra)-80} weitere)")
             out_lines.append("")
 
+    german_residual_by_lang: Dict[str, Dict[str, str]] = {}
+    for lang in langs[1:]:
+        residual = _find_german_residual_values(locale_values.get(lang, {}), referenced)
+        german_residual_by_lang[lang] = residual
+        if residual:
+            out_lines.append(
+                f"[ERROR] {len(residual)} mutmaßlich deutsche Restübersetzung(en) in referenzierten {lang}.json-Werten:"
+            )
+            for k, v in list(residual.items())[:120]:
+                one_line = str(v).replace("\n", " / ")
+                out_lines.append(f"  - {k}: {one_line}")
+            if len(residual) > 120:
+                out_lines.append(f"  ... (+{len(residual)-120} weitere)")
+            out_lines.append("")
+        else:
+            out_lines.append(f"[OK] Keine deutschen Restübersetzungen in referenzierten {lang}.json-Werten")
+            out_lines.append("")
+
     if unused_in_base:
         out_lines.append(
             f"[INFO] {len(unused_in_base)} Key(s) in {base_lang}.json wirken ungenutzt (kein tr()/trf() Treffer):"
@@ -295,7 +355,12 @@ def main(argv: List[str]) -> int:
         _write_report(out_path, report)
         print(f"\nReport geschrieben nach: {out_path}")
 
-    problems = bool(missing_in_base) or any(missing_by_lang.get(l) for l in langs[1:]) or bool(hardcoded)
+    problems = (
+        bool(missing_in_base)
+        or any(missing_by_lang.get(l) for l in langs[1:])
+        or any(german_residual_by_lang.get(l) for l in langs[1:])
+        or bool(hardcoded)
+    )
     return 1 if problems else 0
 
 

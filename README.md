@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.0.32
+# 💰 BudgetManager v2.1.0
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.0.32-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -36,12 +36,22 @@ Alternativ:
 
 ---
 
-## Neu in v2.0.32
+## Neu in v2.1.0
+
+- Zentrale Datumsbereich-Helfer für Monats-/Jahresabfragen; doppelte `_month_bounds()`-Logik entfernt.
+- Tracking, Cockpit, Budgetübersicht, Budgetwarnungen, Vorschlagsengine und KPI-Monatswerte verwenden indexfreundliche halb-offene Datumsbereiche.
+- SQLite-Lock-Timeout konsistent auf 10 Sekunden ausgerichtet.
+- Release-Nachweise aus Fix- und Performance-Runde in `RELEASE_REPORT_v2_1_0.md` konsolidiert.
+- Neue Regressionstests sichern Datumsgrenzen, Timeout-Konfiguration und entfernte Logik-Dubletten ab.
+
+- 13. Monatslohn im Budget-Reiter als eigene Einmaleinkommens-Kategorie erfassbar.
+- Jahreskopie zeigt Fixkosten, wiederkehrende, Pot- und inkrementelle Kategorien zur Prüfung und kann nach Vorjahresmuster verteilen.
+- Null-Bilanz-Regel verhindert widersprüchliche Ersparnis-Senkungsvorschläge.
 
 - Final-Release-Härtung für den In-App-Updater: Frozen-Builds starten jetzt die echten `--check-update`/`--apply-update`-Pfade.
 - Portable-ZIP nutzt stabile Startdateien (`BudgetManager.exe` / `BudgetManager`), während GitHub-Assets weiterhin versioniert bleiben.
 - Windows-Update migriert alte versionierte Portable-Binaries auf den stabilen Startpunkt und startet danach die neue App.
-- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.0.32 synchronisiert.
+- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.1.0 synchronisiert.
 - i18n-Härtung für mehrere dynamische Dialogtexte in Budget, Tracking, Backup, Konto, Tags, Themes und Sparzielen.
 - Konto & Daten sind in einem eigenen Hub gebündelt: Konto verwalten, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
 - Der Datenordner ist frei wählbar; beim Wechsel kann die App bestehende Nutzerdaten sicher kopieren, inklusive Sicherheits-ZIP.
@@ -99,6 +109,8 @@ Diese Version ist als Release-Ready-Source-Candidate gedacht. Vor Veröffentlich
 - Klick auf `Update jetzt ausführen` prüft, lädt und startet die Installation automatisch.
 - Das Update-Fenster zeigt die einzelnen Schritte im Log.
 - Unter Windows wird ein eigenes Update-Helferfenster geöffnet, weil die laufende EXE nicht selbst überschrieben werden kann.
+- Installer-Versionen laden das Setup-Asset und aktualisieren über den Installer, damit Uninstaller, Startmenü und Installationspfad sauber bleiben.
+- Datenordner, Backups, Exporte, Einstellungen und Update-Cache bleiben im gewählten Datenordner erhalten.
 - Der alte irreführende Text `python -m updater.apply_update` nach der Prüfung wurde ersetzt.
 - Bereits vorbereitete, aber veraltete Staging-Updates aktivieren den Installieren-Button nicht mehr.
 
@@ -198,7 +210,7 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.0.32"
+APP_VERSION = "2.1.0"
 APP_RELEASE_DATE = "19. Juni 2026"
 ```
 
@@ -237,12 +249,12 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.0.32 \
-  --release-tag v2.0.32 \
+  --version 2.1.0 \
+  --release-tag v2.1.0 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.0.32-portable.zip \
-  --linux-zip dist/BudgetManager-v2.0.32-portable.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.0.32 \
+  --windows-zip dist/BudgetManager-v2.1.0-portable.zip \
+  --linux-zip dist/BudgetManager-v2.1.0-portable.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0 \
   --out latest.json
 ```
 

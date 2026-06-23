@@ -19,6 +19,7 @@ from PySide6.QtWidgets import (
 )
 
 from model.category_model import CategoryModel, Category
+from model.category_forecast_mode import FORECAST_MODE_AUTO, FORECAST_MODE_INCREMENTAL, FORECAST_MODE_NORMAL, FORECAST_MODE_POT
 from utils.icons import get_icon
 
 
@@ -107,12 +108,21 @@ class CategoryPropertiesDialog(QDialog):
         day_layout.addStretch()
         flags_layout.addLayout(day_layout, 1, 0, 1, 2)
         
+        flags_layout.addWidget(QLabel(tr("forecast.mode.label")), 2, 0)
+        self.forecast_mode = QComboBox()
+        self.forecast_mode.addItem(tr("forecast.mode.auto"), FORECAST_MODE_AUTO)
+        self.forecast_mode.addItem(tr("forecast.mode.pot"), FORECAST_MODE_POT)
+        self.forecast_mode.addItem(tr("forecast.mode.incremental"), FORECAST_MODE_INCREMENTAL)
+        self.forecast_mode.addItem(tr("forecast.mode.normal"), FORECAST_MODE_NORMAL)
+        self.forecast_mode.setToolTip(tr("forecast.mode.tooltip"))
+        flags_layout.addWidget(self.forecast_mode, 2, 1)
+
         # Hinweis
         hint = QLabel(
             tr('auto.views_category_properties_dialog.117_small_i_tipp_wenn_du_einen_faelligk_01c58f1d')
         )
         hint.setWordWrap(True)
-        flags_layout.addWidget(hint, 2, 0, 1, 2)
+        flags_layout.addWidget(hint, 3, 0, 1, 2)
         
         layout.addWidget(flags_group)
         
@@ -155,6 +165,8 @@ class CategoryPropertiesDialog(QDialog):
         self.chk_recurring.setChecked(self.category.is_recurring)
         self.day_spin.setValue(self.category.recurring_day)
         self.day_spin.setEnabled(self.category.is_recurring)
+        idx = self.forecast_mode.findData(getattr(self.category, "forecast_mode", FORECAST_MODE_AUTO))
+        self.forecast_mode.setCurrentIndex(idx if idx >= 0 else 0)
     
     def _on_recurring_toggled(self, checked: bool) -> None:
         self.day_spin.setEnabled(checked)
@@ -204,7 +216,8 @@ class CategoryPropertiesDialog(QDialog):
                 self.category.id,
                 is_fix=is_fix,
                 is_recurring=is_recurring,
-                recurring_day=recurring_day
+                recurring_day=recurring_day,
+                forecast_mode=str(self.forecast_mode.currentData() or FORECAST_MODE_AUTO)
             )
             
             self.category_updated.emit()
@@ -441,6 +454,17 @@ class QuickCategoryDialog(QDialog):
         flags_layout.addWidget(self.chk_recurring)
         flags_layout.addStretch()
         layout.addLayout(flags_layout)
+
+        forecast_layout = QHBoxLayout()
+        forecast_layout.addWidget(QLabel(tr("forecast.mode.label")))
+        self.forecast_mode = QComboBox()
+        self.forecast_mode.addItem(tr("forecast.mode.auto"), FORECAST_MODE_AUTO)
+        self.forecast_mode.addItem(tr("forecast.mode.pot"), FORECAST_MODE_POT)
+        self.forecast_mode.addItem(tr("forecast.mode.incremental"), FORECAST_MODE_INCREMENTAL)
+        self.forecast_mode.addItem(tr("forecast.mode.normal"), FORECAST_MODE_NORMAL)
+        self.forecast_mode.setToolTip(tr("forecast.mode.tooltip"))
+        forecast_layout.addWidget(self.forecast_mode, 1)
+        layout.addLayout(forecast_layout)
         
         # Buttons
         btn_layout = QHBoxLayout()
@@ -493,13 +517,15 @@ class QuickCategoryDialog(QDialog):
             parent_id = self.parent_combo.currentData()
             is_fix = self.chk_fix.isChecked()
             is_recurring = self.chk_recurring.isChecked()
+            forecast_mode = str(self.forecast_mode.currentData() or FORECAST_MODE_AUTO)
             
             self.cat_model.create(
                 typ=typ,
                 name=name,
                 is_fix=is_fix,
                 is_recurring=is_recurring,
-                parent_id=parent_id
+                parent_id=parent_id,
+                forecast_mode=forecast_mode
             )
             
             self.category_created.emit(name, typ)

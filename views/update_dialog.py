@@ -215,7 +215,14 @@ class UpdateDialog(QDialog):
             QMessageBox.critical(self, tr("msg.error"), trf("update.apply_start_failed", error=str(e)))
             return
 
-        clear_check_result()
+        # WICHTIG: last_check.json hier NICHT loeschen. Der soeben abgekoppelt
+        # gestartete apply_update-Prozess liest die Datei ueber
+        # target_staged_version(), um genau die gepruefte Version anzuwenden.
+        # Ein Loeschen an dieser Stelle ist ein Race: der EXE-Bootstrap des
+        # Apply-Prozesses ist langsamer als dieser Aufruf, sodass die Datei vor
+        # dem Lesen verschwindet und apply auf latest_staged_version() (evtl. ein
+        # veralteter, hoeher nummerierter Staging-Ordner) zurueckfaellt.
+        # Der naechste _check() setzt den Zustand ohnehin zurueck.
         self.lbl_status.setText(tr("update.status_applying"))
 
         if self.parent() is not None:

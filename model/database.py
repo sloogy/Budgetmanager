@@ -15,18 +15,21 @@ def _configure_connection(conn: sqlite3.Connection, *, is_memory: bool = False) 
     - foreign_keys=ON  → Fremdschlüssel-Constraints werden geprüft
     - journal_mode=WAL → Write-Ahead-Logging (nur File-DB, nicht :memory:)
     - synchronous=NORMAL → Guter Kompromiss zwischen Speed und Sicherheit
-    - busy_timeout=5000 → 5 Sekunden warten statt sofort "database is locked"
+    - busy_timeout=10000 → 10 Sekunden warten statt sofort "database is locked"
     """
     conn.execute("PRAGMA foreign_keys = ON;")
     if not is_memory:
         conn.execute("PRAGMA journal_mode = WAL;")
         conn.execute("PRAGMA synchronous = NORMAL;")
-    conn.execute("PRAGMA busy_timeout = 5000;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
+    # Kleine Desktop-Datenbanken profitieren von einem RAM-Tempstore;
+    # Sortierungen/Group-Bys im Cockpit/Tracking landen dadurch seltener auf Disk.
+    conn.execute("PRAGMA temp_store = MEMORY;")
 
 
 def open_db(path: str) -> sqlite3.Connection:
     """Öffnet die Haupt-Datenbank mit row_factory und Pragmas."""
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=10.0)
     conn.row_factory = sqlite3.Row
     _configure_connection(conn)
     return conn
@@ -34,7 +37,7 @@ def open_db(path: str) -> sqlite3.Connection:
 
 def open_db_raw(path: str) -> sqlite3.Connection:
     """Öffnet eine Datenbank ohne row_factory (für Management-Operationen)."""
-    conn = sqlite3.connect(path)
+    conn = sqlite3.connect(path, timeout=10.0)
     _configure_connection(conn)
     return conn
 

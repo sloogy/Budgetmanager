@@ -3,7 +3,7 @@ Budget-Erfassungs-Dialog
 ========================
 Dialog zum Erfassen und Bearbeiten von Budget-Einträgen.
 
-Version: 2.0.28 - Mit integrierter Kategorien-Erstellung und sprachneutralen Modi
+Version: 2.0.41 - Mit integrierter Kategorien-Erstellung und sprachneutralen Modi
 - Neue Kategorien können direkt beim Budget-Erfassen erstellt werden
 - Wahlweise als Hauptkategorie oder Unterkategorie
 - Kategorien-Eigenschaften (Fixkosten, Wiederkehrend) direkt setzen
@@ -26,6 +26,7 @@ def _get_months():
 
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from model.budget_modes import BUDGET_MODE_MONTH, BUDGET_MODE_ALL, BUDGET_MODE_RANGE, normalize_budget_mode
+from model.category_forecast_mode import FORECAST_MODE_AUTO, FORECAST_MODE_INCREMENTAL, FORECAST_MODE_NORMAL, FORECAST_MODE_POT
 from utils.money import parse_money, currency_header
 from views.ui_colors import ui_colors
 
@@ -53,6 +54,7 @@ class BudgetEntryRequest:
     is_fix: bool = False
     is_recurring: bool = False
     recurring_day: int = 1
+    forecast_mode: str = FORECAST_MODE_AUTO
 
 
 class BudgetEntryDialog(QDialog):
@@ -152,6 +154,17 @@ class BudgetEntryDialog(QDialog):
         flags_layout.addWidget(self.chk_is_recurring)
         flags_layout.addStretch()
         new_cat_layout.addLayout(flags_layout)
+
+        forecast_layout = QHBoxLayout()
+        forecast_layout.addWidget(QLabel(tr("forecast.mode.label")))
+        self.forecast_mode = QComboBox()
+        self.forecast_mode.addItem(tr("forecast.mode.auto"), FORECAST_MODE_AUTO)
+        self.forecast_mode.addItem(tr("forecast.mode.pot"), FORECAST_MODE_POT)
+        self.forecast_mode.addItem(tr("forecast.mode.incremental"), FORECAST_MODE_INCREMENTAL)
+        self.forecast_mode.addItem(tr("forecast.mode.normal"), FORECAST_MODE_NORMAL)
+        self.forecast_mode.setToolTip(tr("forecast.mode.tooltip"))
+        forecast_layout.addWidget(self.forecast_mode, 1)
+        new_cat_layout.addLayout(forecast_layout)
         
         # Fälligkeitstag
         day_layout = QHBoxLayout()
@@ -439,6 +452,7 @@ class BudgetEntryDialog(QDialog):
         is_fix = self.chk_is_fix.isChecked() if create_new else False
         is_recurring = self.chk_is_recurring.isChecked() if create_new else False
         recurring_day = self.spin_recurring_day.value() if create_new else 1
+        forecast_mode = str(self.forecast_mode.currentData() or FORECAST_MODE_AUTO) if create_new else FORECAST_MODE_AUTO
 
         return BudgetEntryRequest(
             year=int(self.year.value()),
@@ -455,4 +469,5 @@ class BudgetEntryDialog(QDialog):
             is_fix=bool(is_fix),
             is_recurring=bool(is_recurring),
             recurring_day=int(recurring_day),
+            forecast_mode=forecast_mode,
         )

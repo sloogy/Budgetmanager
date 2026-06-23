@@ -36,7 +36,7 @@ def test_mainwindow_registers_account_tab():
     # In Tab-Definition, Sichtbarkeit und Default-Reihenfolge eingehängt
     assert "6: (self.account_tab, tr(\"tab.account\"))" in src
     assert "6: \"account\"" in src
-    assert "default_order = [5, 0, 2, 3, 4, 6]" in src
+    assert "default_order = [5, 0, 1, 2, 3, 4, 6]" in src
 
 
 def test_settings_embeds_same_hub():

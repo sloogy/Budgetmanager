@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Aktuelle Schema-Version
-CURRENT_VERSION = 12
+CURRENT_VERSION = 14
 
 
 def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -57,7 +57,9 @@ def _create_migration_backup(db_path: str, backup_dir: str = None) -> str:
 
     # Backup-Ordner aus Einstellungen oder Standard
     if backup_dir is None:
-        backup_dir = str(Path.home() / "BudgetManager_Backups")
+        from model.app_paths import backups_dir
+
+        backup_dir = str(backups_dir())
 
     backup_path_obj = Path(backup_dir)
     backup_path_obj.mkdir(parents=True, exist_ok=True)
@@ -166,6 +168,14 @@ def migrate_all(
     if old_version < 12:
         _migrate_v11_to_v12(conn)
         migrations_applied.append("v11→v12: Tracking-Quelle für manuell/automatisch")
+
+    if old_version < 13:
+        _migrate_v12_to_v13(conn)
+        migrations_applied.append("v12→v13: Forecast-Modus für Pot/inkrementell")
+
+    if old_version < 14:
+        _migrate_v13_to_v14(conn)
+        migrations_applied.append("v13→v14: Performance-Indizes für Cockpit/Tracking")
 
     # Version setzen
     if migrations_applied:
@@ -670,4 +680,42 @@ def _migrate_v10_to_v11(conn: sqlite3.Connection) -> None:
         )
     """
     )
+    conn.commit()
+
+
+def _migrate_v12_to_v13(conn: sqlite3.Connection) -> None:
+    """Migration v12 → v13: Kategorie-Forecast-Modus.
+
+    ``auto`` bleibt rückwärtskompatibel. Die Engine leitet daraus ab:
+    fix+nicht wiederkehrend = Pot, fix/wiederkehrend = inkrementell.
+    """
+    cols = _cols(conn, "categories")
+    if "forecast_mode" not in cols:
+        conn.execute(
+            "ALTER TABLE categories ADD COLUMN forecast_mode TEXT NOT NULL DEFAULT 'auto';"
+        )
+    conn.commit()
+
+
+def _migrate_v13_to_v14(conn: sqlite3.Connection) -> None:
+    """Migration v13 → v14: zusätzliche Performance-Indizes.
+
+    Beschleunigt die häufigsten Release-Hotspots:
+    - Cockpit-KPIs und Warnungen nach Monatsbereich + Typ/Kategorie
+    - Tracking-Filter nach Jahr/Monat ohne substr(date, ...)
+    - offene Sparziel-Validierung pro Kategorie
+    - budget_warnings im aktuellen Monat
+    """
+    index_defs = [
+        "CREATE INDEX IF NOT EXISTS idx_tracking_date_typ_category ON tracking(date, typ, category)",
+        "CREATE INDEX IF NOT EXISTS idx_tracking_typ_category_date ON tracking(typ, category, date)",
+        "CREATE INDEX IF NOT EXISTS idx_savings_goals_category_status ON savings_goals(category, status)",
+        "CREATE INDEX IF NOT EXISTS idx_budget_warnings_year_month_enabled ON budget_warnings(year, month, enabled)",
+        "CREATE INDEX IF NOT EXISTS idx_categories_flags ON categories(is_fix, is_recurring, typ, name)",
+    ]
+    for stmt in index_defs:
+        try:
+            conn.execute(stmt)
+        except Exception as e:
+            logger.debug("Performance-Index konnte nicht erstellt werden: %s", e)
     conn.commit()

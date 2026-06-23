@@ -27,11 +27,10 @@ from PySide6.QtWidgets import (
 from model.user_model import (
     UserModel, User,
     SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD,
-    SECURITY_LABELS, SECURITY_ICONS,
 )
 from utils.icons import get_icon
 from views.ui_colors import ui_colors
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.i18n import tr, trf, display_typ, db_typ_from_display, display_security_label
 
 
 @dataclass
@@ -730,20 +729,24 @@ class LoginDialog(QDialog):
             QMessageBox.information(self, tr('auto.views_login_dialog.731_info_c75cf25d'), tr("account.keine_benutzer_vorhanden"))
             return
 
-        lines = ["<b>Sicherheits-Checkliste</b><br>"]
+        lines = [f"<b>{tr('security.checklist_title')}</b><br>"]
         for r in report:
             icon = r["security_icon"]
             name = r["display_name"]
-            mode = r["security_label"]
-            protect = "✅" if r["needs_auth"] else "❌ (kein Schutz bei Verlust)"
+            mode = display_security_label(r.get("security", ""))
+            protect = "✅" if r["needs_auth"] else f"❌ ({tr('security.no_loss_protection')})"
             restore = "✅" if r["restore_offered"] else "—"
             db = "✅" if r["db_exists"] else "❌"
+            upgrade = "✅"
+            if r.get("security_upgrade_pending"):
+                upgrade = f"⚠️ {tr('security.upgrade_pending')}"
             lines.append(
                 f"<b>{icon} {name}</b><br>"
-                f"  Modus: {mode}<br>"
-                f"  Verlustschutz: {protect}<br>"
-                f"  Restore-Key: {restore}<br>"
-                f"  DB vorhanden: {db}<br>"
+                f"  {tr('security.mode')}: {mode}<br>"
+                f"  {tr('security.loss_protection')}: {protect}<br>"
+                f"  {tr('security.restore_key')}: {restore}<br>"
+                f"  {tr('security.db_exists')}: {db}<br>"
+                f"  {tr('security.kdf_upgrade')}: {upgrade}<br>"
             )
 
         msg = QMessageBox(self)

@@ -354,6 +354,9 @@ class BudgetModel:
         dst_year: int,
         carry_amounts: bool = True,
         typ: str | None = None,
+        *,
+        use_previous_year_pattern: bool = False,
+        review_overrides: list | None = None,
     ) -> None:
         if typ is None:
             if carry_amounts:
@@ -382,6 +385,21 @@ class BudgetModel:
                     (int(dst_year), int(src_year), typ),
                 )
         self.conn.commit()
+
+        # Jahreswechsel-Sonderregel: Fixkosten, wiederkehrende und
+        # inkrementelle/Pot-Kategorien dürfen nach dem echten Vorjahresmuster
+        # verteilt werden. Das ersetzt nur diese geprüften Kategorien im Zieljahr
+        # und lässt normale flexible Kategorien unverändert.
+        if use_previous_year_pattern:
+            from model.year_copy_rules import apply_year_copy_pattern
+
+            apply_year_copy_pattern(
+                self.conn,
+                src_year=int(src_year),
+                dst_year=int(dst_year),
+                typ=typ,
+                overrides=review_overrides,
+            )
 
     # ── Range-basierte Aggregationen (Zeitraum über mehrere Monate) ──
 

@@ -1,10 +1,22 @@
 # BudgetManager
 
-## Neu in v2.0.32
+
+## Neu in v2.1.0
+
+- 13. Monatslohn mit Auszahlungsmonat und Betrag.
+- Jahreswechsel-Prüfliste für Fixkosten, wiederkehrende Kosten, Pot- und inkrementelle Kategorien.
+- Vorjahresmuster-Verteilung für Jahresbeträge.
+
+- Forecast-Modus je Kategorie: Auto, Pot/Rückstellung, Inkrementell/Jahresrechnung, Normal/Flexibel.
+- Fix ohne Wiederholung wird standardmässig als Pot behandelt, z. B. Franchise/Selbstbehalt.
+- Inkrementell ist explizit wählbar für Jahresrechnungen/Teilzahlungen, z. B. Hausratversicherung.
+- Budgetüberschreitungs-Warnschalter ist jetzt wirksam und steuert Banner sowie Budgetwarner.
+
+## Wichtige Härtungen seit v2.0.36
 
 - Final-Release-Härtung für Update-Dialog, Frozen-CLI und portable ZIP-Struktur.
 - Stabile Startdateien im Portable-ZIP: `BudgetManager.exe` und `BudgetManager`.
-- Doku-/Help-/Manifest-Versionen synchron auf v2.0.32.
+- Doku-/Help-/Manifest-Versionen synchron auf v2.1.0.
 - Zusätzliche dynamische Dialogtexte über i18n statt harter deutscher Strings.
 - Konto-Hub für Konto, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
 - Frei wählbarer Datenordner mit optionaler sicherer Datenübernahme.
@@ -15,7 +27,7 @@
 ## Cockpit-Startseite
 
 Das Cockpit fasst die wichtigsten Punkte zusammen: Monatsstatus, Favoriten, aktive Sparziele, Budget-Ampel, offene Monatsbuchungen und letzte 10 Buchungen. Es ist bewusst kompakt und frei gestaltbar: Bereiche lassen sich im Cockpit oder unter `Ansicht → Anzeigen` ein-/ausblenden. Auch Hauptreiter können ausgeblendet werden, damit Einsteiger nicht von zu vielen Tabs erschlagen werden.
-## v2.0.32 — Feature-Übersicht
+## v2.1.0 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 

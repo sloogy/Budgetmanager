@@ -21,6 +21,7 @@ from updater.common import (
     stable_exe_filename,
     update_target_exe_filename,
     find_staged_root,
+    installation_marker_path,
     is_windows,
     read_check_result,
     staging_dir_for,
@@ -299,13 +300,117 @@ exit /b 1
 
 
 
+def _read_installation_marker() -> dict:
+    """Liest den Installer-Marker neben der App, falls vorhanden."""
+    try:
+        import json
+
+        marker = installation_marker_path()
+        if not marker.is_file():
+            return {}
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception as e:
+        logger.debug("installation.json konnte nicht gelesen werden: %s", e)
+        return {}
+
+
+def _windows_cmd_quote(value: str) -> str:
+    """Escaping fuer Werte, die in set "NAME=..." landen."""
+    return (
+        value.replace("^", "^^")
+        .replace("&", "^&")
+        .replace("|", "^|")
+        .replace("<", "^<")
+        .replace(">", "^>")
+        .replace('\"', '\\\"')
+    )
+
+
+def _build_windows_installer_helper_batch(
+    setup: Path,
+    app_root: Path,
+    data_dir: Path | None,
+    wait_exe: str,
+    log_path: Path,
+) -> str:
+    """Batch-Helfer fuer installierte Windows-Versionen.
+
+    Der Installer darf erst starten, wenn die laufende App wirklich beendet ist,
+    sonst kann die neue EXE nicht sauber ersetzt werden. Danach wird das Setup
+    im Update-Modus gestartet und der bisherige Datenordner explizit uebergeben.
+    """
+    data = str(data_dir) if data_dir is not None else ""
+    template = r'''@echo off
+setlocal enableextensions
+chcp 65001 >nul 2>&1
+title BudgetManager Installer-Update
+
+set "LOGFILE=__LOG__"
+set "SETUP=__SETUP__"
+set "APPDIR=__APPDIR__"
+set "DATADIR=__DATADIR__"
+set "EXENAME=__EXE__"
+set "LAUNCHPATH=__LAUNCHPATH__"
+
+echo [%DATE% %TIME%] Installer-Update gestartet > "%LOGFILE%"
+echo.
+echo   BudgetManager Installer-Update wird vorbereitet - bitte warten...
+echo.
+
+rem --- 1) Warten bis BudgetManager beendet ist ---
+set /a _tries=0
+:waitloop
+tasklist /FI "IMAGENAME eq %EXENAME%" 2>nul | find /I "%EXENAME%" >nul 2>&1
+if errorlevel 1 goto installphase
+set /a _tries+=1
+if %_tries% GEQ 150 goto installphase
+ping -n 2 127.0.0.1 >nul 2>&1
+goto waitloop
+
+:installphase
+echo [%DATE% %TIME%] Starte Setup: %SETUP% >> "%LOGFILE%"
+echo   Starte Setup im Update-Modus...
+"%SETUP%" /SP- /SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /DIR="%APPDIR%" /DATA_DIR="%DATADIR%" /UPDATE_MODE=1 /LOG="%LOGFILE%.setup.log"
+set "RC=%ERRORLEVEL%"
+echo [%DATE% %TIME%] Setup Rueckgabecode=%RC% >> "%LOGFILE%"
+if not "%RC%"=="0" goto failed
+
+echo [%DATE% %TIME%] Installer-Update erfolgreich. >> "%LOGFILE%"
+echo.
+echo   Update abgeschlossen. App wird neu gestartet.
+timeout /t 2 /nobreak >nul 2>&1
+if exist "%LAUNCHPATH%" start "" "%LAUNCHPATH%"
+(goto) 2>nul & del "%~f0"
+exit /b 0
+
+:failed
+echo [%DATE% %TIME%] FEHLER beim Installer-Update: %RC% >> "%LOGFILE%"
+echo.
+echo   Installer-Update fehlgeschlagen (Code %RC%).
+echo   Details siehe: "%LOGFILE%"
+echo.
+pause
+exit /b %RC%
+'''
+    launch_path = str(app_root / stable_exe_filename())
+    return (
+        template
+        .replace("__LOG__", _windows_cmd_quote(str(log_path)))
+        .replace("__SETUP__", _windows_cmd_quote(str(setup)))
+        .replace("__APPDIR__", _windows_cmd_quote(str(app_root)))
+        .replace("__DATADIR__", _windows_cmd_quote(data))
+        .replace("__EXE__", _windows_cmd_quote(wait_exe))
+        .replace("__LAUNCHPATH__", _windows_cmd_quote(launch_path))
+    )
+
+
 def _apply_via_windows_installer(src_root: Path, marker: dict) -> int:
     """Startet eine gestagete Setup-EXE fuer installierte Windows-Versionen.
 
-    Installer-Builds duerfen nicht wie Portable-ZIPs in den App-Ordner kopiert
-    werden: Program Files/Rechte, Uninstaller-Eintrag und Startmenue gehoeren
-    dem Setup. Deshalb startet der Updater hier die neue Setup-EXE und beendet
-    sich danach.
+    Dieser Pfad ersetzt keine Dateien selbst. Er startet nach App-Ende den echten
+    Inno-Installer, damit Programmpfad, Uninstaller und Startmenue-Eintraege
+    korrekt aktualisiert werden.
     """
     if not is_windows():
         print("❌ Installer-Updates sind nur unter Windows erlaubt.")
@@ -316,14 +421,39 @@ def _apply_via_windows_installer(src_root: Path, marker: dict) -> int:
     if not candidates:
         print("❌ Keine Setup-EXE im Staging gefunden.")
         return 11
+
     setup = candidates[0]
-    print(f"⟲ Starte Windows-Installer: {setup}")
-    print("   Folge dem Setup-Fenster. Die App schließt sich jetzt.")
+    install_info = _read_installation_marker()
+    raw_data_dir = str(install_info.get("data_directory", "") or "").strip()
+    data_dir = Path(raw_data_dir) if raw_data_dir else None
+    upd = updates_dir()
+    log_path = upd / "installer_update_apply.log"
+    batch_path = upd / "apply_installer_update.bat"
+    batch_text = _build_windows_installer_helper_batch(
+        setup=setup,
+        app_root=app_dir(),
+        data_dir=data_dir,
+        wait_exe=current_exe_filename(),
+        log_path=log_path,
+    )
+    batch_path.write_text(batch_text, encoding="utf-8")
+
+    print(f"⟲ Starte Windows-Installer-Update: {setup.name}")
+    print("   Die App schließt sich jetzt. Danach startet das Setup im Update-Modus.")
+
+    CREATE_NEW_PROCESS_GROUP = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+    CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0x00000010)
+    creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NEW_CONSOLE
     try:
-        subprocess.Popen([str(setup)], cwd=str(setup.parent), close_fds=True)
+        subprocess.Popen(
+            ["cmd.exe", "/c", str(batch_path)],
+            cwd=str(upd),
+            close_fds=True,
+            creationflags=creationflags,
+        )
     except Exception as e:
-        logger.exception("Windows-Installer konnte nicht gestartet werden")
-        print(f"❌ Windows-Installer konnte nicht gestartet werden: {e}")
+        logger.exception("Windows-Installer-Helfer konnte nicht gestartet werden")
+        print(f"❌ Windows-Installer-Helfer konnte nicht gestartet werden: {e}")
         return 12
     return 0
 
@@ -396,7 +526,7 @@ def main() -> int:
     src_root = find_staged_root(staging_dir)
     marker = read_marker(staging_dir)
 
-    print("BudgetManager Updater (portable) – APPLY")
+    print("BudgetManager Updater – APPLY")
     print(f"App-Ordner: {app_dir()}")
     print(f"Vorbereitete Version: {v}")
     if marker.get("download_url"):

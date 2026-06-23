@@ -24,11 +24,10 @@ from PySide6.QtWidgets import (
 from model.user_model import (
     UserModel, User,
     SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD,
-    SECURITY_LABELS, SECURITY_ICONS,
 )
 from views.ui_colors import ui_colors
 from utils.icons import get_icon
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.i18n import tr, trf, display_typ, db_typ_from_display, display_security_label, display_secret_kind
 
 
 class AccountManagementDialog(QDialog):
@@ -63,8 +62,12 @@ class AccountManagementDialog(QDialog):
         self._header_label = header
 
         # Status-Zeile
-        sec_info = (f"{self.user.security_icon} {self.user.security_label}  •  "
-                    f"Erstellt: {self.user.created[:10]}")
+        sec_info = trf(
+            'auto.views_account_management_dialog.634_value_0_value_1_erstellt_value_2_08181f59',
+            value_0=self.user.security_icon,
+            value_1=display_security_label(self.user.security),
+            value_2=self.user.created[:10],
+        )
         status = QLabel(sec_info)
         status.setAlignment(Qt.AlignCenter)
         status.setStyleSheet(f"color: {ui_colors(self).text_dim}; font-size: 11px; margin-bottom: 6px;")
@@ -216,7 +219,7 @@ class AccountManagementDialog(QDialog):
             return w
 
         is_pin = self.user.is_pin
-        mode_label = "PIN" if is_pin else "Passwort"
+        mode_label = display_secret_kind("pin" if is_pin else "password")
 
         layout.addWidget(QLabel(trf("account.aendere_dein_aktuelles_mode_label", mode_label=mode_label)))
         layout.addSpacing(5)
@@ -291,7 +294,7 @@ class AccountManagementDialog(QDialog):
         new_secret = self.edt_new_secret.text()
         new_secret2 = self.edt_new_secret2.text()
         is_pin = self.user.is_pin
-        mode_label = "PIN" if is_pin else "Passwort"
+        mode_label = display_secret_kind("pin" if is_pin else "password")
 
         if not old_secret:
             QMessageBox.warning(self, tr('dlg.hinweis'),
@@ -360,7 +363,7 @@ class AccountManagementDialog(QDialog):
         current_box = QGroupBox(tr("grp.current_level"))
         cb_layout = QVBoxLayout(current_box)
         self._lbl_current_security = QLabel(
-            f"{self.user.security_icon} {self.user.security_label}"
+            f"{self.user.security_icon} {display_security_label(self.user.security)}"
         )
         self._lbl_current_security.setStyleSheet(
             "font-size: 14px; font-weight: bold; padding: 5px;"
@@ -477,9 +480,11 @@ class AccountManagementDialog(QDialog):
         needs_old = self.user.needs_auth
         self.sec_old_frame.setVisible(needs_old)
         if needs_old:
-            old_label = "Aktuelle PIN:" if self.user.is_pin else "Aktuelles Passwort:"
-            self._lbl_sec_old.setText(old_label)
-            ph = "4–8 Ziffern" if self.user.is_pin else "Passwort eingeben"
+            current_kind = display_secret_kind("pin" if self.user.is_pin else "password")
+            self._lbl_sec_old.setText(
+                trf("account.current_secret_label", mode_label=current_kind)
+            )
+            ph = tr("create_user.pin_placeholder") if self.user.is_pin else tr("login.password_placeholder")
             self.edt_sec_old.setPlaceholderText(ph)
             self.edt_sec_old.setMaxLength(8 if self.user.is_pin else 128)
 
@@ -488,14 +493,18 @@ class AccountManagementDialog(QDialog):
         self.sec_new_frame.setVisible(needs_new)
         if needs_new:
             is_pin_target = (target == SECURITY_PIN)
-            new_label = "Neue PIN:" if is_pin_target else "Neues Passwort:"
-            self._lbl_sec_new.setText(new_label)
-            ph = "4–8 Ziffern" if is_pin_target else "Mindestens 4 Zeichen"
+            new_kind = display_secret_kind("pin" if is_pin_target else "password")
+            self._lbl_sec_new.setText(
+                trf("account.new_secret_label", mode_label=new_kind)
+            )
+            ph = tr("create_user.pin_placeholder") if is_pin_target else tr("create_user.password_placeholder")
             self.edt_sec_new.setPlaceholderText(ph)
             self.edt_sec_new.setMaxLength(8 if is_pin_target else 128)
             self._lbl_sec_new2.setText(tr('create_user.repeat_label'))
             self.edt_sec_new2.setPlaceholderText(
-                "PIN wiederholen" if is_pin_target else "Passwort wiederholen"
+                tr("create_user.pin_repeat_placeholder")
+                if is_pin_target
+                else tr("create_user.password_repeat_placeholder")
             )
             self.edt_sec_new2.setMaxLength(8 if is_pin_target else 128)
 
@@ -512,7 +521,7 @@ class AccountManagementDialog(QDialog):
             else:
                 self.lbl_sec_warn.setVisible(False)
         elif target in (SECURITY_PIN, SECURITY_PASSWORD):
-            kind = "PIN" if target == SECURITY_PIN else "Passwort"
+            kind = display_secret_kind("pin" if target == SECURITY_PIN else "password")
             self.lbl_sec_warn.setText(
                 trf('auto.views_account_management_dialog.525_value_0_oder_restore_key_verlieren__81330d27', value_0=(kind))
             )
@@ -529,7 +538,7 @@ class AccountManagementDialog(QDialog):
             self.btn_sec_apply.setText(tr('auto.views_account_management_dialog.538_aktuelle_stufe_5d6746d9'))
             self.btn_sec_apply.setIcon(QIcon())
         else:
-            target_label = SECURITY_LABELS.get(target, target)
+            target_label = display_security_label(target)
             self.btn_sec_apply.setText(trf('auto.views_account_management_dialog.542_wechseln_zu_value_0_c4af1f8b', value_0=(target_label)))
             self.btn_sec_apply.setIcon(get_icon("🔒"))
 
@@ -558,7 +567,7 @@ class AccountManagementDialog(QDialog):
         if self.user.needs_auth:
             old_secret = self.edt_sec_old.text()
             if not old_secret:
-                mode = "PIN" if self.user.is_pin else "Passwort"
+                mode = display_secret_kind("pin" if self.user.is_pin else "password")
                 QMessageBox.warning(self, tr('dlg.hinweis'),
                                    trf("account.bitte_das_aktuelle_mode", mode=mode))
                 return
@@ -569,13 +578,13 @@ class AccountManagementDialog(QDialog):
             new_secret2 = self.edt_sec_new2.text()
 
             if not new_secret:
-                kind = "PIN" if target == SECURITY_PIN else "Passwort"
+                kind = display_secret_kind("pin" if target == SECURITY_PIN else "password")
                 QMessageBox.warning(self, tr('dlg.hinweis'),
                                    trf("account.bitte_ein_neues_kind", kind=kind))
                 return
 
             if new_secret != new_secret2:
-                kind = "PIN" if target == SECURITY_PIN else "Passwort"
+                kind = display_secret_kind("pin" if target == SECURITY_PIN else "password")
                 QMessageBox.warning(self, tr('dlg.hinweis'),
                                    trf("account.die_kindeingaben_stimmen_nicht", kind=kind))
                 return
@@ -595,7 +604,7 @@ class AccountManagementDialog(QDialog):
         if target == SECURITY_QUICK:
             reply = QMessageBox.warning(
                 self, tr('auto.views_account_management_dialog.606_schutz_entfernen_0233ca15'),
-                "Willst du wirklich den Passwortschutz entfernen?\n\n" +
+                tr("account.confirm_remove_password_protection") + "\n\n" +
                 tr("account.jeder_mit_zugriff_auf"),
                 QMessageBox.Yes | QMessageBox.No
             )
@@ -619,10 +628,15 @@ class AccountManagementDialog(QDialog):
 
             # UI aktualisieren
             self._lbl_current_security.setText(
-                f"{self.user.security_icon} {self.user.security_label}"
+                f"{self.user.security_icon} {display_security_label(self.user.security)}"
             )
             self._status_label.setText(
-                trf('auto.views_account_management_dialog.634_value_0_value_1_erstellt_value_2_08181f59', value_0=(self.user.security_icon), value_1=(self.user.security_label), value_2=(self.user.created[:10]))
+                trf(
+                    'auto.views_account_management_dialog.634_value_0_value_1_erstellt_value_2_08181f59',
+                    value_0=self.user.security_icon,
+                    value_1=display_security_label(self.user.security),
+                    value_2=self.user.created[:10],
+                )
             )
             self.security_changed.emit(target)
 
@@ -634,7 +648,7 @@ class AccountManagementDialog(QDialog):
             # Eingabefelder-Sichtbarkeit aktualisieren
             self._on_security_selection_changed()
 
-            target_label = SECURITY_LABELS.get(target, target)
+            target_label = display_security_label(target)
             if restore_key:
                 self._show_restore_key(restore_key, target_label)
             else:
@@ -644,7 +658,7 @@ class AccountManagementDialog(QDialog):
                 )
         else:
             if self.user.needs_auth:
-                mode = "PIN" if self.user.is_pin else "Passwort"
+                mode = display_secret_kind("pin" if self.user.is_pin else "password")
                 QMessageBox.critical(self, tr("msg.error"),
                                     trf("account.das_aktuelle_mode_ist", mode=mode))
                 self.edt_sec_old.clear()

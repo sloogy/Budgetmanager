@@ -20,6 +20,8 @@ def test_legacy_200k_wrapped_key_still_authenticates_and_upgrades(monkeypatch, t
     importlib.reload(ap)
     importlib.reload(crypto)
     importlib.reload(um)
+    monkeypatch.setattr(crypto, "PBKDF2_ITERATIONS", 1_000)
+    monkeypatch.setattr(um, "PBKDF2_ITERATIONS", 1_000)
 
     secret = "1234"
     salt = crypto.generate_salt()

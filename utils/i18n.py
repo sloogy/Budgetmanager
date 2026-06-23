@@ -25,6 +25,7 @@ import json
 import logging
 import os
 from pathlib import Path
+from model.typ_constants import ALL_TYPEN
 
 logger = logging.getLogger(__name__)
 
@@ -205,6 +206,32 @@ def tr_msg(message) -> str:
     return str(message)
 
 
+
+
+# ── Display-Helfer fuer Sicherheitsstufen ───────────────────────
+
+def display_security_label(security: str) -> str:
+    """Lokalisiert technische Sicherheitsstufenwerte fuer die UI.
+
+    Die Datenhaltung nutzt stabile Werte (quick, pin, password). Diese Funktion
+    verhindert, dass deutsche Model-Labels in EN/FR-Oberflächen durchrutschen.
+    """
+    key_map = {
+        "quick": "security.label.quick",
+        "pin": "security.label.pin",
+        "password": "security.label.password",
+    }
+    return tr(key_map.get(str(security or "").strip().lower(), str(security or "")))
+
+
+def display_secret_kind(security_or_kind: str) -> str:
+    """Lokalisiert PIN/Passwort als Platzhalterwort in Meldungen und Labels."""
+    key = str(security_or_kind or "").strip().lower()
+    if key in {"pin", "security_pin"}:
+        return tr("security.secret.pin")
+    return tr("security.secret.password")
+
+
 # ── Display-Helfer fuer DB-Werte ────────────────────────────────
 
 def display_typ(db_typ: str) -> str:
@@ -222,8 +249,7 @@ def db_typ_from_display(display: str) -> str:
     Wird fuer ComboBox-Auswahl benoetigt, wo der User den
     uebersetzten Namen sieht, aber der DB-Schluessel gebraucht wird.
     """
-    db_types = ["Ausgaben", "Einkommen", "Ersparnisse"]
-    for db_val in db_types:
+    for db_val in ALL_TYPEN:
         if tr(f"typ.{db_val}") == display:
             return db_val
     return display

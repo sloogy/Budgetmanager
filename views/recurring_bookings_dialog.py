@@ -1,4 +1,5 @@
 from __future__ import annotations
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 import logging
 logger = logging.getLogger(__name__)
 
@@ -90,11 +91,11 @@ class RecurringBookingsDialog(QDialog):
         fix_items: list[PendingBooking],
         recurring_items: list[PendingBooking],
         optional_items: list[PendingBooking] | None = None,
-        title: str = "Fixkosten & Wiederkehrende",
+        title: str | None = None,
     ):
         super().__init__(parent)
         self.setModal(True)
-        self.setWindowTitle(title)
+        self.setWindowTitle(title or tr("booking.title_fix_recurring"))
         self.setMinimumSize(950, 500)
 
         # Items mit Sortierinformationen versehen.
@@ -160,9 +161,9 @@ class RecurringBookingsDialog(QDialog):
         status_layout.addWidget(QLabel(tr("lbl.type")))
         self.filter_typ = QComboBox()
         self.filter_typ.addItem(tr("typ.Alle"), "")
-        self.filter_typ.addItem(display_typ("Ausgaben"), "Ausgaben")
-        self.filter_typ.addItem(display_typ("Einkommen"), "Einkommen")
-        self.filter_typ.addItem(display_typ("Ersparnisse"), "Ersparnisse")
+        self.filter_typ.addItem(display_typ(TYP_EXPENSES), TYP_EXPENSES)
+        self.filter_typ.addItem(display_typ(TYP_INCOME), TYP_INCOME)
+        self.filter_typ.addItem(display_typ(TYP_SAVINGS), TYP_SAVINGS)
         self.filter_typ.setToolTip(tr("booking.filter_type_tip"))
         self.filter_typ.currentIndexChanged.connect(lambda _i: self._apply_filters())
         status_layout.addWidget(self.filter_typ)

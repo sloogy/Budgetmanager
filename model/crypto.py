@@ -317,27 +317,77 @@ def restore_key_to_db_key(restore_key: str) -> bytes:
 
 
 # ── Passwort-Hash (für Verifikation ohne DB-Zugriff) ──────────
+#
+# SICHERHEIT (v2.0.41): Der Verifikations-Hash MUSS kryptographisch von der
+# Schluessel-Ableitung getrennt sein. Frueher nutzten ``hash_password`` und
+# ``derive_key_from_secret`` exakt dieselbe PBKDF2-Eingabe (Secret, Salt, 600k,
+# dklen=32). Dadurch war der in ``users.json`` gespeicherte ``pw_hash`` byte-
+# identisch zum Wrapping-Key (nur hex statt base64) – wer die Datei lesen
+# konnte, konnte den db_key OHNE Passwort rekonstruieren und die .enc-DB
+# entschluesseln. Die Domain-Trennung ueber ``PW_VERIFY_CONTEXT`` als
+# Salt-Praefix macht den Hash nutzlos zur Schluesselrueckgewinnung; ein
+# Angreifer muss wieder das Passwort gegen PBKDF2 600k brute-forcen.
+PW_VERIFY_CONTEXT = b"budgetmanager-pw-verify-v2\x00"
 
 
 def hash_password(password: str, salt: bytes, iterations: int | None = None) -> str:
-    """Erzeugt Passwort-Hash zur schnellen Verifikation."""
+    """Erzeugt Passwort-Hash zur schnellen Verifikation.
+
+    Domain-getrennt von der Wrapping-Key-Ableitung (siehe SICHERHEIT oben):
+    der Hash kann nicht zur Rekonstruktion des Wrapping-Keys verwendet werden.
+    """
     raw = hashlib.pbkdf2_hmac(
         "sha256",
         password.encode("utf-8"),
-        salt,
+        PW_VERIFY_CONTEXT + salt,
         int(iterations or PBKDF2_ITERATIONS),
         dklen=32,
     )
     return raw.hex()
 
 
-def verify_password(password: str, salt: bytes, stored_hash: str) -> bool:
-    """Prüft Passwort gegen gespeicherten Hash, inklusive Legacy-PBKDF2-Werte."""
-    candidates = [hash_password(password, salt)]
-    candidates.extend(
-        hash_password(password, salt, iterations=i) for i in LEGACY_PBKDF2_ITERATIONS
+def _legacy_hash_password(password: str, salt: bytes, iterations: int) -> str:
+    """Alter, key-aequivalenter Hash – NUR zur Verifikation bestehender Accounts.
+
+    Identisch zur Wrapping-Key-Eingabe. Wird nie mehr geschrieben; dient nur
+    dazu, vor v2.0.41 angelegte Accounts noch zu erkennen und beim Login auf
+    das domain-getrennte Format zu heben.
+    """
+    raw = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        int(iterations),
+        dklen=32,
     )
-    return any(hmac.compare_digest(candidate, stored_hash) for candidate in candidates)
+    return raw.hex()
+
+
+def is_legacy_password_hash(password: str, salt: bytes, stored_hash: str) -> bool:
+    """True, wenn ``stored_hash`` im alten, key-aequivalenten Format vorliegt.
+
+    Wird beim Login genutzt, um betroffene Accounts (auch solche bereits bei
+    600k Runden) auf das sichere Hash-Format zu migrieren.
+    """
+    if not stored_hash:
+        return False
+    for iterations in (PBKDF2_ITERATIONS, *LEGACY_PBKDF2_ITERATIONS):
+        if hmac.compare_digest(
+            _legacy_hash_password(password, salt, iterations), stored_hash
+        ):
+            return True
+    return False
+
+
+def verify_password(password: str, salt: bytes, stored_hash: str) -> bool:
+    """Prüft Passwort gegen gespeicherten Hash.
+
+    Akzeptiert das neue domain-getrennte Format und – fuer Bestandskonten –
+    die alten key-aequivalenten Hashes (beide PBKDF2-Rundenzahlen).
+    """
+    if hmac.compare_digest(hash_password(password, salt), stored_hash):
+        return True
+    return is_legacy_password_hash(password, salt, stored_hash)
 
 
 # ── Encrypt / Decrypt Bytes ─────────────────────────────────────
@@ -418,7 +468,7 @@ def decrypt_db_from_file(enc_path: str | Path, db_key: bytes) -> sqlite3.Connect
     conn.row_factory = sqlite3.Row
     conn.executescript(dump_sql)
     conn.execute("PRAGMA foreign_keys = ON;")
-    conn.execute("PRAGMA busy_timeout = 5000;")
+    conn.execute("PRAGMA busy_timeout = 10000;")
     return conn
 
 

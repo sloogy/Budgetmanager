@@ -11,7 +11,7 @@
 ; - PyInstaller EXE im dist/ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "2.0.32"
+#define MyAppVersion "2.1.0"
 #define MyAppPublisher "Christian"
 #define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"
@@ -38,6 +38,9 @@ WizardStyle=modern
 PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
 ArchitecturesInstallIn64BitMode=x64
+CloseApplications=force
+RestartApplications=no
+SetupLogging=yes
 
 [Languages]
 Name: "german"; MessagesFile: "compiler:Languages\German.isl"
@@ -61,7 +64,8 @@ Source: "docs\USER_GUIDE*.md"; DestDir: "{app}\docs"; Flags: ignoreversion
 ; Sprachdateien (PFLICHT - ohne diese startet die App nicht)
 Source: "locales\*"; DestDir: "{app}\locales"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Standard-Kategorien (PFLICHT)
+; Statische Standard-Kategorien (keine Nutzerdaten).
+; Nutzer-DB, users.json, Backups, Exporte, Updates und Settings liegen im gewählten Datenordner.
 Source: "data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs onlyifdoesntexist
 
 ; Theme-Profile (PFLICHT - ohne diese kein Theme-System)
@@ -84,8 +88,7 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-Type: filesandordirs; Name: "{userappdata}\BudgetManager"
-Type: filesandordirs; Name: "{localappdata}\BudgetManager"
+; Bewusst kein Löschen von Nutzerdaten: Der gewählte Datenordner bleibt erhalten.
 
 [Code]
 var
@@ -94,6 +97,7 @@ var
   CbLanguage: TNewComboBox;
   CbCurrency: TNewComboBox;
   CbDay: TNewComboBox;
+  PreviousDataDir: String;
 
 { Backslashes und Anführungszeichen für gültiges JSON escapen. }
 function JsonEscape(const S: String): String;
@@ -116,11 +120,74 @@ begin
   L.Caption := ACaption;
 end;
 
+function InstallerUpdateMode: Boolean;
+begin
+  Result := ExpandConstant('{param:UPDATE_MODE|0}') = '1';
+end;
+
+function ExtractJsonStringValue(const Json, Key: String): String;
+var
+  Pattern: String;
+  StartPos: Integer;
+  ValueStart: Integer;
+  ValueEnd: Integer;
+  Rest: String;
+begin
+  Result := '';
+  Pattern := '"' + Key + '":';
+  StartPos := Pos(Pattern, Json);
+  if StartPos = 0 then
+    Exit;
+
+  Rest := Copy(Json, StartPos + Length(Pattern), Length(Json));
+  ValueStart := Pos('"', Rest);
+  if ValueStart = 0 then
+    Exit;
+
+  Delete(Rest, 1, ValueStart);
+  ValueEnd := Pos('"', Rest);
+  if ValueEnd = 0 then
+    Exit;
+
+  Result := Copy(Rest, 1, ValueEnd - 1);
+  StringChangeEx(Result, '\\', '\', True);
+  StringChangeEx(Result, '\"', '"', True);
+end;
+
+function ExistingDataDirFromMarker: String;
+var
+  MarkerFile: String;
+  JsonText: AnsiString;
+begin
+  Result := '';
+  MarkerFile := ExpandConstant('{app}\installation.json');
+  if FileExists(MarkerFile) then
+  begin
+    if LoadStringFromFile(MarkerFile, JsonText) then
+      Result := ExtractJsonStringValue(JsonText, 'data_directory');
+  end;
+end;
+
+function InitialDataDir: String;
+var
+  ParamDataDir: String;
+begin
+  ParamDataDir := ExpandConstant('{param:DATA_DIR|}');
+  if ParamDataDir <> '' then
+    Result := ParamDataDir
+  else if PreviousDataDir <> '' then
+    Result := PreviousDataDir
+  else
+    Result := ExpandConstant('{userdocs}\BudgetManager');
+end;
+
 procedure InitializeWizard;
 var
   y: Integer;
   i: Integer;
 begin
+  PreviousDataDir := ExistingDataDirFromMarker;
+
   { --- Seite 1: Datenverzeichnis (bestehend) --- }
   DataDirPage := CreateInputDirPage(wpSelectDir,
     CustomMessage('DataDirTitle'),
@@ -129,7 +196,7 @@ begin
     CustomMessage('DataDirUninstallNote'),
     False, '');
   DataDirPage.Add('');
-  DataDirPage.Values[0] := ExpandConstant('{userdocs}\BudgetManager');
+  DataDirPage.Values[0] := InitialDataDir;
 
   { --- Seite 2: BudgetManager-Grundeinstellungen --- }
   PrefsPage := CreateCustomPage(DataDirPage.ID,
@@ -191,6 +258,16 @@ begin
   CbDay.ItemIndex := 25;
 end;
 
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := False;
+  if InstallerUpdateMode then
+  begin
+    if (PageID = DataDirPage.ID) or (PageID = PrefsPage.ID) then
+      Result := True;
+  end;
+end;
+
 function GetDataDir(Param: String): String;
 begin
   Result := DataDirPage.Values[0];
@@ -239,18 +316,26 @@ begin
   if CurStep = ssPostInstall then
   begin
     DataDir := DataDirPage.Values[0];
+    if DataDir = '' then
+      DataDir := InitialDataDir;
 
-    { Installationsart-Marker: Der Updater erkennt dadurch den Installer-Pfad
-      und lädt künftig Setup-EXE statt Portable-ZIP. }
+    { Installationsart-Marker: kleiner Bootstrap im Programmordner.
+      Alle veränderlichen Daten liegen im gewählten Datenordner. }
     SaveStringToFile(ExpandConstant('{app}\installation.json'),
       '{' + #13#10 +
       '  "install_type": "windows_installer",' + #13#10 +
-      '  "version": "{#MyAppVersion}"' + #13#10 +
+      '  "version": "{#MyAppVersion}",' + #13#10 +
+      '  "app_directory": "' + JsonEscape(ExpandConstant('{app}')) + '",' + #13#10 +
+      '  "data_directory": "' + JsonEscape(DataDir) + '"' + #13#10 +
       '}', False);
 
-    { Die App liest ihre Einstellungen aus dem App-data-Ordner. }
-    ForceDirectories(ExpandConstant('{app}\data'));
-    SettingsFile := ExpandConstant('{app}\data\budgetmanager_settings.json');
+    { Die App liest ihre Einstellungen bei Installer-Installationen aus dem
+      gewählten Datenordner, nicht aus dem Programmordner-data. }
+    ForceDirectories(DataDir);
+    ForceDirectories(DataDir + '\backups');
+    ForceDirectories(DataDir + '\exports');
+    ForceDirectories(DataDir + '\updates');
+    SettingsFile := DataDir + '\budgetmanager_settings.json';
 
     { Nur beim Erst-Setup schreiben – bestehende Nutzereinstellungen nicht überschreiben. }
     if not FileExists(SettingsFile) then
@@ -263,7 +348,7 @@ begin
         '  "recurring_preferred_day": ' + IntToStr(SelectedPreferredDay) + ',' + #13#10 +
         '  "theme": "modern",' + #13#10 +
         '  "data_directory": "' + JsonEscape(DataDir) + '",' + #13#10 +
-        '  "backup_directory": "' + JsonEscape(DataDir + '\Backups') + '"' + #13#10 +
+        '  "backup_directory": "' + JsonEscape(DataDir + '\backups') + '"' + #13#10 +
         '}';
       SaveStringToFile(SettingsFile, Json, False);
     end;

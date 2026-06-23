@@ -14,6 +14,7 @@ statisch und mit headless Geschäftslogik geprüft:
 from __future__ import annotations
 
 import ast
+import importlib.util
 import json
 import re
 import sqlite3
@@ -94,9 +95,11 @@ def check_i18n_and_guides() -> None:
         missing = base - set(flats[lang])
         assert not missing, f"{lang}.json missing keys: {sorted(missing)[:10]}"
 
-    help_ns: dict = {}
-    exec((ROOT / "views" / "help_content.py").read_text(encoding="utf-8"), help_ns)
-    topics = help_ns["HELP_TOPICS"]
+    spec = importlib.util.spec_from_file_location("budgetmanager_help_content", ROOT / "views" / "help_content.py")
+    assert spec and spec.loader, "help_content.py kann nicht geladen werden"
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    topics = module.HELP_TOPICS
     assert len(topics) >= 15
     for topic in topics:
         for field in ("title", "body"):

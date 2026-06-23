@@ -1,4 +1,4 @@
-# BudgetManager 2.0.32 – User guide
+# BudgetManager 2.1.0 – User guide
 
 ## 1. Core idea
 
@@ -76,7 +76,7 @@ Update paths:
 
 - **Portable Windows/Linux**: downloads the portable ZIP, replaces program files and keeps `data/` and `updates/`.
 - **Direct Windows EXE/Linux binary**: migrates old versioned launch files to stable names.
-- **Windows installer**: downloads the new setup EXE and starts the installer.
+- **Windows installer**: downloads the new setup EXE, waits until the app is closed and runs the installer in update mode. The selected data folder is preserved.
 
 ## 8. Backup and restore key
 

@@ -3,7 +3,7 @@
 Ziele:
 - Im Code nur 2 Fallback-Themes (Standard Hell/Dunkel)
 - Alle weiteren Profile werden als JSON aus ./views/profiles geladen (mitgeliefert)
-- Benutzer-Änderungen werden als Override unter ~/.budgetmanager/profiles gespeichert
+- Benutzer-Änderungen werden als Override im aktiven BudgetManager-Datenordner gespeichert
 
 Damit:
 - keine "Theme-Farbexplosion" durch kaputte Live-Save-Events
@@ -139,7 +139,14 @@ class ThemeManager:
         self.bundled_dir = Path(__file__).resolve().parent / "views" / "profiles"
 
         # User-Overrides
-        self.user_dir = Path.home() / ".budgetmanager" / "profiles"
+        try:
+            from model.app_paths import data_dir
+
+            self.user_dir = data_dir() / "theme_profiles"
+        except Exception:
+            # Fallback nur für sehr frühe Start-/Testphasen; im normalen Betrieb
+            # landen Theme-Overrides im zentralen Datenordner.
+            self.user_dir = Path(__file__).resolve().parent / "data" / "theme_profiles"
         self.user_dir.mkdir(parents=True, exist_ok=True)
 
         self._current_profile: Optional[ThemeProfile] = None
@@ -376,10 +383,7 @@ class ThemeManager:
     def get_type_colors(self) -> Dict[str, str]:
         """Gibt Typfarben zurück – immer mit DB-Schlüsseln (TYP_*) als Keys."""
         p = self.get_current_profile()
-        try:
-            from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
-        except Exception:
-            TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS = "Einkommen", "Ausgaben", "Ersparnisse"
+        from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
         if not p:
             return {
                 TYP_INCOME: "#2ecc71",
@@ -570,9 +574,14 @@ QStatusBar {{ background-color: {bg_panel}; color: {text_dim}; border-top: 1px s
 
     def _append_error_log(self, name: str, path: str, msg: str) -> None:
         try:
-            log_path = Path.home() / ".budgetmanager" / "theme_profile_errors.log"
+            try:
+                from model.app_paths import data_dir
+
+                log_path = data_dir() / "theme_profile_errors.log"
+            except Exception:
+                log_path = Path(__file__).resolve().parent / "data" / "theme_profile_errors.log"
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(f"[{name}] {path}: {msg}\n")
         except Exception as e:
-            logger.debug("log_path = Path.home() / '.budgetmanager' / 'theme: %s", e)
+            logger.debug("Theme-Profil-Fehlerlog konnte nicht geschrieben werden: %s", e)

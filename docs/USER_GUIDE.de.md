@@ -1,4 +1,4 @@
-# BudgetManager 2.0.32 – Benutzeranleitung
+# BudgetManager 2.1.0 – Benutzeranleitung
 
 ## 1. Grundidee
 
@@ -78,7 +78,7 @@ Updatewege:
 
 - **Portable Windows/Linux**: lädt das portable ZIP, ersetzt Programmdateien und lässt `data/` sowie `updates/` bestehen.
 - **Direkte Windows-EXE/Linux-Binary**: migriert alte versionierte Startdateien auf stabile Namen.
-- **Windows Installer**: lädt die neue Setup-EXE und startet den Installer.
+- **Windows Installer**: lädt die neue Setup-EXE, wartet bis die App geschlossen ist und startet den Installer im Update-Modus. Der gewählte Datenordner bleibt erhalten.
 
 ## 8. Backup und Restore-Key
 

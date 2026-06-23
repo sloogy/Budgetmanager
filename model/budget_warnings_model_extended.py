@@ -8,6 +8,7 @@ from typing import List, Dict, Optional
 from datetime import date
 
 from model.budget_suggestion_engine import BudgetSuggestionEngine
+from model.date_ranges import month_bounds
 from model.typ_constants import (
     TYP_INCOME,
     TYP_EXPENSES,
@@ -152,6 +153,16 @@ class BudgetWarningsModelExtended:
         Returns:
             Liste von BudgetExceedance-Objekten mit Vorschlägen
         """
+        try:
+            from settings import Settings
+
+            if not bool(Settings().get("warn_budget_overrun", False)):
+                self._auto_generated = False
+                return []
+        except Exception:
+            # Bei Settings-Problemen lieber fail-open, damit manuelle Warnprüfungen nicht verschwinden.
+            pass
+
         # Explizit gespeicherte Warnungen holen
         warnings = self.get_warnings(year, month)
 
@@ -217,11 +228,7 @@ class BudgetWarningsModelExtended:
             budget = float(budget_row[0])
 
             # Ausgaben abrufen (nur für den Monat)
-            start_date = f"{year:04d}-{month:02d}-01"
-            if month == 12:
-                end_date = f"{year+1:04d}-01-01"
-            else:
-                end_date = f"{year:04d}-{month+1:02d}-01"
+            start_date, end_date = month_bounds(year, month)
 
             cur = self.conn.execute(
                 """
@@ -308,11 +315,7 @@ class BudgetWarningsModelExtended:
             budget = float(budget_row[0])
 
             # Ausgaben holen
-            start = f"{check_year:04d}-{check_month:02d}-01"
-            if check_month == 12:
-                end = f"{check_year+1:04d}-01-01"
-            else:
-                end = f"{check_year:04d}-{check_month+1:02d}-01"
+            start, end = month_bounds(check_year, check_month)
 
             cur = self.conn.execute(
                 """
@@ -460,11 +463,7 @@ class BudgetWarningsModelExtended:
             budget = float(budget_row[0])
 
             # Ausgaben holen
-            start = f"{check_year:04d}-{check_month:02d}-01"
-            if check_month == 12:
-                end = f"{check_year+1:04d}-01-01"
-            else:
-                end = f"{check_year:04d}-{check_month+1:02d}-01"
+            start, end = month_bounds(check_year, check_month)
 
             cur = self.conn.execute(
                 """

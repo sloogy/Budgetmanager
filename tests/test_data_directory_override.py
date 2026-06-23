@@ -5,7 +5,7 @@ Qt-frei. Prüft:
 - Mit gesetztem absolutem data_directory -> dieser Ordner
 - Leerer Wert -> portabel
 - Relativer Wert -> relativ zu app_dir aufgelöst
-- settings_path() bleibt IMMER portabel (Bootstrap, kein Zirkelbezug)
+- settings_path() bleibt portable bei Source/ZIP, liegt aber bei Installer im gewählten Datenordner
 """
 from __future__ import annotations
 
@@ -65,15 +65,35 @@ def test_relative_data_directory_resolved_against_app_dir(monkeypatch, tmp_path)
     assert ap.data_dir() == (app_dir / "userdata" / "budget").resolve()
 
 
-def test_settings_path_always_portable(monkeypatch, tmp_path):
+def test_settings_path_portable_for_source_even_with_data_override(monkeypatch, tmp_path):
     app_dir = tmp_path / "app"
     target = tmp_path / "woanders"
     _write_settings(app_dir, {"data_directory": str(target)})
     ap = _fresh_app_paths(monkeypatch, app_dir)
     # Datenordner ist umgeleitet ...
     assert ap.data_dir() == target
-    # ... aber die Settings-Datei bleibt portabel im {app}/data Ordner.
+    # ... aber Source/Portable liest die Bootstrap-Settings weiterhin aus {app}/data.
     assert ap.settings_path() == app_dir / "data" / "budgetmanager_settings.json"
+
+
+def test_installer_settings_and_data_stay_in_selected_data_dir(monkeypatch, tmp_path):
+    app_dir = tmp_path / "app"
+    selected = tmp_path / "selected_data"
+    app_dir.mkdir(parents=True)
+    (app_dir / "installation.json").write_text(
+        json.dumps({
+            "install_type": "windows_installer",
+            "version": "2.0.33",
+            "data_directory": str(selected),
+        }),
+        encoding="utf-8",
+    )
+    ap = _fresh_app_paths(monkeypatch, app_dir)
+
+    assert ap.settings_path() == selected / "budgetmanager_settings.json"
+    assert ap.data_dir() == selected
+    assert ap.backups_dir() == selected / "backups"
+    assert ap.updates_dir() == selected / "updates"
 
 
 def test_broken_settings_file_falls_back_to_portable(monkeypatch, tmp_path):

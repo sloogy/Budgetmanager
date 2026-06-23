@@ -216,6 +216,7 @@ class DatabaseManagementModel:
                     is_fix INTEGER DEFAULT 0,
                     is_recurring INTEGER DEFAULT 0,
                     recurring_day INTEGER DEFAULT 1,
+                    forecast_mode TEXT NOT NULL DEFAULT 'auto',
                     is_favorite INTEGER DEFAULT 0,
                     UNIQUE(typ, name),
                     FOREIGN KEY (parent_id) REFERENCES categories(id)

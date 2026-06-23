@@ -1,5 +1,7 @@
 from __future__ import annotations
 import logging
+from pathlib import Path
+
 logger = logging.getLogger(__name__)
 
 from updater.common import (
@@ -18,6 +20,7 @@ from updater.common import (
     sha256_file,
     safe_extract_zip,
     staging_dir_for,
+    prune_other_staging,
     write_staged_marker,
     find_staged_root,
     write_check_result,
@@ -29,7 +32,7 @@ def main() -> int:
     import sys
     gui_mode = "--gui" in sys.argv
     current = read_current_version()
-    print(f"BudgetManager Updater (portable)\nAktuell: {current}")
+    print(f"BudgetManager Updater\nAktuell: {current}")
 
     try:
         manifest = fetch_manifest(DEFAULT_MANIFEST_URL)
@@ -81,7 +84,11 @@ def main() -> int:
         write_check_result({"available": False, "error": f"Download fehlgeschlagen: {e}", "current": current, "remote": remote})
         return 4
 
-    # Checksum
+    # Checksum – FAIL-CLOSED (Sicherheits-Härtung v2.0.36):
+    # Ein Auto-Update darf nur mit nachgewiesener Integrität installiert werden.
+    # Fehlt der SHA256 im Manifest, wird das Update abgelehnt statt blind
+    # akzeptiert. Der GitHub-Build setzt für jedes Asset immer einen echten
+    # SHA256 ein, daher blockiert das keine legitimen Releases.
     if asset.sha256:
         actual = sha256_file(zip_path)
         if actual.lower() != asset.sha256.lower():
@@ -92,7 +99,14 @@ def main() -> int:
             return 5
         print("✓ SHA256 OK")
     else:
-        print("⚠️  Keine SHA256 im Manifest – Download wird ohne Integritätscheck akzeptiert")
+        print("❌ Kein SHA256 im Manifest – Update aus Sicherheitsgründen abgelehnt")
+        write_check_result({
+            "available": False,
+            "error": "Kein SHA256 im Manifest – Update aus Sicherheitsgründen abgelehnt",
+            "current": current,
+            "remote": remote,
+        })
+        return 5
 
     # Extract staging
     staging = staging_dir_for(remote)
@@ -130,7 +144,14 @@ def main() -> int:
                 #    unter dem die App installiert ist (z.B. BudgetManager.exe).
                 import shutil
 
-                target_name = update_target_exe_filename()
+                # Standalone-EXE: die exakt laufende Datei ersetzen, damit
+                # vorhandene Verknüpfungen/Doppelklicks weiter funktionieren.
+                # Portable-ZIPs enthalten stabile Namen und laufen weiter über
+                # update_target_exe_filename().
+                if asset_key == "direct_windows_exe":
+                    target_name = current_exe_filename()
+                else:
+                    target_name = update_target_exe_filename()
                 target = staging / target_name
                 shutil.copy2(zip_path, target)
                 # Unter Linux: Ausführbar-Bit setzen (geht unter Windows ins Leere)
@@ -150,6 +171,12 @@ def main() -> int:
             write_check_result({"available": False, "error": f"Staging fehlgeschlagen: {e}", "current": current, "remote": remote})
             logger.exception("Staging fehlgeschlagen")
             return 6
+
+    # Veraltete Staging-Ordner/Cache entfernen, damit der sichere Fallback in
+    # apply_update (latest_staged_version) niemals eine alte, hoeher nummerierte
+    # Version aufgreift und der Update-Ordner nicht unbegrenzt waechst. Die
+    # lokalen Pfade respektieren ein etwaiges Monkeypatching in Tests.
+    prune_other_staging(staging, zip_path)
 
     write_check_result({
         "available": True,

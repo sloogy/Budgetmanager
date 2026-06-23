@@ -24,6 +24,7 @@ from model.typ_constants import (
     ALL_TYPEN,
 )
 from model.database import db_transaction
+from model.date_ranges import month_bounds, year_bounds
 from model.savings_goals_model import (
     STATUS_RELEASED,
     STATUS_SAVING,
@@ -76,16 +77,22 @@ class TrackingModel:
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
         self.undo = UndoRedoModel(conn)
+        self._cols_cache: dict[str, set[str]] = {}
 
     def _cols(self, table: str) -> set[str]:
+        cached = self._cols_cache.get(table)
+        if cached is not None:
+            return cached
         try:
-            return {
+            cols = {
                 str(r[1])
                 for r in self.conn.execute(f"PRAGMA table_info({table})").fetchall()
             }
         except Exception as e:
             logger.debug("_cols(%s): %s", table, e)
-            return set()
+            cols = set()
+        self._cols_cache[table] = cols
+        return cols
 
     def _has_source_col(self) -> bool:
         return "source" in self._cols("tracking")
@@ -263,10 +270,11 @@ class TrackingModel:
         self, *, year: int, month: int, typ: str, category: str
     ) -> bool:
         """True, wenn im gegebenen Monat bereits mindestens 1 Eintrag für typ+category existiert."""
-        ym = f"{int(year):04d}-{int(month):02d}"
+        start, end = month_bounds(year, month)
         row = self.conn.execute(
-            "SELECT 1 FROM tracking WHERE typ=? AND category=? AND substr(date,1,7)=? LIMIT 1",
-            (typ, category, ym),
+            "SELECT 1 FROM tracking "
+            "WHERE date >= ? AND date < ? AND typ=? AND category=? LIMIT 1",
+            (start, end, typ, category),
         ).fetchone()
         return bool(row)
 
@@ -381,8 +389,10 @@ class TrackingModel:
             params.append(search_pattern)
 
         if year is not None:
-            where_parts.append("substr(date,1,4) = ?")
-            params.append(f"{int(year):04d}")
+            start, end = year_bounds(year)
+            where_parts.append("date >= ?")
+            where_parts.append("date < ?")
+            params.extend([start, end])
 
         # Tag-Filter: über Subquery auf entry_tags
         if tag_id is not None:
@@ -578,12 +588,18 @@ class TrackingModel:
     def sum_by_typ(
         self, year: int | None = None, month: int | None = None
     ) -> dict[str, float]:
-        where = []
-        args = []
-        if year is not None:
-            where.append("substr(date,1,4)=?")
-            args.append(f"{int(year):04d}")
-        if month is not None:
+        where: list[str] = []
+        args: list[object] = []
+        if year is not None and month is not None:
+            start, end = month_bounds(year, month)
+            where.extend(["date >= ?", "date < ?"])
+            args.extend([start, end])
+        elif year is not None:
+            start, end = year_bounds(year)
+            where.extend(["date >= ?", "date < ?"])
+            args.extend([start, end])
+        elif month is not None:
+            # Kein Jahr angegeben: Monatsvergleich über alle Jahre bleibt bewusst möglich.
             where.append("substr(date,6,2)=?")
             args.append(f"{int(month):02d}")
         w = ("WHERE " + " AND ".join(where)) if where else ""
@@ -595,11 +611,7 @@ class TrackingModel:
 
     def get_month_total(self, year: int, month: int, typ: str, category: str) -> float:
         """Gibt die Summe aller Buchungen für eine Kategorie in einem Monat zurück."""
-        start_date = f"{year:04d}-{month:02d}-01"
-        if month == 12:
-            end_date = f"{year + 1:04d}-01-01"
-        else:
-            end_date = f"{year:04d}-{month + 1:02d}-01"
+        start_date, end_date = month_bounds(year, month)
         cur = self.conn.execute(
             "SELECT COALESCE(SUM(amount), 0) AS total FROM tracking "
             "WHERE date >= ? AND date < ? AND typ = ? AND category = ?",
@@ -611,12 +623,18 @@ class TrackingModel:
     def sum_by_category(
         self, typ: str, year: int | None = None, month: int | None = None
     ) -> dict[str, float]:
-        where = ["typ=?"]
-        args = [typ]
-        if year is not None:
-            where.append("substr(date,1,4)=?")
-            args.append(f"{int(year):04d}")
-        if month is not None:
+        where: list[str] = ["typ=?"]
+        args: list[object] = [typ]
+        if year is not None and month is not None:
+            start, end = month_bounds(year, month)
+            where.extend(["date >= ?", "date < ?"])
+            args.extend([start, end])
+        elif year is not None:
+            start, end = year_bounds(year)
+            where.extend(["date >= ?", "date < ?"])
+            args.extend([start, end])
+        elif month is not None:
+            # Kein Jahr angegeben: Monatsvergleich über alle Jahre bleibt bewusst möglich.
             where.append("substr(date,6,2)=?")
             args.append(f"{int(month):02d}")
         w = "WHERE " + " AND ".join(where)
@@ -627,8 +645,9 @@ class TrackingModel:
         return {str(r["category"]): float(r["s"] or 0.0) for r in cur.fetchall()}
 
     def sum_by_month(self, year: int, typ: str | None = None) -> dict[int, float]:
-        where = ["substr(date,1,4)=?"]
-        args = [f"{int(year):04d}"]
+        start, end = year_bounds(year)
+        where: list[str] = ["date >= ?", "date < ?"]
+        args: list[object] = [start, end]
         if typ is not None:
             where.append("typ=?")
             args.append(typ)

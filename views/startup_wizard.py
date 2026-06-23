@@ -671,7 +671,7 @@ class StartupWizard(QDialog):
         mem_conn = sqlite3.connect(":memory:")
         mem_conn.executescript(dump_sql)
         mem_conn.execute("PRAGMA foreign_keys = ON;")
-        mem_conn.execute("PRAGMA busy_timeout = 5000;")
+        mem_conn.execute("PRAGMA busy_timeout = 10000;")
 
         try:
             encrypt_db_to_file(mem_conn, dest_enc, db_key, salt)

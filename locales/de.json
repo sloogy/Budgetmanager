@@ -101,7 +101,15 @@
     "show_tabs": "Reiter ein-/ausblenden",
     "cockpit_panels": "Cockpit-Bereiche",
     "account_data": "Konto & Daten",
-    "account_data_tip": "Konto, Speicherort, Backup und Zurücksetzen an einem Ort"
+    "account_data_tip": "Konto, Speicherort, Backup und Zurücksetzen an einem Ort",
+    "show_log": "Log anzeigen…",
+    "show_log_tip": "Öffnet die aktuelle BudgetManager-Logdatei.",
+    "show_crash_log": "Crash-Log anzeigen…",
+    "show_crash_log_tip": "Öffnet die Low-Level-Crashdiagnose.",
+    "open_diagnostics_folder": "Diagnoseordner öffnen",
+    "open_diagnostics_folder_tip": "Öffnet den Ordner mit Logs und Diagnoseberichten.",
+    "create_diagnostic_report": "Fehlerbericht erstellen…",
+    "create_diagnostic_report_tip": "Erstellt lokal ein ZIP mit Logs, Systeminfo und bereinigten Einstellungen."
   },
   "tab": {
     "budget": "Budget",
@@ -692,7 +700,9 @@
     "fullscreen_disabled": "Vollbildmodus deaktiviert",
     "window_maximized": "Fenster maximiert",
     "window_normalized": "Fenster normalisiert",
-    "theme_changed_to": "Theme geändert zu: {theme}"
+    "theme_changed_to": "Theme geändert zu: {theme}",
+    "categories_tab_enabled": "Kategorien-Tab aktiviert",
+    "categories_tab_disabled": "Kategorien-Tab ausgeblendet"
   },
   "chk": {
     "autosave": "Auto-Speichern",
@@ -789,7 +799,14 @@
     "data_dir_migrate_failed_title": "Übernahme nicht möglich",
     "data_dir_migrate_failed_msg": "Die Daten konnten nicht übernommen werden: {error}\n\nDer Speicherort wurde nicht geändert; Ihre bisherigen Daten bleiben aktiv.",
     "data_dir_target_has_data_msg": "Der gewählte Ordner enthält bereits Daten. Diese werden nach einem Neustart verwendet. Ihre bisherigen Daten wurden nicht verändert.",
-    "account_data": "Konto & Daten"
+    "account_data": "Konto & Daten",
+    "warn_budget_overrun_tooltip": "Wenn aktiv, warnt BudgetManager bei Budgetüberschreitungen, Deckungslücken und automatisch erkannten Überziehungen. Wenn aus, bleiben diese Hinweise still.",
+    "zero_balance_rule": "Sanfte Null-Bilanz-Regel aktivieren",
+    "zero_balance_rule_tip": "Behandelt Einkommen als Topf: Ausgaben und Ersparnisse laufen dagegen. Erstellt Vorschläge, erzwingt aber keine automatische Anpassung.",
+    "budget_surplus_strategy": "Überschuss verwenden für",
+    "budget_surplus_strategy_tip": "Legt fest, ob regelmässige Überschüsse bevorzugt in Ersparnisse vorgeschlagen oder als Übertrag in den nächsten Monat angezeigt werden.",
+    "surplus_strategy_savings": "Ersparnisse erhöhen",
+    "surplus_strategy_carryover": "In nächsten Monat übertragen"
   },
   "radio": {
     "cat_manager": "Kategorien-Manager verwenden (im Programm)",
@@ -1309,7 +1326,8 @@
     "username_label": "Benutzername:",
     "current_secret_label": "Aktuelles {mode_label}:",
     "new_secret_label": "Neues {mode_label}:",
-    "repeat_secret_label": "Wiederholen:"
+    "repeat_secret_label": "Wiederholen:",
+    "confirm_remove_password_protection": "Willst du wirklich den Passwortschutz entfernen?"
   },
   "backup": {
     "btn_restore": "Backup wiederherstellen",
@@ -1452,7 +1470,13 @@
     "btn_releases": "Release-Seite öffnen",
     "btn_update_now": "Jetzt aktualisieren & neu starten",
     "confirm_apply_title": "Update installieren?",
-    "confirm_apply_text": "Die Anwendung wird geschlossen, das Update angewendet und die App danach automatisch neu gestartet.\n\nJetzt fortfahren?"
+    "confirm_apply_text": "Die Anwendung wird geschlossen, das Update angewendet und die App danach automatisch neu gestartet.\n\nJetzt fortfahren?",
+    "startup_status_available": "Update {version} verfügbar.",
+    "startup_available_title": "Update verfügbar",
+    "startup_available_text": "Es ist eine neue Version verfügbar.\n\nInstalliert: {current}\nVerfügbar: {remote}",
+    "startup_available_info": "Beim Start wurde nur geprüft. Herunterladen und Installieren startet erst im Update-Dialog.",
+    "startup_btn_open": "Update-Dialog öffnen",
+    "startup_btn_later": "Später"
   },
   "dbmgmt": {
     "stats_header": "📊 <b>Aktuelle Statistiken:</b><br><br>",
@@ -2083,7 +2107,17 @@
   "copy": {
     "src_year": "Quelljahr:",
     "dst_year": "Zieljahr:",
-    "scope": "Bereich:"
+    "scope": "Bereich:",
+    "use_previous_pattern": "Fixkosten/Wiederkehrendes nach Vorjahresmuster verteilen",
+    "use_previous_pattern_tip": "Übernimmt geprüfte Jahreswechsel-Kategorien ins Zieljahr und verteilt den Jahresbetrag nach dem tatsächlichen Monatsmuster des Quelljahres.",
+    "review_info": "Prüfliste für Jahreswechsel: Fixkosten, wiederkehrende Kosten, Pot- und inkrementelle Kategorien. Haken entfernen = im Zieljahr auf 0 setzen. Jahresbetrag anpassen = neues Jahr mit geändertem Betrag übernehmen.",
+    "include": "Übernehmen",
+    "flags": "Regel",
+    "src_budget_total": "Budget Quelljahr",
+    "src_actual_total": "Gebucht Quelljahr",
+    "dst_annual_amount": "Jahresbetrag Zieljahr",
+    "flag_fix": "Fix",
+    "flag_recurring": "Wiederkehrend"
   },
   "currency": {
     "CHF": "CHF – Schweizer Franken",
@@ -2244,7 +2278,8 @@
     "filter_type_tip": "Filtert die Autobuchungs-Liste nach Einnahmen, Ausgaben, Ersparnissen oder allen Konten.",
     "filter_kind_label": "Art:",
     "filter_kind_all": "Alle Arten",
-    "filter_kind_tip": "Filtert nach optionalen Posten, Wiederkehrend, Fix/variabel oder echten Fixkosten."
+    "filter_kind_tip": "Filtert nach optionalen Posten, Wiederkehrend, Fix/variabel oder echten Fixkosten.",
+    "title_fix_recurring": "Fixkosten & Wiederkehrende"
   },
   "col": {
     "typ": "Typ",
@@ -2326,7 +2361,8 @@
     }
   },
   "about": {
-    "html": "<h2>{app_name}</h2>\n<p><b>Version:</b> {version}</p>\n<p><b>Entwickelt mit:</b> PySide6 (Qt für Python)</p>\n<p><b>Datenbank:</b> SQLite</p>\n<br>\n<p>Ein einfacher Budgetmanager zur Verwaltung von:</p>\n<ul>\n  <li>Budget-Planung nach Kategorien</li>\n  <li>Tracking von Einnahmen und Ausgaben</li>\n  <li>Visualisierung und Auswertung</li>\n  <li>Sparziele und Favoriten</li>\n  <li>Tags und Budgetwarnungen</li>\n</ul>\n<br>\n<p><b>Highlights {app_version}:</b></p>\n<ul>\n  <li>Gehärteter Portable-Updater</li>\n  <li>Stabile Windows-/Linux-Startdateien im Portable-ZIP</li>\n  <li>Konto-Hub und wählbarer Datenordner</li>\n  <li>Budget-, Tracking- und i18n-Härtungen</li>\n</ul>"
+    "html": "<h2>{app_name}</h2>\n<p><b>Version:</b> {version}</p>\n<p><b>Entwickelt mit:</b> PySide6 (Qt für Python)</p>\n<p><b>Datenbank:</b> SQLite</p>\n<br>\n<p>Ein einfacher Budgetmanager zur Verwaltung von:</p>\n<ul>\n  <li>Budget-Planung nach Kategorien</li>\n  <li>Tracking von Einnahmen und Ausgaben</li>\n  <li>Visualisierung und Auswertung</li>\n  <li>Sparziele und Favoriten</li>\n  <li>Tags und Budgetwarnungen</li>\n</ul>\n<br>\n<p><b>Highlights {app_version}:</b></p>\n<ul>\n  <li>Gehärteter Portable-Updater</li>\n  <li>Stabile Windows-/Linux-Startdateien im Portable-ZIP</li>\n  <li>Konto-Hub und wählbarer Datenordner</li>\n  <li>Budget-, Tracking- und i18n-Härtungen</li>\n</ul>",
+    "title": "Über {app_name} {version}"
   },
   "budget_adjustment": {
     "header": {
@@ -2378,7 +2414,7 @@
       "settings": "Einstellungen öffnen",
       "quit": "Programm beenden",
       "tab_budget": "Zum Budget-Tab wechseln",
-      "tab_categories": "Zum Kategorien-Tab wechseln",
+      "tab_categories": "Kategorien-Tab öffnen oder Kategorien-Manager anzeigen",
       "tab_tracking": "Zum Tracking-Tab wechseln",
       "tab_overview": "Zur Übersicht wechseln",
       "current_year": "Aktuelles Jahr laden",
@@ -2390,7 +2426,90 @@
       "import": "Import-Dialog öffnen",
       "favorites": "Favoriten-Übersicht",
       "fullscreen": "Vollbild umschalten",
-      "maximize": "Fenster maximieren"
+      "maximize": "Fenster maximieren",
+      "tab_cockpit": "Zum Cockpit wechseln",
+      "tab_savings": "Zu Sparzielen wechseln",
+      "category_manager": "Kategorien-Manager öffnen",
+      "tags_manager": "Tags-Manager öffnen",
+      "budget_warnings": "Budgetwarnungen / Vorschläge öffnen",
+      "updates": "Update-Dialog öffnen",
+      "edit_add": "Neuen Eintrag im aktiven Bereich anlegen",
+      "edit_edit": "Auswahl im aktiven Bereich bearbeiten",
+      "edit_delete": "Auswahl im aktiven Bereich löschen",
+      "book_fixcosts": "Fällige Fixkosten buchen"
     }
+  },
+  "forecast": {
+    "mode": {
+      "label": "Forecast-Modus",
+      "short": "Forecast",
+      "auto": "Auto",
+      "pot": "Pot / Rückstellung",
+      "incremental": "Inkrementell / Jahresrechnung",
+      "normal": "Normal / flexibel",
+      "tooltip": "Steuert Budgetvorschläge: Auto behandelt „Fix ohne Wiederholung“ als Pot und „Fix/Wiederkehrend“ als inkrementell. Pot = ein Topf pro Zeitraum; inkrementell = unregelmäßige Jahres-/Teilzahlungen mit 0-Monats-Schutz."
+    }
+  },
+  "balance": {
+    "carryover_label": "Übertrag nächster Monat",
+    "uncovered_label": "Restdefizit prüfen",
+    "surplus_to_savings": "Einkommenstopf: {amount} Überschuss. Vorschlag: „{category}” von {current} auf {suggested} erhöhen.",
+    "surplus_to_carryover": "Einkommenstopf: {amount} Überschuss. Vorschlag: als Übertrag in den nächsten Monat mitnehmen.",
+    "no_savings_category": "Einkommenstopf: {amount} Überschuss. Keine Spar-Kategorie gefunden – als Übertrag vormerken oder zuerst eine Ersparnis-Kategorie anlegen.",
+    "deficit_reduce_savings": "Einkommenstopf negativ: {amount} aus Ersparnis „{category}” nehmen/reduzieren ({current} → {suggested}).",
+    "deficit_reduce_flexible": "Einkommenstopf negativ: {amount} bei flexibler Ausgabe „{category}” reduzieren ({current} → {suggested}).",
+    "leftover_deficit": "Nach Ersparnissen/flexiblen Kosten bleibt {amount} ungedeckt. Einkommen erhöhen oder Planung manuell prüfen."
+  },
+  "income13": {
+    "button": "13. Lohn",
+    "tip": "13. Monatslohn als einmaliges Einkommen im Auszahlungsmonat eintragen",
+    "title": "13. Monatslohn erfassen",
+    "description": "Der 13. Monatslohn wird als eigene Einkommenskategorie mit genau einem Auszahlungsmonat geplant. So bleibt der normale Monatslohn sauber und die Forecast-Logik interpretiert ihn nicht als monatlich wiederkehrend.",
+    "payout_month": "Auszahlungsmonat:",
+    "amount": "Betrag:",
+    "category": "Kategorie:",
+    "apply": "13. Lohn eintragen",
+    "done": "{amount} wurde für {category} im {month} {year} eingetragen.",
+    "default_category": "13. Monatslohn"
+  },
+  "security": {
+    "label": {
+      "quick": "Ohne Passwort (Quick)",
+      "pin": "PIN (4–8 Ziffern)",
+      "password": "Passwort"
+    },
+    "secret": {
+      "pin": "PIN",
+      "password": "Passwort"
+    },
+    "checklist_title": "Sicherheits-Checkliste",
+    "mode": "Modus",
+    "loss_protection": "Verlustschutz",
+    "no_loss_protection": "kein Schutz bei Verlust",
+    "restore_key": "Restore-Key",
+    "db_exists": "DB vorhanden",
+    "kdf_upgrade": "Sicherheitsmigration",
+    "upgrade_pending": "noch nicht gespeichert – Passwort/PIN in den Einstellungen neu speichern"
+  },
+  "diagnostics": {
+    "app_log_title": "BudgetManager-Log",
+    "crash_log_title": "Crash-Log",
+    "open_folder": "Ordner öffnen",
+    "refresh": "Aktualisieren",
+    "file_not_found": "Datei nicht gefunden oder leer:\n{path}",
+    "log_open_failed": "Log konnte nicht geöffnet werden: {error}",
+    "folder_opened": "Diagnoseordner geöffnet: {folder}",
+    "folder_open_failed": "Diagnoseordner konnte nicht geöffnet werden: {error}",
+    "report_created_title": "Fehlerbericht erstellt",
+    "report_created_text": "Der Fehlerbericht wurde lokal erstellt:\n{path}\n\nEr enthält keine Datenbank und keine Backups.",
+    "report_create_failed": "Fehlerbericht konnte nicht erstellt werden: {error}",
+    "unclean_title": "BudgetManager wurde zuletzt nicht sauber beendet",
+    "unclean_text": "Der letzte Lauf wurde vermutlich durch Crash, Kill oder Stromausfall beendet.",
+    "unclean_info": "Letzter Start: {started_at}\nStatus: {reason}\n\nDu kannst die Logs ansehen oder einen lokalen Fehlerbericht erstellen.",
+    "show_log": "Log anzeigen",
+    "create_report": "Fehlerbericht erstellen",
+    "ignore": "Ignorieren",
+    "unknown_time": "unbekannt",
+    "unknown_reason": "unbekannt"
   }
 }

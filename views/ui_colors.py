@@ -26,10 +26,7 @@ logger = logging.getLogger(__name__)
 # ── Standard-Farben (Hell-Modus Fallback) ──────────────────────────
 
 # TYP_* Konstanten als Schlüssel (DB-Werte = immer Deutsch, sprachunabhängig)
-try:
-    from model.typ_constants import TYP_INCOME as _TI, TYP_EXPENSES as _TE, TYP_SAVINGS as _TS
-except Exception:
-    _TI, _TE, _TS = "Einkommen", "Ausgaben", "Ersparnisse"
+from model.typ_constants import TYP_EXPENSES as _TE, TYP_INCOME as _TI, TYP_SAVINGS as _TS
 
 _DEFAULT_TYPE_COLORS: Dict[str, str] = {
     _TI: "#2ecc71",

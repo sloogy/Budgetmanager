@@ -76,8 +76,39 @@ def app_dir() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
+def _installer_data_dir_from_marker() -> Path | None:
+    """Daten-/Update-Ordner aus installation.json fuer Installer-Builds.
+
+    Der Windows-Installer legt mutable Dateien bewusst nicht in den
+    Programmordner, sondern in den vom Nutzer gewaehlten Datenordner. Der
+    Updater nutzt denselben Ort fuer Cache/Staging/Backup, damit nichts in
+    AppData oder Program Files verstreut wird.
+    """
+    try:
+        marker = installation_marker_path()
+        if not marker.is_file():
+            return None
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            return None
+        install_type = str(data.get("install_type", "")).strip().lower()
+        if install_type not in {"windows_installer", "installer"}:
+            return None
+        raw = str(data.get("data_directory", "") or "").strip()
+        if not raw:
+            return None
+        path = Path(raw).expanduser()
+        if not path.is_absolute():
+            path = (app_dir() / path).resolve()
+        return path
+    except Exception as e:
+        logger.debug("Installer-Datenordner konnte nicht gelesen werden: %s", e)
+        return None
+
+
 def updates_dir() -> Path:
-    d = app_dir() / "updates"
+    base = _installer_data_dir_from_marker() or app_dir()
+    d = base / "updates"
     (d / "cache").mkdir(parents=True, exist_ok=True)
     (d / "staging").mkdir(parents=True, exist_ok=True)
     (d / "backup").mkdir(parents=True, exist_ok=True)
@@ -120,23 +151,25 @@ def read_install_type() -> str:
 def preferred_asset_keys(platform_key: str) -> list[str]:
     """Asset-Prioritaet fuer die unterschiedlichen Build-Arten.
 
-    Drei Windows-/Linux-Auslieferungen haben unterschiedliche Updatepfade:
-    - Installer-Installation: Setup-EXE herunterladen und starten
-    - Direct EXE/Binary: direkte Binary stagen und nach App-Ende ersetzen
-    - Portable: portable ZIP stagen und Programmdateien ersetzen, data/ bleibt
+    Drei Auslieferungen haben unterschiedliche Updatepfade:
+    - Windows-Installer: Setup-EXE herunterladen und starten
+    - Standalone-EXE/Binary: rohe Binary herunterladen und die laufende Datei
+      nach App-Ende ersetzen
+    - Source/Portable-Fallback: ZIP stagen und Programmdateien ersetzen, data/ bleibt
     """
     keys: list[str] = []
     install_type = read_install_type()
-    current = current_exe_filename().lower()
 
     if platform_key == "windows":
         if install_type in {"windows_installer", "installer"}:
             keys.append("windows_installer")
-        if current.startswith("budgetmanager-v") or current in {"budgetmanager-windows.exe"}:
+        elif _is_frozen():
+            # Standalone-EXE und portable Onefile-Builds können am robustesten
+            # ueber das direkte Windows-EXE-Asset aktualisiert werden.
             keys.append("direct_windows_exe")
         keys.extend(["windows", "portable_zip"])
     elif platform_key == "linux":
-        if current.startswith("budgetmanager-v") or current == "budgetmanager-linux":
+        if _is_frozen():
             keys.append("direct_linux_binary")
         keys.extend(["linux", "portable_zip"])
     else:
@@ -144,7 +177,6 @@ def preferred_asset_keys(platform_key: str) -> list[str]:
 
     # Duplikate stabil entfernen
     return list(dict.fromkeys(keys))
-
 
 def is_windows() -> bool:
     return sys.platform.startswith("win")
@@ -164,7 +196,7 @@ def current_exe_filename() -> str:
     """Dateiname der aktuell laufenden App-Binary.
 
     Bei älteren portablen Builds kann dieser Name noch versioniert sein
-    (z.B. ``BudgetManager-v2.0.28-windows.exe``). Der Updater nutzt ihn zum
+    (z.B. ``BudgetManager-v2.0.39-windows.exe``). Der Updater nutzt ihn zum
     Warten auf den laufenden Prozess, aber nicht zwingend als Neustart-Ziel.
     """
     if _is_frozen():
@@ -244,11 +276,21 @@ def fetch_manifest(manifest_url: str = DEFAULT_MANIFEST_URL, timeout_s: int = 10
 
 
 def is_newer(remote_version: str, current_version: str) -> bool:
-    """SemVer-Vergleich (robust)."""
+    """SemVer-Vergleich (robust).
+
+    Bei nicht interpretierbaren Versionsangaben wird KONSERVATIV ``False``
+    geliefert (kein Update-Hinweis), statt bei blosser Ungleichheit fälschlich
+    ein – womöglich älteres – "Update" zu signalisieren.
+    """
     try:
         return _version.parse(remote_version) > _version.parse(current_version)
     except Exception:
-        return remote_version.strip() != current_version.strip()
+        logger.warning(
+            "Versionsvergleich nicht möglich (remote=%r, current=%r) – kein Update-Hinweis",
+            remote_version,
+            current_version,
+        )
+        return False
 
 
 def sha256_file(path: Path) -> str:
@@ -291,6 +333,63 @@ def staging_dir_for(version_str: str) -> Path:
 
 def cache_zip_path(version_str: str) -> Path:
     return updates_dir() / "cache" / f"update_{version_str}.zip"
+
+
+def prune_other_staging(keep_staging_dir: Path, keep_cache_file: Path | None = None) -> None:
+    """Entfernt veraltete Staging-Ordner und Cache-Dateien neben dem aktuellen.
+
+    Warum: ``apply_update`` faellt ohne gueltiges ``last_check.json`` sicher auf
+    ``latest_staged_version()`` zurueck – die hoechste vorhandene Staging-Version.
+    Bleibt ein alter, hoeher nummerierter Staging-Ordner liegen (z.B. ein
+    Beta-Rest ``2.1.0``), koennte dieser Fallback faelschlich angewendet werden.
+    Indem ``check_update`` nach erfolgreichem Staging alle anderen Staging-Ordner
+    entfernt, ist die hoechste vorhandene Version immer die gerade vorbereitete.
+    Nebeneffekt: der Update-Ordner waechst nicht unbegrenzt.
+
+    Die Pfade werden bewusst explizit uebergeben (statt intern neu berechnet),
+    damit Tests, die ``staging_dir_for``/``cache_zip_path`` umbiegen, weiterhin
+    nur ihren temporaeren Ordner betreffen.
+    """
+    try:
+        keep_staging = keep_staging_dir.resolve()
+        staging_root = keep_staging.parent
+        if staging_root.is_dir():
+            for child in staging_root.iterdir():
+                if not child.is_dir():
+                    continue
+                if child.resolve() == keep_staging:
+                    continue
+                try:
+                    import shutil
+
+                    shutil.rmtree(child, ignore_errors=True)
+                    logger.debug("Veralteten Staging-Ordner entfernt: %s", child)
+                except OSError as e:
+                    logger.debug("Staging-Ordner %s nicht entfernbar: %s", child, e)
+    except Exception as e:
+        logger.debug("Pruning der Staging-Ordner uebersprungen: %s", e)
+
+    if keep_cache_file is None:
+        return
+    try:
+        keep_cache = keep_cache_file.resolve()
+        cache_root = keep_cache.parent
+        if cache_root.is_dir():
+            for child in cache_root.iterdir():
+                if not child.is_file():
+                    continue
+                # Nur eigene Update-Artefakte anfassen, fremde Dateien schonen.
+                if not child.name.startswith("update_"):
+                    continue
+                if child.resolve() == keep_cache:
+                    continue
+                try:
+                    child.unlink()
+                    logger.debug("Veraltete Update-Cache-Datei entfernt: %s", child)
+                except OSError as e:
+                    logger.debug("Cache-Datei %s nicht entfernbar: %s", child, e)
+    except Exception as e:
+        logger.debug("Pruning der Cache-Dateien uebersprungen: %s", e)
 
 
 def write_staged_marker(version_str: str, manifest: Manifest, asset: AssetInfo) -> Path:
@@ -357,6 +456,16 @@ def check_result_path() -> Path:
     return updates_dir() / "last_check.json"
 
 
+def startup_check_result_path() -> Path:
+    """Separates Ergebnis der leichten Startpruefung.
+
+    Wichtig: Die Startpruefung laedt nur das Manifest und darf das normale
+    ``last_check.json`` nicht ueberschreiben. Dieses normale Ergebnis wird vom
+    Apply-Pfad benutzt, um die konkret gestagete Version zu installieren.
+    """
+    return updates_dir() / "last_startup_check.json"
+
+
 def write_check_result(data: dict) -> None:
     """Schreibt das Ergebnis einer Update-Prüfung als JSON für den Update-Dialog."""
     from datetime import datetime
@@ -390,3 +499,38 @@ def clear_check_result() -> None:
             p.unlink()
     except Exception as e:
         logger.debug("Update-Check-Ergebnis konnte nicht gelöscht werden: %s", e)
+
+
+def write_startup_check_result(data: dict) -> None:
+    """Schreibt das Ergebnis der nicht-blockierenden Startpruefung."""
+    from datetime import datetime
+    payload = dict(data)
+    payload.setdefault("checked_at", datetime.now().isoformat(timespec="seconds"))
+    try:
+        startup_check_result_path().write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+            encoding="utf-8",
+        )
+    except Exception as e:
+        logger.debug("Startup-Update-Check-Ergebnis konnte nicht geschrieben werden: %s", e)
+
+
+def read_startup_check_result() -> dict:
+    """Liest das Ergebnis der letzten leichten Startpruefung."""
+    p = startup_check_result_path()
+    if not p.exists():
+        return {}
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def clear_startup_check_result() -> None:
+    try:
+        p = startup_check_result_path()
+        if p.exists():
+            p.unlink()
+    except Exception as e:
+        logger.debug("Startup-Update-Check-Ergebnis konnte nicht gelöscht werden: %s", e)

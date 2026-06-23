@@ -6,23 +6,23 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl, QPoint
+from PySide6.QtCore import Qt, QTimer, QUrl, QPoint, QProcess
 from PySide6.QtGui import QAction, QActionGroup, QIcon, QKeySequence, QShortcut, QDesktopServices
 from PySide6.QtWidgets import (
     QMainWindow, QTabWidget, QMenuBar, QMenu, QMessageBox,
     QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication, QPushButton,
-    QFrame, QTableWidget
+    QFrame, QTableWidget, QPlainTextEdit
 )
 
-from app_info import APP_NAME, APP_VERSION, app_window_title, app_about_title, app_version_label
+from app_info import APP_NAME, APP_VERSION, app_window_title, app_version_label
 from model.app_paths import resolve_in_app, data_dir, configured_db_path, configured_backups_dir
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
 from model.category_model import CategoryModel
-from model.shortcuts_config import load_shortcuts, save_shortcuts
+from model.shortcuts_config import load_shortcuts, save_shortcuts, default_key
 from model.undo_redo_model import UndoRedoModel
 from settings import Settings
 from utils.icons import get_icon
-from utils.i18n import tr, trf
+from utils.i18n import tr, trf, display_security_label
 from settings_dialog import SettingsDialog
 from theme_manager import ThemeManager
 from views.account_management_dialog import AccountManagementDialog
@@ -43,6 +43,7 @@ from views.tabs.overview_savings_panel import OverviewSavingsPanel
 from views.tabs.tracking_tab import TrackingTab
 from views.tags_manager_dialog import TagsManagerDialog
 from views.update_dialog import UpdateDialog
+from updater.common import clear_startup_check_result, read_startup_check_result
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +51,7 @@ class AboutDialog(QDialog):
     """Über-Dialog"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle(app_about_title())
+        self.setWindowTitle(trf("about.title", app_name=APP_NAME, version=app_version_label()))
 
         layout = QVBoxLayout()
 
@@ -85,6 +86,55 @@ class AboutDialog(QDialog):
         except Exception as e:
             QMessageBox.warning(self, tr('auto.views_main_window.100_update_81ab2a4e'), trf("lbl.updatedialog_konnte_nicht_geoeffnet", e=str(e)))
 
+
+
+class LogViewerDialog(QDialog):
+    """Einfacher, robuster Log-Anzeiger für normale Nutzer."""
+
+    def __init__(self, parent, *, title: str, path: Path, text: str):
+        super().__init__(parent)
+        self._path = Path(path)
+        self.setWindowTitle(title)
+
+        layout = QVBoxLayout(self)
+
+        path_label = QLabel(str(self._path))
+        path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        path_label.setWordWrap(True)
+        layout.addWidget(path_label)
+
+        viewer = QPlainTextEdit(self)
+        viewer.setReadOnly(True)
+        viewer.setPlainText(text or trf("diagnostics.file_not_found", path=str(self._path)))
+        viewer.setLineWrapMode(QPlainTextEdit.NoWrap)
+        layout.addWidget(viewer, 1)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.Close)
+        btn_open_folder = buttons.addButton(tr("diagnostics.open_folder"), QDialogButtonBox.ActionRole)
+        btn_refresh = buttons.addButton(tr("diagnostics.refresh"), QDialogButtonBox.ActionRole)
+
+        def _open_folder() -> None:
+            try:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(self._path.parent)))
+            except Exception as exc:
+                QMessageBox.warning(self, tr("msg.error"), str(exc))
+
+        def _refresh() -> None:
+            try:
+                from model.diagnostics import read_text_tail
+
+                viewer.setPlainText(read_text_tail(self._path))
+            except Exception as exc:
+                viewer.setPlainText(str(exc))
+
+        btn_open_folder.clicked.connect(_open_folder)
+        btn_refresh.clicked.connect(_refresh)
+        buttons.rejected.connect(self.reject)
+        buttons.accepted.connect(self.accept)
+        layout.addWidget(buttons)
+
+        self.resize(900, 600)
+
 class MainWindow(QMainWindow):
     def __init__(self, conn: sqlite3.Connection, *,
                  active_user=None, user_model=None):
@@ -96,6 +146,8 @@ class MainWindow(QMainWindow):
 
         # Einstellungen laden
         self.settings = Settings()
+        self._startup_update_proc: QProcess | None = None
+        self._startup_update_prompt_shown = False
         
         # Undo/Redo
         self.undo_redo = UndoRedoModel(conn)
@@ -169,9 +221,10 @@ class MainWindow(QMainWindow):
         # Tab-Definitionen (Index -> Widget, Name)
         # Tab-Labels: keys statt eingefrorenem tr()-String (fuer retranslate_ui)
         self._tab_label_keys = {
-            5: ("fixed", "Cockpit"),
+            5: ("tr", "tab.cockpit"),
             0: ("tr", "tab.budget"),
-            2: ("fixed", tr("tab.tracking")),
+            1: ("tr", "tab.categories"),
+            2: ("tr", "tab.tracking"),
             3: ("tr", "tab.overview"),
             4: ("tr", "tab.savings"),
             6: ("tr", "tab.account"),
@@ -179,6 +232,7 @@ class MainWindow(QMainWindow):
         self._tab_definitions = {
             5: (self.cockpit_tab, tr("tab.cockpit")),
             0: (self.budget_tab, tr("tab.budget")),
+            1: (self.categories_tab, tr("tab.categories")),
             2: (self.tracking_tab, tr("tab.tracking")),
             3: (self.overview_tab, tr("tab.overview")),
             4: (self.savings_tab, tr("tab.savings")),
@@ -187,6 +241,7 @@ class MainWindow(QMainWindow):
         self._tab_visibility_keys = {
             5: "cockpit",
             0: "budget",
+            1: "categories",
             2: "tracking",
             3: "overview",
             4: "savings",
@@ -317,36 +372,42 @@ class MainWindow(QMainWindow):
         self.resize_timer.stop()
         self.resize_timer.start(500)
     
+    def _shortcut_key(self, action_id: str) -> str:
+        """Gibt das konfigurierte Tastenkürzel für eine GUI-Aktion zurück."""
+        try:
+            return load_shortcuts(self.settings).get(action_id, default_key(action_id))
+        except Exception as exc:
+            logger.debug("Shortcut %s konnte nicht geladen werden: %s", action_id, exc)
+            return default_key(action_id)
+
+    def _apply_shortcut(self, action: QAction, action_id: str) -> QAction:
+        """Bindet ein QAction-Tastenkürzel an die zentrale Shortcut-Konfiguration."""
+        key = self._shortcut_key(action_id)
+        action.setShortcut(QKeySequence(key) if key else QKeySequence())
+        action.setShortcutContext(Qt.ApplicationShortcut)
+        if not hasattr(self, "_shortcut_actions"):
+            self._shortcut_actions = {}
+        self._shortcut_actions[action_id] = action
+        return action
+
+    def _apply_current_shortcuts_to_actions(self) -> None:
+        """Aktualisiert alle bereits erzeugten QAction-Shortcuts nach Settings-Änderung."""
+        for action_id, action in dict(getattr(self, "_shortcut_actions", {})).items():
+            try:
+                self._apply_shortcut(action, action_id)
+            except Exception as exc:
+                logger.debug("Shortcut-Aktion %s konnte nicht aktualisiert werden: %s", action_id, exc)
+
     def _setup_shortcuts(self):
         """Richtet globale Tastenkürzel ein (konfigurierbar über Einstellungen)."""
-        sc = load_shortcuts(self.settings)
-
-        # Alte Shortcuts entfernen (bei Re-Apply nach Settings-Änderung)
-        for attr in list(vars(self)):
-            if attr.startswith("_sc_"):
-                old = getattr(self, attr, None)
-                if old:
-                    try:
-                        old.setEnabled(False)
-                        old.deleteLater()
-                    except Exception as e:
-                        logger.debug("%s", e)
-
-        def _bind(action_id: str, slot):
-            key = sc.get(action_id, "")
-            if key:
-                shortcut = QShortcut(QKeySequence(key), self)
-                shortcut.activated.connect(slot)
-                setattr(self, f"_sc_{action_id}", shortcut)
-
-        _bind("help", self._show_handbook)
-        _bind("shortcuts", self._show_shortcuts)
-        _bind("search", self._show_global_search)
-        _bind("quick_add", self._show_quick_add)
-        _bind("export", self._show_export)
+        # Die shortcuts liegen auf den QActions selbst. Dadurch ändern sich Menüanzeige
+        # und wirksames Tastenkürzel gemeinsam, statt alte hardcodierte Kürzel aktiv
+        # zu lassen.
+        self._apply_current_shortcuts_to_actions()
 
     def _create_menu(self):
         """Erstellt das Hamburger-Menü (Menüleiste)"""
+        self._shortcut_actions = {}
         menubar = self.menuBar()
 
         self._create_file_menu(menubar)
@@ -465,7 +526,7 @@ class MainWindow(QMainWindow):
         file_menu = menubar.addMenu(tr("menu.file"))
 
         save_action = QAction(tr("menu.save"), self)
-        save_action.setShortcut(QKeySequence.Save)
+        self._apply_shortcut(save_action, "save")
         save_action.setStatusTip(tr("menu.save_tip"))
         save_action.triggered.connect(self._save_budget)
         file_menu.addAction(save_action)
@@ -473,7 +534,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
 
         settings_action = QAction(tr("menu.settings"), self)
-        settings_action.setShortcut("Ctrl+,")
+        self._apply_shortcut(settings_action, "settings")
         settings_action.setStatusTip(tr("menu.settings_tip"))
         settings_action.triggered.connect(self._show_settings)
         file_menu.addAction(settings_action)
@@ -492,7 +553,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
 
         exit_action = QAction(tr("menu.exit"), self)
-        exit_action.setShortcut(QKeySequence.Quit)
+        self._apply_shortcut(exit_action, "quit")
         exit_action.setStatusTip(tr("menu.exit_tip"))
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
@@ -511,6 +572,7 @@ class MainWindow(QMainWindow):
         for tab_id, title in [
             (5, tr("tab.cockpit")),
             (0, tr("tab.budget")),
+            (1, tr("tab.categories")),
             (2, tr("tab.tracking")),
             (3, tr("tab.overview")),
             (4, tr("tab.savings")),
@@ -571,39 +633,39 @@ class MainWindow(QMainWindow):
         # Zu Tabs wechseln
         goto_cockpit = QAction(tr("menu.goto_cockpit"), self)
         goto_cockpit.setIcon(get_icon("🏠"))
-        goto_cockpit.setShortcut("Ctrl+0")
+        self._apply_shortcut(goto_cockpit, "tab_cockpit")
         goto_cockpit.triggered.connect(lambda: self._goto_tab(self.cockpit_tab))
         view_menu.addAction(goto_cockpit)
 
         goto_budget = QAction(tr("menu.goto_budget"), self)
         goto_budget.setIcon(get_icon("💰"))
-        goto_budget.setShortcut("Ctrl+1")
+        self._apply_shortcut(goto_budget, "tab_budget")
         goto_budget.triggered.connect(lambda: self._goto_tab(self.budget_tab))
         view_menu.addAction(goto_budget)
 
         self.goto_categories_action = QAction(tr("menu.goto_categories"), self)
         self.goto_categories_action.setIcon(get_icon("📁"))
-        self.goto_categories_action.setShortcut("Ctrl+2")
-        # Experten-Tab entfernt: Schnellzugriff oeffnet jetzt den Kategorien-Manager-Dialog.
-        self.goto_categories_action.triggered.connect(self._show_category_manager)
+        self._apply_shortcut(self.goto_categories_action, "tab_categories")
+        # Wenn der Experten-Tab sichtbar ist, dorthin wechseln; sonst Manager öffnen.
+        self.goto_categories_action.triggered.connect(self._goto_categories_or_manager)
         view_menu.addAction(self.goto_categories_action)
         self._update_categories_menu_visibility()
 
         goto_tracking = QAction(tr("menu.goto_tracking"), self)
         goto_tracking.setIcon(get_icon("📊"))
-        goto_tracking.setShortcut("Ctrl+3")
+        self._apply_shortcut(goto_tracking, "tab_tracking")
         goto_tracking.triggered.connect(lambda: self._goto_tab(self.tracking_tab))
         view_menu.addAction(goto_tracking)
 
         goto_overview = QAction(tr("menu.goto_overview"), self)
         goto_overview.setIcon(get_icon("📈"))
-        goto_overview.setShortcut("Ctrl+4")
+        self._apply_shortcut(goto_overview, "tab_overview")
         goto_overview.triggered.connect(lambda: self._goto_tab(self.overview_tab))
         view_menu.addAction(goto_overview)
 
         goto_savings = QAction(tr("menu.goto_savings"), self)
         goto_savings.setIcon(get_icon("🎯"))
-        goto_savings.setShortcut("Ctrl+5")
+        self._apply_shortcut(goto_savings, "tab_savings")
         goto_savings.triggered.connect(lambda: self._goto_tab(self.savings_tab))
         view_menu.addAction(goto_savings)
 
@@ -612,7 +674,7 @@ class MainWindow(QMainWindow):
         view_menu.addSeparator()
 
         refresh_action = QAction(tr("menu.refresh"), self)
-        refresh_action.setShortcut(QKeySequence.Refresh)
+        self._apply_shortcut(refresh_action, "refresh")
         refresh_action.setStatusTip(tr("menu.refresh_tip"))
         refresh_action.triggered.connect(self._refresh_current_tab)
         view_menu.addAction(refresh_action)
@@ -621,7 +683,7 @@ class MainWindow(QMainWindow):
 
         fullscreen_action = QAction(tr("menu.fullscreen"), self)
         fullscreen_action.setIcon(get_icon("🖥️"))
-        fullscreen_action.setShortcut("F11")
+        self._apply_shortcut(fullscreen_action, "fullscreen")
         fullscreen_action.setCheckable(True)
         fullscreen_action.setChecked(self.settings.get("window_is_fullscreen", False))
         fullscreen_action.toggled.connect(self._toggle_fullscreen)
@@ -629,7 +691,7 @@ class MainWindow(QMainWindow):
 
         maximize_action = QAction(tr("menu.maximize"), self)
         maximize_action.setIcon(get_icon("🔲"))
-        maximize_action.setShortcut("F10")
+        self._apply_shortcut(maximize_action, "maximize")
         maximize_action.setCheckable(True)
         maximize_action.toggled.connect(self._toggle_maximize)
         view_menu.addAction(maximize_action)
@@ -681,14 +743,14 @@ class MainWindow(QMainWindow):
 
         quick_add_action = QAction(tr("menu.quick_add"), self)
         quick_add_action.setIcon(get_icon("⚡"))
-        quick_add_action.setShortcut("Ctrl+N")
+        self._apply_shortcut(quick_add_action, "quick_add")
         quick_add_action.setStatusTip(tr("menu.quick_add_tip"))
         quick_add_action.triggered.connect(self._show_quick_add)
         extras_menu.addAction(quick_add_action)
 
         search_action = QAction(tr("menu.search"), self)
         search_action.setIcon(get_icon("🔍"))
-        search_action.setShortcut("Ctrl+F")
+        self._apply_shortcut(search_action, "search")
         search_action.setStatusTip(tr("menu.search_tip"))
         search_action.triggered.connect(self._show_global_search)
         extras_menu.addAction(search_action)
@@ -697,28 +759,28 @@ class MainWindow(QMainWindow):
 
         category_manager_action = QAction(tr("menu.category_manager"), self)
         category_manager_action.setIcon(get_icon("📁"))
-        category_manager_action.setShortcut("Ctrl+K")
+        self._apply_shortcut(category_manager_action, "category_manager")
         category_manager_action.setStatusTip(tr("menu.category_manager_tip"))
         category_manager_action.triggered.connect(self._show_category_manager)
         extras_menu.addAction(category_manager_action)
 
         tags_manager_action = QAction(tr("menu.tags_manager"), self)
         tags_manager_action.setIcon(get_icon("🏷️"))
-        tags_manager_action.setShortcut("Ctrl+T")
+        self._apply_shortcut(tags_manager_action, "tags_manager")
         tags_manager_action.setStatusTip(tr("menu.tags_manager_tip"))
         tags_manager_action.triggered.connect(self._show_tags_manager)
         extras_menu.addAction(tags_manager_action)
 
         favorites_action = QAction(tr("menu.favorites"), self)
         favorites_action.setIcon(get_icon("⭐"))
-        favorites_action.setShortcut("F12")
+        self._apply_shortcut(favorites_action, "favorites")
         favorites_action.setStatusTip(tr("menu.favorites_tip"))
         favorites_action.triggered.connect(self._show_favorites_dashboard)
         extras_menu.addAction(favorites_action)
 
         budget_warnings_action = QAction(tr("menu.budget_warnings"), self)
         budget_warnings_action.setIcon(get_icon("🚨"))
-        budget_warnings_action.setShortcut("Ctrl+W")
+        self._apply_shortcut(budget_warnings_action, "budget_warnings")
         budget_warnings_action.setStatusTip(tr("menu.budget_warnings_tip"))
         budget_warnings_action.triggered.connect(lambda: self._check_budget_warnings())
         extras_menu.addAction(budget_warnings_action)
@@ -727,7 +789,7 @@ class MainWindow(QMainWindow):
 
         updates_action = QAction(tr("menu.updates"), self)
         updates_action.setIcon(get_icon("⬆️"))
-        updates_action.setShortcut("Ctrl+U")
+        self._apply_shortcut(updates_action, "updates")
         updates_action.setStatusTip(tr("menu.updates_tip"))
         updates_action.triggered.connect(self._show_update_dialog)
         extras_menu.addAction(updates_action)
@@ -736,7 +798,7 @@ class MainWindow(QMainWindow):
 
         export_action = QAction(tr("menu.export"), self)
         export_action.setIcon(get_icon("📤"))
-        export_action.setShortcut("Ctrl+E")
+        self._apply_shortcut(export_action, "export")
         export_action.setStatusTip(tr("menu.export_tip"))
         export_action.triggered.connect(self._show_export)
         extras_menu.addAction(export_action)
@@ -754,7 +816,7 @@ class MainWindow(QMainWindow):
         extras_menu.addSeparator()
 
         current_year_action = QAction(tr("menu.current_year"), self)
-        current_year_action.setShortcut("Ctrl+Y")
+        self._apply_shortcut(current_year_action, "current_year")
         current_year_action.triggered.connect(self._set_current_year)
         extras_menu.addAction(current_year_action)
 
@@ -790,7 +852,7 @@ class MainWindow(QMainWindow):
 
         sec_info = (f"{self._active_user.security_icon} "
                     f"{self._active_user.display_name} — "
-                    f"{self._active_user.security_label}")
+                    f"{display_security_label(self._active_user.security)}")
         info_action = QAction(sec_info, self)
         info_action.setEnabled(False)
         account_menu.addAction(info_action)
@@ -802,7 +864,7 @@ class MainWindow(QMainWindow):
 
         handbook_action = QAction(tr("menu.handbook"), self)
         handbook_action.setIcon(get_icon("📖"))
-        handbook_action.setShortcut("F1")
+        self._apply_shortcut(handbook_action, "help")
         handbook_action.setStatusTip(tr("menu.handbook_tip"))
         handbook_action.triggered.connect(self._show_handbook)
         help_menu.addAction(handbook_action)
@@ -827,7 +889,7 @@ class MainWindow(QMainWindow):
 
         shortcuts_action = QAction(tr("menu.shortcuts"), self)
         shortcuts_action.setIcon(get_icon("⌨️"))
-        shortcuts_action.setShortcut("Ctrl+F1")
+        self._apply_shortcut(shortcuts_action, "shortcuts")
         shortcuts_action.triggered.connect(self._show_shortcuts)
         help_menu.addAction(shortcuts_action)
 
@@ -835,6 +897,32 @@ class MainWindow(QMainWindow):
         setup_action.setIcon(get_icon("🚀"))
         setup_action.triggered.connect(lambda: self._start_setup_assistant(force=True))
         help_menu.addAction(setup_action)
+
+        help_menu.addSeparator()
+
+        show_log_action = QAction(tr("menu.show_log"), self)
+        show_log_action.setIcon(get_icon("📄"))
+        show_log_action.setStatusTip(tr("menu.show_log_tip"))
+        show_log_action.triggered.connect(self._show_app_log)
+        help_menu.addAction(show_log_action)
+
+        show_crash_log_action = QAction(tr("menu.show_crash_log"), self)
+        show_crash_log_action.setIcon(get_icon("💥"))
+        show_crash_log_action.setStatusTip(tr("menu.show_crash_log_tip"))
+        show_crash_log_action.triggered.connect(self._show_crash_log)
+        help_menu.addAction(show_crash_log_action)
+
+        diagnostics_folder_action = QAction(tr("menu.open_diagnostics_folder"), self)
+        diagnostics_folder_action.setIcon(get_icon("📁"))
+        diagnostics_folder_action.setStatusTip(tr("menu.open_diagnostics_folder_tip"))
+        diagnostics_folder_action.triggered.connect(self._open_diagnostics_folder)
+        help_menu.addAction(diagnostics_folder_action)
+
+        diagnostic_report_action = QAction(tr("menu.create_diagnostic_report"), self)
+        diagnostic_report_action.setIcon(get_icon("🧰"))
+        diagnostic_report_action.setStatusTip(tr("menu.create_diagnostic_report_tip"))
+        diagnostic_report_action.triggered.connect(self._create_diagnostic_report)
+        help_menu.addAction(diagnostic_report_action)
 
         help_menu.addSeparator()
 
@@ -913,7 +1001,7 @@ class MainWindow(QMainWindow):
     def _load_tab_order(self):
         """Lädt Tabs in gespeicherter Reihenfolge und berücksichtigt ausgeblendete Reiter."""
         saved_order = list(self.settings.tab_order or [])
-        default_order = [5, 0, 2, 3, 4, 6]
+        default_order = [5, 0, 1, 2, 3, 4, 6]
         for tid in default_order:
             if tid not in saved_order:
                 saved_order.append(tid)
@@ -965,6 +1053,13 @@ class MainWindow(QMainWindow):
         index = self.tabs.indexOf(tab_widget)
         if index >= 0:
             self.tabs.setCurrentIndex(index)
+
+    def _goto_categories_or_manager(self) -> None:
+        """Öffnet den Kategorien-Tab, falls sichtbar, sonst den Kategorien-Manager."""
+        if self.tabs.indexOf(self.categories_tab) >= 0:
+            self._goto_tab(self.categories_tab)
+        else:
+            self._show_category_manager()
     
     def _tab_visibility_config(self) -> dict:
         defaults = {
@@ -1044,7 +1139,10 @@ class MainWindow(QMainWindow):
         cfg["categories"] = bool(checked)
         self.settings.set("tab_visibility", cfg)
         self._rebuild_tabs_keep_current(self.categories_tab if checked else None)
-        self.statusBar().showMessage("Kategorien-Tab aktiviert" if checked else "Kategorien-Tab ausgeblendet", 2000)
+        self.statusBar().showMessage(
+            tr("msg.categories_tab_enabled") if checked else tr("msg.categories_tab_disabled"),
+            2000,
+        )
         self._update_categories_menu_visibility()
         self._sync_tab_visibility_actions()
         
@@ -1068,7 +1166,7 @@ class MainWindow(QMainWindow):
         show_categories = self.settings.show_categories_tab
         
         # Tabs in Standardreihenfolge hinzufügen
-        default_order = [5, 0, 2, 3, 4]
+        default_order = [5, 0, 1, 2, 3, 4, 6]
         for tab_id in default_order:
             # Kategorien-Tab überspringen wenn nicht aktiviert
             if tab_id == 1 and not show_categories:
@@ -1187,6 +1285,14 @@ class MainWindow(QMainWindow):
                 except Exception:
                     self.settings.set("recurring_preferred_day", 25)
 
+            if "budget_zero_balance_rule" in new_settings:
+                self.settings.set("budget_zero_balance_rule", bool(new_settings.get("budget_zero_balance_rule", False)))
+            if "budget_surplus_strategy" in new_settings:
+                strategy = str(new_settings.get("budget_surplus_strategy", "savings") or "savings")
+                if strategy not in {"savings", "carryover"}:
+                    strategy = "savings"
+                self.settings.set("budget_surplus_strategy", strategy)
+
             # Budgetübersicht: Übertrag-Kumulation Start (Monat/Jahr)
             # BUGFIX: Diese Werte kamen zwar aus dem SettingsDialog, wurden aber nie persistiert.
             if "carryover_start_month" in new_settings:
@@ -1239,7 +1345,7 @@ class MainWindow(QMainWindow):
                 logger.debug("from utils.i18n import set_language: %s", e)
 
             self.settings.set("warn_delete", new_settings.get("warn_delete", True))
-            self.settings.set("warn_budget_overrun", new_settings.get("warn_budget_overrun", True))
+            self.settings.set("warn_budget_overrun", new_settings.get("warn_budget_overrun", False))
             self.settings.set("table_density", new_settings.get("table_density", "Normal"))
             self.settings.set("highlight_fixcosts", new_settings.get("highlight_fixcosts", True))
             self.settings.set("auto_backup", new_settings.get("auto_backup", False))
@@ -1425,13 +1531,13 @@ class MainWindow(QMainWindow):
 
         # Undo/Redo (immer verfügbar)
         self.undo_action = QAction(tr('auto.views_main_window.1037_undo_918f0844'), self)
-        self.undo_action.setShortcut(QKeySequence.Undo)
+        self._apply_shortcut(self.undo_action, "undo")
         self.undo_action.setShortcutContext(Qt.ApplicationShortcut)
         self.undo_action.triggered.connect(self._undo_global)
         self.edit_menu.addAction(self.undo_action)
 
         self.redo_action = QAction(tr('auto.views_main_window.1043_redo_2dcd731a'), self)
-        self.redo_action.setShortcuts([QKeySequence.Redo, QKeySequence("Ctrl+Shift+Z")])
+        self._apply_shortcut(self.redo_action, "redo")
         self.redo_action.setShortcutContext(Qt.ApplicationShortcut)
         self.redo_action.triggered.connect(self._redo_global)
         self.edit_menu.addAction(self.redo_action)
@@ -1445,7 +1551,7 @@ class MainWindow(QMainWindow):
         
         # Neu hinzufügen
         add_action = QAction(tr("btn.neu_hinzufuegen"), self)
-        add_action.setShortcut("Insert")
+        self._apply_shortcut(add_action, "edit_add")
         add_action.triggered.connect(self._edit_add)
         self.edit_menu.addAction(add_action)
         self._edit_actions_general.append(add_action)
@@ -1453,14 +1559,14 @@ class MainWindow(QMainWindow):
         # Bearbeiten
         edit_action = QAction(tr('auto.views_main_window.1064_bearbeiten_4fc85ded'), self)
         edit_action.setIcon(get_icon("✏️"))
-        edit_action.setShortcut("F2")
+        self._apply_shortcut(edit_action, "edit_edit")
         edit_action.triggered.connect(self._edit_edit)
         self.edit_menu.addAction(edit_action)
         self._edit_actions_general.append(edit_action)
         
         # Löschen
         delete_action = QAction(tr("btn.loeschen"), self)
-        delete_action.setShortcut("Delete")
+        self._apply_shortcut(delete_action, "edit_delete")
         delete_action.triggered.connect(self._edit_delete)
         self.edit_menu.addAction(delete_action)
         self._edit_actions_general.append(delete_action)
@@ -1545,7 +1651,7 @@ class MainWindow(QMainWindow):
         
         fix_action = QAction(tr('auto.views_main_window.1156_fixkosten_buchen_61d1976c'), self)
         fix_action.setIcon(get_icon("📅"))
-        fix_action.setShortcut("Ctrl+Shift+F")
+        self._apply_shortcut(fix_action, "book_fixcosts")
         fix_action.triggered.connect(self._tracking_add_fixcosts)
         self.edit_menu.addAction(fix_action)
         self._edit_actions_tracking.append(fix_action)
@@ -1555,7 +1661,7 @@ class MainWindow(QMainWindow):
         
         refresh_overview_action = QAction(tr('auto.views_main_window.1166_daten_aktualisieren_6e5a0ee6'), self)
         refresh_overview_action.setIcon(get_icon("🔄"))
-        refresh_overview_action.setShortcut("F5")
+        self._apply_shortcut(refresh_overview_action, "refresh")
         refresh_overview_action.triggered.connect(self._overview_refresh)
         self.edit_menu.addAction(refresh_overview_action)
         self._edit_actions_overview.append(refresh_overview_action)
@@ -1984,6 +2090,101 @@ class MainWindow(QMainWindow):
         except Exception as e:
             QMessageBox.warning(self, tr('dlg.hinweis'), trf("msg.fehler_beim_laden_der", e=str(e)))
 
+    def _show_log_file(self, *, path: Path, title_key: str) -> None:
+        """Öffnet eine Logdatei in einem eigenen Dialog statt im Systemeditor."""
+        try:
+            from model.diagnostics import read_text_tail
+
+            text = read_text_tail(path)
+            dlg = LogViewerDialog(self, title=tr(title_key), path=path, text=text)
+            dlg.exec()
+        except Exception as exc:
+            QMessageBox.warning(self, tr("msg.error"), trf("diagnostics.log_open_failed", error=str(exc)))
+
+    def _show_app_log(self) -> None:
+        from model.diagnostics import log_file_path
+
+        self._show_log_file(path=log_file_path(), title_key="diagnostics.app_log_title")
+
+    def _show_crash_log(self) -> None:
+        from model.diagnostics import crash_log_file_path
+
+        self._show_log_file(path=crash_log_file_path(), title_key="diagnostics.crash_log_title")
+
+    def _open_diagnostics_folder(self) -> None:
+        """Öffnet den Diagnoseordner im Dateimanager."""
+        try:
+            from model.diagnostics import diagnostics_dir
+
+            folder = diagnostics_dir()
+            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
+            if self.statusBar():
+                self.statusBar().showMessage(trf("diagnostics.folder_opened", folder=str(folder)), 3000)
+        except Exception as exc:
+            QMessageBox.warning(self, tr("msg.error"), trf("diagnostics.folder_open_failed", error=str(exc)))
+
+    def _create_diagnostic_report(self) -> None:
+        """Erstellt lokal ein Diagnose-ZIP ohne Datenbank/Backups."""
+        try:
+            from model.diagnostics import create_diagnostic_report_zip, remove_old_diagnostic_reports
+
+            path = create_diagnostic_report_zip()
+            remove_old_diagnostic_reports()
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Information)
+            box.setWindowTitle(tr("diagnostics.report_created_title"))
+            box.setText(trf("diagnostics.report_created_text", path=str(path)))
+            open_folder_button = box.addButton(tr("diagnostics.open_folder"), QMessageBox.ActionRole)
+            box.addButton(QMessageBox.Ok)
+            box.exec()
+            if box.clickedButton() is open_folder_button:
+                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
+        except Exception as exc:
+            QMessageBox.warning(self, tr("msg.error"), trf("diagnostics.report_create_failed", error=str(exc)))
+
+    def schedule_unclean_shutdown_prompt(self, previous_state: dict | None, *, delay_ms: int = 1200) -> None:
+        """Zeigt nach einem vermuteten Crash/Kill beim Neustart einen Diagnosehinweis."""
+        if not previous_state:
+            return
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+
+        def _show() -> None:
+            try:
+                if getattr(self, "_is_closing", False):
+                    return
+                self._show_unclean_shutdown_prompt(previous_state)
+            except RuntimeError:
+                logger.debug("Crash-Hinweis übersprungen: MainWindow wurde bereits zerstört.")
+            except Exception:
+                logger.exception("Crash-Hinweis konnte nicht angezeigt werden")
+            finally:
+                try:
+                    timer.deleteLater()
+                except Exception:
+                    pass
+
+        timer.timeout.connect(_show)
+        timer.start(max(0, int(delay_ms)))
+
+    def _show_unclean_shutdown_prompt(self, previous_state: dict) -> None:
+        started_at = str(previous_state.get("started_at") or tr("diagnostics.unknown_time"))
+        reason = str(previous_state.get("exit_reason") or tr("diagnostics.unknown_reason"))
+        box = QMessageBox(self)
+        box.setIcon(QMessageBox.Warning)
+        box.setWindowTitle(tr("diagnostics.unclean_title"))
+        box.setText(tr("diagnostics.unclean_text"))
+        box.setInformativeText(trf("diagnostics.unclean_info", started_at=started_at, reason=reason))
+        log_button = box.addButton(tr("diagnostics.show_log"), QMessageBox.ActionRole)
+        report_button = box.addButton(tr("diagnostics.create_report"), QMessageBox.ActionRole)
+        box.addButton(tr("diagnostics.ignore"), QMessageBox.RejectRole)
+        box.exec()
+        if box.clickedButton() is log_button:
+            self._show_app_log()
+        elif box.clickedButton() is report_button:
+            self._create_diagnostic_report()
+
+
     def _show_about(self):
         """Zeigt Über-Dialog"""
         dialog = AboutDialog(self)
@@ -2114,7 +2315,7 @@ class MainWindow(QMainWindow):
             # Konto-Menü Info aktualisieren
             if hasattr(self, '_account_info_action'):
                 self._account_info_action.setText(
-                    trf('auto.views_main_window.1615_value_0_value_1_value_2_81323b29', value_0=(icon), value_1=(new_name), value_2=(self._active_user.security_label))
+                    trf('auto.views_main_window.1615_value_0_value_1_value_2_81323b29', value_0=(icon), value_1=(new_name), value_2=(display_security_label(self._active_user.security)))
                 )
             self.statusBar().showMessage(trf("lbl.anzeigename_geaendert_new_name", new_name=new_name), 3000)
 
@@ -2128,11 +2329,11 @@ class MainWindow(QMainWindow):
             # Konto-Menü Info aktualisieren
             if hasattr(self, '_account_info_action'):
                 self._account_info_action.setText(
-                    trf('auto.views_main_window.1629_value_0_value_1_value_2_943d4260', value_0=(icon), value_1=(name), value_2=(self._active_user.security_label))
+                    trf('auto.views_main_window.1629_value_0_value_1_value_2_943d4260', value_0=(icon), value_1=(name), value_2=(display_security_label(self._active_user.security)))
                 )
             self.statusBar().showMessage(
                 trf("lbl.sicherheitsstufe_geaendert_self_active_usersecurity_label",
-                    label=self._active_user.security_label), 3000
+                    label=display_security_label(self._active_user.security)), 3000
             )
     
     def _show_shortcuts(self):
@@ -2363,6 +2564,7 @@ class MainWindow(QMainWindow):
         self._tab_definitions = {
             5: (self.cockpit_tab, tr("tab.cockpit")),
             0: (self.budget_tab, tr("tab.budget")),
+            1: (self.categories_tab, tr("tab.categories")),
             2: (self.tracking_tab, tr("tab.tracking")),
             3: (self.overview_tab, tr("tab.overview")),
             4: (self.savings_tab, tr("tab.savings")),
@@ -2459,8 +2661,94 @@ class MainWindow(QMainWindow):
             month = None
         self._check_budget_warnings(year=year, month=month)
 
+    def _startup_update_cmd(self) -> list[str]:
+        """Baut den leichten Start-Update-Check fuer DEV und PyInstaller."""
+        if getattr(sys, "frozen", False):
+            return [sys.executable, "--startup-update-check"]
+        return [sys.executable, "-m", "updater.startup_check"]
+
+    def schedule_startup_update_check(self, delay_ms: int = 4000) -> None:
+        """Prueft nach dem Start unaufdringlich auf Updates.
+
+        Die Pruefung laedt nur das Manifest. Download/Staging/Installation
+        passieren erst nach Klick im normalen Update-Dialog.
+        """
+        if not bool(self.settings.get("check_updates_on_start", True)):
+            return
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+
+        def _run() -> None:
+            try:
+                self._start_startup_update_check()
+            finally:
+                try:
+                    timer.deleteLater()
+                except Exception:
+                    pass
+
+        timer.timeout.connect(_run)
+        self._startup_update_timer = timer
+        timer.start(max(0, int(delay_ms)))
+
+    def _start_startup_update_check(self) -> None:
+        if self._startup_update_proc is not None:
+            return
+        if getattr(self, "_is_closing", False):
+            return
+        try:
+            clear_startup_check_result()
+        except Exception:
+            pass
+
+        cmd = self._startup_update_cmd()
+        proc = QProcess(self)
+        self._startup_update_proc = proc
+        if not getattr(sys, "frozen", False):
+            proc.setWorkingDirectory(str(Path(__file__).resolve().parents[1]))
+        proc.setProcessChannelMode(QProcess.MergedChannels)
+        proc.readyReadStandardOutput.connect(self._on_startup_update_output)
+        proc.finished.connect(self._on_startup_update_finished)
+        proc.start(cmd[0], cmd[1:])
+
+    def _on_startup_update_output(self) -> None:
+        proc = self._startup_update_proc
+        if proc is None:
+            return
+        data = bytes(proc.readAllStandardOutput()).decode(errors="replace").strip()
+        if data:
+            logger.debug("Startup-Update-Check: %s", data)
+
+    def _on_startup_update_finished(self, _exit_code: int, _status) -> None:
+        self._startup_update_proc = None
+        if getattr(self, "_is_closing", False):
+            return
+        res = read_startup_check_result()
+        if not res.get("available"):
+            if res.get("error"):
+                logger.debug("Startup-Update-Check ohne Hinweis beendet: %s", res.get("error"))
+            return
+        if self._startup_update_prompt_shown:
+            return
+        self._startup_update_prompt_shown = True
+
+        remote = str(res.get("remote") or "")
+        current = str(res.get("current") or APP_VERSION)
+        self.statusBar().showMessage(trf("update.startup_status_available", version=remote), 10000)
+
+        msg = QMessageBox(self)
+        msg.setIcon(QMessageBox.Information)
+        msg.setWindowTitle(tr("update.startup_available_title"))
+        msg.setText(trf("update.startup_available_text", current=current, remote=remote))
+        msg.setInformativeText(tr("update.startup_available_info"))
+        btn_update = msg.addButton(tr("update.startup_btn_open"), QMessageBox.AcceptRole)
+        msg.addButton(tr("update.startup_btn_later"), QMessageBox.RejectRole)
+        msg.exec()
+        if msg.clickedButton() is btn_update:
+            self._show_update_dialog()
+
     def _show_update_dialog(self):
-        """Öffnet den Portable-Updater Dialog (still)"""
+        """Öffnet den Updater-Dialog (Installer/Standalone/Portable kompatibel)."""
         dialog = UpdateDialog(self)
         dialog.exec()
 

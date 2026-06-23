@@ -3,7 +3,7 @@ from __future__ import annotations
 """Deckungslogik für Budget- und Tracking-Warnungen.
 
 Eine Planung bzw. ein Zeitraum ist nicht gedeckt, wenn
-Einnahmen < Ausgaben + Ersparnisse ist. Die Logik liegt bewusst im Model,
+Einkommen < Ausgaben + Ersparnisse ist. Die Logik liegt bewusst im Model,
 damit Budget-Tab und Tracking-Tab dieselbe Berechnung nutzen.
 """
 

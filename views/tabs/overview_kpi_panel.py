@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 
 from datetime import date
 
+from model.date_ranges import month_bounds
+
 from PySide6.QtCore import Qt, Signal, QObject
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -264,11 +266,7 @@ class OverviewKpiPanel(QWidget):
     def _monthly_amount(self, table: str, year: int, month: int, typ: str) -> float:
         if table == "budget":
             return float(self.budget_overview.budget_sum(year, month, typ))
-        start = f"{year:04d}-{month:02d}-01"
-        if month == 12:
-            end = f"{year + 1:04d}-01-01"
-        else:
-            end = f"{year:04d}-{month + 1:02d}-01"
+        start, end = month_bounds(year, month)
         row = self.budget_overview.conn.execute(
             "SELECT COALESCE(SUM(amount), 0) FROM tracking WHERE date >= ? AND date < ? AND typ = ?",
             (start, end, typ),

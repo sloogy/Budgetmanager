@@ -6,6 +6,7 @@ Version 0.3.2.0
 """
 
 from __future__ import annotations
+import calendar
 import logging
 
 logger = logging.getLogger(__name__)
@@ -13,8 +14,9 @@ logger = logging.getLogger(__name__)
 import sqlite3
 from dataclasses import dataclass
 from datetime import date
-import calendar
+from statistics import median
 from utils.money import format_money
+from model.date_ranges import month_bounds
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 from model.budget_suggestion_engine import BudgetSuggestionEngine
@@ -401,6 +403,15 @@ class BudgetOverviewModel:
             types = [TYP_EXPENSES, TYP_SAVINGS, TYP_INCOME]
 
         suggestions: list[BudgetSuggestion] = []
+        try:
+            from settings import Settings
+
+            zero_balance_enabled = bool(
+                Settings().get("budget_zero_balance_rule", False)
+            )
+        except Exception:
+            zero_balance_enabled = False
+
         # Monate im aktuellen Jahr, für die Budget-Daten existieren könnten
         check_months = list(range(1, min(current_month + 1, 13)))
         if not check_months:
@@ -466,6 +477,19 @@ class BudgetOverviewModel:
                 if not res:
                     continue
 
+                # Fachregel v2.0.39:
+                # Wenn die optionale Null-Bilanz-Regel aktiv ist, dürfen
+                # Ersparnisse nicht gleichzeitig von der Kategorie-Engine
+                # gesenkt und von der Einkommenstopf-Regel erhöht werden.
+                # Nicht gebuchte Ersparnisse sind dann ein Ziel-/Tracking-Hinweis,
+                # aber kein automatischer Budget-Senkungsvorschlag.
+                if (
+                    zero_balance_enabled
+                    and typ_db == TYP_SAVINGS
+                    and res.direction == "surplus"
+                ):
+                    continue
+
                 avg_dev = res.avg_deviation
                 # Ehrliche Häufigkeit: tatsächliche Strähne, NICHT künstlich auf
                 # das Fenster angehoben. Der frühere max(min_consecutive_months, …)
@@ -512,6 +536,391 @@ class BudgetOverviewModel:
 
         return suggestions
 
+    def get_balance_suggestions(
+        self,
+        year: int,
+        current_month: int,
+        min_consecutive_months: int = 3,
+        *,
+        enabled: bool | None = None,
+        surplus_strategy: str | None = None,
+        min_abs_change: float = 20.0,
+        min_pct_change: float = 0.03,
+    ) -> list[BudgetSuggestion]:
+        """Erzeugt sanfte Null-Bilanz-Vorschläge auf Basis des Einkommenstopfs.
+
+        Fachregel (v2.0.38): Einkommen wird als Topf betrachtet. Ausgaben und
+        Ersparnisse laufen gegen diesen Topf. Die Regel ist bewusst optional und
+        erzeugt nur Vorschläge, keine automatische Umbuchung.
+
+        Positiver Gap:
+            Einkommen - (Ausgaben + Ersparnisse) > 0
+            → Überschuss in Ersparnisse erhöhen oder als Carryover-Hinweis zeigen.
+
+        Negativer Gap:
+            Einkommen - (Ausgaben + Ersparnisse) < 0
+            → nicht Fixausgaben kürzen; zuerst Ersparnisse reduzieren, danach
+              nur flexible Ausgaben als mögliche Stellschrauben vorschlagen.
+
+        Es werden zwei Signale kombiniert:
+        - geplante Monatsbilanz des Zielmonats (Budgetdaten)
+        - stabile tatsächliche Bilanz der abgeschlossenen Vormonate
+        """
+        if enabled is None:
+            try:
+                from settings import Settings
+
+                enabled = bool(Settings().get("budget_zero_balance_rule", False))
+                if surplus_strategy is None:
+                    surplus_strategy = str(
+                        Settings().get("budget_surplus_strategy", "savings")
+                        or "savings"
+                    )
+            except Exception:
+                enabled = False
+        if not enabled:
+            return []
+
+        strategy = str(surplus_strategy or "savings").strip().lower()
+        if strategy not in {"savings", "carryover"}:
+            strategy = "savings"
+
+        income_budget = self._budget_sum(year, current_month, TYP_INCOME)
+        expense_budget = self._budget_sum(year, current_month, TYP_EXPENSES)
+        savings_budget = self._budget_sum(year, current_month, TYP_SAVINGS)
+        if income_budget <= 0:
+            return []
+
+        planned_gap = float(income_budget - (expense_budget + savings_budget))
+        historical_gap = self._stable_actual_balance_gap(
+            year, current_month, min_consecutive_months
+        )
+
+        # Priorität: geplante Lücke des Zielmonats. Wenn die Planung bereits
+        # nahezu 0 ist, darf ein stabiler Ist-Überschuss/-Fehlbetrag trotzdem
+        # einen sanften Lernvorschlag erzeugen.
+        gap = planned_gap
+        if abs(gap) < float(min_abs_change) and historical_gap is not None:
+            gap = float(historical_gap)
+
+        # Prozent-Schwelle relativ zum Einkommenstopf, damit kleine Rundungen
+        # nicht zu künstlichen Vorschlägen führen.
+        if abs(gap) < float(min_abs_change) and abs(gap) < (
+            income_budget * float(min_pct_change)
+        ):
+            return []
+
+        if gap > 0:
+            return self._build_positive_balance_suggestions(
+                year=year,
+                month=current_month,
+                amount=gap,
+                strategy=strategy,
+                min_abs_change=min_abs_change,
+            )
+        return self._build_negative_balance_suggestions(
+            year=year,
+            month=current_month,
+            deficit=abs(gap),
+            min_abs_change=min_abs_change,
+        )
+
+    def _stable_actual_balance_gap(
+        self, year: int, current_month: int, months_back: int
+    ) -> float | None:
+        """Median der abgeschlossenen Monatsbilanzen, falls Richtung stabil ist."""
+        if months_back <= 0:
+            return None
+
+        gaps: list[float] = []
+        d = date(year, current_month, 1)
+        # aktueller/ausgewählter Monat kann unvollständig sein → Vormonat starten
+        d = date(d.year - 1, 12, 1) if d.month == 1 else date(d.year, d.month - 1, 1)
+        max_scan = months_back * 3
+        for _ in range(max_scan):
+            if len(gaps) >= months_back:
+                break
+            # Nur Monate werten, in denen die App sinnvoll Daten/Budget hat.
+            budget_total = (
+                self._budget_sum(d.year, d.month, TYP_INCOME)
+                + self._budget_sum(d.year, d.month, TYP_EXPENSES)
+                + self._budget_sum(d.year, d.month, TYP_SAVINGS)
+            )
+            actual_total = (
+                abs(self._actual_sum(d.year, d.month, TYP_INCOME))
+                + abs(self._actual_sum(d.year, d.month, TYP_EXPENSES))
+                + abs(self._actual_sum(d.year, d.month, TYP_SAVINGS))
+            )
+            if budget_total > 0 or actual_total > 0:
+                inc = self._actual_sum(d.year, d.month, TYP_INCOME)
+                exp = abs(self._actual_sum(d.year, d.month, TYP_EXPENSES))
+                sav = abs(self._actual_sum(d.year, d.month, TYP_SAVINGS))
+                gaps.append(float(inc - (exp + sav)))
+            d = (
+                date(d.year - 1, 12, 1)
+                if d.month == 1
+                else date(d.year, d.month - 1, 1)
+            )
+
+        if len(gaps) < months_back:
+            return None
+        pos = sum(1 for v in gaps if v > 0)
+        neg = sum(1 for v in gaps if v < 0)
+        zero = len(gaps) - pos - neg
+        non_zero = max(1, len(gaps) - zero)
+        dominant = max(pos, neg)
+        try:
+            from settings import Settings
+
+            sign_ratio = float(
+                Settings().get("budget_suggestion_sign_ratio", 0.7) or 0.7
+            )
+        except Exception:
+            sign_ratio = 0.7
+        if dominant / non_zero < sign_ratio:
+            return None
+        med = float(median(gaps))
+        if abs(med) < 0.01:
+            return None
+        return med
+
+    def _build_positive_balance_suggestions(
+        self,
+        *,
+        year: int,
+        month: int,
+        amount: float,
+        strategy: str,
+        min_abs_change: float,
+    ) -> list[BudgetSuggestion]:
+        """Überschuss: Ersparnisse erhöhen oder Carryover-Hinweis liefern."""
+        amount = self._round_money(amount)
+        if amount < float(min_abs_change):
+            return []
+        if strategy == "carryover":
+            return [
+                BudgetSuggestion(
+                    typ=TYP_SAVINGS,
+                    category=tr("balance.carryover_label"),
+                    direction="surplus",
+                    avg_deviation=amount,
+                    consecutive_months=1,
+                    suggested_amount=amount,
+                    current_budget=0.0,
+                    message=trf(
+                        "balance.surplus_to_carryover", amount=format_money(amount)
+                    ),
+                )
+            ]
+
+        target = self._choose_savings_target(year, month)
+        if target is None:
+            return [
+                BudgetSuggestion(
+                    typ=TYP_SAVINGS,
+                    category=tr("balance.carryover_label"),
+                    direction="surplus",
+                    avg_deviation=amount,
+                    consecutive_months=1,
+                    suggested_amount=amount,
+                    current_budget=0.0,
+                    message=trf(
+                        "balance.no_savings_category", amount=format_money(amount)
+                    ),
+                )
+            ]
+
+        category, current = target
+        suggested = self._round_money(float(current) + amount)
+        return [
+            BudgetSuggestion(
+                typ=TYP_SAVINGS,
+                category=category,
+                direction="surplus",
+                avg_deviation=amount,
+                consecutive_months=1,
+                suggested_amount=suggested,
+                current_budget=float(current),
+                message=trf(
+                    "balance.surplus_to_savings",
+                    amount=format_money(amount),
+                    category=category,
+                    current=format_money(current),
+                    suggested=format_money(suggested),
+                ),
+            )
+        ]
+
+    def _build_negative_balance_suggestions(
+        self,
+        *,
+        year: int,
+        month: int,
+        deficit: float,
+        min_abs_change: float,
+    ) -> list[BudgetSuggestion]:
+        """Defizit: zuerst Ersparnisse, danach flexible Ausgaben reduzieren."""
+        remaining = self._round_money(deficit)
+        if remaining < float(min_abs_change):
+            return []
+
+        suggestions: list[BudgetSuggestion] = []
+
+        # 1) Ersparnisse zuerst reduzieren; das ist fachlich der sauberste Hebel,
+        # weil Fixausgaben nicht unrealistisch klein gerechnet werden sollen.
+        savings = sorted(
+            self._budget_by_category(year, month, TYP_SAVINGS).items(),
+            key=lambda item: float(item[1]),
+            reverse=True,
+        )
+        for category, current in savings:
+            if remaining < float(min_abs_change):
+                break
+            current = float(current)
+            if current <= 0:
+                continue
+            cut = min(current, remaining)
+            if cut < float(min_abs_change):
+                continue
+            suggested = self._round_money(current - cut)
+            suggestions.append(
+                BudgetSuggestion(
+                    typ=TYP_SAVINGS,
+                    category=category,
+                    direction="deficit",
+                    avg_deviation=-cut,
+                    consecutive_months=1,
+                    suggested_amount=suggested,
+                    current_budget=current,
+                    message=trf(
+                        "balance.deficit_reduce_savings",
+                        amount=format_money(cut),
+                        category=category,
+                        current=format_money(current),
+                        suggested=format_money(suggested),
+                    ),
+                )
+            )
+            remaining = self._round_money(remaining - cut)
+
+        # 2) Nur falls Ersparnisse nicht reichen: flexible Ausgaben. Fixkosten,
+        # Pot und inkrementelle Jahresrechnungen bleiben bewusst tabu.
+        if remaining >= float(min_abs_change):
+            expenses = sorted(
+                self._budget_by_category(year, month, TYP_EXPENSES).items(),
+                key=lambda item: float(item[1]),
+                reverse=True,
+            )
+            for category, current in expenses:
+                if remaining < float(min_abs_change):
+                    break
+                current = float(current)
+                if current <= 0 or not self._is_flexible_expense_category(category):
+                    continue
+                # Flexible Kosten sind zweite Priorität nach Ersparnissen.
+                # Wir dürfen bis zur Deckung vorschlagen, aber nie automatisch anwenden.
+                cut = self._round_money(min(remaining, current))
+                if cut < float(min_abs_change):
+                    continue
+                suggested = max(0.0, self._round_money(current - cut))
+                suggestions.append(
+                    BudgetSuggestion(
+                        typ=TYP_EXPENSES,
+                        category=category,
+                        direction="deficit",
+                        avg_deviation=-cut,
+                        consecutive_months=1,
+                        suggested_amount=suggested,
+                        current_budget=current,
+                        message=trf(
+                            "balance.deficit_reduce_flexible",
+                            amount=format_money(cut),
+                            category=category,
+                            current=format_money(current),
+                            suggested=format_money(suggested),
+                        ),
+                    )
+                )
+                remaining = self._round_money(remaining - cut)
+
+        if remaining >= float(min_abs_change):
+            suggestions.append(
+                BudgetSuggestion(
+                    typ=TYP_EXPENSES,
+                    category=tr("balance.uncovered_label"),
+                    direction="deficit",
+                    avg_deviation=-remaining,
+                    consecutive_months=1,
+                    suggested_amount=0.0,
+                    current_budget=0.0,
+                    message=trf(
+                        "balance.leftover_deficit", amount=format_money(remaining)
+                    ),
+                )
+            )
+
+        return suggestions
+
+    def _choose_savings_target(self, year: int, month: int) -> tuple[str, float] | None:
+        """Wählt die plausibelste Spar-Kategorie für Überschüsse."""
+        savings = self._budget_by_category(year, month, TYP_SAVINGS)
+        if not savings:
+            return None
+        preferred_words = ("not", "reserve", "puffer", "rück", "rueck", "spar", "save")
+        preferred = [
+            item
+            for item in savings.items()
+            if any(word in item[0].lower() for word in preferred_words)
+        ]
+        pool = preferred or list(savings.items())
+        return max(pool, key=lambda item: float(item[1]))
+
+    def _is_flexible_expense_category(self, category: str) -> bool:
+        """True nur für Ausgaben-Kategorien, die nicht fix/pot/inkrementell sind."""
+        try:
+            from model.category_forecast_mode import (
+                FORECAST_MODE_NORMAL,
+                effective_forecast_mode,
+                normalize_forecast_mode,
+            )
+
+            cols = {
+                r[1]
+                for r in self.conn.execute("PRAGMA table_info(categories)").fetchall()
+            }
+            select_mode = "forecast_mode" in cols
+            if select_mode:
+                row = self.conn.execute(
+                    "SELECT is_fix, is_recurring, forecast_mode FROM categories WHERE typ=? AND name=?",
+                    (TYP_EXPENSES, category),
+                ).fetchone()
+            else:
+                row = self.conn.execute(
+                    "SELECT is_fix, is_recurring FROM categories WHERE typ=? AND name=?",
+                    (TYP_EXPENSES, category),
+                ).fetchone()
+            if not row:
+                return True
+            is_fix = bool(int(row[0] or 0))
+            is_recurring = bool(int(row[1] or 0))
+            mode = effective_forecast_mode(
+                normalize_forecast_mode(row[2] if select_mode else "auto"),
+                is_fix,
+                is_recurring,
+            )
+            return (not is_fix) and (not is_recurring) and mode == FORECAST_MODE_NORMAL
+        except Exception:
+            logger.debug(
+                "Flexible-Kategorie konnte nicht bestimmt werden", exc_info=True
+            )
+            return False
+
+    @staticmethod
+    def _round_money(value: float, step: float = 10.0) -> float:
+        if step <= 0:
+            return round(float(value), 2)
+        return float(round(float(value) / step) * step)
+
     def get_type_suggestions(
         self,
         year: int,
@@ -524,6 +933,20 @@ class BudgetOverviewModel:
         """
         suggestions: list[BudgetSuggestion] = []
         # Kein vorzeitiger Abbruch – wir nutzen jahresübergreifende Fenster
+
+        try:
+            from settings import Settings
+
+            settings_obj = Settings()
+            zero_balance_enabled = bool(
+                settings_obj.get("budget_zero_balance_rule", False)
+            )
+            sign_ratio = float(
+                settings_obj.get("budget_suggestion_sign_ratio", 0.7) or 0.7
+            )
+        except Exception:
+            zero_balance_enabled = False
+            sign_ratio = 0.7
 
         from statistics import median
 
@@ -563,12 +986,20 @@ class BudgetOverviewModel:
             zero_count = len(deviations) - pos - neg
             non_zero = max(1, len(deviations) - zero_count)
             dominant = max(pos, neg)
-            if dominant / non_zero < 0.7:
+            if dominant / non_zero < sign_ratio:
                 continue
 
             central = float(median(deviations))
             avg_dev = float(sum(deviations) / len(deviations))
             direction = "surplus" if central > 0 else "deficit"
+
+            # Fachregel v2.0.39: Bei aktiver Null-Bilanz-Regel dürfen
+            # Ersparnisse nicht als klassischer Gesamt-Senkungsvorschlag
+            # erscheinen. Nicht gebuchte Ersparnisse sind dann ein
+            # Tracking-/Planungshinweis; der Einkommenstopf erzeugt ggf.
+            # einen gezielten Vorschlag über get_balance_suggestions().
+            if zero_balance_enabled and typ == TYP_SAVINGS and direction == "surplus":
+                continue
 
             # Budget des aktuellen Monats
             current_budget = self._budget_sum(year, current_month, typ)
@@ -806,12 +1237,10 @@ class BudgetOverviewModel:
 
     def _actual_sum(self, year: int, month: int, typ: str) -> float:
         """Summe aller Tracking-Einträge für Jahr/Monat/Typ."""
-        start = f"{year:04d}-{month:02d}-01"
-        last_day = calendar.monthrange(year, month)[1]
-        end = f"{year:04d}-{month:02d}-{last_day:02d}"
+        start, end = month_bounds(year, month)
         row = self.conn.execute(
             "SELECT COALESCE(SUM(amount), 0) FROM tracking "
-            "WHERE date >= ? AND date <= ? AND typ=?",
+            "WHERE date >= ? AND date < ? AND typ=?",
             (start, end, typ),
         ).fetchone()
         val = float(row[0]) if row else 0.0
@@ -829,12 +1258,10 @@ class BudgetOverviewModel:
 
     def _actual_by_category(self, year: int, month: int, typ: str) -> dict[str, float]:
         """Ist-Werte pro Kategorie."""
-        start = f"{year:04d}-{month:02d}-01"
-        last_day = calendar.monthrange(year, month)[1]
-        end = f"{year:04d}-{month:02d}-{last_day:02d}"
+        start, end = month_bounds(year, month)
         cur = self.conn.execute(
             "SELECT category, SUM(amount) FROM tracking "
-            "WHERE date >= ? AND date <= ? AND typ=? GROUP BY category",
+            "WHERE date >= ? AND date < ? AND typ=? GROUP BY category",
             (start, end, typ),
         )
         result = {}

@@ -35,18 +35,9 @@ class _SingleInstanceGuard:
 
     @staticmethod
     def _pid_alive(pid: int) -> bool:
-        if pid <= 0:
-            return False
-        try:
-            os.kill(pid, 0)
-            return True
-        except ProcessLookupError:
-            return False
-        except PermissionError:
-            # Prozess existiert, gehört aber ggf. anderem User. Für uns: aktiv.
-            return True
-        except Exception:
-            return False
+        from model.process_utils import is_pid_alive
+
+        return is_pid_alive(pid)
 
     def _read_pid(self) -> int | None:
         try:
@@ -113,7 +104,11 @@ def _install_crash_diagnostics() -> None:
         crash_log = data_dir() / "budgetmanager_crash.log"
         crash_log.parent.mkdir(parents=True, exist_ok=True)
     except Exception:
-        crash_log = Path("/tmp/budgetmanager_crash.log")
+        # Portabler Fallback: OS-Temp-Verzeichnis statt hartkodiertem /tmp
+        # (existiert unter Windows nicht). gettempdir() liefert %TEMP% bzw. /tmp.
+        import tempfile
+
+        crash_log = Path(tempfile.gettempdir()) / "budgetmanager_crash.log"
 
     try:
         _crash_log_handle = open(crash_log, "a", encoding="utf-8")
@@ -244,6 +239,9 @@ def _run_updater_mode(argv: list[str]) -> int | None:
     if "--apply-update" in argv:
         from updater.apply_update import main as apply_main
         return apply_main()
+    if "--startup-update-check" in argv:
+        from updater.startup_check import main as startup_check_main
+        return startup_check_main()
     return None
 
 
@@ -337,6 +335,22 @@ def main() -> int:
             logger.warning("Zweite Instanz blockiert: %s", lock_reason)
             print(lock_reason)
             return 0
+
+        from app_info import APP_VERSION
+        from model.diagnostics import mark_app_started, mark_app_exited
+
+        previous_unclean_state = mark_app_started(version=APP_VERSION, argv=sys.argv)
+
+        def _finish_startup_return(code: int, reason: str, *, clean: bool = True) -> int:
+            try:
+                mark_app_exited(clean=clean, reason=reason, version=APP_VERSION)
+            except Exception:
+                logger.debug("Runtime-State konnte vor frühem Exit nicht geschrieben werden", exc_info=True)
+            try:
+                single_lock.release()
+            except Exception:
+                pass
+            return code
 
         app = QApplication(sys.argv)
         _setup_emoji_fonts(app)
@@ -445,14 +459,14 @@ def main() -> int:
                             active_user = None
                             continue
                         QMessageBox.critical(None, tr("msg.error"), tr("account.quick_login_failed"))
-                        return 1
+                        return _finish_startup_return(1, "quick_login_failed")
                     active_user = user
                 else:
                     # Login-Dialog anzeigen
                     from views.login_dialog import LoginDialog
                     login_dlg = LoginDialog()
                     if login_dlg.exec() != LoginDialog.Accepted or not login_dlg.result:
-                        return 0  # Abgebrochen
+                        return _finish_startup_return(0, "login_cancelled")  # Abgebrochen
                     active_user = login_dlg.result.user
                     db_key = login_dlg.result.db_key
 
@@ -478,7 +492,7 @@ def main() -> int:
                         None, tr("msg.error"),
                         trf("msg.db_open_failed", err=str(e))
                     )
-                    return 1
+                    return _finish_startup_return(1, "db_open_failed")
                 break
 
             else:
@@ -506,7 +520,7 @@ def main() -> int:
                                 conn = None
                                 continue
                             QMessageBox.critical(None, tr("msg.error"), str(e))
-                            return 1
+                            return _finish_startup_return(1, "startup_wizard_db_open_failed")
                     else:
                         # Abgebrochen → Fallback auf unverschlüsselt
                         pass
@@ -703,6 +717,16 @@ def main() -> int:
         setup_timer.timeout.connect(_start_setup_assistant_safely)
         setup_timer.start(350)
 
+        try:
+            win.schedule_startup_update_check(delay_ms=4000)
+        except Exception:
+            logger.exception("Startup-Update-Check konnte nicht geplant werden")
+
+        try:
+            win.schedule_unclean_shutdown_prompt(previous_unclean_state, delay_ms=1500)
+        except Exception:
+            logger.exception("Crash-/Diagnosehinweis konnte nicht geplant werden")
+
         rc = app.exec()
 
         # ── Cleanup (Reihenfolge kritisch für PyInstaller!) ────
@@ -734,9 +758,19 @@ def main() -> int:
         import gc
         gc.collect()
 
+        try:
+            mark_app_exited(clean=(rc == 0), reason=f"qt_exit_{rc}", version=APP_VERSION)
+        except Exception:
+            logger.debug("Runtime-State konnte beim Shutdown nicht geschrieben werden", exc_info=True)
+
         return rc
 
     except Exception as exc:
+        try:
+            if 'mark_app_exited' in locals():
+                mark_app_exited(clean=False, reason=f"startup_error: {exc}")
+        except Exception:
+            pass
         try:
             if 'single_lock' in locals():
                 single_lock.release()

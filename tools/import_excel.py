@@ -10,6 +10,7 @@ from model.database import open_db
 from model.migrations import migrate_all
 from model.category_model import CategoryModel
 from model.budget_model import BudgetModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 MONTH_COLS = list(range(5, 17))  # E..P -> 12 Monate
 
@@ -54,9 +55,9 @@ def main() -> int:
     y2 = y1 + 1
 
     # Kategorien aus Tabellen
-    t_eink = ws._tables["Einkommen"].ref
-    t_ausg = ws._tables["Ausgaben"].ref
-    t_ersp = ws._tables["Ersparnisse"].ref
+    t_eink = ws._tables[TYP_INCOME].ref
+    t_ausg = ws._tables[TYP_EXPENSES].ref
+    t_ersp = ws._tables[TYP_SAVINGS].ref
 
     def read_table_names(tref, typ):
         minc, minr, maxc, maxr = range_boundaries(tref)
@@ -65,25 +66,25 @@ def main() -> int:
             if isinstance(name, str) and name.strip():
                 # Fix-Flag: bei Ausgaben ist in Excel Flag in Spalte B
                 is_fix=False
-                if typ=="Ausgaben":
+                if typ == TYP_EXPENSES:
                     flag=ws.cell(row=r, column=2).value
                     is_fix = bool(flag and str(flag).strip())
                 cats.upsert(typ, name.strip(), is_fix, True if is_fix else False)
 
-    read_table_names(t_eink, "Einkommen")
-    read_table_names(t_ausg, "Ausgaben")
-    read_table_names(t_ersp, "Ersparnisse")
+    read_table_names(t_eink, TYP_INCOME)
+    read_table_names(t_ausg, TYP_EXPENSES)
+    read_table_names(t_ersp, TYP_SAVINGS)
 
     # Budget-Blöcke (aus Analyse):
     # Einkommen: rows 10-12
-    _read_budget_block(ws, 10, 12, y1, "Einkommen", budget)
-    _read_budget_block(ws, 10, 12, y2, "Einkommen", budget)   # year2 values in S..AB nicht gelesen (optional)
+    _read_budget_block(ws, 10, 12, y1, TYP_INCOME, budget)
+    _read_budget_block(ws, 10, 12, y2, TYP_INCOME, budget)   # year2 values in S..AB nicht gelesen (optional)
 
     # Ausgaben: rows 23-43
-    _read_budget_block(ws, 23, 43, y1, "Ausgaben", budget)
+    _read_budget_block(ws, 23, 43, y1, TYP_EXPENSES, budget)
 
     # Ersparnisse: rows 57-60
-    _read_budget_block(ws, 57, 60, y1, "Ersparnisse", budget)
+    _read_budget_block(ws, 57, 60, y1, TYP_SAVINGS, budget)
 
     print("Import fertig. Jahr:", y1)
     return 0

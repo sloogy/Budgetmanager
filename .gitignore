@@ -46,6 +46,7 @@ Thumbs.db
 
 # --- Backups / Exports ---
 data/backups/
+data/diagnostics/
 *.bmr
 
 # --- Build-Ausgaben ---

@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""Prueft die Lint-/Release-Prozedur ohne externe Zusatzpakete.
+
+Ziel: Fail-fast vor dem Packen/Bauen, wenn der Release-Baum oder die CI-Prozedur
+inkonsistent ist. Dieser Check ersetzt nicht Black/Mypy/Pytest, sondern prueft,
+dass diese Gates und der Release-Cleaner korrekt verdrahtet sind.
+"""
+from __future__ import annotations
+
+import ast
+import json
+import re
+import sys
+from pathlib import Path
+from typing import Iterable
+
+ROOT = Path(__file__).resolve().parents[1]
+EXCLUDED_DIRS = {
+    ".git",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "installer_output",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+}
+GENERATED_FILE_PATTERNS = (
+    "*.pyc",
+    "*.pyo",
+    "*.log",
+    "data/backups/*.bmr",
+    "data/*.enc",
+    "data/*.db",
+    "data/*.sqlite",
+    "data/*.sqlite3",
+    "data/users.json",
+)
+
+
+def _read(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def _app_version_and_date() -> tuple[str, str]:
+    text = _read(ROOT / "app_info.py")
+    version_match = re.search(r"^APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", text, re.MULTILINE)
+    date_match = re.search(r"^APP_RELEASE_DATE\s*=\s*['\"]([^'\"]+)['\"]", text, re.MULTILINE)
+    if not version_match or not date_match:
+        raise RuntimeError("APP_VERSION oder APP_RELEASE_DATE in app_info.py nicht gefunden")
+    return version_match.group(1), date_match.group(1)
+
+
+def _python_files() -> Iterable[Path]:
+    for path in ROOT.rglob("*.py"):
+        if any(part in EXCLUDED_DIRS for part in path.relative_to(ROOT).parts):
+            continue
+        yield path
+
+
+def _line_col(text: str, lineno: int, col: int) -> str:
+    line = text.splitlines()[lineno - 1] if lineno > 0 else ""
+    return f"line {lineno}, col {col}: {line.strip()}"
+
+
+def check_versions() -> list[str]:
+    errors: list[str] = []
+    version, date = _app_version_and_date()
+
+    lock = _read(ROOT / "requirements.lock")
+    expected = f"# Stand: v{version} / {date}"
+    if expected not in lock.splitlines()[:5]:
+        errors.append(f"requirements.lock Header fehlt/ist veraltet: erwartet {expected!r}")
+
+    version_json = json.loads(_read(ROOT / "version.json"))
+    if version_json.get("version") != version:
+        errors.append("version.json ist nicht mit app_info.py synchron")
+
+    for rel in ("latest.json.template", "docs/latest.json.template"):
+        data = json.loads(_read(ROOT / rel))
+        if data.get("version") != version or data.get("release_tag") != f"v{version}":
+            errors.append(f"{rel} ist nicht mit v{version} synchron")
+    return errors
+
+
+def check_generated_artifacts() -> list[str]:
+    errors: list[str] = []
+    for name in EXCLUDED_DIRS - {".git", ".venv", "venv"}:
+        for path in ROOT.rglob(name):
+            if path.is_dir():
+                errors.append(f"generiertes Verzeichnis im Release-Baum: {path.relative_to(ROOT)}")
+    for pattern in GENERATED_FILE_PATTERNS:
+        for path in ROOT.glob(pattern):
+            if path.is_file():
+                errors.append(f"generierte/private Datei im Release-Baum: {path.relative_to(ROOT)}")
+    return errors
+
+
+def check_workflow() -> list[str]:
+    errors: list[str] = []
+    workflow_path = ROOT / ".github" / "workflows" / "build.yml"
+    workflow = _read(workflow_path)
+    required_snippets = [
+        "python tools/sync_version.py --check",
+        "python tools/verify_qt_translations.py",
+        "python -m compileall -q .",
+        "python -m black --check model/",
+        "python -m mypy model/",
+        "python -m pytest tests/ -v -ra --tb=short",
+        "python tools/clean_release_tree.py",
+        "python tools/lint_procedure_check.py",
+        "pyinstaller BudgetManager.spec --noconfirm",
+    ]
+    for snippet in required_snippets:
+        if snippet not in workflow:
+            errors.append(f"GitHub-Workflow fehlt Gate: {snippet}")
+
+    pytest_pos = workflow.find("python -m pytest tests/ -v -ra --tb=short")
+    clean_pos = workflow.find("python tools/clean_release_tree.py")
+    lint_pos = workflow.find("python tools/lint_procedure_check.py")
+    build_pos = workflow.find("pyinstaller BudgetManager.spec --noconfirm")
+    if min(pytest_pos, clean_pos, lint_pos, build_pos) >= 0:
+        if not (pytest_pos < clean_pos < lint_pos < build_pos):
+            errors.append("Workflow-Reihenfolge muss sein: pytest -> clean_release_tree -> lint_procedure_check -> PyInstaller")
+    else:
+        errors.append("Workflow-Reihenfolge konnte nicht vollstaendig geprüft werden")
+    return errors
+
+
+def check_release_docs() -> list[str]:
+    errors: list[str] = []
+    checklist = _read(ROOT / "docs" / "release-checklist.md")
+    required_commands = [
+        "python tools/sync_version.py --check",
+        "python -m compileall -q .",
+        "python tools/i18n_audit.py",
+        "python tools/dau_first_run_check.py",
+        "python -m black --check model/",
+        "python -m mypy model/",
+        "python -m pytest tests/ -v -ra --tb=short",
+        "python tools/clean_release_tree.py",
+        "python tools/lint_procedure_check.py",
+    ]
+    for command in required_commands:
+        if command not in checklist:
+            errors.append(f"Release-Checkliste fehlt Kommando: {command}")
+    return errors
+
+
+
+def check_required_regression_tests() -> list[str]:
+    """Sichert ab, dass kritische Release-Hardening-Tests nicht versehentlich verschwinden."""
+    errors: list[str] = []
+    required_tests = {
+        "tests/test_lint_release_procedure_v2041.py": [
+            "test_lint_procedure_passes_after_clean_release_tree",
+            "clean_release_tree.py",
+            "lint_procedure_check.py",
+        ],
+        "tests/test_password_hash_keysep_v2041.py": [
+            "test_login_migrates_legacy_key_equivalent_hash_even_at_current_iterations",
+            "is_legacy_password_hash",
+        ],
+        "tests/test_lock_procedure_account_language_v2041.py": [
+            "test_account_lifecycle_quick_pin_password_delete",
+            "test_security_labels_are_localized_for_de_en_fr",
+            "test_lint_procedure_locks_required_regression_tests_into_release_gate",
+        ],
+    }
+    for rel, markers in required_tests.items():
+        path = ROOT / rel
+        if not path.is_file():
+            errors.append(f"kritischer Regressionstest fehlt: {rel}")
+            continue
+        text = _read(path)
+        for marker in markers:
+            if marker not in text:
+                errors.append(f"kritischer Regressionstest {rel} fehlt Marker: {marker}")
+    return errors
+
+
+def check_security_lint() -> list[str]:
+    errors: list[str] = []
+    for path in _python_files():
+        text = _read(path)
+        try:
+            tree = ast.parse(text, filename=str(path))
+        except SyntaxError as exc:
+            errors.append(f"Syntaxfehler in {path.relative_to(ROOT)}: {exc}")
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ExceptHandler) and node.type is None:
+                errors.append(f"bare except in {path.relative_to(ROOT)} ({_line_col(text, node.lineno, node.col_offset)})")
+            if isinstance(node, ast.Call):
+                for kw in node.keywords:
+                    if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
+                        errors.append(f"shell=True in {path.relative_to(ROOT)} ({_line_col(text, node.lineno, node.col_offset)})")
+                if isinstance(node.func, ast.Name) and node.func.id in {"eval", "exec"}:
+                    errors.append(
+                        f"{node.func.id}() in {path.relative_to(ROOT)} "
+                        f"({_line_col(text, node.lineno, node.col_offset)})"
+                    )
+    return errors
+
+
+def check_cleaner_scope() -> list[str]:
+    errors: list[str] = []
+    cleaner = _read(ROOT / "tools" / "clean_release_tree.py")
+    required = ["data/backups/*.bmr", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "dist", "installer_output"]
+    for token in required:
+        if token not in cleaner:
+            errors.append(f"clean_release_tree.py entfernt {token!r} nicht")
+    return errors
+
+
+def main() -> int:
+    checks = {
+        "versions": check_versions,
+        "generated_artifacts": check_generated_artifacts,
+        "workflow": check_workflow,
+        "release_docs": check_release_docs,
+        "required_regression_tests": check_required_regression_tests,
+        "security_lint": check_security_lint,
+        "cleaner_scope": check_cleaner_scope,
+    }
+    errors: list[str] = []
+    for name, func in checks.items():
+        result = func()
+        if result:
+            errors.extend(f"[{name}] {item}" for item in result)
+
+    if errors:
+        print("Lint-/Release-Prozedur: FAIL")
+        for item in errors:
+            print(f"- {item}")
+        return 1
+
+    print("Lint-/Release-Prozedur: PASS")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

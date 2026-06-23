@@ -10,6 +10,7 @@ from typing import List, Optional
 from model.undo_redo_model import UndoRedoModel
 from model.database import db_transaction
 from model.crypto import suspend_after_commit_autosave
+from model.typ_constants import TYP_SAVINGS
 
 
 """Sparziele-Datenmodell.
@@ -508,12 +509,12 @@ class SavingsGoalsModel:
             """
             SELECT COALESCE(SUM(ABS(amount)), 0) 
             FROM tracking 
-            WHERE typ = 'Ersparnisse' 
+            WHERE typ = ? 
               AND category = ? 
               AND amount < 0 
               AND date >= ?
             """,
-            (goal.category, goal.released_date[:10]),
+            (TYP_SAVINGS, goal.category, goal.released_date[:10]),
         )
         row = cur.fetchone()
         return float(row[0]) if row and row[0] is not None else 0.0
@@ -528,12 +529,12 @@ class SavingsGoalsModel:
             """
             SELECT COALESCE(SUM(amount), 0)
             FROM tracking
-            WHERE typ = 'Ersparnisse'
+            WHERE typ = ?
               AND category = ?
               AND amount > 0
               AND date >= ?
             """,
-            (goal.category, goal.released_date[:10]),
+            (TYP_SAVINGS, goal.category, goal.released_date[:10]),
         )
         row = cur.fetchone()
         return float(row[0]) if row and row[0] is not None else 0.0
@@ -554,23 +555,12 @@ class SavingsGoalsModel:
             # Abgeschlossene Ziele nicht neu synchronisieren
             return goal.current_amount
 
-        cur = self.conn.execute(
-            """SELECT COALESCE(SUM(amount), 0) FROM tracking
-               WHERE typ = 'Ersparnisse' AND category = ?
-               AND id IN (
-                   SELECT et.entry_id FROM tracking t2
-                   LEFT JOIN savings_goals sg ON sg.category = t2.category
-                   WHERE t2.category = ?
-               )
-            """,
-            (goal.category, goal.category),
-        )
         # Vereinfachte korrekte Version: nur positive Buchungen (Einzahlungen) summieren,
         # nicht Buchungen anderer Ziele derselben Kategorie doppelt zählen.
         # Wir summieren ALLE Tracking-Buchungen der Kategorie (positiv = einzahlen, negativ = entnehmen).
         cur = self.conn.execute(
-            "SELECT COALESCE(SUM(amount), 0) FROM tracking WHERE typ = 'Ersparnisse' AND category = ?",
-            (goal.category,),
+            "SELECT COALESCE(SUM(amount), 0) FROM tracking WHERE typ = ? AND category = ?",
+            (TYP_SAVINGS, goal.category),
         )
         row = cur.fetchone()
         total = float(row[0]) if row and row[0] is not None else 0.0

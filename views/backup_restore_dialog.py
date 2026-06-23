@@ -44,7 +44,9 @@ class BackupRestoreDialog(QDialog):
         if settings and hasattr(settings, 'backup_directory'):
             self.backup_dir = configured_backups_dir(settings.backup_directory)
         else:
-            self.backup_dir = Path.home() / "BudgetManager_Backups"
+            from model.app_paths import backups_dir
+
+            self.backup_dir = backups_dir()
         
         self.backup_dir.mkdir(parents=True, exist_ok=True)
         
@@ -87,7 +89,7 @@ class BackupRestoreDialog(QDialog):
             active_db_path = Path(self.db_path) if self.db_path else Path("(unbekannt)")
 
         if self.active_user is not None:
-            user_txt = f"{tr('backup.active_user')}: {getattr(self.active_user, 'display_name', '')} ({getattr(self.active_user, 'security_label', getattr(self.active_user, 'security', ''))})"
+            user_txt = f"{tr('backup.active_user')}: {getattr(self.active_user, 'display_name', '')} ({display_security_label(getattr(self.active_user, 'security', ''))})"
         else:
             user_txt = f"{tr('backup.active_user')}: {tr('backup.unencrypted')}"
 
@@ -609,7 +611,7 @@ class BackupRestoreDialog(QDialog):
             mem_conn.row_factory = sqlite3.Row
             mem_conn.executescript(dump_sql)
             mem_conn.execute("PRAGMA foreign_keys = ON;")
-            mem_conn.execute("PRAGMA busy_timeout = 5000;")
+            mem_conn.execute("PRAGMA busy_timeout = 10000;")
 
             try:
                 encrypt_db_to_file(mem_conn, dest_enc, self.encrypted_session.db_key, self.encrypted_session.salt)
@@ -676,7 +678,7 @@ class BackupRestoreDialog(QDialog):
             user_line = trf(
                 "backup_restore.user_line.active",
                 name=getattr(self.active_user, 'display_name', ''),
-                security=getattr(self.active_user, 'security_label', getattr(self.active_user, 'security', '')),
+                security=display_security_label(getattr(self.active_user, 'security', '')),
             )
         else:
             user_line = tr("backup_restore.user_line.plain")
@@ -943,5 +945,5 @@ class BackupRestoreDialog(QDialog):
 
 
 from PySide6.QtCore import Qt
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.i18n import tr, trf, display_typ, db_typ_from_display, display_security_label
 from views.ui_colors import ui_colors

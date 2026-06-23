@@ -227,6 +227,7 @@ class SettingsDialog(QDialog):
         # Zusätzliche UX-Settings (werden in JSON gespeichert, wenn MainWindow sie übernimmt)
         self.cb_warn_delete = QCheckBox(tr("dlg.loeschvorgaenge_bestaetigen_lassen"))
         self.cb_warn_budget_overrun = QCheckBox(tr("dlg.warnen_wenn_das_budget"))
+        self.cb_warn_budget_overrun.setToolTip(tr("settings.warn_budget_overrun_tooltip"))
 
         vb.addWidget(self.cb_auto_save)
         vb.addWidget(self.cb_ask_due)
@@ -267,6 +268,16 @@ class SettingsDialog(QDialog):
             tr('auto.settings_dialog.226_mindestanzahl_aufeinanderfolgender__c912895e')
         )
         fl_bo.addRow(tr("dlg.ueberschussdefizitvorschlag_ab"), self._settings_field(self.cmb_budget_suggestion_months, 220))
+
+        self.cb_budget_zero_balance_rule = QCheckBox(tr("settings.zero_balance_rule"))
+        self.cb_budget_zero_balance_rule.setToolTip(tr("settings.zero_balance_rule_tip"))
+        fl_bo.addRow("", self.cb_budget_zero_balance_rule)
+
+        self.cmb_budget_surplus_strategy = QComboBox()
+        self.cmb_budget_surplus_strategy.addItem(tr("settings.surplus_strategy_savings"), "savings")
+        self.cmb_budget_surplus_strategy.addItem(tr("settings.surplus_strategy_carryover"), "carryover")
+        self.cmb_budget_surplus_strategy.setToolTip(tr("settings.budget_surplus_strategy_tip"))
+        fl_bo.addRow(tr("settings.budget_surplus_strategy"), self._settings_field(self.cmb_budget_surplus_strategy, 220))
 
         self.cb_budget_overview_drag_drop = QCheckBox(tr("settings.budget_overview_drag_drop"))
         self.cb_budget_overview_drag_drop.setToolTip(tr("settings.budget_overview_drag_drop_tip"))
@@ -556,6 +567,10 @@ class SettingsDialog(QDialog):
         idx_sug = self.cmb_budget_suggestion_months.findData(max(2, min(12, suggestion_months)))
         self.cmb_budget_suggestion_months.setCurrentIndex(max(0, idx_sug))
         self.cb_budget_overview_drag_drop.setChecked(bool(self.settings.get("budget_overview_drag_drop", True)))
+        self.cb_budget_zero_balance_rule.setChecked(bool(self.settings.get("budget_zero_balance_rule", False)))
+        _surplus_strategy = str(self.settings.get("budget_surplus_strategy", "savings") or "savings")
+        _surplus_idx = self.cmb_budget_surplus_strategy.findData(_surplus_strategy)
+        self.cmb_budget_surplus_strategy.setCurrentIndex(max(0, _surplus_idx))
         self.cb_carryover_start.setCurrentIndex(int(self.settings.get("carryover_start_month", 1) or 1) - 1)
         saved_year = int(self.settings.get("carryover_start_year", 0) or 0)
         if saved_year < 2020:
@@ -565,7 +580,7 @@ class SettingsDialog(QDialog):
 
         # Zusätzliche Warnungen (neue Keys)
         self.cb_warn_delete.setChecked(bool(self.settings.get("warn_delete", True)))
-        self.cb_warn_budget_overrun.setChecked(bool(self.settings.get("warn_budget_overrun", True)))
+        self.cb_warn_budget_overrun.setChecked(bool(self.settings.get("warn_budget_overrun", False)))
 
         # Darstellung
         theme = (self.settings.theme or "light").lower()
@@ -607,6 +622,8 @@ class SettingsDialog(QDialog):
             "recent_days": int(self.cmb_recent_days.currentText()),
             "recurring_preferred_day": int(self.cmb_recurring_day.currentData() if self.cmb_recurring_day.currentData() is not None else 25),
             "budget_suggestion_months": int(self.cmb_budget_suggestion_months.currentData() or 3),
+            "budget_zero_balance_rule": bool(self.cb_budget_zero_balance_rule.isChecked()),
+            "budget_surplus_strategy": self.cmb_budget_surplus_strategy.currentData() or "savings",
             "budget_overview_drag_drop": bool(self.cb_budget_overview_drag_drop.isChecked()),
             "carryover_start_month": self.cb_carryover_start.currentIndex() + 1,
             "carryover_start_year": self.sb_carryover_start_year.value(),

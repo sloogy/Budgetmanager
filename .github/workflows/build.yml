@@ -55,6 +55,9 @@ jobs:
       - name: Check version consistency
         run: python tools/sync_version.py --check
 
+      - name: Verify Qt translation catalogs
+        run: python tools/verify_qt_translations.py
+
       - name: Compile all sources (syntax check incl. tools/)
         run: python -m compileall -q . -x '_attic|__pycache__'
 
@@ -72,6 +75,12 @@ jobs:
           PYTHONIOENCODING: utf-8
         run: |
           python -m pytest tests/ -v -ra --tb=short
+
+      - name: Clean generated test artifacts
+        run: python tools/clean_release_tree.py
+
+      - name: Verify lint and release procedure
+        run: python tools/lint_procedure_check.py
 
       - name: Build with PyInstaller
         run: pyinstaller BudgetManager.spec --noconfirm

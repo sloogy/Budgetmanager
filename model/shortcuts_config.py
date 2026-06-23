@@ -30,6 +30,12 @@ SHORTCUT_DEFS: list[tuple[str, str, str, str]] = [
     ("settings", "Ctrl+,", "shortcut.action.settings", "shortcut.group.general"),
     ("quit", "Ctrl+Q", "shortcut.action.quit", "shortcut.group.general"),
     # --- Navigation ---
+    (
+        "tab_cockpit",
+        "Ctrl+0",
+        "shortcut.action.tab_cockpit",
+        "shortcut.group.navigation",
+    ),
     ("tab_budget", "Ctrl+1", "shortcut.action.tab_budget", "shortcut.group.navigation"),
     (
         "tab_categories",
@@ -49,6 +55,12 @@ SHORTCUT_DEFS: list[tuple[str, str, str, str]] = [
         "shortcut.action.tab_overview",
         "shortcut.group.navigation",
     ),
+    (
+        "tab_savings",
+        "Ctrl+5",
+        "shortcut.action.tab_savings",
+        "shortcut.group.navigation",
+    ),
     # --- Functions ---
     (
         "current_year",
@@ -61,7 +73,39 @@ SHORTCUT_DEFS: list[tuple[str, str, str, str]] = [
     ("undo", "Ctrl+Z", "shortcut.action.undo", "shortcut.group.functions"),
     ("redo", "Ctrl+Shift+Z", "shortcut.action.redo", "shortcut.group.functions"),
     ("export", "Ctrl+E", "shortcut.action.export", "shortcut.group.functions"),
-    ("import", "Ctrl+I", "shortcut.action.import", "shortcut.group.functions"),
+    (
+        "category_manager",
+        "Ctrl+K",
+        "shortcut.action.category_manager",
+        "shortcut.group.functions",
+    ),
+    (
+        "tags_manager",
+        "Ctrl+T",
+        "shortcut.action.tags_manager",
+        "shortcut.group.functions",
+    ),
+    (
+        "budget_warnings",
+        "Ctrl+W",
+        "shortcut.action.budget_warnings",
+        "shortcut.group.functions",
+    ),
+    ("updates", "Ctrl+U", "shortcut.action.updates", "shortcut.group.functions"),
+    ("edit_add", "Insert", "shortcut.action.edit_add", "shortcut.group.functions"),
+    ("edit_edit", "F2", "shortcut.action.edit_edit", "shortcut.group.functions"),
+    (
+        "edit_delete",
+        "Delete",
+        "shortcut.action.edit_delete",
+        "shortcut.group.functions",
+    ),
+    (
+        "book_fixcosts",
+        "Ctrl+Shift+F",
+        "shortcut.action.book_fixcosts",
+        "shortcut.group.functions",
+    ),
     ("favorites", "F12", "shortcut.action.favorites", "shortcut.group.functions"),
     ("fullscreen", "F11", "shortcut.action.fullscreen", "shortcut.group.functions"),
     ("maximize", "F10", "shortcut.action.maximize", "shortcut.group.functions"),

@@ -1,4 +1,4 @@
-# BudgetManager 2.0.32 – Guide utilisateur
+# BudgetManager 2.1.0 – Guide utilisateur
 
 ## 1. Idée générale
 
@@ -76,7 +76,7 @@ Chemins de mise à jour :
 
 - **Portable Windows/Linux** : télécharge le ZIP portable, remplace les fichiers du programme et conserve `data/` et `updates/`.
 - **EXE Windows / binaire Linux direct** : migre les anciens fichiers de démarrage versionnés vers des noms stables.
-- **Installateur Windows** : télécharge la nouvelle EXE d'installation et lance l'installateur.
+- **Installateur Windows** : télécharge la nouvelle EXE d'installation, attend la fermeture de l'application et lance l'installateur en mode mise à jour. Le dossier de données choisi est conservé.
 
 ## 8. Sauvegarde et clé de restauration
 

@@ -61,6 +61,7 @@ class Settings:
             # Der Banner/Warner in der Übersicht bleibt standardmässig aus, um Doppel-Logik zu vermeiden.
             "warn_budget_overrun": False,
             "refresh_on_start": True,  # Beim Start automatisch aktualisieren
+            "check_updates_on_start": True,  # Beim Start leichtgewichtig nach Updates suchen
             # Tracking: Schnellfilter "nur letzte X Tage".
             # Erlaubte Werte: 14 oder 30
             "recent_days": 14,
@@ -76,6 +77,12 @@ class Settings:
             # 0.7 = 70% der betrachteten Monate müssen die gleiche Tendenz zeigen.
             # 1.0 wäre zu streng (1 Ausreisser blockiert alles).
             "budget_suggestion_sign_ratio": 0.7,
+            # Sanfte Null-Bilanz-Regel: Einkommen als Topf, Ausgaben+Ersparnisse dagegen.
+            # Optional, damit die App nicht bevormundet. Wenn aktiv, entstehen
+            # Vorschläge zum Erhöhen von Ersparnissen oder Reduzieren von Ersparnissen/flexiblen Ausgaben.
+            "budget_zero_balance_rule": False,
+            # Was mit regelmässigem Überschuss passieren soll: savings | carryover
+            "budget_surplus_strategy": "savings",
             # Budgetwarnungen: automatisch aus Budget generieren wenn keine gespeicherten Regeln.
             # True = Nutzer sieht Warnungen ohne explizite Konfiguration (empfohlen).
             # False = Nur explizit angelegte Warnungen werden angezeigt.
@@ -281,8 +288,9 @@ class Settings:
     @property
     def backup_directory(self) -> str:
         """Pfad zum Backup-Ordner"""
-        from pathlib import Path
-        default = str(Path.home() / "BudgetManager_Backups")
+        from model.app_paths import backups_dir
+
+        default = str(backups_dir())
         return self.get("backup_directory", default)
     
     @backup_directory.setter

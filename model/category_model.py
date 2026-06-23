@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from typing import List
 
 from model.undo_redo_model import UndoRedoModel
+from model.category_forecast_mode import FORECAST_MODE_AUTO, normalize_forecast_mode
+from model.typ_constants import ALL_TYPEN, TYP_SAVINGS
 
 """Kategorie-Datenmodell.
 
@@ -52,6 +54,7 @@ class Category:
     recurring_day: int
     funded_by_category_id: int | None
     sort_order: int
+    forecast_mode: str = FORECAST_MODE_AUTO
 
 
 class CategoryModel:
@@ -151,6 +154,12 @@ class CategoryModel:
                         if "sort_order" in r.keys() and r["sort_order"] is not None
                         else 0
                     ),
+                    normalize_forecast_mode(
+                        r["forecast_mode"]
+                        if "forecast_mode" in r.keys()
+                        and r["forecast_mode"] is not None
+                        else FORECAST_MODE_AUTO
+                    ),
                 )
             )
         return out
@@ -181,6 +190,7 @@ class CategoryModel:
                 else "NULL as funded_by_category_id"
             ),
             "sort_order" if "sort_order" in cols else "0 as sort_order",
+            "forecast_mode" if "forecast_mode" in cols else "'auto' as forecast_mode",
         ]
         # optional (einige Dialoge nutzen diesen Wert)
         if "expected_monthly_bookings" in cols:
@@ -219,6 +229,7 @@ class CategoryModel:
                     "is_fix": bool(r["is_fix"]),
                     "is_recurring": bool(r["is_recurring"]),
                     "recurring_day": int(r["recurring_day"] or 1),
+                    "forecast_mode": normalize_forecast_mode(r["forecast_mode"]),
                     "funded_by_category_id": (
                         int(r["funded_by_category_id"])
                         if r["funded_by_category_id"] is not None
@@ -233,12 +244,8 @@ class CategoryModel:
         return out
 
     def list_tree(self) -> dict[str, List[Category]]:
-        """Liefert alle Kategorien gruppiert nach typ (Einnahmen/Ausgaben/Ersparnisse)."""
-        data: dict[str, List[Category]] = {
-            "Einkommen": [],
-            "Ausgaben": [],
-            "Ersparnisse": [],
-        }
+        """Liefert alle Kategorien gruppiert nach typ (Einkommen/Ausgaben/Ersparnisse)."""
+        data: dict[str, List[Category]] = {typ: [] for typ in ALL_TYPEN}
         for c in self.list(None):
             data.setdefault(c.typ, []).append(c)
         return data
@@ -595,6 +602,7 @@ class CategoryModel:
         parent_id: int | None = None,
         funded_by_category_id: int | None = None,
         sort_order: int = 0,
+        forecast_mode: str = FORECAST_MODE_AUTO,
     ) -> None:
         day = int(recurring_day) if recurring_day else 1
         if day < 1:
@@ -608,15 +616,16 @@ class CategoryModel:
             and "sort_order" in cols
         ):
             self.conn.execute(
-                "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
-                "VALUES(?,?,?,?,?,?,?,?) "
+                "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order,forecast_mode) "
+                "VALUES(?,?,?,?,?,?,?,?,?) "
                 "ON CONFLICT(typ,name) DO UPDATE SET "
                 "  parent_id=excluded.parent_id, "
                 "  is_fix=excluded.is_fix, "
                 "  is_recurring=excluded.is_recurring, "
                 "  recurring_day=excluded.recurring_day, "
                 "  funded_by_category_id=excluded.funded_by_category_id, "
-                "  sort_order=excluded.sort_order",
+                "  sort_order=excluded.sort_order, "
+                "  forecast_mode=excluded.forecast_mode",
                 (
                     typ,
                     name,
@@ -626,16 +635,25 @@ class CategoryModel:
                     day,
                     funded_by_category_id,
                     int(sort_order),
+                    normalize_forecast_mode(forecast_mode),
                 ),
             )
         else:
             self.conn.execute(
-                "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?) "
+                "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day,forecast_mode) VALUES(?,?,?,?,?,?) "
                 "ON CONFLICT(typ,name) DO UPDATE SET "
                 "  is_fix=excluded.is_fix, "
                 "  is_recurring=excluded.is_recurring, "
-                "  recurring_day=excluded.recurring_day",
-                (typ, name, int(is_fix), int(is_recurring), day),
+                "  recurring_day=excluded.recurring_day, "
+                "  forecast_mode=excluded.forecast_mode",
+                (
+                    typ,
+                    name,
+                    int(is_fix),
+                    int(is_recurring),
+                    day,
+                    normalize_forecast_mode(forecast_mode),
+                ),
             )
         self.conn.commit()
 
@@ -650,6 +668,7 @@ class CategoryModel:
         parent_id: int | None = None,
         funded_by_category_id: int | None = None,
         sort_order: int = 0,
+        forecast_mode: str = FORECAST_MODE_AUTO,
     ) -> int:
         """Legt eine neue Kategorie an und liefert die ID zurück."""
         day = int(recurring_day) if recurring_day else 1
@@ -661,8 +680,8 @@ class CategoryModel:
             and "sort_order" in cols
         ):
             cur = self.conn.execute(
-                "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order) "
-                "VALUES(?,?,?,?,?,?,?,?)",
+                "INSERT INTO categories(typ,name,parent_id,is_fix,is_recurring,recurring_day,funded_by_category_id,sort_order,forecast_mode) "
+                "VALUES(?,?,?,?,?,?,?,?,?)",
                 (
                     typ,
                     name,
@@ -672,12 +691,20 @@ class CategoryModel:
                     day,
                     funded_by_category_id,
                     int(sort_order),
+                    normalize_forecast_mode(forecast_mode),
                 ),
             )
         else:
             cur = self.conn.execute(
-                "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day) VALUES(?,?,?,?,?)",
-                (typ, name, int(is_fix), int(is_recurring), day),
+                "INSERT INTO categories(typ,name,is_fix,is_recurring,recurring_day,forecast_mode) VALUES(?,?,?,?,?,?)",
+                (
+                    typ,
+                    name,
+                    int(is_fix),
+                    int(is_recurring),
+                    day,
+                    normalize_forecast_mode(forecast_mode),
+                ),
             )
         self.conn.commit()
         new_id = int(cur.lastrowid)
@@ -696,6 +723,7 @@ class CategoryModel:
         is_fix: bool | None = None,
         is_recurring: bool | None = None,
         recurring_day: int | None = None,
+        forecast_mode: str | None = None,
     ) -> None:
         """Aktualisiert Flags (und optional den Tag) per ID + Undo/Redo."""
         old = self.conn.execute(
@@ -715,6 +743,9 @@ class CategoryModel:
             day = max(1, min(31, int(recurring_day)))
             fields.append("recurring_day=?")
             params.append(day)
+        if forecast_mode is not None:
+            fields.append("forecast_mode=?")
+            params.append(normalize_forecast_mode(forecast_mode))
         if not fields:
             return
         params.append(int(cat_id))
@@ -806,7 +837,7 @@ class CategoryModel:
             # Sparziele haben historisch keine typ-Spalte; deshalb nur für Ersparnisse hart zählen.
             "savings_goals": (
                 count("savings_goals", "category=?", (name,))
-                if typ == "Ersparnisse"
+                if typ == TYP_SAVINGS
                 else 0
             ),
             "category_tags": count("category_tags", "category_id=?", (int(cat_id),)),
@@ -881,7 +912,7 @@ class CategoryModel:
                     "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
                     (typ, old_name),
                 )
-            if typ == "Ersparnisse" and self._table_exists("savings_goals"):
+            if typ == TYP_SAVINGS and self._table_exists("savings_goals"):
                 self.conn.execute(
                     "UPDATE savings_goals SET category=? WHERE category=?",
                     (new_name, old_name),
@@ -967,7 +998,7 @@ class CategoryModel:
                 "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
                 (typ, old_name),
             )
-        if typ == "Ersparnisse" and self._table_exists("savings_goals"):
+        if typ == TYP_SAVINGS and self._table_exists("savings_goals"):
             self.conn.execute(
                 "UPDATE savings_goals SET category=? WHERE category=?",
                 (target_name, old_name),
@@ -1001,7 +1032,7 @@ class CategoryModel:
                 self.conn.execute(
                     f"DELETE FROM {safe_table} WHERE typ=? AND category=?", (typ, name)
                 )
-        if typ == "Ersparnisse" and self._table_exists("savings_goals"):
+        if typ == TYP_SAVINGS and self._table_exists("savings_goals"):
             if delete_savings_goals:
                 self.conn.execute("DELETE FROM savings_goals WHERE category=?", (name,))
             else:
@@ -1179,6 +1210,11 @@ class CategoryModel:
                 int(r["sort_order"])
                 if "sort_order" in r.keys() and r["sort_order"] is not None
                 else 0
+            ),
+            normalize_forecast_mode(
+                r["forecast_mode"]
+                if "forecast_mode" in r.keys() and r["forecast_mode"] is not None
+                else FORECAST_MODE_AUTO
             ),
         )
 

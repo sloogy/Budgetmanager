@@ -782,7 +782,22 @@ class OverviewBudgetPanel(QObject):
                 year=year, current_month=current_month,
                 min_consecutive_months=min_months,
             )
+            balance_suggs = self.budget_overview.get_balance_suggestions(
+                year=year, current_month=current_month,
+                min_consecutive_months=min_months,
+            )
+
+            # Banner und Detaildialog müssen dieselbe Vorschlagsfamilie sehen.
+            # Die Null-Bilanz-Regel erzeugt gezielte Ersparnis-/Carryover-
+            # Vorschläge über get_balance_suggestions(); diese dürfen nicht nur
+            # im Dialog auftauchen, während der Banner unsichtbar bleibt.
             all_suggs = type_suggs + suggestions
+            existing_keys = {(s.typ, s.category) for s in all_suggs}
+            for s in balance_suggs:
+                key = (s.typ, s.category)
+                if key not in existing_keys:
+                    all_suggs.append(s)
+                    existing_keys.add(key)
             self._last_suggestions = all_suggs
 
             if not all_suggs:

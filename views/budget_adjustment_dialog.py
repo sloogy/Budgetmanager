@@ -199,10 +199,25 @@ class BudgetAdjustmentDialog(QDialog):
                 current_month=self.month,
                 min_consecutive_months=self._lookback_months,
             )
-            # Nur Kategorie-Vorschläge gehören in die editierbare Tabelle.
+            balance_suggestions = overview_model.get_balance_suggestions(
+                year=self.year,
+                current_month=self.month,
+                min_consecutive_months=self._lookback_months,
+            )
+            # Nur echte Kategorie-Vorschläge gehören in die editierbare Tabelle.
+            # Carryover-/Restdefizit-Hinweise bleiben separat informativ, damit
+            # keine Kunst-Kategorien wie „Carryover" in die DB geschrieben werden.
             all_suggestions: list[BudgetSuggestion] = [
                 s for s in cat_suggestions if (s.category or "").strip()
             ]
+            existing_keys = {(s.typ, s.category) for s in all_suggestions}
+            for s in balance_suggestions:
+                key = (s.typ, s.category)
+                if s.current_budget > 0 and key not in existing_keys:
+                    all_suggestions.append(s)
+                    existing_keys.add(key)
+                else:
+                    type_suggestions.append(s)
         except Exception as e:
             logger.warning("BudgetOverviewModel suggestions failed: %s", e)
             all_suggestions = []
@@ -434,9 +449,12 @@ class BudgetAdjustmentDialog(QDialog):
             return
         rows = []
         for sug in type_suggestions:
-            rows.append(
-                f"• {display_typ(sug.typ)}: {format_money(sug.current_budget)} → {format_money(sug.suggested_amount)}"
-            )
+            if getattr(sug, "message", ""):
+                rows.append(f"• {sug.message}")
+            else:
+                rows.append(
+                    f"• {display_typ(sug.typ)}: {format_money(sug.current_budget)} → {format_money(sug.suggested_amount)}"
+                )
         self.type_info_text.setPlainText("\n".join(rows))
         self.type_info_group.setVisible(True)
     def _generate_recommendations(self, exceedances: list, chronic_categories: list, 

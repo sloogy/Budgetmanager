@@ -29,7 +29,7 @@ from utils.money import format_short as format_chf, format_money, currency_heade
 from views.ui_colors import ui_colors
 from views.savings_goal_messages import show_savings_goal_bounds_warning
 from utils.i18n import tr, trf
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from model.coverage_model import coverage_from_tracking_rows, CoverageResult
 from utils.i18n import display_typ, db_typ_from_display
 
@@ -66,8 +66,8 @@ class TrackingTab(QWidget):
         # Typ-Filter
         self.filter_typ = QComboBox()
         # userData = DB-Schlüssel (sprachunabhängig), text = Anzeigename
-        for _disp, _key in [(tr("typ.Alle"), ""), (tr("typ.Ausgaben"), "Ausgaben"),
-                             (tr("typ.Einkommen"), "Einkommen"), (tr("typ.Ersparnisse"), "Ersparnisse")]:
+        for _disp, _key in [(tr("typ.Alle"), ""), (tr("typ.Ausgaben"), TYP_EXPENSES),
+                             (tr("typ.Einkommen"), TYP_INCOME), (tr("typ.Ersparnisse"), TYP_SAVINGS)]:
             self.filter_typ.addItem(_disp, _key)
         
         # Kategorie-Filter
@@ -635,6 +635,15 @@ class TrackingTab(QWidget):
         und die Warnung würde falsch positiv wirken.
         """
         try:
+            settings_obj = self.settings
+            if settings_obj is None:
+                from settings import Settings
+                settings_obj = Settings()
+            if not bool(settings_obj.get("warn_budget_overrun", False)):
+                self.lbl_coverage_warning.clear()
+                self.lbl_coverage_warning.setVisible(False)
+                return
+
             if not self._is_all_typ():
                 self.lbl_coverage_warning.clear()
                 self.lbl_coverage_warning.setVisible(False)

@@ -1,13 +1,13 @@
-# 📦 BudgetManager v2.0.32 — Installation, Start & Update
+# 📦 BudgetManager v2.1.0 — Installation, Start & Update
 
 
-## Hinweis zu v2.0.32
+## Hinweis zu v2.1.0
 
-Diese README gehört zu v2.0.32. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
+Diese README gehört zu v2.1.0. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
 
 ## Windows Portable
 
-1. `BudgetManager-v2.0.32-portable.zip` herunterladen.
+1. `BudgetManager-v2.1.0-portable.zip` herunterladen.
 2. ZIP in einen eigenen Ordner entpacken, z. B. `C:\BudgetManager` oder auf einen USB-Stick.
 3. `BudgetManager.exe` starten.
 
@@ -15,7 +15,7 @@ Standardmäßig liegen die Nutzerdaten im Ordner `data/` neben der Anwendung. Ü
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.0.32.exe` starten, falls ein Installer-Asset gebaut wurde.
+1. `BudgetManager_Setup_2.1.0.exe` starten, falls ein Installer-Asset gebaut wurde.
 2. Installation abschließen.
 3. BudgetManager über Startmenü/Desktop starten.
 
@@ -34,9 +34,10 @@ python3 main.py
 2. Menü `Extras → Updates...` öffnen oder im Über-Dialog `Updates...` klicken.
 3. Im Update-Fenster `Update jetzt ausführen` klicken.
 4. Die App prüft online, lädt das Update, prüft die Datei und startet die Installation automatisch.
-5. Unter Windows schließt sich BudgetManager. Danach öffnet sich ein kleines Update-Helferfenster, kopiert die neuen Dateien und startet BudgetManager neu.
+5. Unter Windows schließt sich BudgetManager. Danach öffnet sich ein kleines Update-Helferfenster.
+6. Portable/Standalone: Programmdateien werden ersetzt. Installer-Version: die neue `BudgetManager_Setup_*.exe` wird im Update-Modus gestartet.
 
-Wichtig: Die Datenbank und Einstellungen im Ordner `data/` werden beim Update nicht gelöscht.
+Wichtig: Datenbank, Einstellungen, Backups, Exporte und Updates bleiben im gewählten Datenordner erhalten.
 
 ## Manuelle Update-Prüfung für Entwickler
 

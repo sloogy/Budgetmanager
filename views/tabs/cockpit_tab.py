@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import calendar
 import logging
 import sqlite3
 from datetime import date
@@ -18,12 +17,14 @@ from model.favorites_model import FavoritesModel
 from model.savings_goals_model import SavingsGoalsModel, STATUS_SAVING, STATUS_RELEASED
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.date_ranges import month_bounds
 from utils.i18n import display_typ, tr
 from settings import Settings
 from utils.money import format_money
 from utils.icons import get_icon
 
 logger = logging.getLogger(__name__)
+
 
 
 class _Card(QFrame):
@@ -322,13 +323,16 @@ class CockpitTab(QWidget):
 
     # ── Refresh helpers ──────────────────────────────────────────
     def _sum_budget_actual(self, y: int, m: int, typ: str, category: str | None = None) -> tuple[float, float]:
-        params_b = [y, m, typ]
-        params_a = [f"{y:04d}-{m:02d}", typ]
+        start, end = month_bounds(y, m)
+        params_b: list[object] = [y, m, typ]
+        params_a: list[object] = [start, end, typ]
         q_b = "SELECT COALESCE(SUM(amount),0) FROM budget WHERE year=? AND month=? AND typ=?"
-        q_a = "SELECT COALESCE(SUM(amount),0) FROM tracking WHERE substr(date,1,7)=? AND typ=?"
+        q_a = "SELECT COALESCE(SUM(amount),0) FROM tracking WHERE date>=? AND date<? AND typ=?"
         if category:
-            q_b += " AND category=?"; params_b.append(category)
-            q_a += " AND category=?"; params_a.append(category)
+            q_b += " AND category=?"
+            params_b.append(category)
+            q_a += " AND category=?"
+            params_a.append(category)
         b = float(self.conn.execute(q_b, params_b).fetchone()[0] or 0)
         a = float(self.conn.execute(q_a, params_a).fetchone()[0] or 0)
         return b, a
@@ -428,17 +432,24 @@ class CockpitTab(QWidget):
 
     def _refresh_warnings(self, y: int, m: int) -> None:
         rows = []
+        start, end = month_bounds(y, m)
         sql = """
+            WITH actuals AS (
+                SELECT typ, category, SUM(amount) AS actual
+                FROM tracking
+                WHERE date>=? AND date<?
+                GROUP BY typ, category
+            )
             SELECT b.typ, b.category, COALESCE(SUM(b.amount),0) AS budget,
-                   COALESCE((SELECT SUM(t.amount) FROM tracking t
-                             WHERE t.typ=b.typ AND t.category=b.category AND substr(t.date,1,7)=?),0) AS actual
+                   COALESCE(a.actual,0) AS actual
             FROM budget b
+            LEFT JOIN actuals a ON a.typ=b.typ AND a.category=b.category
             WHERE b.year=? AND b.month=?
             GROUP BY b.typ, b.category
             HAVING budget > 0
             ORDER BY b.typ, b.category
         """
-        for typ, cat, budget, actual in self.conn.execute(sql, (f"{y:04d}-{m:02d}", y, m)).fetchall():
+        for typ, cat, budget, actual in self.conn.execute(sql, (start, end, y, m)).fetchall():
             budget = float(budget or 0); actual = float(actual or 0)
             status = None
             if typ == TYP_EXPENSES:
@@ -499,18 +510,36 @@ class CockpitTab(QWidget):
             WHERE COALESCE(is_fix,0)=1 OR COALESCE(is_recurring,0)=1
             ORDER BY typ, recurring_day, name
         """
-        ym = f"{y:04d}-{m:02d}"
+        start, end = month_bounds(y, m)
+        budgets = {
+            (str(r[0]), str(r[1])): float(r[2] or 0.0)
+            for r in self.conn.execute(
+                """
+                SELECT typ, category, COALESCE(SUM(amount),0) AS amount
+                FROM budget
+                WHERE year=? AND month=?
+                GROUP BY typ, category
+                """,
+                (y, m),
+            ).fetchall()
+        }
+        booked_totals = {
+            (str(r[0]), str(r[1])): float(r[2] or 0.0)
+            for r in self.conn.execute(
+                """
+                SELECT typ, category, COALESCE(SUM(amount),0) AS amount
+                FROM tracking
+                WHERE date>=? AND date<?
+                GROUP BY typ, category
+                """,
+                (start, end),
+            ).fetchall()
+        }
         EPS = 1e-6
         for typ, name, is_fix, is_recurring, day in self.conn.execute(sql).fetchall():
             is_fix = bool(is_fix); is_recurring = bool(is_recurring)
-            budget = float(self.conn.execute(
-                "SELECT COALESCE(SUM(amount),0) FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
-                (y, m, typ, name),
-            ).fetchone()[0] or 0.0)
-            booked = float(self.conn.execute(
-                "SELECT COALESCE(SUM(amount),0) FROM tracking WHERE typ=? AND category=? AND substr(date,1,7)=?",
-                (typ, name, ym),
-            ).fetchone()[0] or 0.0)
+            budget = budgets.get((str(typ), str(name)), 0.0)
+            booked = booked_totals.get((str(typ), str(name)), 0.0)
 
             both_flags = is_fix and is_recurring
             open_item = False

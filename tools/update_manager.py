@@ -247,7 +247,9 @@ class UpdateManager:
             Pfad zum Backup
         """
         if backup_dir is None:
-            backup_dir = str(Path.home() / "BudgetManager_Backups" / "pre_update")
+            from model.app_paths import backups_dir
+
+            backup_dir = str(backups_dir() / "pre_update")
         
         Path(backup_dir).mkdir(parents=True, exist_ok=True)
         
@@ -275,7 +277,7 @@ class UpdateManager:
             'last_check': None
         }
         
-        settings_file = Path.home() / '.budgetmanager' / 'update_settings.json'
+        settings_file = self._update_settings_file()
         
         if settings_file.exists():
             try:
@@ -288,13 +290,18 @@ class UpdateManager:
         
         return default_settings
     
+    def _update_settings_file(self) -> Path:
+        """Zentraler Speicherort fuer Update-Einstellungen."""
+        from model.app_paths import updates_dir
+
+        settings_dir = updates_dir()
+        settings_dir.mkdir(parents=True, exist_ok=True)
+        return settings_dir / 'update_settings.json'
+
     def save_update_settings(self, settings: Dict) -> None:
         """Speichert Update-Einstellungen"""
-        settings_dir = Path.home() / '.budgetmanager'
-        settings_dir.mkdir(parents=True, exist_ok=True)
-        
-        settings_file = settings_dir / 'update_settings.json'
-        
+        settings_file = self._update_settings_file()
+        settings_file.parent.mkdir(parents=True, exist_ok=True)
         with open(settings_file, 'w') as f:
             json.dump(settings, f, indent=2)
     

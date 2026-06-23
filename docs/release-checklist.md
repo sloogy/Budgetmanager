@@ -1,4 +1,4 @@
-# Release-Checkliste — BudgetManager v2.0.32
+# Release-Checkliste — BudgetManager v2.1.0
 
 ## Lokal prüfen
 
@@ -7,9 +7,11 @@ python tools/sync_version.py --check
 python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
 python tools/i18n_audit.py
 python tools/dau_first_run_check.py
-black --check model/
-mypy model/
-pytest tests/ -v
+python -m black --check model/
+python -m mypy model/
+python -m pytest tests/ -v -ra --tb=short
+python tools/clean_release_tree.py
+python tools/lint_procedure_check.py
 ```
 
 ## Manuell prüfen
@@ -29,15 +31,15 @@ pytest tests/ -v
 ```bash
 git status
 git add .
-git commit -m "Release v2.0.32 audit hardening"
+git commit -m "Release v2.1.0 audit hardening"
 git push origin main
-git tag -a v2.0.32 -m "BudgetManager v2.0.32"
-git push origin v2.0.32
+git tag -a v2.1.0 -m "BudgetManager v2.1.0"
+git push origin v2.1.0
 ```
 
 ## Nach GitHub Actions
 
 - Windows-EXE herunterladen und starten.
 - Linux-Binary herunterladen und starten.
-- SHA256-Werte in `latest.json` eintragen.
+- Von GitHub Actions erzeugte `latest.json` prüfen: Version, URLs und SHA256-Werte müssen zum Tag passen.
 - Release-Beschreibung aus `CHANGELOG.md` übernehmen.

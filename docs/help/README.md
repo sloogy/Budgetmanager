@@ -14,13 +14,13 @@ Das Cockpit ist die ruhige Startseite: Es zeigt das Wichtigste, ohne die Fachrei
 
 
 Stand: 19. Juni 2026  
-Gültig für: BudgetManager 2.0.32
+Gültig für: BudgetManager 2.1.0
 
 Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: **Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore**.
 
 ---
 
-## Ergänzung v2.0.32 – Cockpit und Stabilität
+## Ergänzung v2.1.0 – Cockpit und Stabilität
 
 - Das Cockpit zeigt zusätzlich Budgetwarnungen und bietet per Rechtsklick sinnvolle Schnellaktionen.
 - Unter Wayland nutzt BudgetManager standardmäßig `xcb`, um bekannte Qt-TextInput-Abstürze zu vermeiden. Native Wayland-Nutzung ist mit `BM_ALLOW_WAYLAND=1` möglich.

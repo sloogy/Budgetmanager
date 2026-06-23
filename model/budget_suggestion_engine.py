@@ -35,6 +35,14 @@ v0.4.5.0 – Fixkosten-/0-Monats-Schutz:
 - Flexible Kategorien dürfen 0-Buchungen weiter als Teil eines wiederholten
   Musters verwenden (z.B. Hobby 40 CHF, Ist 20/30/0/...).
 - Mindeständerung wird nach Rundung nochmals geprüft.
+
+v2.0.37 – Pot/inkrementell getrennt:
+- Kategorie-Forecast-Modus: auto / normal / pot / incremental.
+- Auto-Regel: fix ohne Wiederholung = Pot (z.B. Franchise), fix oder
+  wiederkehrend = inkrementell/lumpy (z.B. Hausrat-Jahresrechnung).
+- Pot prüft die Summe der Buchungen gegen EINEN Topf-Betrag, nicht gegen
+  Budget × Monate. Unterbudgetierte Pots dürfen erhöhen, Teilverbrauch unter
+  Topf bleibt stabil, ganzjährige 0-Pots werden als prüfbarer Vorschlag markiert.
 """
 
 from __future__ import annotations
@@ -43,6 +51,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 import sqlite3
+from model.category_forecast_mode import (
+    FORECAST_MODE_INCREMENTAL,
+    FORECAST_MODE_POT,
+    effective_forecast_mode,
+    normalize_forecast_mode,
+)
+from model.date_ranges import month_bounds
 from model.typ_constants import (
     TYP_INCOME,
     TYP_EXPENSES,
@@ -146,14 +161,24 @@ class BudgetSuggestionEngine:
             except Exception:
                 floor = float(floor_abs)
 
-        # Kategorie-Flags bestimmen. In BudgetManager gibt es bereits
-        # is_fix/is_recurring; damit brauchen wir für den Release-Fix kein
-        # neues DB-Schema.
+        # Kategorie-Flags + Forecast-Modus bestimmen.
+        # v2.0.37 trennt Pot/Rückstellung von inkrementellen Fixkosten:
+        # - auto + fix ohne Wiederholung => Pot
+        # - auto + fix/wiederkehrend    => inkrementell
+        # - normale Kategorien bleiben flexibel
         is_fix, is_recurring = self._get_category_flags(typ, category)
+        forecast_mode = self._get_category_forecast_mode(
+            typ, category, is_fix, is_recurring
+        )
+        pot_like = (
+            bool(respect_fixed_costs)
+            and (not self._is_income(typ))
+            and forecast_mode == FORECAST_MODE_POT
+        )
         fixed_like = (
             bool(respect_fixed_costs)
             and (not self._is_income(typ))
-            and (is_fix or is_recurring)
+            and forecast_mode == FORECAST_MODE_INCREMENTAL
         )
 
         # ── Startmonat für die Analyse bestimmen ──
@@ -181,6 +206,34 @@ class BudgetSuggestionEngine:
             months_back,
             not_before=not_before,
         )
+
+        # ── Pot/Rückstellungs-Logik ──
+        # Pot = ein Topf pro Zeitraum/Jahr (z.B. Franchise/Selbstbehalt).
+        # Der Betrag wird NICHT mit den Monaten multipliziert. Als Topfwert wird
+        # der höchste Budgetwert im Analysefenster verwendet, damit auch
+        # bestehende "Alle Monate mit 750"-Budgets korrekt als EIN 750er-Topf
+        # interpretiert werden können.
+        # Wichtig: Die allgemeine Abweichungsfenster-Grenze darf Pots nicht
+        # ausblenden. Bei spät begonnener Nutzung kann ein Pot bereits real
+        # überzogen sein, obwohl vor dem Tracking-Start keine Abweichungen
+        # gesammelt werden dürfen. Pot-Logik validiert ihr Budget-/Ist-Fenster
+        # deshalb selbst.
+        if pot_like:
+            return self._build_pot_suggestion_result(
+                typ=typ,
+                category=category,
+                analysis_year=analysis_year,
+                analysis_month=analysis_month,
+                months_back=months_back,
+                current_budget=current_budget,
+                floor=floor,
+                alpha=alpha,
+                round_to=round_to,
+                min_abs_change=min_abs_change,
+                min_pct_change=min_pct_change,
+                not_before=not_before,
+            )
+
         if len(deviations) < months_back:
             return None
 
@@ -398,6 +451,140 @@ class BudgetSuggestionEngine:
         )
 
     # ------------------------------------------------------------
+    # Pot/Rückstellungs-Logik
+    # ------------------------------------------------------------
+    def _budgeted_months_window(
+        self,
+        typ: str,
+        category: str,
+        year: int,
+        month: int,
+        months_back: int,
+        not_before: Optional[date] = None,
+    ) -> list[date]:
+        """Liefert die letzten N Monate mit Budgeteintrag im Analysefenster."""
+        out: list[date] = []
+        base = date(year, month, 1)
+        max_scan = months_back * 3
+        for i in range(max_scan):
+            if len(out) >= months_back:
+                break
+            d = self._subtract_months(base, i)
+            if not_before is not None and d < not_before:
+                break
+            b = self._get_budget_amount(d.year, d.month, typ, category)
+            if b is None or b <= 0:
+                continue
+            out.append(d)
+        out.reverse()
+        return out
+
+    def _build_pot_suggestion_result(
+        self,
+        *,
+        typ: str,
+        category: str,
+        analysis_year: int,
+        analysis_month: int,
+        months_back: int,
+        current_budget: float,
+        floor: float,
+        alpha: float,
+        round_to: float,
+        min_abs_change: float,
+        min_pct_change: float,
+        not_before: Optional[date] = None,
+    ) -> Optional[SuggestionResult]:
+        """Forecast für Pot/Rückstellungen.
+
+        Pot-Regeln:
+        - Vergleicht Summe der Buchungen im Fenster mit EINEM Topf-Budget.
+        - Topf-Budget = höchster Monats-Budgetwert im Fenster/current_budget.
+        - Verbrauch unter Topf erzeugt keinen Senkungsvorschlag.
+        - Verbrauch über Topf erzeugt einen vorsichtigen Erhöhungsvorschlag.
+        - 12+ Monate komplett 0 erzeugen einen Prüf-/Senkungsvorschlag.
+        """
+        # Pot-Überverbrauch muss auch dann erkannt werden, wenn die erste
+        # echte Buchung erst spät im Jahr erfasst wurde. Die allgemeine
+        # Tracking-Startgrenze schützt vor falschen 0-Monats-Senkungen, darf
+        # aber einen bereits überzogenen Topf nicht unsichtbar machen.
+        months = self._budgeted_months_window(
+            typ, category, analysis_year, analysis_month, months_back, None
+        )
+        if len(months) < months_back:
+            return None
+
+        budgets = [
+            float(self._get_budget_amount(d.year, d.month, typ, category) or 0.0)
+            for d in months
+        ]
+        pot_budget = max([float(current_budget), *budgets])
+        if pot_budget <= 0:
+            return None
+
+        spent_values = [
+            float(self._get_spent_amount(d.year, d.month, typ, category))
+            for d in months
+        ]
+        total_spent = float(sum(spent_values))
+        active_months = sum(1 for v in spent_values if abs(v) > 0.000001)
+
+        # Kein Verbrauch über den ganzen Jahres-/Langzeit-Zeitraum: bewusst als
+        # Vorschlag/Review markieren. Für kurze Fenster bleiben Pots stabil.
+        if active_months == 0:
+            zero_streak = self._compute_zero_streak_months(
+                typ, category, analysis_year, analysis_month, not_before=not_before
+            )
+            if zero_streak >= 12:
+                deviations = [pot_budget for _ in months]
+                return self._build_zero_reduction_result(
+                    typ,
+                    category,
+                    pot_budget,
+                    floor,
+                    zero_streak,
+                    deviations,
+                    round_to,
+                    min_abs_change,
+                    min_pct_change,
+                )
+            return None
+
+        # Teilverbrauch unterhalb des Pots ist normal (z.B. Franchise 750,
+        # bisher 220 verbraucht) und darf nicht nach unten korrigieren.
+        if total_spent <= pot_budget:
+            return None
+
+        deficit = total_spent - pot_budget
+        suggested = pot_budget + (deficit * float(alpha))
+        suggested = max(float(floor), float(suggested))
+        if round_to and round_to > 0:
+            suggested = round(suggested / round_to) * round_to
+            suggested = max(float(floor), float(suggested))
+        delta = float(suggested) - float(pot_budget)
+
+        if abs(delta) < 0.01:
+            return None
+        if abs(delta) < float(min_abs_change) and abs(delta) < (
+            float(pot_budget) * float(min_pct_change)
+        ):
+            return None
+
+        avg_deviation = (pot_budget - total_spent) / float(len(months))
+        return SuggestionResult(
+            typ=typ,
+            category=category,
+            direction="deficit",
+            months_considered=len(months),
+            streak_months=int(active_months),
+            central_deviation=-(float(deficit)),
+            avg_deviation=float(avg_deviation),
+            current_budget=float(pot_budget),
+            suggested_budget=float(suggested),
+            delta=float(delta),
+        )
+
+    # ------------------------------------------------------------
     # Kategorie-Flags
     # ------------------------------------------------------------
     def _get_category_flags(self, typ: str, category: str) -> Tuple[bool, bool]:
@@ -420,22 +607,49 @@ class BudgetSuggestionEngine:
             if not row:
                 return (False, False)
 
-            def _as_bool(value) -> bool:
-                if value is None:
-                    return False
-                if isinstance(value, str):
-                    return value.strip().lower() in {"1", "true", "yes", "ja"}
-                try:
-                    return bool(int(value))
-                except (TypeError, ValueError):
-                    return bool(value)
-
-            return (_as_bool(row[0]), _as_bool(row[1]))
+            return (self._as_bool(row[0]), self._as_bool(row[1]))
         except Exception:
             logger.exception(
                 "Kategorie-Flags konnten nicht gelesen werden: %s/%s", typ, category
             )
             return (False, False)
+
+    @staticmethod
+    def _as_bool(value) -> bool:
+        if value is None:
+            return False
+        if isinstance(value, str):
+            return value.strip().lower() in {"1", "true", "yes", "ja"}
+        try:
+            return bool(int(value))
+        except (TypeError, ValueError):
+            return bool(value)
+
+    def _get_category_forecast_mode(
+        self, typ: str, category: str, is_fix: bool, is_recurring: bool
+    ) -> str:
+        """Liest den gespeicherten Forecast-Modus und wendet Auto-Defaults an."""
+        try:
+            cols = {
+                row[1]
+                for row in self.conn.execute("PRAGMA table_info(categories)").fetchall()
+            }
+            stored = None
+            if "forecast_mode" in cols:
+                row = self.conn.execute(
+                    "SELECT forecast_mode FROM categories WHERE typ=? AND name=?",
+                    (typ, category),
+                ).fetchone()
+                if row:
+                    stored = normalize_forecast_mode(row[0])
+            return effective_forecast_mode(stored, is_fix, is_recurring)
+        except Exception:
+            logger.exception(
+                "Kategorie-Forecast-Modus konnte nicht gelesen werden: %s/%s",
+                typ,
+                category,
+            )
+            return effective_forecast_mode(None, is_fix, is_recurring)
 
     # ------------------------------------------------------------
     # Zähler
@@ -521,11 +735,7 @@ class BudgetSuggestionEngine:
     def _get_spent_amount(
         self, year: int, month: int, typ: str, category: str
     ) -> float:
-        start = f"{year:04d}-{month:02d}-01"
-        if month == 12:
-            end = f"{year + 1:04d}-01-01"
-        else:
-            end = f"{year:04d}-{month + 1:02d}-01"
+        start, end = month_bounds(year, month)
 
         row = self.conn.execute(
             """

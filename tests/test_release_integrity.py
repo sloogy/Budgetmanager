@@ -59,6 +59,9 @@ def test_update_check_writes_success_result_for_gui(monkeypatch, tmp_path):
     with zipfile.ZipFile(source_zip, "w") as zf:
         zf.writestr("BudgetManager-v2.0.9-portable/BudgetManager", "binary")
 
+    import hashlib
+    expected_sha = hashlib.sha256(source_zip.read_bytes()).hexdigest()
+
     writes = []
 
     monkeypatch.setattr(check_update, "read_current_version", lambda: "2.0.8")
@@ -73,7 +76,7 @@ def test_update_check_writes_success_result_for_gui(monkeypatch, tmp_path):
             assets={
                 "linux": AssetInfo(
                     url="https://example.invalid/BudgetManager-v2.0.9-portable.zip",
-                    sha256="",
+                    sha256=expected_sha,
                     asset_type="portable-zip",
                 )
             },
@@ -164,10 +167,20 @@ def test_release_ignore_rules_cover_runtime_caches_and_audit_artifacts():
     assert "__pycache__/" in ignore
     assert "*.py[cod]" in ignore
     assert "data/i18n_audit_report.txt" in ignore
+    assert "data/backups/" in ignore
+    assert "*.bmr" in ignore
 
 
 def test_release_tree_contains_no_stale_runtime_audit_artifacts():
     assert not (ROOT / "data" / "i18n_audit_report.txt").exists()
+
+
+def test_release_cleaner_removes_generated_artifacts_from_source_tree():
+    cleaner = (ROOT / "tools" / "clean_release_tree.py").read_text(encoding="utf-8")
+    assert "data/backups/*.bmr" in cleaner
+    assert "__pycache__" in cleaner
+    assert ".pytest_cache" in cleaner
+    assert "installer_output" in cleaner
 
 
 def test_frozen_update_dialog_passes_real_updater_flags():
@@ -318,3 +331,118 @@ def test_inno_pascal_comments_do_not_contain_nested_braces():
         nested = line.find("{", first + 1, closing)
         assert nested == -1, f"Nested '{{' in Inno Pascal comment at line {lineno}: {line}"
 
+
+
+def test_startup_update_check_writes_lightweight_available_result(monkeypatch):
+    import updater.startup_check as startup_check
+    from updater.common import AssetInfo, Manifest
+
+    writes = []
+    monkeypatch.setattr(startup_check, "read_current_version", lambda: "2.0.8")
+    monkeypatch.setattr(startup_check, "detect_platform_key", lambda: "windows")
+    monkeypatch.setattr(startup_check, "preferred_asset_keys", lambda platform: ["windows_installer", "windows"])
+    monkeypatch.setattr(startup_check, "clear_startup_check_result", lambda: None)
+    monkeypatch.setattr(
+        startup_check,
+        "fetch_manifest",
+        lambda *_args, **_kwargs: Manifest(
+            version="2.0.9",
+            release_tag="v2.0.9",
+            channel="stable",
+            assets={
+                "windows_installer": AssetInfo(
+                    url="https://example.invalid/BudgetManager_Setup_2.0.9.exe",
+                    sha256="",
+                    asset_type="installer",
+                )
+            },
+        ),
+    )
+    monkeypatch.setattr(startup_check, "write_startup_check_result", lambda data: writes.append(dict(data)))
+
+    assert startup_check.main() == 0
+    assert writes, "Startup-Check muss ein strukturiertes Ergebnis schreiben"
+    assert writes[-1]["available"] is True
+    assert writes[-1]["downloaded"] is False
+    assert writes[-1]["staged"] is False
+    assert writes[-1]["remote"] == "2.0.9"
+    assert writes[-1]["asset_key"] == "windows_installer"
+
+
+def test_startup_update_check_is_registered_and_non_blocking():
+    main_src = (ROOT / "main.py").read_text(encoding="utf-8")
+    mw_src = (ROOT / "views" / "main_window.py").read_text(encoding="utf-8")
+    startup_src = (ROOT / "updater" / "startup_check.py").read_text(encoding="utf-8")
+    common_src = (ROOT / "updater" / "common.py").read_text(encoding="utf-8")
+
+    assert '"--startup-update-check"' in main_src
+    assert "schedule_startup_update_check" in main_src
+    assert "schedule_startup_update_check" in mw_src
+    assert "QProcess" in mw_src
+    assert "last_startup_check.json" in common_src
+    assert "download_file" not in startup_src
+    assert "safe_extract_zip" not in startup_src
+    assert "write_check_result" not in startup_src
+    assert "write_startup_check_result" in startup_src
+
+
+def test_release_package_contains_no_private_databases_or_keys():
+    """Keine privaten Nutzerdateien im Release-Baum.
+
+    Hinweis: Einige Tests/Migrationen erzeugen während eines Testlaufs temporäre
+    pre-migration-Backups unter data/backups/. Diese werden vor dem finalen
+    Packen gelöscht; der dauerhafte Schutz gegen Committen ist .gitignore.
+    """
+    data_dir = ROOT / "data"
+    forbidden = []
+    forbidden.extend(data_dir.glob("*.db"))
+    forbidden.extend(data_dir.glob("*.sqlite"))
+    forbidden.extend(data_dir.glob("*.sqlite3"))
+    forbidden.extend(data_dir.glob("*.enc"))
+    forbidden.extend(data_dir.glob("users.json"))
+    forbidden.extend((data_dir / "exports").glob("*")) if (data_dir / "exports").exists() else None
+    assert [str(p.relative_to(ROOT)) for p in forbidden] == []
+
+
+def test_public_release_docs_and_updater_examples_are_current():
+    import app_info
+
+    version = app_info.APP_VERSION
+    public_docs = [
+        ROOT / "FEATURES.md",
+        ROOT / "VERSION_INFO.txt",
+        ROOT / "docs" / "open-tasks.md",
+        ROOT / "docs" / "themes.md",
+        ROOT / "docs" / "architecture.md",
+        ROOT / "docs" / "DAU_TEST_ERSTSTART.md",
+        ROOT / "docs" / "migration-guide.md",
+        ROOT / "updater" / "README.md",
+        ROOT / "updater" / "generate_manifest.py",
+    ]
+    stale_patterns = [
+        "BudgetManager-v2.0.28-portable.zip",
+        "BudgetManager-v2.0.32-portable.zip",
+        "BudgetManager_Setup_2.0.28.exe",
+        "BudgetManager_Setup_2.0.32.exe",
+        "Open Tasks — BudgetManager v2.0.32",
+        "BudgetManager v2.0.32",
+        "v2.0.32 · 19. Juni 2026",
+        "## Neu in v2.0.36",
+        "## v2.0.36 — Feature-Übersicht",
+    ]
+    for path in public_docs:
+        text = path.read_text(encoding="utf-8")
+        assert version in text, f"{path} enthält nicht {version}"
+        for pattern in stale_patterns:
+            assert pattern not in text, f"{path} enthält stale Pattern {pattern!r}"
+
+
+def test_version_info_starts_with_current_release_notes():
+    import app_info
+
+    text = (ROOT / "VERSION_INFO.txt").read_text(encoding="utf-8")
+    assert text.startswith(f"Budgetmanager Version {app_info.APP_VERSION}")
+    first_body = text.split("\n\n", 2)[1]
+    assert app_info.APP_VERSION in first_body
+    # Sentinel auf den aktuellen Release-Block (2.1.0: Release-Härtung & Performance).
+    assert "RELEASE-HÄRTUNG" in first_body

@@ -1,4 +1,100 @@
+# v2.1.0 – Release-Härtung, Performance und Konsolidierung
+
+Diese Version bündelt die Fix-Runden aus dem kritischen Release-Audit und setzt die offene Review-Liste vollständig um. Schwerpunkt: weniger doppelte korrektheitskritische Logik, schnellere Datumsabfragen, robusteres SQLite-Locking und nachvollziehbare Release-Dokumentation.
+
+- **Single Source of Truth für Datumsbereiche:** Neuer zentraler Helfer `model/date_ranges.py` mit `month_bounds()` und `year_bounds()`. `tracking_model.py` und `cockpit_tab.py` haben keine lokalen `_month_bounds()`-Dubletten mehr.
+- **Weitere Datums-Hotspots bereinigt:** `get_month_total()`, Budgetübersicht, Budgetwarnungen, Vorschlagsengine und KPI-Monatswerte nutzen jetzt denselben halb-offenen Monatsbereich `[start, end)`. Das vermeidet Off-by-one-Risiken und hält SQLite-Abfragen indexfreundlich.
+- **SQLite-Lock-Verhalten konsistent:** `connect(timeout=10.0)` wird nicht mehr durch `PRAGMA busy_timeout = 5000` auf effektiv 5 Sekunden zurückgestutzt. Alle relevanten Verbindungen verwenden nun `busy_timeout = 10000`.
+- **Kanonische Typ-Sprache bereinigt:** Veraltete interne Kommentare mit „Einnahmen” als DB-Typ wurden auf den kanonischen Wert „Einkommen” korrigiert. Anzeige-Aliasse und nutzerfreundliche Texte bleiben unverändert.
+- **Release-Traceability verbessert:** Die vorher getrennten Fix-/Performance-Reports wurden zu einem konsolidierten Release-Nachweis `RELEASE_REPORT_v2_1_0.md` zusammengeführt.
+- **Neue Regressionen:** `tests/test_release_210_hardening.py` sichert Datumsbereichs-Grenzen, ungültige Monatswerte, entfernte lokale `_month_bounds()`-Dubletten und den 10-Sekunden-`busy_timeout` ab.
+- **Windows-/Portable-Diagnose ergänzt:** Unter Hilfe/Info gibt es jetzt `Log anzeigen`, `Crash-Log anzeigen`, `Diagnoseordner öffnen` und `Fehlerbericht erstellen`.
+- **Crash-Hinweis beim Neustart:** Ein Qt-freier `runtime_state.json`-Wächter erkennt einen vermuteten Crash/Kill/Stromausfall und bietet beim nächsten Start Loganzeige oder lokalen Fehlerbericht an.
+- **Lokaler Fehlerbericht ohne Nutzerdatenbank:** Das Diagnose-ZIP enthält Logs, System-/Versionsinfo und bereinigte Einstellungen, aber keine DB, keine Backups und keine Exporte.
+- **Version hochgezogen:** App, Installer, Manifest-Vorlagen, README und Versionsdateien sind auf `2.1.0` synchronisiert.
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit, DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, `pytest` headless mit 246 PASS / 2 SKIP. PySide6-GUI-Smoke, Qt-Translation-Verify, PyInstaller und Inno Setup müssen weiter in der Build-/CI-Umgebung laufen.
+
+
+# v2.0.41 – Sicherheits-Härtung: Verifikations-Hash vom DB-Schlüssel getrennt
+
+Aus einem Hardening- und Stabilitäts-Audit von v2.0.40. Ein kritischer Kryptografie-Befund wurde behoben; SQL-Injection-Fläche, Subprozess-Aufrufe, Restore-Pfade (ZipSlip), Qt-Absturzvektoren und Migrations-Idempotenz wurden geprüft und sind sauber.
+
+- **Kritisch behoben – PIN/Passwort-Schutz war aushebelbar:** Der in `users.json` gespeicherte Passwort-Verifikations-Hash (`pw_hash`) wurde mit exakt derselben PBKDF2-Eingabe erzeugt wie der Schlüssel zum Verpacken des db_key (gleiches Secret, gleicher Salt, 600k Runden, 32 Byte). Dadurch war der gespeicherte Hash byte-identisch zum Wrapping-Key (nur hex statt base64). Wer Lesezugriff auf `users.json` hatte, konnte daraus zusammen mit dem ebenfalls dort liegenden verpackten Schlüssel den db_key **ohne Passwort** rekonstruieren und die verschlüsselte `.enc`-Datenbank entschlüsseln. PIN/Passwort bot damit kryptografisch keinen Schutz über den Quick-Modus hinaus.
+- **Fix – Domain-Trennung:** Der Verifikations-Hash wird jetzt über einen Kontext-Präfix (`PW_VERIFY_CONTEXT`) domain-getrennt abgeleitet und kann den Wrapping-Key nicht mehr ergeben. Ein Angreifer muss wieder das Passwort gegen PBKDF2 600k brute-forcen.
+- **Automatische Migration:** Bestehende Konten werden beim nächsten erfolgreichen Login transparent auf das sichere Format gehoben – inklusive Salt-Rotation und Neuverpackung. Der Upgrade greift jetzt auch bei Konten, die bereits auf 600k Runden liegen, aber noch den alten key-äquivalenten Hash haben (diese Lücke verfehlte der bisherige reine Rundenzahl-Trigger). `verify_password` akzeptiert weiterhin Alt-Hashes, damit kein Bestandskonto ausgesperrt wird.
+- **Neue Sicherheitstests:** `test_password_hash_keysep_v2041.py` – der gespeicherte Hash kann den Wrapping-Key nicht rekonstruieren, `verify_password` akzeptiert neues und altes Format, und ein Alt-Konto wird beim Login nachweisbar migriert.
+- **Audit-Ergebnis sonst:** keine `eval`/`exec`/`pickle`/`shell=True`; alle dynamischen SQL-Identifier sind whitelisted oder literal, Nutzerdaten immer parametrisiert; Restore liest fest benannte ZIP-Einträge ohne `extract()` (kein ZipSlip); bekannte Qt-Absturzvektoren (`QChart.NoAnimation`, `closeEditor`/`commitData` ohne `installEventFilter`) sind mitigiert; `migrate_all` ist idempotent.
+- **Release-Prozedur fest verdrahtet:** `lint_procedure_check.py` prüft jetzt zusätzlich, dass kritische Regressionstests für Prozedur, Account-Management, Sprache und Passwort-Hash-Härtung im Release-Baum vorhanden bleiben.
+- **Account-/Sprach-Härtung:** Sicherheitsstufen und PIN/Passwort-Platzhalter werden nun über zentrale lokalisierte Helper angezeigt, damit EN/FR-Oberflächen keine deutschen Model-Labels wie „Passwort“ oder „Ohne Passwort“ mehr durchreichen.
+- **Neue Regressionstests:** `test_lock_procedure_account_language_v2041.py` deckt Lockfile-/Prozedur-Gates, Account-Lifecycle Quick → PIN → Passwort → Löschen und Security-Label-Lokalisierung in de/en/fr ab.
+- Changelog, Release-Nachweise und Paketwurzel auf v2.0.41 synchronisiert.
+
+
+
+Diese Version geht aus einer kritischen Release-Ready-Tiefenanalyse von v2.0.39 hervor. Funktionen, Forecast-/Null-Bilanz-Logik und der gesamte Update-Pfad wurden geprüft; statische Analyse fand keine Dead-Ends, undefinierten Aufrufe oder unerreichbaren Code. Ein echtes Updater-Race wurde behoben:
+
+- **Updater-Race behoben (Stabilität):** Der Update-Dialog löschte `last_check.json` direkt nach dem Start des abgekoppelten `apply_update`-Prozesses. Da der EXE-Bootstrap langsamer ist, konnte die Datei verschwinden, bevor `target_staged_version()` sie las – `apply_update` fiel dann auf `latest_staged_version()` zurück und hätte einen veralteten, höher nummerierten Staging-Ordner (z. B. einen Beta-Rest) anwenden können. Das redundante Löschen wurde entfernt; `_check()` setzt den Zustand ohnehin vor jeder Prüfung zurück.
+- **Staging-Hygiene (Defense-in-Depth):** `check_update` entfernt nach erfolgreichem Staging alle anderen Staging-Ordner und veralteten `update_*`-Cache-Dateien. Damit ist die höchste vorhandene Staging-Version immer die gerade vorbereitete – der sichere Fallback in `apply_update` kann keine Altversion mehr aufgreifen, und der Update-Ordner wächst nicht unbegrenzt. Fremde Dateien im Cache bleiben unangetastet.
+- **Neue Regressionstests:** `test_updater_staging_pruning_v2040.py` deckt ab: Pruning behält die Zielversion und entfernt Geschwister-Ordner, Cache-Pruning fasst nur eigene Artefakte an, der End-to-End-Check räumt einen alten Beta-Staging-Ordner ab (Race-Sicherheitsnetz), und ein statischer Schutz verhindert eine Regression des Race-Fixes im Update-Dialog.
+- **Testisolation:** `test_shortcuts_i18n.py` stellt die globale Sprache am Ende wieder her, damit nachfolgende Tests nicht von einer hängengebliebenen Sprache abhängen.
+- Changelog, Release-Nachweise und Paketwurzel auf v2.0.40 synchronisiert.
+
+
+
+- Neuer Jahreswechsel-Review für Fixkosten, wiederkehrende Kosten, Pot- und inkrementelle Kategorien: beim Kopieren ins neue Jahr können Positionen übernommen, abgewählt oder mit geändertem Jahresbetrag verteilt werden.
+- Jahreskopie verteilt geprüfte Kategorien nach dem tatsächlichen Vorjahresmuster, damit unregelmäßige Jahres-/Teilzahlungen nicht pauschal auf 12 Monate verfälscht werden.
+- 13. Monatslohn kann als eigenes einmaliges Einkommen mit Auszahlungsmonat und Betrag geplant werden; der normale Monatslohn bleibt dadurch forecast-sauber.
+- 13.-Monatslohn-Dialog gehärtet: aktive Währung statt festem CHF-Suffix, lokalisierte Standardkategorie, kein 0.00-Betrag, Erfolgstext über zentrale Geldformatierung.
+- Jahreswechsel-Dialog gehärtet: Regel-/Flag-Labels werden jetzt in de/en/fr lokalisiert statt hart auf Deutsch aus dem Modell angezeigt.
+- i18n-Audit erweitert: EN/FR werden nicht nur auf Key-Parität, sondern auch auf deutsche Restübersetzungen in tatsächlich referenzierten UI-Keys geprüft.
+- Changelog, Release-Nachweise und Paketwurzel auf v2.0.39 synchronisiert.
+
+# v2.0.38 – Sanfte Null-Bilanz-Vorschläge
+
+- Einkommen wird optional als Topf betrachtet: Einnahmen minus Ausgaben minus Ersparnisse.
+- Neuer Einstellungs-Schalter „Sanfte Null-Bilanz-Regel aktivieren“.
+- Überschüsse können in Ersparnisse vorgeschlagen oder als Carryover-Hinweis angezeigt werden.
+- Negative Bilanzen reduzieren zuerst Ersparnisse und danach nur flexible Ausgaben; Fixkosten, Pots und inkrementelle Jahresrechnungen bleiben tabu.
+- Forecast-Pot-/Fixkostenfälle aus v2.0.37 bleiben unverändert abgesichert.
+
 # Changelog
+
+### v2.0.37 – Forecast-Pot, inkrementelle Fixkosten und Budgetwarn-Schalter
+
+- Neuer Kategorie-Forecast-Modus: Auto, Pot/Rückstellung, Inkrementell/Jahresrechnung, Normal/Flexibel.
+- Auto-Regel: Fix ohne Wiederholung wird als Pot behandelt; Fix oder Wiederkehrend als inkrementell.
+- Forecast-Fälle für Franchise/Pot und Jahresrechnung mit Regressionstests abgesichert.
+- Einstellung „Budgetüberschreitung warnen“ steuert jetzt Budgetwarner, Auto-Warnungen und Deckungslücken-Banner.
+- Datenbankschema auf v13 erweitert (`categories.forecast_mode`).
+
+### v2.0.36 – Update-Sicherheit gehärtet (fail-closed Integritätsprüfung)
+
+Diese Version geht aus einem kritischen Review von v2.0.35 hervor. Logik (Forecast), i18n, DAU-Freundlichkeit und der neue Startup-Update-Check wurden unabhängig geprüft und sind solide. Zwei Härtungspunkte rund um die Update-Sicherheit wurden behoben:
+
+- **Integritätsprüfung jetzt fail-closed (Sicherheit):** Lädt der Update-Check ein Asset, dessen Manifest keinen SHA256 enthält, wird das Update jetzt **abgelehnt** statt „ohne Integritätscheck akzeptiert". Damit kann ein manipuliertes Manifest die Prüfung nicht mehr umgehen. Der GitHub-Build setzt für jedes Asset (Installer, Standalone-EXE/-Binary, Portable-ZIP) immer einen echten SHA256 ein, daher blockiert das keine legitimen Releases. Ein falscher Hash wurde bereits zuvor korrekt abgelehnt.
+- **Versionsvergleich konservativ bei unlesbaren Versionen:** `is_newer()` liefert bei nicht interpretierbaren Versionsangaben jetzt `False` (kein Update-Hinweis), statt bei blosser Ungleichheit fälschlich ein – womöglich älteres – „Update" zu signalisieren. Der reguläre SemVer-Vergleich (z. B. 2.0.9 < 2.0.10) bleibt unverändert.
+- **Neue Sicherheitstests:** `test_update_integrity_failclosed.py` deckt ab: Ablehnung ohne SHA256, Ablehnung bei falschem SHA256, konservatives `is_newer`. Die bestehenden Staging-Erfolgstests prüfen jetzt mit einem gültigen SHA256 (statt leerem Feld) und damit zusätzlich die Hash-Verifikation.
+
+Hinweis: Der Startup-Update-Check selbst lädt nichts herunter und war von der fail-open-Schwäche nicht betroffen; die Härtung betrifft den eigentlichen Download-/Staging-Pfad (`check_update`).
+
+### v2.0.35 – Installer-Updater für Windows-Setup-Version
+
+- Installierte Windows-Versionen aktualisieren jetzt über das `windows_installer`-Asset statt über Portable-/Standalone-Dateiersatz.
+- Der In-App-Updater lädt `BudgetManager_Setup_<version>.exe`, staged sie als Installer und startet nach App-Ende einen sichtbaren Batch-Helfer.
+- Der Batch wartet auf das Ende von `BudgetManager.exe`, startet das Setup im Update-Modus und übergibt den bestehenden App-Ordner sowie den gewählten Datenordner.
+- Inno Setup bewahrt den vorhandenen Datenordner bei Updates über `/DATA_DIR`, vorhandene `installation.json` oder Standard-Fallback.
+- Datenordner-/Grundeinstellungsseiten werden im Update-Modus übersprungen; Uninstaller, Startmenü und Installationspfad bleiben unter Kontrolle des Installers.
+- Regressionstests für Installer-Staging, Installer-Apply-Batch und Inno-Update-Parameter ergänzt.
+
+### v2.0.33 – Installer-Datenordnung, Standalone-Updater und Linux-Start
+
+- Windows-Installer bündelt veränderliche Daten jetzt sauber im gewählten Datenordner: `budgetmanager_settings.json`, `users.json`, `.enc`/DB, Backups, Exporte, Updates und Theme-Overrides landen dort statt verteilt in Programmordner/AppData/Home.
+- `installation.json` bleibt nur als kleiner Bootstrap-Marker im Programmordner und enthält den gewählten Datenordner für App und Updater.
+- Windows-Standalone-EXE bevorzugt nun das direkte EXE-Asset und ersetzt beim Update die tatsächlich gestartete EXE-Datei, damit Doppelklick/Verknüpfung weiter funktionieren.
+- Updater-Cache/Staging liegt bei Installer-Installationen im gewählten Datenordner; Installer-Updates starten weiter die neue Setup-EXE.
+- Linux-Start vereinfacht: `run.sh`/`start-linux.sh` setzen Qt-Scaling, starten eine vorhandene `BudgetManager`-Binary oder erstellen für den Source-Start automatisch eine lokale `.venv`.
+- Regressionstests für Installer-Datenpfad, Updater-Asset-Priorität und zentrale Datenordner-Logik angepasst/ergänzt.
 
 ### v2.0.28 – Release-Blocker-Fix Budget-Modi, Money-Validation und Hardcoded-Audit
 

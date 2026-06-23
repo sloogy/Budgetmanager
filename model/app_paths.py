@@ -6,10 +6,15 @@ import os
 import sys
 
 
-def app_dir() -> Path:
-    """Basisordner der App (portable).
+INSTALL_TYPES_WITH_EXTERNAL_DATA = {"windows_installer", "installer"}
+SETTINGS_FILENAME = "budgetmanager_settings.json"
+INSTALLATION_MARKER = "installation.json"
 
-    - PyInstaller (frozen): Ordner, in dem die EXE liegt
+
+def app_dir() -> Path:
+    """Basisordner der App.
+
+    - PyInstaller (frozen): Ordner, in dem die EXE/Binary liegt
     - Dev/Source: Projekt-Root (eine Ebene über /model)
     - Tests/Tools: optionaler Override via BUDGETMANAGER_APP_DIR
     """
@@ -27,75 +32,138 @@ def ensure_dir(p: Path) -> Path:
 
 
 def portable_data_dir() -> Path:
-    """Fester, portabler Datenordner neben dem Programm ({app}/data).
+    """Portabler Datenordner neben dem Programm ({app}/data).
 
-    Dies ist der Bootstrap-Ort: Die Einstellungsdatei liegt IMMER hier, damit
-    der optionale, frei wählbare Datenordner überhaupt erst aus ihr gelesen
-    werden kann (sonst Henne-Ei-Problem).
+    Dieser Pfad ist der Standard für Source- und Portable-ZIP-Nutzung. Eine
+    Windows-Installer-Installation kann per ``installation.json`` einen externen
+    Datenordner vorgeben; dann landen Settings, DB, Nutzerregister, Backups und
+    Updates gemeinsam dort.
     """
     return app_dir() / "data"
 
 
-def settings_path() -> Path:
-    """Pfad zur Einstellungsdatei – immer im portablen Ordner ({app}/data).
+def installation_marker_path() -> Path:
+    """Pfad zum optionalen Installer-Marker neben der App."""
+    return app_dir() / INSTALLATION_MARKER
 
-    Bewusst NICHT an data_dir() gekoppelt: data_dir() kann aus dieser Datei
-    umgeleitet werden, daher muss die Datei selbst an einem festen Ort liegen.
+
+def _read_installation_marker() -> dict:
+    """Liest ``installation.json`` fehlertolerant.
+
+    Portable Builds enthalten keinen Marker. Der Windows-Installer schreibt den
+    Marker in den Programmordner, damit die App ihren gewählten Datenordner auch
+    dann findet, wenn die Settings-Datei selbst dort liegt.
     """
-    return ensure_dir(portable_data_dir()) / "budgetmanager_settings.json"
+    try:
+        marker = installation_marker_path()
+        if not marker.is_file():
+            return {}
+        data = json.loads(marker.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
 
 
-def resolve_data_dir(raw: str | None) -> Path:
+def _installer_data_dir() -> Path | None:
+    """Datenordner aus Installer-Marker oder None bei Portable/Source."""
+    data = _read_installation_marker()
+    install_type = str(data.get("install_type", "")).strip().lower()
+    if install_type not in INSTALL_TYPES_WITH_EXTERNAL_DATA:
+        return None
+    raw = str(data.get("data_directory", "") or "").strip()
+    if not raw:
+        return None
+    return resolve_data_dir(raw, default_to_installer=False)
+
+
+def resolve_data_dir(raw: str | None, *, default_to_installer: bool = True) -> Path:
     """Löst einen 'data_directory'-Rohwert in einen konkreten Pfad auf.
 
     - nicht-leerer Wert: absoluter Pfad wird genutzt, relativer relativ zu app_dir()
-    - leer/None: portabler Standard ({app}/data)
+    - leer/None: Installer-Default aus installation.json, sonst {app}/data
 
-    Liest bewusst NICHTS von der Platte – reine Pfadlogik, dadurch testbar und
-    auch für Vorschau-/Migrationszwecke nutzbar.
+    Diese Funktion liest höchstens den kleinen Installer-Marker, aber keine
+    Settings-Datei. Dadurch bleibt sie testbar und vermeidet Import-Zyklen.
     """
     if raw and str(raw).strip():
         p = Path(str(raw).strip()).expanduser()
         if not p.is_absolute():
             p = (app_dir() / p).resolve()
         return p
+    if default_to_installer:
+        installer_dir = _installer_data_dir()
+        if installer_dir is not None:
+            return installer_dir
     return portable_data_dir()
 
 
+def settings_path() -> Path:
+    """Pfad zur Einstellungsdatei.
+
+    Portable/Source:
+        {app}/data/budgetmanager_settings.json
+
+    Windows-Installer:
+        {gewählter Datenordner}/budgetmanager_settings.json
+
+    Damit verteilt der Installer Nutzerdaten nicht mehr über Programmordner,
+    Dokumente und AppData. Der kleine ``installation.json``-Marker im
+    Programmordner ist nur der Bootstrap-Hinweis auf den gewählten Datenordner.
+    """
+    installer_dir = _installer_data_dir()
+    base = installer_dir if installer_dir is not None else portable_data_dir()
+    return ensure_dir(base) / SETTINGS_FILENAME
+
+
+def _settings_candidates() -> list[Path]:
+    """Settings-Kandidaten in Prioritätsreihenfolge.
+
+    Bei neuen Installer-Builds liegt die Datei im gewählten Datenordner. Der
+    alte portable Ort bleibt als Legacy-Fallback lesbar, damit bestehende
+    Installationen beim ersten Start nicht hart zurückfallen.
+    """
+    primary = settings_path()
+    legacy = portable_data_dir() / SETTINGS_FILENAME
+    if primary == legacy:
+        return [primary]
+    return [primary, legacy]
+
+
 def _read_data_directory_override() -> Path | None:
-    """Liest den optionalen 'data_directory'-Wert aus der portablen Settings-Datei.
+    """Liest den optionalen 'data_directory'-Wert aus der Settings-Datei.
 
     Rückgabe:
         - absoluter Pfad, wenn ein nicht-leerer Wert gesetzt ist
+        - Installer-Datenordner, wenn installiert und kein Override vorhanden ist
         - None, wenn nichts gesetzt ist (-> portabler Default)
 
     Bewusst ohne Import der Settings-Klasse (vermeidet Import-Zyklus
-    app_paths <-> settings) und bewusst fehlertolerant: bei jedem Problem
-    wird auf den portablen Ordner zurückgefallen.
+    app_paths <-> settings) und bewusst fehlertolerant.
     """
-    settings_file = portable_data_dir() / "budgetmanager_settings.json"
-    try:
-        if not settings_file.is_file():
+    installer_dir = _installer_data_dir()
+    for settings_file in _settings_candidates():
+        try:
+            if not settings_file.is_file():
+                continue
+            data = json.loads(settings_file.read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                continue
+            raw = data.get("data_directory")
+            if raw is not None and str(raw).strip():
+                return resolve_data_dir(raw)
+            if installer_dir is not None:
+                return installer_dir
             return None
-        data = json.loads(settings_file.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            return None
-        raw = data.get("data_directory")
-        if not raw or not str(raw).strip():
-            return None
-        return resolve_data_dir(raw)
-    except Exception:
-        return None
+        except Exception:
+            continue
+    return installer_dir
 
 
 def data_dir() -> Path:
-    """Aktiver Datenordner (DB, Backups, Exporte, verschlüsselte .enc-Dateien).
+    """Aktiver Datenordner (DB, Nutzer, Backups, Exporte, Updates).
 
-    - Ist in den Einstellungen ein 'data_directory' gesetzt, wird dieser genutzt.
-    - Sonst der portable Ordner neben dem Programm ({app}/data).
-
-    Die Einstellungsdatei selbst liegt unabhängig davon immer portabel
-    (siehe settings_path()).
+    - Installer: gewählter Datenordner aus installation.json/Settings
+    - Portable/Source: {app}/data oder ein in Settings gesetzter Override
     """
     override = _read_data_directory_override()
     base = override if override is not None else portable_data_dir()
@@ -108,6 +176,15 @@ def backups_dir() -> Path:
 
 def exports_dir() -> Path:
     return ensure_dir(data_dir() / "exports")
+
+
+def updates_dir() -> Path:
+    """Update-Cache im aktiven Datenordner.
+
+    Für Installer-Installationen ist das wichtig, weil der Programmordner nicht
+    als Schreibort für laufende Cache-/Staging-Dateien dienen soll.
+    """
+    return ensure_dir(data_dir() / "updates")
 
 
 def db_path() -> Path:
@@ -124,13 +201,7 @@ _DEFAULT_BACKUP_SETTINGS = {"", "backups", "data/backups", "./data/backups"}
 
 
 def configured_db_path(setting_value: str | None) -> Path:
-    """DB-Pfad aus Settings, aber Default folgt dem aktiven data_dir().
-
-    Historisch stand in den Settings ``data/budgetmanager.db``. Seit dem frei
-    wählbaren Datenordner muss genau dieser Default relativ zum aktiven
-    Datenordner aufgelöst werden. Nur echte Nutzer-Sonderpfade werden weiterhin
-    unverändert respektiert.
-    """
+    """DB-Pfad aus Settings, aber Default folgt dem aktiven data_dir()."""
     raw = str(setting_value or "").strip().replace("\\", "/")
     if raw in _DEFAULT_DB_SETTINGS:
         return db_path()

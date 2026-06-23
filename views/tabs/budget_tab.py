@@ -12,8 +12,8 @@ from PySide6.QtWidgets import (
 )
 
 from utils.i18n import tr, trf
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS, is_income, normalize_typ
 from utils.icons import get_icon
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, is_income
 from utils.i18n import display_typ, db_typ_from_display, tr_category_name
 from model.category_model import CategoryModel, Category
 from model.budget_model import BudgetModel
@@ -23,6 +23,8 @@ from model.budget_modes import BUDGET_MODE_MONTH, BUDGET_MODE_ALL, BUDGET_MODE_R
 from model.coverage_model import budget_year_coverage, CoverageResult
 from model.crypto import suspend_after_commit_autosave
 from views.copy_year_dialog import CopyYearDialog
+from views.special_income_dialog import ThirteenthSalaryDialog
+from model.income_specials import apply_13th_month_salary
 from views.budget_entry_dialog import BudgetEntryDialog, BudgetEntryRequest
 # Erweiterter Dialog mit integrierter Kategorie-Verwaltung
 from views.budget_entry_dialog_extended import BudgetEntryDialogExtended
@@ -221,8 +223,8 @@ class BudgetTab(QWidget):
         self.year_spin.setValue(2024)
 
         self.typ_cb = QComboBox()
-        for _disp, _key in [(tr("typ.Alle"), ""), (tr("typ.Ausgaben"), "Ausgaben"),
-                           (tr("typ.Einkommen"), "Einkommen"), (tr("typ.Ersparnisse"), "Ersparnisse")]:
+        for _disp, _key in [(tr("typ.Alle"), ""), (tr("typ.Ausgaben"), TYP_EXPENSES),
+                           (tr("typ.Einkommen"), TYP_INCOME), (tr("typ.Ersparnisse"), TYP_SAVINGS)]:
             self.typ_cb.addItem(_disp, _key)
 
         # Baum-Ansicht (Ein-/Ausblenden / Ebenen)
@@ -240,6 +242,8 @@ class BudgetTab(QWidget):
         self.btn_save = QPushButton(tr("btn.save"))
         self.btn_seed = QPushButton(tr("budget.btn.seed"))
         self.btn_copy = QPushButton(tr("budget.btn.copy_year"))
+        self.btn_income_13 = QPushButton(tr("income13.button"))
+        self.btn_income_13.setToolTip(tr("income13.tip"))
 
         self.btn_entry = QPushButton(tr("budget.btn.entry"))
         self.btn_edit = QPushButton(tr("budget.btn.edit"))
@@ -331,6 +335,7 @@ class BudgetTab(QWidget):
         top.addStretch(1)
         top.addWidget(self.btn_quick_add)  # Schnelleingabe
         top.addWidget(self.btn_savings_goals)  # Sparziele im Budget-Kontext
+        top.addWidget(self.btn_income_13)  # 13. Monatslohn
         top.addWidget(self.btn_entry)  # Budget erfassen
         top.addWidget(self.btn_edit)   # Budget bearbeiten
         top.addWidget(self.btn_remove_category)  # Kategorie löschen
@@ -365,7 +370,33 @@ class BudgetTab(QWidget):
         self.btn_remove_category.clicked.connect(self.delete_category_global)
         self.btn_quick_add.clicked.connect(self.quick_add_requested.emit)
         self.btn_savings_goals.clicked.connect(self.savings_goals_requested.emit)
+        self.btn_income_13.clicked.connect(self.open_13th_salary_dialog)
 
+        self.load()
+
+
+    def open_13th_salary_dialog(self) -> None:
+        """Erfasst den 13. Monatslohn als planbares Einmaleinkommen."""
+        dlg = ThirteenthSalaryDialog(
+            self, conn=self.conn, default_year=int(self.year_spin.value())
+        )
+        if dlg.exec() != QDialog.Accepted:
+            return
+        plan = dlg.get_plan()
+        try:
+            with suspend_after_commit_autosave(self.conn):
+                apply_13th_month_salary(
+                    self.conn,
+                    year=plan.year,
+                    payout_month=plan.payout_month,
+                    amount=plan.amount,
+                    category=plan.category,
+                )
+        except Exception as exc:
+            QMessageBox.critical(self, tr("msg.error"), str(exc))
+            return
+        QMessageBox.information(self, tr("msg.success"), dlg.success_text())
+        self.year_spin.setValue(plan.year)
         self.load()
 
     # --- i18n helper: Typ aus ComboBox (Anzeige -> DB) ---
@@ -609,9 +640,8 @@ class BudgetTab(QWidget):
         if typ in m:
             return m[typ]
         # Fallback auf normalisiertem DB-Key
-        from model.typ_constants import normalize_typ as _nt
-        if _nt(typ) == "Einkommen" and "Einkommen" in m:
-            return m["Einkommen"]
+        if normalize_typ(typ) == TYP_INCOME and TYP_INCOME in m:
+            return m[TYP_INCOME]
         return QColor(ui_colors(self).neutral)
 
     def _row_cat_real(self, r: int) -> str | None:
@@ -897,6 +927,12 @@ class BudgetTab(QWidget):
     def _update_budget_coverage_warning(self) -> None:
         """Zeigt eine Budget-Deckungswarnung, wenn Ausgaben+Ersparnisse > Einnahmen."""
         try:
+            from settings import Settings
+            if not bool(Settings().get("warn_budget_overrun", False)):
+                self.lbl_coverage_warning.clear()
+                self.lbl_coverage_warning.setVisible(False)
+                return
+
             report = budget_year_coverage(self.budget, int(self.year_spin.value()))
             if not report.is_overdrawn:
                 self.lbl_coverage_warning.clear()
@@ -1860,9 +1896,11 @@ class BudgetTab(QWidget):
                 self.cats.create(
                     typ=req.typ,
                     name=req.category,
-                    is_fix=False,
-                    is_recurring=False,
-                    parent_id=None
+                    is_fix=bool(getattr(req, "is_fix", False)),
+                    is_recurring=bool(getattr(req, "is_recurring", False)),
+                    recurring_day=int(getattr(req, "recurring_day", 1) or 1),
+                    parent_id=getattr(req, "parent_category_id", None),
+                    forecast_mode=str(getattr(req, "forecast_mode", "auto") or "auto")
                 )
             except Exception as e:
                 QMessageBox.warning(
@@ -2141,7 +2179,7 @@ class BudgetTab(QWidget):
 
     def copy_year_dialog(self):
         default_src = int(self.year_spin.value())
-        dlg = CopyYearDialog(self, default_src=default_src, known_years=self.budget.years())
+        dlg = CopyYearDialog(self, default_src=default_src, known_years=self.budget.years(), conn=self.conn)
         if dlg.exec() != QDialog.Accepted:
             return
         req = dlg.get_request()
@@ -2152,7 +2190,14 @@ class BudgetTab(QWidget):
 
         typ = None if not req.scope_typ else req.scope_typ
         with suspend_after_commit_autosave(self.conn):
-            self.budget.copy_year(req.src_year, req.dst_year, carry_amounts=req.carry_amounts, typ=typ)
+            self.budget.copy_year(
+                req.src_year,
+                req.dst_year,
+                carry_amounts=req.carry_amounts,
+                typ=typ,
+                use_previous_year_pattern=req.use_previous_year_pattern,
+                review_overrides=list(req.review_overrides),
+            )
 
             if typ is None:
                 for t in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
@@ -2532,6 +2577,10 @@ class BudgetTab(QWidget):
     def _create_auto_warnings(self, year: int) -> None:
         """Erstellt automatisch Budgetwarnungen nur bei tatsächlicher Überschreitung (>100%)"""
         try:
+            from settings import Settings
+            if not bool(Settings().get("warn_budget_overrun", False)):
+                return
+
             from model.tracking_model import TrackingModel
             tracking = TrackingModel(self.conn)
             

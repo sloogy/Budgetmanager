@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from model.category_model import CategoryModel, Category
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from model.budget_modes import BUDGET_MODE_MONTH, BUDGET_MODE_ALL, BUDGET_MODE_RANGE, normalize_budget_mode
+from model.category_forecast_mode import FORECAST_MODE_AUTO, FORECAST_MODE_INCREMENTAL, FORECAST_MODE_NORMAL, FORECAST_MODE_POT
 from utils.icons import get_icon
 
 def _get_months():
@@ -55,6 +56,7 @@ class BudgetEntryRequest:
     # NEU: Kategorie-Erstellungsdaten
     category_created: bool = False
     parent_category_id: int | None = None
+    forecast_mode: str = FORECAST_MODE_AUTO
 
 
 class NewCategoryDialog(QDialog):
@@ -129,6 +131,15 @@ class NewCategoryDialog(QDialog):
         day_layout.addWidget(self.day_spin)
         day_layout.addStretch()
         flags_layout.addLayout(day_layout, 1, 0, 1, 2)
+
+        flags_layout.addWidget(QLabel(tr("forecast.mode.label")), 2, 0)
+        self.forecast_mode = QComboBox()
+        self.forecast_mode.addItem(tr("forecast.mode.auto"), FORECAST_MODE_AUTO)
+        self.forecast_mode.addItem(tr("forecast.mode.pot"), FORECAST_MODE_POT)
+        self.forecast_mode.addItem(tr("forecast.mode.incremental"), FORECAST_MODE_INCREMENTAL)
+        self.forecast_mode.addItem(tr("forecast.mode.normal"), FORECAST_MODE_NORMAL)
+        self.forecast_mode.setToolTip(tr("forecast.mode.tooltip"))
+        flags_layout.addWidget(self.forecast_mode, 2, 1)
         
         layout.addWidget(flags_group)
         
@@ -171,6 +182,7 @@ class NewCategoryDialog(QDialog):
         is_fix = self.chk_fix.isChecked()
         is_recurring = self.chk_recurring.isChecked()
         recurring_day = self.day_spin.value() if is_recurring else 1
+        forecast_mode = str(self.forecast_mode.currentData() or FORECAST_MODE_AUTO)
         
         try:
             self._created_id = self.cat_model.create(
@@ -179,7 +191,8 @@ class NewCategoryDialog(QDialog):
                 is_fix=is_fix,
                 is_recurring=is_recurring,
                 recurring_day=recurring_day,
-                parent_id=parent_id
+                parent_id=parent_id,
+                forecast_mode=forecast_mode
             )
             self.accept()
         except Exception as e:

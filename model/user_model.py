@@ -21,7 +21,7 @@ import json
 import os
 import re
 from pathlib import Path
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, replace
 from typing import Optional
 from datetime import datetime
 
@@ -31,6 +31,7 @@ from model.crypto import (
     generate_db_key,
     hash_password,
     verify_password,
+    is_legacy_password_hash,
     wrap_db_key,
     unwrap_db_key,
     unwrap_db_key_with_iterations,
@@ -86,6 +87,10 @@ class User:
     # PBKDF2-Runden für PIN/PW-Key-Wrapping. Alte User ohne Feld werden
     # beim erfolgreichen Login automatisch auf PBKDF2_ITERATIONS gehoben.
     kdf_iterations: int = PBKDF2_ITERATIONS
+    # Wird gesetzt, wenn ein Legacy-Konto erfolgreich einloggt, die lokale
+    # Sicherheitsmigration aber nicht in users.json gespeichert werden konnte.
+    security_upgrade_pending: bool = False
+    security_upgrade_error: str = ""
 
     @property
     def salt(self) -> bytes:
@@ -162,6 +167,23 @@ def _make_slug(name: str) -> str:
     return clean[:40] or "user"
 
 
+def _validate_security_secret(security: str, secret: str = "") -> None:
+    """Validiert Sicherheitsstufe und zugehöriges Secret zentral im Model.
+
+    Wichtig: Die GUI validiert ebenfalls, aber das Model ist die letzte
+    Schutzschicht. Dadurch können Tests, Scripts oder spätere Dialoge keine
+    ungültige PIN/Passwort-Kombination in ``users.json`` speichern.
+    """
+    if security not in (SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD):
+        raise ValueError(f"Ungültige Sicherheitsstufe: {security}")
+    if security == SECURITY_PIN:
+        if not secret.isdigit() or not (4 <= len(secret) <= 8):
+            raise ValueError("PIN muss 4–8 Ziffern lang sein")
+    elif security == SECURITY_PASSWORD:
+        if len(secret) < 4:
+            raise ValueError("Passwort muss mindestens 4 Zeichen lang sein")
+
+
 class UserModel:
     """Verwaltet Benutzerkonten."""
 
@@ -178,14 +200,16 @@ class UserModel:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
             self._users = {}
+            valid_fields = set(User.__dataclass_fields__)
             for entry in data.get("users", []):
-                u = User(**entry)
+                filtered = {k: v for k, v in dict(entry).items() if k in valid_fields}
+                u = User(**filtered)
                 self._users[u.username] = u
         except Exception as e:
             logger.error("Fehler beim Laden der Benutzerdatei: %s", e)
             self._users = {}
 
-    def _save(self) -> None:
+    def _save(self) -> bool:
         path = _users_file_path()
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
@@ -196,10 +220,12 @@ class UserModel:
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(str(tmp), str(path))
+            return True
         except Exception as e:
             logger.error("Fehler beim Speichern der Benutzerdatei: %s", e)
             if tmp.exists():
                 tmp.unlink(missing_ok=True)
+            return False
 
     # ── Abfragen ─────────────────────────────────
 
@@ -231,11 +257,20 @@ class UserModel:
                 return u
         return None
 
-    def set_default_user(self, username: str) -> None:
-        """Setzt einen Benutzer als Standard."""
+    def set_default_user(self, username: str) -> bool:
+        """Setzt einen Benutzer als Standard.
+
+        Gibt ``False`` zurück, wenn der Benutzer nicht existiert. In diesem Fall
+        bleibt die bisherige Standard-Auswahl unverändert, damit ein Tippfehler
+        oder stale UI-Status nicht alle Defaults entfernt.
+        """
+        if username not in self._users:
+            logger.warning("Standard-Benutzer nicht gefunden: %s", username)
+            return False
         for u in self._users.values():
             u.is_default = u.username == username
         self._save()
+        return True
 
     # ── Erstellen ────────────────────────────────
 
@@ -270,15 +305,7 @@ class UserModel:
             slug = f"{base_slug}_{counter}"
             counter += 1
 
-        if security not in (SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD):
-            raise ValueError(f"Ungültige Sicherheitsstufe: {security}")
-
-        if security == SECURITY_PIN:
-            if not secret.isdigit() or not (4 <= len(secret) <= 8):
-                raise ValueError("PIN muss 4–8 Ziffern lang sein")
-        elif security == SECURITY_PASSWORD:
-            if len(secret) < 4:
-                raise ValueError("Passwort muss mindestens 4 Zeichen lang sein")
+        _validate_security_secret(security, secret)
 
         salt = generate_salt()
         db_key = generate_db_key()
@@ -356,7 +383,20 @@ class UserModel:
                 )
                 return False
 
+        was_default = user.is_default
         del self._users[username]
+        if (
+            was_default
+            and self._users
+            and not any(u.is_default for u in self._users.values())
+        ):
+            # Stabiler Fallback: Wenn der Default-User gelöscht wird, bekommt
+            # der alphabetisch erste verbleibende Benutzer den Default-Status.
+            # Damit bleibt der Start-/Login-Pfad konsistent.
+            next_default = sorted(
+                self._users.values(), key=lambda u: u.display_name.lower()
+            )[0]
+            next_default.is_default = True
         self._save()
         logger.info("Benutzer '%s' gelöscht", username)
         return True
@@ -374,17 +414,30 @@ class UserModel:
 
             new_salt = generate_salt()
             wrapped = wrap_db_key(db_key, secret, new_salt)
-            user.wrapped_db_key_b64 = base64.urlsafe_b64encode(wrapped).decode("ascii")
-            user.pw_hash = hash_password(secret, new_salt)
-            user.salt_hex = new_salt.hex()
-            user.kdf_iterations = PBKDF2_ITERATIONS
-            self._users[user.username] = user
-            self._save()
-            logger.info(
-                "PBKDF2-Parameter für Benutzer '%s' aktualisiert", user.username
+            upgraded = replace(user)
+            upgraded.wrapped_db_key_b64 = base64.urlsafe_b64encode(wrapped).decode(
+                "ascii"
+            )
+            upgraded.pw_hash = hash_password(secret, new_salt)
+            upgraded.salt_hex = new_salt.hex()
+            upgraded.kdf_iterations = PBKDF2_ITERATIONS
+            upgraded.security_upgrade_pending = False
+            upgraded.security_upgrade_error = ""
+            self._users[user.username] = upgraded
+            if self._save():
+                logger.info(
+                    "PBKDF2-Parameter für Benutzer '%s' aktualisiert", user.username
+                )
+                return
+            raise OSError(
+                "users.json konnte nach PBKDF2-Upgrade nicht gespeichert werden"
             )
         except Exception as e:
             # Login darf nicht scheitern, nur weil die Härtungs-Migration nicht speichern konnte.
+            warning_user = replace(user)
+            warning_user.security_upgrade_pending = True
+            warning_user.security_upgrade_error = str(e)
+            self._users[user.username] = warning_user
             logger.warning(
                 "PBKDF2-Upgrade für Benutzer '%s' fehlgeschlagen: %s", user.username, e
             )
@@ -402,7 +455,15 @@ class UserModel:
 
         try:
             db_key, used_iterations = user.get_db_key_and_iterations(secret)
-            if (not user.is_quick) and used_iterations != PBKDF2_ITERATIONS:
+            # Bestandskonten auf aktuelle Haertung heben:
+            # - alte PBKDF2-Rundenzahl, ODER
+            # - alter, key-aequivalenter pw_hash (Sicherheits-Fix v2.0.41), auch
+            #   wenn die Rundenzahl bereits aktuell ist.
+            needs_upgrade = (not user.is_quick) and (
+                used_iterations != PBKDF2_ITERATIONS
+                or is_legacy_password_hash(secret, user.salt, user.pw_hash)
+            )
+            if needs_upgrade:
                 self._upgrade_user_kdf(user, db_key, secret)
             return db_key
         except ValueError:
@@ -463,6 +524,14 @@ class UserModel:
             return False, ""
 
         new_security = new_security or user.security
+        try:
+            _validate_security_secret(new_security, new_secret)
+        except ValueError as exc:
+            logger.warning(
+                "Ungültige neue Sicherheitsdaten für '%s': %s", username, exc
+            )
+            return False, ""
+
         new_salt = generate_salt()
         restore_key = ""
 
@@ -520,6 +589,9 @@ class UserModel:
                     "restore_offered": u.restore_key_offered,
                     "db_exists": u.db_path.exists(),
                     "needs_auth": u.needs_auth,
+                    "kdf_iterations": u.kdf_iterations,
+                    "security_upgrade_pending": u.security_upgrade_pending,
+                    "security_upgrade_error": u.security_upgrade_error,
                 }
             )
         return report

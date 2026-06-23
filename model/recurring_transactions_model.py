@@ -1,11 +1,17 @@
 from __future__ import annotations
 
-# Hinweis: Dieses Modell ist aktuell Legacy/experimentell.
+# Hinweis: Dieses Modell ist Legacy/Kompatibilitäts-Schicht.
 # Der aktive App-Workflow für monatliche Fix-/Wiederholungsbuchungen läuft
-# primär über Kategorien (`categories.is_fix`, `categories.is_recurring`,
-# `categories.recurring_day`). Die Tabelle `recurring_transactions` bleibt
-# für Rückwärtskompatibilität, Tests und eine mögliche spätere Per-Eintrag-
-# Terminplanung erhalten.
+# über Kategorien (`categories.is_fix`, `categories.is_recurring`,
+# `categories.recurring_day`) und markiert Auto-Buchungen sprachunabhängig
+# über die `tracking.source`-Spalte.
+#
+# Die frühere Per-Eintrag-Terminvorschau (`get_pending_bookings`,
+# `_is_already_booked`, `update_last_booking_date`) wurde in v2.1.0 entfernt:
+# Sie war produktiv nicht angebunden und ihre Dubletten-Erkennung hing am
+# deutschsprachigen Marker `"Wiederkehrend (ID: …)"`, was der Live-Pfad
+# bewusst nicht mehr nutzt. Es verbleiben die Tabellen-CRUD (für Backward-
+# Compat der `recurring_transactions`-Tabelle) und die reinen Datums-Helfer.
 import sqlite3
 from datetime import date, datetime
 from dataclasses import dataclass
@@ -17,7 +23,7 @@ class RecurringTransaction:
     """Wiederkehrende Transaktion mit Soll-Buchungsdatum"""
 
     id: Optional[int]
-    typ: str  # 'Einnahmen' oder 'Ausgaben'
+    typ: str  # 'Einkommen' oder 'Ausgaben'
     category: str
     amount: float
     details: str
@@ -86,64 +92,6 @@ class RecurringTransactionsModel:
         rows = self.conn.execute(query).fetchall()
         return [self._row_to_transaction(row) for row in rows]
 
-    def get_pending_bookings(
-        self, target_month: date
-    ) -> list[tuple[RecurringTransaction, date]]:
-        """
-        Gibt Liste von Transaktionen zurück, die für den Zielmonat gebucht werden müssen
-
-        Returns:
-            Liste von (RecurringTransaction, Soll-Buchungsdatum) Tupeln
-        """
-        transactions = self.get_all_recurring_transactions(active_only=True)
-        pending = []
-
-        for trans in transactions:
-            # Prüfe ob bereits gebucht wurde in diesem Monat
-            if self._is_already_booked(trans, target_month):
-                continue
-
-            # Berechne Soll-Buchungsdatum
-            booking_date = self._calculate_booking_date(trans, target_month)
-
-            # Prüfe ob Datum in gültigem Zeitraum liegt
-            if not self._is_valid_booking_date(trans, booking_date):
-                continue
-
-            # Prüfe ob Datum erreicht oder überschritten
-            if booking_date <= date.today():
-                pending.append((trans, booking_date))
-
-        return pending
-
-    def _is_already_booked(
-        self, trans: RecurringTransaction, target_month: date
-    ) -> bool:
-        """Prüft ob die Transaktion bereits im Zielmonat gebucht wurde"""
-        # Prüfe in tracking-Tabelle
-        year = target_month.year
-        month = target_month.month
-
-        rows = self.conn.execute(
-            """
-            SELECT COUNT(*) FROM tracking 
-            WHERE typ = ? 
-              AND category = ? 
-              AND strftime('%Y', date) = ? 
-              AND strftime('%m', date) = ?
-              AND details LIKE ?
-            """,
-            (
-                trans.typ,
-                trans.category,
-                str(year),
-                f"{month:02d}",
-                f"%Wiederkehrend (ID: {trans.id})%",
-            ),
-        ).fetchone()
-
-        return rows[0] > 0 if rows else False
-
     def _calculate_booking_date(
         self, trans: RecurringTransaction, target_month: date
     ) -> date:
@@ -176,14 +124,6 @@ class RecurringTransactionsModel:
             return False
 
         return True
-
-    def update_last_booking_date(self, transaction_id: int, booking_date: date) -> None:
-        """Aktualisiert das letzte Buchungsdatum"""
-        self.conn.execute(
-            "UPDATE recurring_transactions SET last_booking_date = ? WHERE id = ?",
-            (booking_date.isoformat(), transaction_id),
-        )
-        self.conn.commit()
 
     def update_recurring_transaction(
         self,

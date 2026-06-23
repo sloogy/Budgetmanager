@@ -26,10 +26,22 @@ from PySide6.QtWidgets import (
 )
 
 from model.category_model import CategoryModel, Category
+from model.category_forecast_mode import FORECAST_MODE_AUTO, FORECAST_MODE_INCREMENTAL, FORECAST_MODE_NORMAL, FORECAST_MODE_POT
 from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display, tr_category_name
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from views.category_delete_dialog import ask_category_delete_decision
+
+
+def _forecast_mode_label(mode: str) -> str:
+    mode = str(mode or FORECAST_MODE_AUTO)
+    if mode == FORECAST_MODE_POT:
+        return tr("forecast.mode.pot")
+    if mode == FORECAST_MODE_INCREMENTAL:
+        return tr("forecast.mode.incremental")
+    if mode == FORECAST_MODE_NORMAL:
+        return tr("forecast.mode.normal")
+    return tr("forecast.mode.auto")
 
 
 class _CategoryTreeWidget(QTreeWidget):
@@ -128,6 +140,8 @@ class CategoryManagerDialog(QDialog):
         self.filter_combo.addItem(display_typ(TYP_SAVINGS), TYP_SAVINGS)
         self.filter_combo.addItem(tr("categories.filter_fixcosts"), "fix")
         self.filter_combo.addItem(tr("categories.filter_recurring"), "recurring")
+        self.filter_combo.addItem(tr("forecast.mode.pot"), FORECAST_MODE_POT)
+        self.filter_combo.addItem(tr("forecast.mode.incremental"), FORECAST_MODE_INCREMENTAL)
         self.filter_combo.currentIndexChanged.connect(lambda _idx: self._apply_filter())
         toolbar.addWidget(self.filter_combo)
         
@@ -145,7 +159,7 @@ class CategoryManagerDialog(QDialog):
         
         # Kategorie-Baum
         self.tree = _CategoryTreeWidget(self)
-        self.tree.setHeaderLabels([tr("header.category"), tr("header.type"), tr("header.fix"), tr("header.recurring_short"), tr("header.day")])
+        self.tree.setHeaderLabels([tr("header.category"), tr("header.type"), tr("header.fix"), tr("header.recurring_short"), tr("header.day"), tr("forecast.mode.short")])
         self.tree.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.tree.setDragEnabled(True)
         self.tree.setAcceptDrops(True)
@@ -172,6 +186,7 @@ class CategoryManagerDialog(QDialog):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)   # Fix
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)   # Wdh.
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)   # Tag
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)   # Forecast
         self.tree.setMinimumWidth(360)
         
         splitter.addWidget(self.tree)
@@ -215,12 +230,22 @@ class CategoryManagerDialog(QDialog):
         day_layout.addWidget(self.day_combo)
         day_layout.addStretch()
         props_layout.addLayout(day_layout, 2, 1)
+
+        props_layout.addWidget(QLabel(tr("forecast.mode.label")), 3, 0)
+        self.forecast_combo = QComboBox()
+        self.forecast_combo.addItem(tr("dlg.nicht_aendern"), None)
+        self.forecast_combo.addItem(tr("forecast.mode.auto"), FORECAST_MODE_AUTO)
+        self.forecast_combo.addItem(tr("forecast.mode.pot"), FORECAST_MODE_POT)
+        self.forecast_combo.addItem(tr("forecast.mode.incremental"), FORECAST_MODE_INCREMENTAL)
+        self.forecast_combo.addItem(tr("forecast.mode.normal"), FORECAST_MODE_NORMAL)
+        self.forecast_combo.setToolTip(tr("forecast.mode.tooltip"))
+        props_layout.addWidget(self.forecast_combo, 3, 1)
         
         # Anwenden-Button
         self.btn_apply = QPushButton(tr("dlg.aenderungen_anwenden_1"))
         self.btn_apply.clicked.connect(self._apply_changes)
         self.btn_apply.setEnabled(False)
-        props_layout.addWidget(self.btn_apply, 3, 0, 1, 2)
+        props_layout.addWidget(self.btn_apply, 4, 0, 1, 2)
         
         details_layout.addWidget(props_group)
         
@@ -346,6 +371,7 @@ class CategoryManagerDialog(QDialog):
                 item.setText(2, "✓" if cat.is_fix else "")
                 item.setText(3, "✓" if cat.is_recurring else "")
                 item.setText(4, str(cat.recurring_day) if cat.is_recurring else "")
+                item.setText(5, _forecast_mode_label(getattr(cat, "forecast_mode", FORECAST_MODE_AUTO)))
                 
                 item.setFlags(item.flags() | Qt.ItemIsDragEnabled | Qt.ItemIsDropEnabled)
                 item.setData(0, Qt.UserRole, {
@@ -357,6 +383,7 @@ class CategoryManagerDialog(QDialog):
                     "is_fix": cat.is_fix,
                     "is_recurring": cat.is_recurring,
                     "recurring_day": cat.recurring_day,
+                    "forecast_mode": getattr(cat, "forecast_mode", FORECAST_MODE_AUTO),
                     "parent_id": cat.parent_id
                 })
                 
@@ -398,7 +425,7 @@ class CategoryManagerDialog(QDialog):
             show_type = (
                 filter_value == "all"
                 or filter_value == typ
-                or filter_value in ("fix", "recurring")
+                or filter_value in ("fix", "recurring", FORECAST_MODE_POT, FORECAST_MODE_INCREMENTAL)
             )
             type_item.setHidden(not show_type)
 
@@ -413,12 +440,14 @@ class CategoryManagerDialog(QDialog):
                         show_child = child_data.get("is_fix", False)
                     elif filter_value == "recurring":
                         show_child = child_data.get("is_recurring", False)
+                    elif filter_value in (FORECAST_MODE_POT, FORECAST_MODE_INCREMENTAL):
+                        show_child = child_data.get("forecast_mode", FORECAST_MODE_AUTO) == filter_value
 
                     child.setHidden(not show_child)
                     if show_child:
                         visible_children += 1
 
-                if filter_value in ("fix", "recurring") and visible_children == 0:
+                if filter_value in ("fix", "recurring", FORECAST_MODE_POT, FORECAST_MODE_INCREMENTAL) and visible_children == 0:
                     type_item.setHidden(True)
 
     def _get_selected_categories(self) -> list[dict]:
@@ -451,6 +480,8 @@ class CategoryManagerDialog(QDialog):
                 self._set_day_combo_value(cat["recurring_day"])
             else:
                 self.day_check.setChecked(False)
+            idx = self.forecast_combo.findData(cat.get("forecast_mode", FORECAST_MODE_AUTO))
+            self.forecast_combo.setCurrentIndex(idx if idx >= 0 else 1)
         else:
             self.selection_label.setText(trf("dlg.count_kategorien_ausgewaehlt", count=count))
             self.btn_apply.setEnabled(True)
@@ -458,6 +489,7 @@ class CategoryManagerDialog(QDialog):
             self.fix_combo.setCurrentIndex(0)
             self.rec_combo.setCurrentIndex(0)
             self.day_check.setChecked(False)
+            self.forecast_combo.setCurrentIndex(0)
     
     def _on_double_click(self, item: QTreeWidgetItem, column: int) -> None:
         """Doppelklick öffnet Umbenennen."""
@@ -498,6 +530,13 @@ class CategoryManagerDialog(QDialog):
             lambda: self._set_single_day(cat["id"]),
         )
         act_set_day.setIcon(get_icon("📅"))
+
+        menu.addSeparator()
+        mode_menu = menu.addMenu(tr("forecast.mode.label"))
+        mode_menu.addAction(tr("forecast.mode.auto"), lambda: self._toggle_single_flag(cat["id"], "forecast_mode", FORECAST_MODE_AUTO))
+        mode_menu.addAction(tr("forecast.mode.pot"), lambda: self._toggle_single_flag(cat["id"], "forecast_mode", FORECAST_MODE_POT))
+        mode_menu.addAction(tr("forecast.mode.incremental"), lambda: self._toggle_single_flag(cat["id"], "forecast_mode", FORECAST_MODE_INCREMENTAL))
+        mode_menu.addAction(tr("forecast.mode.normal"), lambda: self._toggle_single_flag(cat["id"], "forecast_mode", FORECAST_MODE_NORMAL))
         
         menu.addSeparator()
         menu.addAction(tr("btn.loeschen_1"), self._delete_categories)
@@ -701,8 +740,9 @@ class CategoryManagerDialog(QDialog):
         rec_choice = self.rec_combo.currentIndex()
         set_day = self.day_check.isChecked()
         day_val = self._current_day_combo_value()
+        forecast_choice = self.forecast_combo.currentData()
         
-        if fix_choice == 0 and rec_choice == 0 and not set_day:
+        if fix_choice == 0 and rec_choice == 0 and not set_day and forecast_choice is None:
             QMessageBox.information(self, tr("msg.info"), tr("msg.no_changes_selected"))
             return
         
@@ -726,6 +766,8 @@ class CategoryManagerDialog(QDialog):
                 if set_day:
                     kwargs["is_recurring"] = True
                     kwargs["recurring_day"] = day_val
+                if forecast_choice is not None:
+                    kwargs["forecast_mode"] = str(forecast_choice)
                 
                 if kwargs:
                     self.cat_model.update_flags(cat["id"], **kwargs)
@@ -763,8 +805,15 @@ class CategoryManagerDialog(QDialog):
         if changed > 0:
             self._load_categories()
             self.categories_changed.emit()
-            flag_name = tr("tracking.title.fixcosts") if flag == "is_fix" else tr("lbl.recurring")
-            status = tr("categories.status_activated") if value else tr("categories.status_deactivated")
+            if flag == "is_fix":
+                flag_name = tr("tracking.title.fixcosts")
+                status = tr("categories.status_activated") if value else tr("categories.status_deactivated")
+            elif flag == "is_recurring":
+                flag_name = tr("lbl.recurring")
+                status = tr("categories.status_activated") if value else tr("categories.status_deactivated")
+            else:
+                flag_name = tr("forecast.mode.label")
+                status = _forecast_mode_label(str(value))
             self.status_label.setText(trf("dlg.flag_name_fuer_changed_kategorien", flag_name=flag_name, changed=changed, status=status))
     
     def _add_category(self) -> None:

@@ -27,4 +27,4 @@ Der BudgetManager folgt einer **MVC-Architektur** (Model-View-Controller), wobei
 
 ---
 
-*Stand der Analyse: v2.0.32 · 19. Juni 2026*
+*Stand der Analyse: v2.1.0 · 22. Juni 2026*
