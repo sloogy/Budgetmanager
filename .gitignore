@@ -63,3 +63,4 @@ data/*.log
 data/*crash*.log
 data/i18n_audit_report.txt
 data/*.txt
+.cache/
