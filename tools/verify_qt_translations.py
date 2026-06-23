@@ -72,7 +72,7 @@ def _build_dirs(root: Path) -> list[Path]:
 
 def check(dirs: list[Path]) -> bool:
     if not dirs:
-        print("❌ Kein Übersetzungsverzeichnis gefunden.")
+        print("[FAIL] Kein Übersetzungsverzeichnis gefunden.")
         return False
     print("Geprüfte Verzeichnisse:")
     for d in dirs:
@@ -84,13 +84,13 @@ def check(dirs: list[Path]) -> bool:
     ok = True
     print("\nPflicht-Kataloge:")
     for name in REQUIRED:
-        mark = "✅" if found[name] else "❌"
+        mark = "[OK]" if found[name] else "[FAIL]"
         if not found[name]:
             ok = False
         print(f"  {mark} {name}")
     print("\nOptional:")
     for name in OPTIONAL:
-        print(f"  {'✅' if found[name] else '–'} {name}")
+        print(f"  {'[OK]' if found[name] else '–'} {name}")
     return ok
 
 
@@ -107,9 +107,9 @@ def main() -> int:
     print(
         "\n"
         + (
-            "✅ R2 erfüllt: native Kontextmenüs werden DE/FR lokalisiert."
+            "[OK] R2 erfüllt: native Kontextmenüs werden DE/FR lokalisiert."
             if ok
-            else "❌ R2 NICHT erfüllt: qtbase_*.qm fehlt – Build/Qt-Installation prüfen."
+            else "[FAIL] R2 NICHT erfüllt: qtbase_*.qm fehlt – Build/Qt-Installation prüfen."
         )
     )
     return 0 if ok else 1
