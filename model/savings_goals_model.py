@@ -12,7 +12,6 @@ from model.database import db_transaction
 from model.crypto import suspend_after_commit_autosave
 from model.typ_constants import TYP_SAVINGS
 
-
 """Sparziele-Datenmodell.
 
 Verwaltet Sparziele mit Lebenszyklusstatus (sparend, freigegeben, abgeschlossen),
@@ -216,8 +215,7 @@ class SavingsGoalsModel:
 
     def list_all(self) -> List[SavingsGoal]:
         """Liste alle Sparziele"""
-        cur = self.conn.execute(
-            """
+        cur = self.conn.execute("""
             SELECT id, name, target_amount, current_amount, deadline, category, notes, 
                    created_date, status, released_amount, released_date
             FROM savings_goals
@@ -228,8 +226,7 @@ class SavingsGoalsModel:
                     WHEN 'abgeschlossen' THEN 2 
                 END,
                 deadline IS NULL, deadline, name
-            """
-        )
+            """)
         return [self._row_to_goal(row) for row in cur.fetchall()]
 
     def get(self, goal_id: int) -> Optional[SavingsGoal]:

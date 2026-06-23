@@ -5,6 +5,7 @@ aktuellen Budget-Überschreitungen aus ``check_warnings_extended`` vorliegen.
 In v2.0.8 crashte das durch ``max(exceedances)`` mit leerer Liste.
 Dieser Test ist bewusst statisch und läuft ohne PySide6.
 """
+
 from pathlib import Path
 
 

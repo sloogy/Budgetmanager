@@ -7,6 +7,7 @@
 
 Läuft ohne Qt/PySide6 (reine Datenschicht).
 """
+
 from __future__ import annotations
 
 import os
@@ -39,6 +40,7 @@ def _fresh():
 
 # ── 1. Gruppierter Picker ────────────────────────────────────────
 
+
 def test_grouped_picker_groups_and_order():
     conn, p = _fresh()
     try:
@@ -52,7 +54,9 @@ def test_grouped_picker_groups_and_order():
         c.create(TYP_EXPENSES, "Lieblingsshop")
         fav.add(TYP_EXPENSES, "Lieblingsshop")
         for i in range(3):
-            t.add(date(2026, 1, i + 1), TYP_EXPENSES, "Hobby", 10.0, "", source="manual")
+            t.add(
+                date(2026, 1, i + 1), TYP_EXPENSES, "Hobby", 10.0, "", source="manual"
+            )
 
         grouped = c.list_for_tracking_dropdown_grouped(TYP_EXPENSES)
         headers = [lbl for kind, lbl, _ in grouped if kind == "header"]
@@ -77,7 +81,12 @@ def test_grouped_picker_groups_and_order():
         assert groups[fix_var_h] == ["Franchise"]
         assert groups[rec_var_h] == ["Strom"]
         assert groups[real_fix_h] == ["Miete"]
-        assert headers.index(freq_h) < headers.index(fix_var_h) < headers.index(rec_var_h) < headers.index(real_fix_h)
+        assert (
+            headers.index(freq_h)
+            < headers.index(fix_var_h)
+            < headers.index(rec_var_h)
+            < headers.index(real_fix_h)
+        )
     finally:
         conn.close()
         os.remove(p)
@@ -91,14 +100,17 @@ def test_grouped_picker_no_duplicates_and_headers_have_no_value():
         c.create(TYP_EXPENSES, "Hobby")
         grouped = c.list_for_tracking_dropdown_grouped(TYP_EXPENSES)
         item_values = [v for k, _, v in grouped if k == "item"]
-        assert len(item_values) == len(set(item_values))            # keine Duplikate
-        assert all(v is None for k, _, v in grouped if k == "header")  # Header ohne Wert
+        assert len(item_values) == len(set(item_values))  # keine Duplikate
+        assert all(
+            v is None for k, _, v in grouped if k == "header"
+        )  # Header ohne Wert
     finally:
         conn.close()
         os.remove(p)
 
 
 # ── 2. Budget-erreicht-Logik (fix XOR wiederkehrend) ─────────────
+
 
 def _status(c, b, t, cat, y, m):
     """Spiegelt die Produktionslogik aus add_fixcosts/_refresh_missing."""
@@ -109,7 +121,10 @@ def _status(c, b, t, cat, y, m):
     single = bool(is_fix) ^ bool(is_rec)
     if both:
         exists = t.exists_in_month(year=y, month=m, typ=TYP_EXPENSES, category=cat)
-        return ("offen" if not exists else "abgeschlossen", budget if not exists else 0.0)
+        return (
+            "offen" if not exists else "abgeschlossen",
+            budget if not exists else 0.0,
+        )
     if single:
         if budget > EPS and abs(booked) >= abs(budget) - EPS:
             return ("abgeschlossen", 0.0)
@@ -137,7 +152,9 @@ def test_franchise_open_until_budget_reached():
         assert s == "offen" and abs(rest - 220.0) < EPS
 
         # auf 300 aufstocken -> abgeschlossen
-        t.add(date(Y, M, 20), TYP_EXPENSES, "Franchise", 220.0, "", source="auto_fixcost")
+        t.add(
+            date(Y, M, 20), TYP_EXPENSES, "Franchise", 220.0, "", source="auto_fixcost"
+        )
         s, _ = _status(c, b, t, "Franchise", Y, M)
         assert s == "abgeschlossen"
     finally:
@@ -192,4 +209,7 @@ def test_both_flags_complete_after_single_booking():
 def test_fix_only_quick_button_selects_only_real_fixed_costs():
     src = (ROOT / "views" / "recurring_bookings_dialog.py").read_text(encoding="utf-8")
     assert "item.is_fix and item.is_recurring" in src
-    assert "Fix-only Kategorien wie Franchise/Selbstbehalt bleiben bewusst außen vor" in src
+    assert (
+        "Fix-only Kategorien wie Franchise/Selbstbehalt bleiben bewusst außen vor"
+        in src
+    )

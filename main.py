@@ -3,12 +3,12 @@ from utils.i18n import tr, trf
 
 import faulthandler
 import logging
+
 logger = logging.getLogger(__name__)
 import os
 import sys
 from pathlib import Path
 import json
-
 
 _crash_log_handle = None
 
@@ -63,7 +63,9 @@ class _SingleInstanceGuard:
                     encoding="utf-8",
                 )
                 # Kompatibilitäts-Datei für schnelle manuelle Diagnose.
-                (self.lock_dir / "cmdline").write_text(" ".join(sys.argv), encoding="utf-8")
+                (self.lock_dir / "cmdline").write_text(
+                    " ".join(sys.argv), encoding="utf-8"
+                )
                 self.acquired = True
                 return True, ""
             except FileExistsError:
@@ -73,10 +75,14 @@ class _SingleInstanceGuard:
                 # Stales Lock: Prozess ist weg oder PID fehlt/kaputt. Entfernen und noch einmal versuchen.
                 try:
                     import shutil
+
                     shutil.rmtree(self.lock_dir)
                     continue
                 except Exception as exc:
-                    return False, f"BudgetManager-Lock konnte nicht übernommen werden: {exc}"
+                    return (
+                        False,
+                        f"BudgetManager-Lock konnte nicht übernommen werden: {exc}",
+                    )
             except Exception as exc:
                 return False, f"BudgetManager-Lock konnte nicht erstellt werden: {exc}"
         return False, "BudgetManager-Lock konnte nicht erstellt werden."
@@ -88,6 +94,7 @@ class _SingleInstanceGuard:
             pid = self._read_pid()
             if pid == os.getpid():
                 import shutil
+
                 shutil.rmtree(self.lock_dir)
         except Exception:
             pass
@@ -95,12 +102,12 @@ class _SingleInstanceGuard:
             self.acquired = False
 
 
-
 def _install_crash_diagnostics() -> None:
     """Aktiviert Low-Level Crash-Dumps (z.B. bei Segmentation Fault)."""
     global _crash_log_handle
     try:
         from model.app_paths import data_dir
+
         crash_log = data_dir() / "budgetmanager_crash.log"
         crash_log.parent.mkdir(parents=True, exist_ok=True)
     except Exception:
@@ -133,15 +140,24 @@ def _configure_qt_platform() -> None:
     ``BM_ALLOW_WAYLAND=1`` setzt. ``BM_FORCE_XCB=1`` bleibt zusätzlich als
     manueller Schalter erhalten.
     """
-    force_xcb = os.environ.get("BM_FORCE_XCB", "").strip().lower() in {"1", "true", "yes"}
-    allow_wayland = os.environ.get("BM_ALLOW_WAYLAND", "").strip().lower() in {"1", "true", "yes"}
+    force_xcb = os.environ.get("BM_FORCE_XCB", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    allow_wayland = os.environ.get("BM_ALLOW_WAYLAND", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     platform_already_set = bool(os.environ.get("QT_QPA_PLATFORM"))
-    is_wayland_session = (
-        os.environ.get("XDG_SESSION_TYPE", "").strip().lower() == "wayland"
-        or bool(os.environ.get("WAYLAND_DISPLAY"))
-    )
+    is_wayland_session = os.environ.get(
+        "XDG_SESSION_TYPE", ""
+    ).strip().lower() == "wayland" or bool(os.environ.get("WAYLAND_DISPLAY"))
 
-    if not platform_already_set and (force_xcb or (is_wayland_session and not allow_wayland)):
+    if not platform_already_set and (
+        force_xcb or (is_wayland_session and not allow_wayland)
+    ):
         os.environ["QT_QPA_PLATFORM"] = "xcb"
         logging.getLogger(__name__).info(
             "Qt-Backend auf xcb gesetzt (Wayland-Stabilitätsfallback). "
@@ -164,18 +180,20 @@ def _setup_emoji_fonts(app) -> None:
       Ubuntu:  sudo apt install fonts-noto-color-emoji
     """
     import platform
+
     if platform.system() != "Linux":
         return
     try:
         from PySide6.QtGui import QFontDatabase
+
         available = set(QFontDatabase.families())
         # In Prioritätsreihenfolge: Farb-Emoji bevorzugt vor Monochrom
         candidates = [
             "Noto Color Emoji",
             "Noto Emoji",
             "Symbola",
-            "Segoe UI Emoji",   # manchmal via Wine/crossover
-            "DejaVu Sans",      # hat zumindest grundlegende Unicode-Symbole
+            "Segoe UI Emoji",  # manchmal via Wine/crossover
+            "DejaVu Sans",  # hat zumindest grundlegende Unicode-Symbole
         ]
         emoji_families = [f for f in candidates if f in available]
         if not emoji_families:
@@ -213,6 +231,7 @@ def _install_excepthook() -> None:
         try:
             from PySide6.QtWidgets import QApplication, QMessageBox
             from utils.i18n import tr, trf
+
             if QApplication.instance():
                 box = QMessageBox()
                 box.setIcon(QMessageBox.Critical)
@@ -220,7 +239,7 @@ def _install_excepthook() -> None:
                 box.setText(
                     trf(
                         "msg.unexpected_error_body",
-                        details=f"{exc_type.__name__}: {exc_value}"
+                        details=f"{exc_type.__name__}: {exc_value}",
                     )
                 )
                 box.setDetailedText(msg)
@@ -235,15 +254,17 @@ def _run_updater_mode(argv: list[str]) -> int | None:
     """CLI-Modi für den Updater."""
     if "--check-update" in argv:
         from updater.check_update import main as check_main
+
         return check_main()
     if "--apply-update" in argv:
         from updater.apply_update import main as apply_main
+
         return apply_main()
     if "--startup-update-check" in argv:
         from updater.startup_check import main as startup_check_main
+
         return startup_check_main()
     return None
-
 
 
 def _apply_application_icon(app) -> None:
@@ -261,14 +282,18 @@ def _apply_application_icon(app) -> None:
         meipass = getattr(sys, "_MEIPASS", None)
         if meipass:
             base = Path(meipass)
-            candidates.extend([
-                base / "resources" / "icons" / "budgetmanager.ico",
-                base / "resources" / "icons" / "budgetmanager.png",
-            ])
-        candidates.extend([
-            resolve_in_app("resources/icons/budgetmanager.ico"),
-            resolve_in_app("resources/icons/budgetmanager.png"),
-        ])
+            candidates.extend(
+                [
+                    base / "resources" / "icons" / "budgetmanager.ico",
+                    base / "resources" / "icons" / "budgetmanager.png",
+                ]
+            )
+        candidates.extend(
+            [
+                resolve_in_app("resources/icons/budgetmanager.ico"),
+                resolve_in_app("resources/icons/budgetmanager.png"),
+            ]
+        )
         for icon_path in candidates:
             if icon_path.exists():
                 icon = QIcon(str(icon_path))
@@ -278,12 +303,16 @@ def _apply_application_icon(app) -> None:
                     return
         logging.getLogger(__name__).debug("Kein App-Icon gefunden: %s", candidates)
     except Exception as exc:
-        logging.getLogger(__name__).debug("App-Icon konnte nicht gesetzt werden: %s", exc)
+        logging.getLogger(__name__).debug(
+            "App-Icon konnte nicht gesetzt werden: %s", exc
+        )
+
 
 def main() -> int:
     # Logging initialisieren (vor allem anderen Code)
     from model.logging_config import setup_logging
     from model.app_paths import data_dir
+
     try:
         log_file = str(data_dir() / "budgetmanager.log")
     except Exception:
@@ -297,6 +326,7 @@ def main() -> int:
     _configure_qt_platform()
     try:
         from utils.ui_scaling import configure_qt_scaling_environment
+
         configure_qt_scaling_environment()
     except Exception as _scale_exc:
         logger.debug("Qt-Skalierung konnte nicht vorbereitet werden: %s", _scale_exc)
@@ -316,7 +346,12 @@ def main() -> int:
     import traceback
 
     try:
-        from model.app_paths import resolve_in_app, data_dir, configured_db_path, configured_backups_dir
+        from model.app_paths import (
+            resolve_in_app,
+            data_dir,
+            configured_db_path,
+            configured_backups_dir,
+        )
         from PySide6.QtCore import QTimer
         from PySide6.QtWidgets import QApplication, QMessageBox
         from model.database import open_db, EncryptedSession
@@ -329,7 +364,9 @@ def main() -> int:
         # Datenordner-spezifisch: blockiert nur eine zweite BudgetManager-Instanz,
         # die auf denselben Datenordner zugreift. Andere Apps mit eigener Ablage
         # (z.B. Füller-/Sammelmanager) bleiben parallel startbar.
-        single_lock = _SingleInstanceGuard(data_dir() / "budgetmanager.instance.lock", app_id="budgetmanager")
+        single_lock = _SingleInstanceGuard(
+            data_dir() / "budgetmanager.instance.lock", app_id="budgetmanager"
+        )
         ok, lock_reason = single_lock.acquire()
         if not ok:
             logger.warning("Zweite Instanz blockiert: %s", lock_reason)
@@ -341,11 +378,16 @@ def main() -> int:
 
         previous_unclean_state = mark_app_started(version=APP_VERSION, argv=sys.argv)
 
-        def _finish_startup_return(code: int, reason: str, *, clean: bool = True) -> int:
+        def _finish_startup_return(
+            code: int, reason: str, *, clean: bool = True
+        ) -> int:
             try:
                 mark_app_exited(clean=clean, reason=reason, version=APP_VERSION)
             except Exception:
-                logger.debug("Runtime-State konnte vor frühem Exit nicht geschrieben werden", exc_info=True)
+                logger.debug(
+                    "Runtime-State konnte vor frühem Exit nicht geschrieben werden",
+                    exc_info=True,
+                )
             try:
                 single_lock.release()
             except Exception:
@@ -358,28 +400,44 @@ def main() -> int:
 
         # Einstellungen laden
         from settings import Settings
+
         settings = Settings()
 
         # Sprache & Währung
-        from utils.i18n import set_language, available_languages, tr, trf, set_debug_missing
+        from utils.i18n import (
+            set_language,
+            available_languages,
+            tr,
+            trf,
+            set_debug_missing,
+        )
         from utils.money import set_currency, set_number_format
 
         # i18n Debug (Missing-Key-Warnungen) – aktivierbar via Env:
         #   BM_I18N_DEBUG=1 python main.py
         try:
-            if os.environ.get("BM_I18N_DEBUG", "").strip() not in ("", "0", "false", "False"):
+            if os.environ.get("BM_I18N_DEBUG", "").strip() not in (
+                "",
+                "0",
+                "false",
+                "False",
+            ):
                 set_debug_missing(True)
         except Exception as e:
-            logging.getLogger(__name__).debug("BM_I18N_DEBUG-Auswertung fehlgeschlagen: %s", e)
+            logging.getLogger(__name__).debug(
+                "BM_I18N_DEBUG-Auswertung fehlgeschlagen: %s", e
+            )
 
         # UserModel früh laden – wird für Language-Check und Login-Flow benötigt
         from model.user_model import UserModel
+
         user_model = UserModel()
 
         # Sprache wählen: beim echten Erststart (kein Flag) ODER wenn keine Benutzer
         # vorhanden sind (z.B. nach Reset ohne vollständiges Settings-Löschen)
         if not settings.get("language_selected", False) or not user_model.has_users():
             from views.language_select_dialog import LanguageSelectDialog
+
             lang_dlg = LanguageSelectDialog(
                 current=settings.get("language", "de"),
                 current_currency=settings.get("currency", "CHF"),
@@ -390,7 +448,9 @@ def main() -> int:
             settings.set("language", lang_dlg.selected_code)
             settings.set("currency", lang_dlg.selected_currency)
             settings.set("number_format", lang_dlg.selected_number_format)
-            settings.set("recurring_preferred_day", int(lang_dlg.selected_recurring_day or 0))
+            settings.set(
+                "recurring_preferred_day", int(lang_dlg.selected_recurring_day or 0)
+            )
             settings.set("language_selected", True)
             settings.save()
 
@@ -399,15 +459,19 @@ def main() -> int:
         set_number_format(settings.get("number_format", "swiss"))
         try:
             from utils.qt_translator import apply_number_locale
+
             apply_number_locale(settings.get("number_format", "swiss"))
         except Exception as _e:
             logging.getLogger(__name__).debug("QLocale-Kopplung fehlgeschlagen: %s", _e)
         # Qt-eigene Übersetzungen (native Kontextmenüs: Kopieren/Einfügen/…)
         try:
             from utils.qt_translator import install_qt_translations
+
             install_qt_translations(app, settings.language)
         except Exception as _e:
-            logging.getLogger(__name__).debug("Qt-Übersetzung nicht installiert: %s", _e)
+            logging.getLogger(__name__).debug(
+                "Qt-Übersetzung nicht installiert: %s", _e
+            )
 
         encrypted_session = None
         conn = None
@@ -423,18 +487,23 @@ def main() -> int:
             Nutzer NICHT manuell den data-Ordner leeren, um wieder hineinzukommen
             (z. B. nach einem Erststart-Restore mit falschem Wiederherstellungscode).
             """
-            if QMessageBox.question(
-                None,
-                tr("startup.recover_title"),
-                trf("startup.recover_question", reason=reason),
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes,
-            ) != QMessageBox.Yes:
+            if (
+                QMessageBox.question(
+                    None,
+                    tr("startup.recover_title"),
+                    trf("startup.recover_question", reason=reason),
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes,
+                )
+                != QMessageBox.Yes
+            ):
                 return False
             try:
                 user_model.delete_user(broken.username, delete_db=True)
             except Exception as exc:
-                logger.warning("Defektes Konto konnte nicht regulär entfernt werden: %s", exc)
+                logger.warning(
+                    "Defektes Konto konnte nicht regulär entfernt werden: %s", exc
+                )
             # Sicherstellen, dass keine verwaiste .enc zurückbleibt.
             try:
                 if broken.db_path.exists():
@@ -442,8 +511,10 @@ def main() -> int:
             except Exception as exc:
                 logger.error("Verwaiste DB-Datei konnte nicht entfernt werden: %s", exc)
                 return False
-            logger.info("Defektes Konto '%s' entfernt – Ersteinrichtung wird erneut angeboten.",
-                        broken.username)
+            logger.info(
+                "Defektes Konto '%s' entfernt – Ersteinrichtung wird erneut angeboten.",
+                broken.username,
+            )
             return True
 
         while True:
@@ -455,18 +526,25 @@ def main() -> int:
                     user = users[0]
                     db_key = user_model.authenticate_quick(user.username)
                     if not db_key:
-                        if _recover_broken_account(user, tr("account.quick_login_failed")):
+                        if _recover_broken_account(
+                            user, tr("account.quick_login_failed")
+                        ):
                             active_user = None
                             continue
-                        QMessageBox.critical(None, tr("msg.error"), tr("account.quick_login_failed"))
+                        QMessageBox.critical(
+                            None, tr("msg.error"), tr("account.quick_login_failed")
+                        )
                         return _finish_startup_return(1, "quick_login_failed")
                     active_user = user
                 else:
                     # Login-Dialog anzeigen
                     from views.login_dialog import LoginDialog
+
                     login_dlg = LoginDialog()
                     if login_dlg.exec() != LoginDialog.Accepted or not login_dlg.result:
-                        return _finish_startup_return(0, "login_cancelled")  # Abgebrochen
+                        return _finish_startup_return(
+                            0, "login_cancelled"
+                        )  # Abgebrochen
                     active_user = login_dlg.result.user
                     db_key = login_dlg.result.db_key
 
@@ -476,21 +554,23 @@ def main() -> int:
                         str(active_user.db_path), db_key, active_user.salt
                     )
                     conn = encrypted_session.conn
-                    logger.info("DB geöffnet: %s (%s)",
-                                active_user.display_name, active_user.db_filename)
+                    logger.info(
+                        "DB geöffnet: %s (%s)",
+                        active_user.display_name,
+                        active_user.db_filename,
+                    )
                 except Exception as e:
                     # DB nicht öffenbar (defekt/verwaist). Bei einem EINZELNEN
                     # Benutzer ohne öffenbare Daten Selbstheilung anbieten, statt
                     # hart zu beenden (sonst: "komme nicht mehr rein bis data leer").
-                    single_user = (len(users) == 1)
+                    single_user = len(users) == 1
                     if single_user and _recover_broken_account(active_user, str(e)):
                         active_user = None
                         encrypted_session = None
                         conn = None
                         continue
                     QMessageBox.critical(
-                        None, tr("msg.error"),
-                        trf("msg.db_open_failed", err=str(e))
+                        None, tr("msg.error"), trf("msg.db_open_failed", err=str(e))
                     )
                     return _finish_startup_return(1, "db_open_failed")
                 break
@@ -502,6 +582,7 @@ def main() -> int:
                 if is_crypto_available():
                     # Erststart-Assistent: User erstellen ODER Daten importieren
                     from views.startup_wizard import StartupWizard
+
                     wiz = StartupWizard(user_model=user_model)
                     if wiz.exec() == StartupWizard.Accepted and wiz.result:
                         active_user = wiz.result.user
@@ -520,7 +601,9 @@ def main() -> int:
                                 conn = None
                                 continue
                             QMessageBox.critical(None, tr("msg.error"), str(e))
-                            return _finish_startup_return(1, "startup_wizard_db_open_failed")
+                            return _finish_startup_return(
+                                1, "startup_wizard_db_open_failed"
+                            )
                     else:
                         # Abgebrochen → Fallback auf unverschlüsselt
                         pass
@@ -546,18 +629,23 @@ def main() -> int:
             if encrypted_session is not None:
                 try:
                     from model.migrations import _get_db_version, CURRENT_VERSION
+
                     if _get_db_version(conn) < CURRENT_VERSION:
                         import shutil
                         from datetime import datetime as _dt
+
                         enc_src = Path(encrypted_session.enc_path)
                         if enc_src.exists():
-                            backup_dir_p = configured_backups_dir(settings.backup_directory)
+                            backup_dir_p = configured_backups_dir(
+                                settings.backup_directory
+                            )
                             backup_dir_p.mkdir(parents=True, exist_ok=True)
                             stamp = _dt.now().strftime("%Y%m%d_%H%M%S")
                             enc_backup = backup_dir_p / f"pre_migration_{stamp}.enc"
                             shutil.copy2(str(enc_src), str(enc_backup))
                             logging.getLogger(__name__).info(
-                                "Pre-Migration-Backup der verschlüsselten DB: %s", enc_backup
+                                "Pre-Migration-Backup der verschlüsselten DB: %s",
+                                enc_backup,
                             )
                 except Exception as e:
                     logging.getLogger(__name__).warning(
@@ -565,14 +653,16 @@ def main() -> int:
                     )
             migration_info = migrate_all(conn)
 
-        if migration_info.get('migrations_applied'):
+        if migration_info.get("migrations_applied"):
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Information)
 
-            old_v = int(migration_info.get('old_version') or 0)
-            new_v = int(migration_info.get('new_version') or 0)
-            details = "\n".join(f"• {m}" for m in migration_info.get('migrations_applied', []))
-            if migration_info.get('backup_created'):
+            old_v = int(migration_info.get("old_version") or 0)
+            new_v = int(migration_info.get("new_version") or 0)
+            details = "\n".join(
+                f"• {m}" for m in migration_info.get("migrations_applied", [])
+            )
+            if migration_info.get("backup_created"):
                 details += "\n\n✓ " + tr("db.backup_created")
 
             if old_v <= 0:
@@ -594,6 +684,7 @@ def main() -> int:
 
         # ── MainWindow ──────────────────────────────
         from views.main_window import MainWindow
+
         win = MainWindow(conn, active_user=active_user, user_model=user_model)
         try:
             win.setWindowIcon(app.windowIcon())
@@ -607,7 +698,14 @@ def main() -> int:
             # Titel: 🔒 + Username
             icon = active_user.security_icon if active_user else "🔒"
             name = active_user.display_name if active_user else ""
-            win.setWindowTitle(trf('auto.main.337_value_0_value_1_value_2_08554ed9', value_0=(win.windowTitle()), value_1=(icon), value_2=(name)))
+            win.setWindowTitle(
+                trf(
+                    "auto.main.337_value_0_value_1_value_2_08554ed9",
+                    value_0=(win.windowTitle()),
+                    value_1=(icon),
+                    value_2=(name),
+                )
+            )
 
             # Auto-Save Timer (5 Minuten)
             save_timer = QTimer(win)
@@ -624,10 +722,9 @@ def main() -> int:
         # Kinddialogs + verschlüsseltes Auto-Backup zu einem nativen Qt/PySide-
         # Segfault führen (kein Python-Traceback). Deshalb wird das erste
         # Auto-Backup bei aktivem Onboarding bis nach dem Assistenten verschoben.
-        setup_autostart_requested = (
-            bool(settings.get("show_onboarding", True))
-            and not bool(settings.get("setup_completed", False))
-        )
+        setup_autostart_requested = bool(
+            settings.get("show_onboarding", True)
+        ) and not bool(settings.get("setup_completed", False))
         win._defer_startup_auto_backup_until_setup = bool(setup_autostart_requested)
         win._startup_auto_backup_done = False
 
@@ -642,10 +739,14 @@ def main() -> int:
 
             def _check_auto_backup_safely() -> None:
                 try:
-                    if QApplication.instance() is not None and not getattr(win, "_is_closing", False):
+                    if QApplication.instance() is not None and not getattr(
+                        win, "_is_closing", False
+                    ):
                         win._check_auto_backup()
                 except RuntimeError:
-                    logger.debug("Auto-Backup übersprungen: MainWindow wurde bereits zerstört.")
+                    logger.debug(
+                        "Auto-Backup übersprungen: MainWindow wurde bereits zerstört."
+                    )
                 except Exception:
                     logger.exception("Startup-Auto-Backup konnte nicht geprüft werden")
                 finally:
@@ -705,9 +806,13 @@ def main() -> int:
                     return
                 win._start_setup_assistant(force=False, db_existed_before=db_existed)
             except RuntimeError:
-                logger.debug("Setup-Assistent übersprungen: MainWindow wurde bereits zerstört.")
+                logger.debug(
+                    "Setup-Assistent übersprungen: MainWindow wurde bereits zerstört."
+                )
             except Exception:
-                logger.exception("Setup-Assistent konnte verzögert nicht gestartet werden")
+                logger.exception(
+                    "Setup-Assistent konnte verzögert nicht gestartet werden"
+                )
             finally:
                 try:
                     setup_timer.deleteLater()
@@ -743,9 +848,12 @@ def main() -> int:
         # LRU-Caches mit Qt-Objekten leeren
         try:
             from utils.icons import get_icon
+
             get_icon.cache_clear()
         except Exception as e:
-            logging.getLogger(__name__).debug("Icon-Cache-Clear beim Shutdown fehlgeschlagen: %s", e)
+            logging.getLogger(__name__).debug(
+                "Icon-Cache-Clear beim Shutdown fehlgeschlagen: %s", e
+            )
 
         # MainWindow explizit zerstören vor QApplication
         win.close()
@@ -756,23 +864,29 @@ def main() -> int:
         del app
 
         import gc
+
         gc.collect()
 
         try:
-            mark_app_exited(clean=(rc == 0), reason=f"qt_exit_{rc}", version=APP_VERSION)
+            mark_app_exited(
+                clean=(rc == 0), reason=f"qt_exit_{rc}", version=APP_VERSION
+            )
         except Exception:
-            logger.debug("Runtime-State konnte beim Shutdown nicht geschrieben werden", exc_info=True)
+            logger.debug(
+                "Runtime-State konnte beim Shutdown nicht geschrieben werden",
+                exc_info=True,
+            )
 
         return rc
 
     except Exception as exc:
         try:
-            if 'mark_app_exited' in locals():
+            if "mark_app_exited" in locals():
                 mark_app_exited(clean=False, reason=f"startup_error: {exc}")
         except Exception:
             pass
         try:
-            if 'single_lock' in locals():
+            if "single_lock" in locals():
                 single_lock.release()
         except Exception:
             pass
@@ -780,10 +894,15 @@ def main() -> int:
 
         try:
             from PySide6.QtWidgets import QApplication, QMessageBox
+
             if QApplication.instance():
                 QMessageBox.critical(
-                    None, tr('auto.main.410_startfehler_1a2ebad1'),
-                    trf('auto.main.411_budgetmanager_konnte_nicht_gestarte_8ae862ce', value_0=(exc))
+                    None,
+                    tr("auto.main.410_startfehler_1a2ebad1"),
+                    trf(
+                        "auto.main.411_budgetmanager_konnte_nicht_gestarte_8ae862ce",
+                        value_0=(exc),
+                    ),
                 )
         except Exception as ui_exc:
             logger.critical("Fehler beim Anzeigen des Startfehler-Dialogs: %s", ui_exc)

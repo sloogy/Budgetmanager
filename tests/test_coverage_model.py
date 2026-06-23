@@ -32,12 +32,14 @@ def migrated_conn():
 
 
 def test_tracking_coverage_detects_deficit_and_single_savings_suggestion():
-    result = coverage_from_tracking_rows([
-        Row(TYP_INCOME, "Lohn", 5000),
-        Row(TYP_EXPENSES, "Wohnen", 4600),
-        Row(TYP_SAVINGS, "Notgroschen", 600),
-        Row(TYP_SAVINGS, "Altersvorsorge", 200),
-    ])
+    result = coverage_from_tracking_rows(
+        [
+            Row(TYP_INCOME, "Lohn", 5000),
+            Row(TYP_EXPENSES, "Wohnen", 4600),
+            Row(TYP_SAVINGS, "Notgroschen", 600),
+            Row(TYP_SAVINGS, "Altersvorsorge", 200),
+        ]
+    )
     assert result.balance == -400
     assert result.deficit == 400
     singles = result.single_savings_suggestions()
@@ -45,22 +47,26 @@ def test_tracking_coverage_detects_deficit_and_single_savings_suggestion():
 
 
 def test_tracking_coverage_combines_savings_when_no_single_category_is_enough():
-    result = coverage_from_tracking_rows([
-        Row(TYP_INCOME, "Lohn", 1000),
-        Row(TYP_EXPENSES, "Ausgaben", 1050),
-        Row(TYP_SAVINGS, "A", 30),
-        Row(TYP_SAVINGS, "B", 30),
-    ])
+    result = coverage_from_tracking_rows(
+        [
+            Row(TYP_INCOME, "Lohn", 1000),
+            Row(TYP_EXPENSES, "Ausgaben", 1050),
+            Row(TYP_SAVINGS, "A", 30),
+            Row(TYP_SAVINGS, "B", 30),
+        ]
+    )
     assert result.deficit == 110
     assert result.single_savings_suggestions() == []
     assert result.combined_savings_suggestions() == []
 
-    result2 = coverage_from_tracking_rows([
-        Row(TYP_INCOME, "Lohn", 1000),
-        Row(TYP_EXPENSES, "Ausgaben", 1000),
-        Row(TYP_SAVINGS, "A", 60),
-        Row(TYP_SAVINGS, "B", 60),
-    ])
+    result2 = coverage_from_tracking_rows(
+        [
+            Row(TYP_INCOME, "Lohn", 1000),
+            Row(TYP_EXPENSES, "Ausgaben", 1000),
+            Row(TYP_SAVINGS, "A", 60),
+            Row(TYP_SAVINGS, "B", 60),
+        ]
+    )
     assert result2.deficit == 120
     combined = result2.combined_savings_suggestions()
     assert [s.category for s in combined] == ["A", "B"]

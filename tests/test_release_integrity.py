@@ -5,7 +5,6 @@ import re
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -48,7 +47,6 @@ def test_update_dialog_uses_structured_check_result_and_visible_windows_helper()
     assert "DETACHED_PROCESS |" not in apply_src
 
 
-
 def test_update_check_writes_success_result_for_gui(monkeypatch, tmp_path):
     import zipfile
 
@@ -60,6 +58,7 @@ def test_update_check_writes_success_result_for_gui(monkeypatch, tmp_path):
         zf.writestr("BudgetManager-v2.0.9-portable/BudgetManager", "binary")
 
     import hashlib
+
     expected_sha = hashlib.sha256(source_zip.read_bytes()).hexdigest()
 
     writes = []
@@ -82,18 +81,32 @@ def test_update_check_writes_success_result_for_gui(monkeypatch, tmp_path):
             },
         ),
     )
-    monkeypatch.setattr(check_update, "cache_zip_path", lambda remote: tmp_path / f"update_{remote}.zip")
-    monkeypatch.setattr(check_update, "download_file", lambda url, dest: dest.write_bytes(source_zip.read_bytes()))
-    monkeypatch.setattr(check_update, "staging_dir_for", lambda remote: tmp_path / "staging" / remote)
+    monkeypatch.setattr(
+        check_update, "cache_zip_path", lambda remote: tmp_path / f"update_{remote}.zip"
+    )
+    monkeypatch.setattr(
+        check_update,
+        "download_file",
+        lambda url, dest: dest.write_bytes(source_zip.read_bytes()),
+    )
+    monkeypatch.setattr(
+        check_update, "staging_dir_for", lambda remote: tmp_path / "staging" / remote
+    )
     monkeypatch.setattr(
         check_update,
         "write_staged_marker",
-        lambda remote, manifest, asset: (tmp_path / "staging" / remote / "_update_marker.json").write_text("{}", encoding="utf-8"),
+        lambda remote, manifest, asset: (
+            tmp_path / "staging" / remote / "_update_marker.json"
+        ).write_text("{}", encoding="utf-8"),
     )
-    monkeypatch.setattr(check_update, "write_check_result", lambda data: writes.append(dict(data)))
+    monkeypatch.setattr(
+        check_update, "write_check_result", lambda data: writes.append(dict(data))
+    )
 
     assert check_update.main() == 0
-    assert writes, "GUI braucht ein strukturiertes Erfolgsergebnis nach erfolgreichem Staging"
+    assert (
+        writes
+    ), "GUI braucht ein strukturiertes Erfolgsergebnis nach erfolgreichem Staging"
     assert writes[-1]["available"] is True
     assert writes[-1]["staged"] is True
     assert writes[-1]["remote"] == "2.0.9"
@@ -122,21 +135,33 @@ def test_apply_uses_checked_version_not_highest_stale_staging(monkeypatch, tmp_p
         (d / "dummy.txt").write_text("x", encoding="utf-8")
 
     # check_update hat 2.0.9 gestaged und das Ergebnis geschrieben
-    common.write_check_result({
-        "available": True, "staged": True,
-        "current": "2.0.8", "remote": "2.0.9", "staged_version": "2.0.9",
-    })
+    common.write_check_result(
+        {
+            "available": True,
+            "staged": True,
+            "current": "2.0.8",
+            "remote": "2.0.9",
+            "staged_version": "2.0.9",
+        }
+    )
 
-    assert apply_update.target_staged_version() == "2.0.9", \
-        "apply muss die gestagete 2.0.9 nehmen, nicht die stale 2.1.0"
+    assert (
+        apply_update.target_staged_version() == "2.0.9"
+    ), "apply muss die gestagete 2.0.9 nehmen, nicht die stale 2.1.0"
 
     # Ohne Prüfergebnis: sicherer Fallback auf höchste vorhandene Version
     common.clear_check_result()
     assert apply_update.target_staged_version() == "2.1.0"
 
     # Bevorzugte Version ohne Inhalt → Fallback auf höchste vorhandene
-    common.write_check_result({"available": True, "staged": True,
-                               "remote": "2.0.5", "staged_version": "2.0.5"})
+    common.write_check_result(
+        {
+            "available": True,
+            "staged": True,
+            "remote": "2.0.5",
+            "staged_version": "2.0.5",
+        }
+    )
     assert apply_update.target_staged_version() == "2.1.0"
 
 
@@ -191,22 +216,30 @@ def test_frozen_update_dialog_passes_real_updater_flags():
 
 
 def test_portable_release_zip_uses_stable_launch_names():
-    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
-    assert 'portable/BudgetManager.exe' in workflow
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "portable/BudgetManager.exe" in workflow
     assert 'portable/BudgetManager"' in workflow
-    assert 'portable/${WIN_EXE_NAME}' not in workflow
-    assert 'portable/${LIN_EXE_NAME}' not in workflow
+    assert "portable/${WIN_EXE_NAME}" not in workflow
+    assert "portable/${LIN_EXE_NAME}" not in workflow
     assert 'start "" "%DIR%BudgetManager.exe"' in workflow
     assert 'exec "$DIR/BudgetManager" "$@"' in workflow
 
 
-def test_update_apply_migrates_versioned_portable_binary_to_stable_name(monkeypatch, tmp_path):
+def test_update_apply_migrates_versioned_portable_binary_to_stable_name(
+    monkeypatch, tmp_path
+):
     import updater.apply_update as apply_update
 
     (tmp_path / "BudgetManager").write_text("new", encoding="utf-8")
-    monkeypatch.setattr(apply_update, "current_exe_filename", lambda: "BudgetManager-v2.0.26-linux")
+    monkeypatch.setattr(
+        apply_update, "current_exe_filename", lambda: "BudgetManager-v2.0.26-linux"
+    )
     monkeypatch.setattr(apply_update, "stable_exe_filename", lambda: "BudgetManager")
-    monkeypatch.setattr(apply_update, "update_target_exe_filename", lambda: "BudgetManager")
+    monkeypatch.setattr(
+        apply_update, "update_target_exe_filename", lambda: "BudgetManager"
+    )
 
     assert apply_update._staged_target_binary(tmp_path) == tmp_path / "BudgetManager"
     assert apply_update._launch_exe_filename(tmp_path) == "BudgetManager"
@@ -258,7 +291,9 @@ def test_new_release_i18n_keys_exist_in_all_languages():
         return out
 
     for lang in ("de", "en", "fr"):
-        data = json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8"))
+        data = json.loads(
+            (ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8")
+        )
         flat = flatten(data)
         missing = required - set(flat)
         assert not missing, f"{lang}.json missing: {sorted(missing)}"
@@ -268,7 +303,7 @@ def test_budget_footer_is_translated_not_visible_total_literal():
     src = (ROOT / "views" / "tabs" / "budget_tab.py").read_text(encoding="utf-8")
     assert 'QTableWidgetItem("TOTAL")' not in src
     assert 'QTableWidgetItem(tr("header.total"))' in src
-    assert 'ROLE_ROW_KIND' in src
+    assert "ROLE_ROW_KIND" in src
     assert '"footer"' in src
 
 
@@ -298,20 +333,29 @@ def test_user_guides_exist_in_de_en_fr_and_explain_charts_forecast_updater():
     required_terms = {
         "de": ["Forecast", "Diagramme erklärt", "Updates", "Fixkosten"],
         "en": ["Forecast", "Chart guide", "Updates", "Fixed cost"],
-        "fr": ["Prévisions", "Explication des graphiques", "Mises à jour", "Charge fixe"],
+        "fr": [
+            "Prévisions",
+            "Explication des graphiques",
+            "Mises à jour",
+            "Charge fixe",
+        ],
     }
     for lang, terms in required_terms.items():
         path = ROOT / "docs" / f"USER_GUIDE.{lang}.md"
         assert path.exists()
         text = path.read_text(encoding="utf-8")
         import app_info
+
         assert app_info.APP_VERSION in text
         for term in terms:
             assert term in text
 
+
 def test_inno_pascal_comments_do_not_contain_nested_braces():
     """Inno Pascal comments use braces; constants like {app} inside them break compilation."""
-    script = (ROOT / "installer" / "budgetmanager_setup.iss").read_text(encoding="utf-8")
+    script = (ROOT / "installer" / "budgetmanager_setup.iss").read_text(
+        encoding="utf-8"
+    )
     in_code = False
     for lineno, line in enumerate(script.splitlines(), start=1):
         stripped = line.strip()
@@ -329,8 +373,9 @@ def test_inno_pascal_comments_do_not_contain_nested_braces():
         if closing == -1:
             continue
         nested = line.find("{", first + 1, closing)
-        assert nested == -1, f"Nested '{{' in Inno Pascal comment at line {lineno}: {line}"
-
+        assert (
+            nested == -1
+        ), f"Nested '{{' in Inno Pascal comment at line {lineno}: {line}"
 
 
 def test_startup_update_check_writes_lightweight_available_result(monkeypatch):
@@ -340,7 +385,11 @@ def test_startup_update_check_writes_lightweight_available_result(monkeypatch):
     writes = []
     monkeypatch.setattr(startup_check, "read_current_version", lambda: "2.0.8")
     monkeypatch.setattr(startup_check, "detect_platform_key", lambda: "windows")
-    monkeypatch.setattr(startup_check, "preferred_asset_keys", lambda platform: ["windows_installer", "windows"])
+    monkeypatch.setattr(
+        startup_check,
+        "preferred_asset_keys",
+        lambda platform: ["windows_installer", "windows"],
+    )
     monkeypatch.setattr(startup_check, "clear_startup_check_result", lambda: None)
     monkeypatch.setattr(
         startup_check,
@@ -358,7 +407,11 @@ def test_startup_update_check_writes_lightweight_available_result(monkeypatch):
             },
         ),
     )
-    monkeypatch.setattr(startup_check, "write_startup_check_result", lambda data: writes.append(dict(data)))
+    monkeypatch.setattr(
+        startup_check,
+        "write_startup_check_result",
+        lambda data: writes.append(dict(data)),
+    )
 
     assert startup_check.main() == 0
     assert writes, "Startup-Check muss ein strukturiertes Ergebnis schreiben"
@@ -400,7 +453,11 @@ def test_release_package_contains_no_private_databases_or_keys():
     forbidden.extend(data_dir.glob("*.sqlite3"))
     forbidden.extend(data_dir.glob("*.enc"))
     forbidden.extend(data_dir.glob("users.json"))
-    forbidden.extend((data_dir / "exports").glob("*")) if (data_dir / "exports").exists() else None
+    (
+        forbidden.extend((data_dir / "exports").glob("*"))
+        if (data_dir / "exports").exists()
+        else None
+    )
     assert [str(p.relative_to(ROOT)) for p in forbidden] == []
 
 

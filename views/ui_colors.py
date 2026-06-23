@@ -11,6 +11,7 @@ Nutzung:
     label.setStyleSheet(f"color: {c.negative};")
     item.setForeground(QColor(c.type_colors.get(_TE, "#e74c3c")))
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,7 +27,11 @@ logger = logging.getLogger(__name__)
 # ── Standard-Farben (Hell-Modus Fallback) ──────────────────────────
 
 # TYP_* Konstanten als Schlüssel (DB-Werte = immer Deutsch, sprachunabhängig)
-from model.typ_constants import TYP_EXPENSES as _TE, TYP_INCOME as _TI, TYP_SAVINGS as _TS
+from model.typ_constants import (
+    TYP_EXPENSES as _TE,
+    TYP_INCOME as _TI,
+    TYP_SAVINGS as _TS,
+)
 
 _DEFAULT_TYPE_COLORS: Dict[str, str] = {
     _TI: "#2ecc71",
@@ -70,7 +75,9 @@ class UIColors:
     """Immutable Container für die aktiven Theme-Farben."""
 
     # Typ-Farben
-    type_colors: Dict[str, str] = field(default_factory=lambda: dict(_DEFAULT_TYPE_COLORS))
+    type_colors: Dict[str, str] = field(
+        default_factory=lambda: dict(_DEFAULT_TYPE_COLORS)
+    )
 
     # Semantische Farben
     negative: str = "#e74c3c"
@@ -122,6 +129,7 @@ class UIColors:
         # Fallback: normalisieren
         try:
             from model.typ_constants import normalize_typ as _nt
+
             normed = _nt(typ)
             if normed in self.type_colors:
                 return self.type_colors[normed]
@@ -139,7 +147,9 @@ class UIColors:
 
     def severity_color(self, level: str) -> str:
         """Farbe für ok/warning/danger."""
-        return {"ok": self.ok, "warning": self.warning, "danger": self.danger}.get(level, self.text)
+        return {"ok": self.ok, "warning": self.warning, "danger": self.danger}.get(
+            level, self.text
+        )
 
     def amount_color(self, value: float) -> str:
         """Farbe für Beträge: negativ=rot, positiv=grün, null=neutral."""
@@ -285,6 +295,7 @@ def _lighten(hex_color: str, factor: float = 0.6) -> str:
 
 
 # ── Haupt-API ──────────────────────────────────────────────────────
+
 
 def ui_colors(widget: Optional[QWidget] = None) -> UIColors:
     """Holt die aktuellen Theme-Farben.

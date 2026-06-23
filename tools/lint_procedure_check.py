@@ -5,6 +5,7 @@ Ziel: Fail-fast vor dem Packen/Bauen, wenn der Release-Baum oder die CI-Prozedur
 inkonsistent ist. Dieser Check ersetzt nicht Black/Mypy/Pytest, sondern prueft,
 dass diese Gates und der Release-Cleaner korrekt verdrahtet sind.
 """
+
 from __future__ import annotations
 
 import ast
@@ -46,10 +47,16 @@ def _read(path: Path) -> str:
 
 def _app_version_and_date() -> tuple[str, str]:
     text = _read(ROOT / "app_info.py")
-    version_match = re.search(r"^APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", text, re.MULTILINE)
-    date_match = re.search(r"^APP_RELEASE_DATE\s*=\s*['\"]([^'\"]+)['\"]", text, re.MULTILINE)
+    version_match = re.search(
+        r"^APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", text, re.MULTILINE
+    )
+    date_match = re.search(
+        r"^APP_RELEASE_DATE\s*=\s*['\"]([^'\"]+)['\"]", text, re.MULTILINE
+    )
     if not version_match or not date_match:
-        raise RuntimeError("APP_VERSION oder APP_RELEASE_DATE in app_info.py nicht gefunden")
+        raise RuntimeError(
+            "APP_VERSION oder APP_RELEASE_DATE in app_info.py nicht gefunden"
+        )
     return version_match.group(1), date_match.group(1)
 
 
@@ -72,7 +79,9 @@ def check_versions() -> list[str]:
     lock = _read(ROOT / "requirements.lock")
     expected = f"# Stand: v{version} / {date}"
     if expected not in lock.splitlines()[:5]:
-        errors.append(f"requirements.lock Header fehlt/ist veraltet: erwartet {expected!r}")
+        errors.append(
+            f"requirements.lock Header fehlt/ist veraltet: erwartet {expected!r}"
+        )
 
     version_json = json.loads(_read(ROOT / "version.json"))
     if version_json.get("version") != version:
@@ -90,11 +99,15 @@ def check_generated_artifacts() -> list[str]:
     for name in EXCLUDED_DIRS - {".git", ".venv", "venv"}:
         for path in ROOT.rglob(name):
             if path.is_dir():
-                errors.append(f"generiertes Verzeichnis im Release-Baum: {path.relative_to(ROOT)}")
+                errors.append(
+                    f"generiertes Verzeichnis im Release-Baum: {path.relative_to(ROOT)}"
+                )
     for pattern in GENERATED_FILE_PATTERNS:
         for path in ROOT.glob(pattern):
             if path.is_file():
-                errors.append(f"generierte/private Datei im Release-Baum: {path.relative_to(ROOT)}")
+                errors.append(
+                    f"generierte/private Datei im Release-Baum: {path.relative_to(ROOT)}"
+                )
     return errors
 
 
@@ -123,7 +136,9 @@ def check_workflow() -> list[str]:
     build_pos = workflow.find("pyinstaller BudgetManager.spec --noconfirm")
     if min(pytest_pos, clean_pos, lint_pos, build_pos) >= 0:
         if not (pytest_pos < clean_pos < lint_pos < build_pos):
-            errors.append("Workflow-Reihenfolge muss sein: pytest -> clean_release_tree -> lint_procedure_check -> PyInstaller")
+            errors.append(
+                "Workflow-Reihenfolge muss sein: pytest -> clean_release_tree -> lint_procedure_check -> PyInstaller"
+            )
     else:
         errors.append("Workflow-Reihenfolge konnte nicht vollstaendig geprüft werden")
     return errors
@@ -147,7 +162,6 @@ def check_release_docs() -> list[str]:
         if command not in checklist:
             errors.append(f"Release-Checkliste fehlt Kommando: {command}")
     return errors
-
 
 
 def check_required_regression_tests() -> list[str]:
@@ -177,7 +191,9 @@ def check_required_regression_tests() -> list[str]:
         text = _read(path)
         for marker in markers:
             if marker not in text:
-                errors.append(f"kritischer Regressionstest {rel} fehlt Marker: {marker}")
+                errors.append(
+                    f"kritischer Regressionstest {rel} fehlt Marker: {marker}"
+                )
     return errors
 
 
@@ -192,11 +208,19 @@ def check_security_lint() -> list[str]:
             continue
         for node in ast.walk(tree):
             if isinstance(node, ast.ExceptHandler) and node.type is None:
-                errors.append(f"bare except in {path.relative_to(ROOT)} ({_line_col(text, node.lineno, node.col_offset)})")
+                errors.append(
+                    f"bare except in {path.relative_to(ROOT)} ({_line_col(text, node.lineno, node.col_offset)})"
+                )
             if isinstance(node, ast.Call):
                 for kw in node.keywords:
-                    if kw.arg == "shell" and isinstance(kw.value, ast.Constant) and kw.value.value is True:
-                        errors.append(f"shell=True in {path.relative_to(ROOT)} ({_line_col(text, node.lineno, node.col_offset)})")
+                    if (
+                        kw.arg == "shell"
+                        and isinstance(kw.value, ast.Constant)
+                        and kw.value.value is True
+                    ):
+                        errors.append(
+                            f"shell=True in {path.relative_to(ROOT)} ({_line_col(text, node.lineno, node.col_offset)})"
+                        )
                 if isinstance(node.func, ast.Name) and node.func.id in {"eval", "exec"}:
                     errors.append(
                         f"{node.func.id}() in {path.relative_to(ROOT)} "
@@ -208,7 +232,16 @@ def check_security_lint() -> list[str]:
 def check_cleaner_scope() -> list[str]:
     errors: list[str] = []
     cleaner = _read(ROOT / "tools" / "clean_release_tree.py")
-    required = ["data/backups/*.bmr", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache", "build", "dist", "installer_output"]
+    required = [
+        "data/backups/*.bmr",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        "build",
+        "dist",
+        "installer_output",
+    ]
     for token in required:
         if token not in cleaner:
             errors.append(f"clean_release_tree.py entfernt {token!r} nicht")

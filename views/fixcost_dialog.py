@@ -1,15 +1,25 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from datetime import date
 
-from PySide6.QtWidgets import QDialog, QFormLayout, QHBoxLayout, QPushButton, QDateEdit, QVBoxLayout
+from PySide6.QtWidgets import (
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QPushButton,
+    QDateEdit,
+    QVBoxLayout,
+)
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
+
 
 @dataclass(frozen=True)
 class FixcostRequest:
     d: date
+
 
 class FixcostDialog(QDialog):
     def __init__(self, parent=None, *, default_date: date):

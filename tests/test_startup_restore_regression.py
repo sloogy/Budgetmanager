@@ -12,7 +12,9 @@ def test_setup_assistant_restore_uses_supported_backup_dialog_api():
     nicht mehr mit dem alten, nicht existierenden restore_path-Argument öffnen.
     """
     src = Path("views/setup_assistant_dialog.py").read_text(encoding="utf-8")
-    method_src = src.split("    def _do_restore_backup", 1)[1].split("    def _do_reset_database", 1)[0]
+    method_src = src.split("    def _do_restore_backup", 1)[1].split(
+        "    def _do_reset_database", 1
+    )[0]
     assert "restore_path=" not in method_src
     assert "restore_external_path(path)" in src
 
@@ -71,7 +73,9 @@ def test_startup_import_bmr_quick_user_uses_bundled_users_json(tmp_path, monkeyp
 
     restored = decrypt_db_from_file(new_user.db_path, new_key)
     try:
-        value = restored.execute("SELECT value FROM startup_restore_marker").fetchone()[0]
+        value = restored.execute("SELECT value FROM startup_restore_marker").fetchone()[
+            0
+        ]
     finally:
         restored.close()
 

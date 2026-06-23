@@ -197,7 +197,8 @@ class QuickAddDialog(QDialog):
         except Exception as e:
             logger.debug("gruppierter Picker, Fallback flach: %s", e)
             self._all_category_rows = [
-                ("item", label, real) for label, real in self._category_pairs_structured(typ)
+                ("item", label, real)
+                for label, real in self._category_pairs_structured(typ)
             ]
 
         self._rebuild_category_dropdown(
@@ -219,7 +220,10 @@ class QuickAddDialog(QDialog):
         show_popup: bool = False,
     ) -> None:
         """Filtert das Dropdown anhand des Suchfelds und erhält die Auswahl."""
-        from views.category_picker import filter_grouped_categories, populate_grouped_combo
+        from views.category_picker import (
+            filter_grouped_categories,
+            populate_grouped_combo,
+        )
 
         rows = filter_grouped_categories(self._all_category_rows, query)
         populate_grouped_combo(self.cat_combo, rows)

@@ -1,16 +1,30 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QAbstractItemView, QDialog, QDialogButtonBox, QHeaderView, QLabel,
-    QTableWidget, QTableWidgetItem, QVBoxLayout
+    QAbstractItemView,
+    QDialog,
+    QDialogButtonBox,
+    QHeaderView,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
 )
 
-from model.shortcuts_config import SHORTCUT_DEFS, group_for, label_for, load_shortcuts, shortcut_display_name
+from model.shortcuts_config import (
+    SHORTCUT_DEFS,
+    group_for,
+    label_for,
+    load_shortcuts,
+    shortcut_display_name,
+)
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
+
 
 class ShortcutsDialog(QDialog):
     """Zeigt alle verfügbaren Tastenkürzel an (F1).
@@ -40,7 +54,9 @@ class ShortcutsDialog(QDialog):
         # Tabelle
         self.table = QTableWidget()
         self.table.setColumnCount(3)
-        self.table.setHorizontalHeaderLabels([tr("dlg.shortcuts"), tr('header.action'), tr('header.group')])
+        self.table.setHorizontalHeaderLabels(
+            [tr("dlg.shortcuts"), tr("header.action"), tr("header.group")]
+        )
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
@@ -61,7 +77,9 @@ class ShortcutsDialog(QDialog):
 
         # Zusätzliche Hinweise (nicht konfigurierbar)
         rows.append(("", "", ""))
-        rows.append(("Enter", tr("dlg.in_tabelle_naechste_zelle"), tr("shortcut.group.table")))
+        rows.append(
+            ("Enter", tr("dlg.in_tabelle_naechste_zelle"), tr("shortcut.group.table"))
+        )
         rows.append(("Tab", tr("dlg.zum_naechsten_feld"), tr("shortcut.group.table")))
         rows.append(("Escape", tr("btn.dialog_schliessen"), tr("shortcut.group.table")))
 
@@ -91,7 +109,9 @@ class ShortcutsDialog(QDialog):
 
         # Tipp
         tip = QLabel(
-            tr('auto.views_shortcuts_dialog.92_i_tipp_tastenkuerzel_koennen_unter__17d1ba87')
+            tr(
+                "auto.views_shortcuts_dialog.92_i_tipp_tastenkuerzel_koennen_unter__17d1ba87"
+            )
         )
         tip.setWordWrap(True)
         layout.addWidget(tip)

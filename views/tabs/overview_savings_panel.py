@@ -10,6 +10,7 @@ Schnittstelle zu OverviewTab:
     panel = OverviewSavingsPanel(conn, parent=self)
     panel.refresh()   # Daten neu laden
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,9 +21,19 @@ logger = logging.getLogger(__name__)
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QProgressBar,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QSizePolicy, QMenu, QMessageBox
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
+    QSizePolicy,
+    QMenu,
+    QMessageBox,
 )
 
 from model.savings_goals_model import SavingsGoalsModel
@@ -63,22 +74,24 @@ class OverviewSavingsPanel(QWidget):
         # Tabelle
         self.table = QTableWidget()
         self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels([
-            tr("dlg.savings_goals"),
-            tr("lbl.savings_goal_target"),
-            tr("lbl.savings_goal_current"),
-            tr("lbl.savings_goal_remaining"),
-            tr("lbl.savings_goal_progress"),
-            tr("lbl.status"),
-            tr("lbl.savings_goal_released"),
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                tr("dlg.savings_goals"),
+                tr("lbl.savings_goal_target"),
+                tr("lbl.savings_goal_current"),
+                tr("lbl.savings_goal_remaining"),
+                tr("lbl.savings_goal_progress"),
+                tr("lbl.status"),
+                tr("lbl.savings_goal_released"),
+            ]
+        )
 
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)           # Name
+        header.setSectionResizeMode(0, QHeaderView.Stretch)  # Name
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)  # Ziel
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # Aktuell
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # Rest
-        header.setSectionResizeMode(4, QHeaderView.Stretch)           # Fortschritt
+        header.setSectionResizeMode(4, QHeaderView.Stretch)  # Fortschritt
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # Status
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # Freigegeben
         header.setStretchLastSection(False)
@@ -114,7 +127,11 @@ class OverviewSavingsPanel(QWidget):
         self.table.setRowCount(0)
 
         n_goals = len(goals)
-        count_key = "lbl.savings_goal_count_one" if n_goals == 1 else "lbl.savings_goal_count_many"
+        count_key = (
+            "lbl.savings_goal_count_one"
+            if n_goals == 1
+            else "lbl.savings_goal_count_many"
+        )
         self.lbl_count.setText(trf(count_key, n=n_goals))
 
         if not goals:
@@ -145,7 +162,9 @@ class OverviewSavingsPanel(QWidget):
             if goal.deadline:
                 tooltip_parts.append(f"{tr('tooltip.deadline')}: {goal.deadline}")
             if getattr(goal, "released_date", None):
-                tooltip_parts.append(f"{tr('tooltip.released')}: {goal.released_date[:10]}")
+                tooltip_parts.append(
+                    f"{tr('tooltip.released')}: {goal.released_date[:10]}"
+                )
             if goal.notes:
                 tooltip_parts.append(f"{tr('tooltip.note')}: {goal.notes}")
             name_item.setToolTip("\n".join(tooltip_parts))
@@ -219,7 +238,12 @@ class OverviewSavingsPanel(QWidget):
                     spent = self.savings.get_spent_amount(goal.id)
                     released_amt = getattr(goal, "released_amount", 0) or 0
                     if spent > 0:
-                        sp_item = QTableWidgetItem(trf('auto.views_tabs_overview_savings_panel.220_value_0_20ee72be', value_0=(format_chf(spent))))
+                        sp_item = QTableWidgetItem(
+                            trf(
+                                "auto.views_tabs_overview_savings_panel.220_value_0_20ee72be",
+                                value_0=(format_chf(spent)),
+                            )
+                        )
                         sp_item.setForeground(QColor(c.negative))
                         sp_item.setToolTip(
                             trf(
@@ -248,8 +272,12 @@ class OverviewSavingsPanel(QWidget):
         # Zusammenfassung
         total_remaining = total_target - total_current
         overall_pct = (total_current / total_target * 100) if total_target > 0 else 0
-        summary = trf("lbl.savings_summary_of",
-            current=format_chf(total_current), target=format_chf(total_target), pct=overall_pct)
+        summary = trf(
+            "lbl.savings_summary_of",
+            current=format_chf(total_current),
+            target=format_chf(total_target),
+            pct=overall_pct,
+        )
         if total_remaining <= 0:
             summary += trf("lbl.all_goals_reached", color=c.ok)
         else:
@@ -313,6 +341,9 @@ class OverviewSavingsPanel(QWidget):
 
     def _open_savings_dialog(self, initial_goal_id: int | None = None) -> None:
         from views.savings_goals_dialog import SavingsGoalsDialog
-        dialog = SavingsGoalsDialog(self.window(), self.conn, initial_goal_id=initial_goal_id)
+
+        dialog = SavingsGoalsDialog(
+            self.window(), self.conn, initial_goal_id=initial_goal_id
+        )
         dialog.exec()
         self.refresh()

@@ -13,6 +13,7 @@ from openpyxl import Workbook, load_workbook
 import logging
 from utils.i18n import tr, trf
 from model.crypto import suspend_after_commit_autosave
+
 logger = logging.getLogger(__name__)
 
 TYP_ALIASES = {
@@ -88,13 +89,16 @@ class CategoryImportResult:
 # Geteilte Kern-Routine (xlsx UND csv nutzen sie — keine Doppel-Logik)
 # ---------------------------------------------------------------------------
 
+
 def _has_parent_col(conn: sqlite3.Connection) -> bool:
     cols = {r[1] for r in conn.execute("PRAGMA table_info(categories)").fetchall()}
     return "parent_id" in cols
 
 
 def _get_cat_id(conn: sqlite3.Connection, typ: str, name: str) -> int | None:
-    row = conn.execute("SELECT id FROM categories WHERE typ=? AND name=?", (typ, name)).fetchone()
+    row = conn.execute(
+        "SELECT id FROM categories WHERE typ=? AND name=?", (typ, name)
+    ).fetchone()
     if not row:
         return None
     return int(row["id"]) if hasattr(row, "keys") else int(row[0])
@@ -156,7 +160,9 @@ def _ensure_category(
 
     cid = _get_cat_id(conn, typ, name)
     if cid is None:
-        raise RuntimeError(trf("lbl.konnte_kategorie_nicht_anlegen", typ=typ, name=name))
+        raise RuntimeError(
+            trf("lbl.konnte_kategorie_nicht_anlegen", typ=typ, name=name)
+        )
     return cid, (existing is None)
 
 
@@ -180,7 +186,9 @@ def _apply_path(
     for i, name in enumerate(parts):
         leaf = i == (len(parts) - 1)
         cid, was_new = _ensure_category(
-            conn, typ, name,
+            conn,
+            typ,
+            name,
             parent_id=parent_id,
             is_fix=is_fix if leaf else False,
             is_rec=is_rec if leaf else False,
@@ -238,21 +246,27 @@ def export_category_template_xlsx(out_path: Path) -> Path:
     info["A6"] = "Fix: 1 = Fixkosten (⭐)"
     info["A7"] = "Wiederkehrend: 1 = wiederkehrend (∞)"
     info["A8"] = "Tag: Fälligkeitstag (1–31)"
-    info["A10"] = "Hinweis: Du kannst die Beispielzeilen löschen und deine Struktur eintragen."
+    info["A10"] = (
+        "Hinweis: Du kannst die Beispielzeilen löschen und deine Struktur eintragen."
+    )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     wb.save(out_path)
     return out_path
 
 
-def import_categories_from_xlsx(conn: sqlite3.Connection, xlsx_path: Path) -> CategoryImportResult:
+def import_categories_from_xlsx(
+    conn: sqlite3.Connection, xlsx_path: Path
+) -> CategoryImportResult:
     """Importiert Kategorien (inkl. Baum-Pfad) aus einer Excel-Datei."""
     xlsx_path = Path(xlsx_path)
     if not xlsx_path.exists():
         raise FileNotFoundError(str(xlsx_path))
 
     wb = load_workbook(xlsx_path, data_only=True)
-    ws = wb[tr("tab.categories")] if tr("tab.categories") in wb.sheetnames else wb.active
+    ws = (
+        wb[tr("tab.categories")] if tr("tab.categories") in wb.sheetnames else wb.active
+    )
 
     # Header lesen
     header_row = [c.value for c in next(ws.iter_rows(min_row=1, max_row=1))]
@@ -276,7 +290,9 @@ def import_categories_from_xlsx(conn: sqlite3.Connection, xlsx_path: Path) -> Ca
     c_day = col("tag (1-31)", "tag", "day")
 
     if c_typ is None or c_path is None:
-        raise ValueError("Excel-Header muss mindestens 'Typ' und 'Pfad' enthalten (Sheet: Kategorien).")
+        raise ValueError(
+            "Excel-Header muss mindestens 'Typ' und 'Pfad' enthalten (Sheet: Kategorien)."
+        )
 
     # Prüfen ob parent_id Spalte existiert
     cols = {r[1] for r in conn.execute("PRAGMA table_info(categories)").fetchall()}
@@ -306,7 +322,9 @@ def import_categories_from_xlsx(conn: sqlite3.Connection, xlsx_path: Path) -> Ca
                 continue
 
             if typ not in {tr("kpi.income"), tr("kpi.expenses"), tr("typ.Ersparnisse")}:
-                warnings.append(trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ_raw))
+                warnings.append(
+                    trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ_raw)
+                )
                 skipped += 1
                 continue
 
@@ -319,12 +337,22 @@ def import_categories_from_xlsx(conn: sqlite3.Connection, xlsx_path: Path) -> Ca
             is_rec = _as_bool(row[c_rec].value) if c_rec is not None else False
             day = _as_int_day(row[c_day].value) if c_day is not None else 1
 
-            ins, upd = _apply_path(conn, typ, parts, is_fix=is_fix, is_rec=is_rec, day=day, has_parent=has_parent)
+            ins, upd = _apply_path(
+                conn,
+                typ,
+                parts,
+                is_fix=is_fix,
+                is_rec=is_rec,
+                day=day,
+                has_parent=has_parent,
+            )
             inserted += ins
             updated += upd
 
         conn.commit()
-    return CategoryImportResult(inserted=inserted, updated=updated, skipped=skipped, warnings=warnings)
+    return CategoryImportResult(
+        inserted=inserted, updated=updated, skipped=skipped, warnings=warnings
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -377,9 +405,27 @@ def export_categories_csv(conn: sqlite3.Connection, out_path: Path) -> Path:
     for typ in (TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS):
         for root in cm.build_tree(cm.list(typ)):
             rc = root["cat"]
-            rows.append([typ, rc.name, "", int(rc.is_fix), int(rc.is_recurring), int(rc.recurring_day)])
+            rows.append(
+                [
+                    typ,
+                    rc.name,
+                    "",
+                    int(rc.is_fix),
+                    int(rc.is_recurring),
+                    int(rc.recurring_day),
+                ]
+            )
             for c, label in _iter_descendants(root, []):
-                rows.append([typ, rc.name, label, int(c.is_fix), int(c.is_recurring), int(c.recurring_day)])
+                rows.append(
+                    [
+                        typ,
+                        rc.name,
+                        label,
+                        int(c.is_fix),
+                        int(c.is_recurring),
+                        int(c.recurring_day),
+                    ]
+                )
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     with open(out_path, "w", newline="", encoding="utf-8-sig") as f:
@@ -401,7 +447,9 @@ def _sniff_delimiter(sample: str) -> str:
         return ","
 
 
-def import_categories_from_csv(conn: sqlite3.Connection, csv_path: Path) -> CategoryImportResult:
+def import_categories_from_csv(
+    conn: sqlite3.Connection, csv_path: Path
+) -> CategoryImportResult:
     """Importiert Kategorien aus der Spalten-CSV (Haupt-/Unterkategorie getrennt).
 
     Tolerant: Trennzeichen (`,` `;` Tab) wird automatisch erkannt; Header-Namen
@@ -436,7 +484,9 @@ def import_categories_from_csv(conn: sqlite3.Connection, csv_path: Path) -> Cate
     c_day = col("tag (1-31)", "tag", "day")
 
     if c_typ is None or c_haupt is None:
-        raise ValueError("CSV-Header muss mindestens 'Typ' und 'Hauptkategorie' enthalten.")
+        raise ValueError(
+            "CSV-Header muss mindestens 'Typ' und 'Hauptkategorie' enthalten."
+        )
 
     has_parent = _has_parent_col(conn)
     valid_typen = {tr("kpi.income"), tr("kpi.expenses"), tr("typ.Ersparnisse")}
@@ -462,7 +512,9 @@ def import_categories_from_csv(conn: sqlite3.Connection, csv_path: Path) -> Cate
                 skipped += 1
                 continue
             if typ not in valid_typen:
-                warnings.append(trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ))
+                warnings.append(
+                    trf("msg.excel_unbekannter_typ", r_idx=r_idx, typ_raw=typ)
+                )
                 skipped += 1
                 continue
 
@@ -473,14 +525,28 @@ def import_categories_from_csv(conn: sqlite3.Connection, csv_path: Path) -> Cate
             is_rec = _as_bool(cell(row, c_rec))
             day = _as_int_day(cell(row, c_day))
 
-            ins, upd = _apply_path(conn, typ, parts, is_fix=is_fix, is_rec=is_rec, day=day, has_parent=has_parent)
+            ins, upd = _apply_path(
+                conn,
+                typ,
+                parts,
+                is_fix=is_fix,
+                is_rec=is_rec,
+                day=day,
+                has_parent=has_parent,
+            )
             inserted += ins
             updated += upd
 
         conn.commit()
-    logger.info("Kategorien-CSV importiert: +%d neu, %d aktualisiert, %d übersprungen",
-                inserted, updated, skipped)
-    return CategoryImportResult(inserted=inserted, updated=updated, skipped=skipped, warnings=warnings)
+    logger.info(
+        "Kategorien-CSV importiert: +%d neu, %d aktualisiert, %d übersprungen",
+        inserted,
+        updated,
+        skipped,
+    )
+    return CategoryImportResult(
+        inserted=inserted, updated=updated, skipped=skipped, warnings=warnings
+    )
 
 
 def export_category_template_csv(out_path: Path) -> Path:

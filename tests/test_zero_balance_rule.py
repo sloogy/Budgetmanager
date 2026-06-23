@@ -1,4 +1,5 @@
 """Regressionstests für sanfte Null-Bilanz-Vorschläge (v2.0.38)."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -143,7 +144,9 @@ def test_zero_balance_rule_can_be_disabled(conn):
     _set_budget(conn, 2026, 7, TYP_EXPENSES, "Alltag", 3000)
     _set_budget(conn, 2026, 7, TYP_SAVINGS, "Notgroschen", 1000)
 
-    assert BudgetOverviewModel(conn).get_balance_suggestions(2026, 7, enabled=False) == []
+    assert (
+        BudgetOverviewModel(conn).get_balance_suggestions(2026, 7, enabled=False) == []
+    )
 
 
 def test_zero_balance_rule_suppresses_classic_savings_reduction(conn, monkeypatch):
@@ -174,7 +177,10 @@ def test_zero_balance_rule_suppresses_classic_savings_reduction(conn, monkeypatc
         _book(conn, 2026, m, TYP_EXPENSES, "Alltag", 3000)
 
     res = BudgetOverviewModel(conn).get_suggestions(2026, 7, min_consecutive_months=3)
-    assert not any(s.typ == TYP_SAVINGS and s.category == "Sparen" and s.direction == "surplus" for s in res)
+    assert not any(
+        s.typ == TYP_SAVINGS and s.category == "Sparen" and s.direction == "surplus"
+        for s in res
+    )
 
 
 def test_zero_balance_rule_suppresses_classic_savings_type_reduction(conn, monkeypatch):
@@ -206,6 +212,4 @@ def test_zero_balance_rule_suppresses_classic_savings_type_reduction(conn, monke
         2026, 7, min_consecutive_months=3
     )
 
-    assert not any(
-        s.typ == TYP_SAVINGS and s.direction == "surplus" for s in res
-    )
+    assert not any(s.typ == TYP_SAVINGS and s.direction == "surplus" for s in res)

@@ -3,6 +3,7 @@
 Diese Tests sind bewusst Qt-frei, damit sie in der normalen CI frueh laufen und
 nicht von GUI/Display-Abhaengigkeiten blockiert werden.
 """
+
 from __future__ import annotations
 
 import importlib
@@ -33,7 +34,9 @@ def test_lint_procedure_locks_required_regression_tests_into_release_gate():
 
 
 def test_lint_procedure_passes_with_locked_regression_tests():
-    subprocess.run([sys.executable, "tools/clean_release_tree.py"], cwd=ROOT, check=True)
+    subprocess.run(
+        [sys.executable, "tools/clean_release_tree.py"], cwd=ROOT, check=True
+    )
     result = subprocess.run(
         [sys.executable, "tools/lint_procedure_check.py"],
         cwd=ROOT,
@@ -46,8 +49,12 @@ def test_lint_procedure_passes_with_locked_regression_tests():
 
 def test_requirements_lock_header_matches_app_info_version_and_date():
     app_info = _read("app_info.py")
-    version = re.search(r"^APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", app_info, re.MULTILINE)
-    date = re.search(r"^APP_RELEASE_DATE\s*=\s*['\"]([^'\"]+)['\"]", app_info, re.MULTILINE)
+    version = re.search(
+        r"^APP_VERSION\s*=\s*['\"]([^'\"]+)['\"]", app_info, re.MULTILINE
+    )
+    date = re.search(
+        r"^APP_RELEASE_DATE\s*=\s*['\"]([^'\"]+)['\"]", app_info, re.MULTILINE
+    )
     assert version and date
     expected = f"# Stand: v{version.group(1)} / {date.group(1)}"
     first_lines = _read("requirements.lock").splitlines()[:5]
@@ -82,7 +89,9 @@ def test_account_lifecycle_quick_pin_password_delete(isolated_user_model):
     assert model.change_display_name(user.username, "Christian Release") is True
     assert model.get(user.username).display_name == "Christian Release"
 
-    ok, pin_restore = model.upgrade_security(user.username, user_model.SECURITY_PIN, "1234")
+    ok, pin_restore = model.upgrade_security(
+        user.username, user_model.SECURITY_PIN, "1234"
+    )
     assert ok is True
     assert pin_restore
     assert model.authenticate(user.username, "1234")
@@ -212,7 +221,9 @@ def test_referenced_security_language_keys_exist_in_all_locales():
         assert not missing, f"{lang} missing: {missing}"
 
 
-def test_account_model_rejects_invalid_secret_changes_and_keeps_state(isolated_user_model):
+def test_account_model_rejects_invalid_secret_changes_and_keeps_state(
+    isolated_user_model,
+):
     model, user_model = isolated_user_model
 
     user, _ = model.create_user("Guarded", user_model.SECURITY_QUICK)
@@ -222,7 +233,9 @@ def test_account_model_rejects_invalid_secret_changes_and_keeps_state(isolated_u
     assert model.get(user.username).security == user_model.SECURITY_QUICK
     assert model.authenticate_quick(user.username)
 
-    ok, restore = model.upgrade_security(user.username, user_model.SECURITY_PASSWORD, "abc")
+    ok, restore = model.upgrade_security(
+        user.username, user_model.SECURITY_PASSWORD, "abc"
+    )
     assert (ok, restore) == (False, "")
     assert model.get(user.username).security == user_model.SECURITY_QUICK
 
@@ -234,18 +247,24 @@ def test_account_model_rejects_invalid_secret_changes_and_keeps_state(isolated_u
     assert ok is True and restore
     assert model.get(user.username).security == user_model.SECURITY_PIN
 
-    ok, restore = model.change_secret(user.username, "1234", "12ab", user_model.SECURITY_PIN)
+    ok, restore = model.change_secret(
+        user.username, "1234", "12ab", user_model.SECURITY_PIN
+    )
     assert (ok, restore) == (False, "")
     assert model.authenticate(user.username, "1234")
     assert model.authenticate(user.username, "12ab") is None
 
-    ok, restore = model.change_secret(user.username, "1234", "abc", user_model.SECURITY_PASSWORD)
+    ok, restore = model.change_secret(
+        user.username, "1234", "abc", user_model.SECURITY_PASSWORD
+    )
     assert (ok, restore) == (False, "")
     assert model.get(user.username).security == user_model.SECURITY_PIN
     assert model.authenticate(user.username, "1234")
 
 
-def test_default_user_cannot_be_cleared_by_invalid_username_and_promotes_on_delete(isolated_user_model):
+def test_default_user_cannot_be_cleared_by_invalid_username_and_promotes_on_delete(
+    isolated_user_model,
+):
     model, user_model = isolated_user_model
 
     first, _ = model.create_user("Alpha", user_model.SECURITY_QUICK)

@@ -14,6 +14,7 @@ existiert und somit nicht geklammert wird.
 
 Läuft ohne Qt/PySide6.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -30,8 +31,8 @@ from model.migrations import migrate_all  # noqa: E402
 from model.budget_suggestion_engine import BudgetSuggestionEngine  # noqa: E402
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS  # noqa: E402
 
-
 # ── Helpers ──────────────────────────────────────────────────────
+
 
 def _add_category(conn, typ, name, *, is_fix=False, is_recurring=False):
     conn.execute(
@@ -42,7 +43,7 @@ def _add_category(conn, typ, name, *, is_fix=False, is_recurring=False):
 
 
 def _set_budget(conn, typ, name, months, amount):
-    for (y, m) in months:
+    for y, m in months:
         conn.execute(
             "INSERT OR REPLACE INTO budget(year, month, typ, category, amount) "
             "VALUES(?,?,?,?,?)",
@@ -70,6 +71,7 @@ def conn():
 
 
 # ── Kernregression: nur 1 gebuchter Monat → keine Vorschläge ──────
+
 
 def test_single_booked_month_yields_no_suggestion(conn):
     """Budgets Jan–Jun 2026, aber nur Juni gebucht → kein Vorschlag."""
@@ -116,6 +118,7 @@ def test_no_boundary_without_any_booking(conn):
 
 # ── Positivkontrolle: genug echte Monate NACH Start → Vorschlag ──
 
+
 def test_enough_real_months_after_start_still_suggests(conn):
     """3 echte Monate (Apr–Jun) konsequent unter Budget → Senkung vorgeschlagen."""
     _add_category(conn, TYP_EXPENSES, "Essen")
@@ -146,6 +149,7 @@ def test_one_real_month_too_few_no_suggestion(conn):
 
 
 # ── Langzeit-0-Reduktion bleibt erhalten (Frage 2: gewollt) ──────
+
 
 def test_long_unused_budget_still_reduces(conn):
     """Budget gesetzt, NIE gebucht (>=6 Monate) → Senkung greift weiterhin."""

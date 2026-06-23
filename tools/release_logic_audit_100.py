@@ -11,6 +11,7 @@ statisch und mit headless Geschäftslogik geprüft:
 - Diagramm-Logik und Erklärung
 - DAU-/Erststart- und Daten-Sicherheitsregeln, soweit headless prüfbar
 """
+
 from __future__ import annotations
 
 import ast
@@ -54,20 +55,40 @@ def _conn() -> sqlite3.Connection:
     """
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
-    c.execute("CREATE TABLE categories (typ TEXT, name TEXT, is_fix INTEGER, is_recurring INTEGER, recurring_day INTEGER)")
-    c.execute("CREATE TABLE budget (year INTEGER, month INTEGER, typ TEXT, category TEXT, amount REAL)")
-    c.execute("CREATE TABLE tracking (date TEXT, typ TEXT, category TEXT, amount REAL, details TEXT)")
+    c.execute(
+        "CREATE TABLE categories (typ TEXT, name TEXT, is_fix INTEGER, is_recurring INTEGER, recurring_day INTEGER)"
+    )
+    c.execute(
+        "CREATE TABLE budget (year INTEGER, month INTEGER, typ TEXT, category TEXT, amount REAL)"
+    )
+    c.execute(
+        "CREATE TABLE tracking (date TEXT, typ TEXT, category TEXT, amount REAL, details TEXT)"
+    )
     return c
 
 
-def _add_category(conn: sqlite3.Connection, name: str, *, typ: str = TYP_EXPENSES, is_fix=False, is_recurring=False) -> None:
+def _add_category(
+    conn: sqlite3.Connection,
+    name: str,
+    *,
+    typ: str = TYP_EXPENSES,
+    is_fix=False,
+    is_recurring=False,
+) -> None:
     conn.execute(
         "INSERT INTO categories(typ, name, is_fix, is_recurring, recurring_day) VALUES(?,?,?,?,1)",
         (typ, name, 1 if is_fix else 0, 1 if is_recurring else 0),
     )
 
 
-def _set_budget(conn: sqlite3.Connection, name: str, months: Iterable[tuple[int, int]], amount: float, *, typ: str = TYP_EXPENSES) -> None:
+def _set_budget(
+    conn: sqlite3.Connection,
+    name: str,
+    months: Iterable[tuple[int, int]],
+    amount: float,
+    *,
+    typ: str = TYP_EXPENSES,
+) -> None:
     for y, m in months:
         conn.execute(
             "INSERT OR REPLACE INTO budget(year, month, typ, category, amount) VALUES(?,?,?,?,?)",
@@ -75,7 +96,14 @@ def _set_budget(conn: sqlite3.Connection, name: str, months: Iterable[tuple[int,
         )
 
 
-def _book(conn: sqlite3.Connection, name: str, months: Iterable[tuple[int, int]], amount: float, *, typ: str = TYP_EXPENSES) -> None:
+def _book(
+    conn: sqlite3.Connection,
+    name: str,
+    months: Iterable[tuple[int, int]],
+    amount: float,
+    *,
+    typ: str = TYP_EXPENSES,
+) -> None:
     if amount == 0:
         return
     for y, m in months:
@@ -87,7 +115,9 @@ def _book(conn: sqlite3.Connection, name: str, months: Iterable[tuple[int, int]]
 
 def check_i18n_and_guides() -> None:
     flats = {
-        lang: _flat(json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8")))
+        lang: _flat(
+            json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8"))
+        )
         for lang in REQUIRED_LANGS
     }
     base = set(flats["de"])
@@ -95,7 +125,9 @@ def check_i18n_and_guides() -> None:
         missing = base - set(flats[lang])
         assert not missing, f"{lang}.json missing keys: {sorted(missing)[:10]}"
 
-    spec = importlib.util.spec_from_file_location("budgetmanager_help_content", ROOT / "views" / "help_content.py")
+    spec = importlib.util.spec_from_file_location(
+        "budgetmanager_help_content", ROOT / "views" / "help_content.py"
+    )
     assert spec and spec.loader, "help_content.py kann nicht geladen werden"
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -104,16 +136,24 @@ def check_i18n_and_guides() -> None:
     for topic in topics:
         for field in ("title", "body"):
             for lang in REQUIRED_LANGS:
-                assert topic[field].get(lang, "").strip(), f"help topic {topic.get('id')} missing {field}.{lang}"
+                assert (
+                    topic[field].get(lang, "").strip()
+                ), f"help topic {topic.get('id')} missing {field}.{lang}"
 
     required_guide_terms = {
         "de": ["Forecast", "Diagramme erklärt", "Updates", "Fixkosten"],
         "en": ["Forecast", "Chart guide", "Updates", "Fixed cost"],
-        "fr": ["Prévisions", "Explication des graphiques", "Mises à jour", "Charge fixe"],
+        "fr": [
+            "Prévisions",
+            "Explication des graphiques",
+            "Mises à jour",
+            "Charge fixe",
+        ],
     }
     for lang, terms in required_guide_terms.items():
         text = (ROOT / "docs" / f"USER_GUIDE.{lang}.md").read_text(encoding="utf-8")
         import app_info
+
         assert app_info.APP_VERSION in text
         for term in terms:
             assert term in text, f"guide {lang} missing term {term}"
@@ -125,7 +165,12 @@ def check_forecast_logic() -> None:
     _add_category(conn, "Versicherung", is_fix=True, is_recurring=True)
     _set_budget(conn, "Versicherung", [(2026, m) for m in range(1, 8)], 200.0)
     _book(conn, "Versicherung", [(2026, 1)], 250.0)
-    assert BudgetSuggestionEngine(conn).compute_category_suggestion(TYP_EXPENSES, "Versicherung", 2026, 7) is None
+    assert (
+        BudgetSuggestionEngine(conn).compute_category_suggestion(
+            TYP_EXPENSES, "Versicherung", 2026, 7
+        )
+        is None
+    )
     conn.close()
 
     # Wiederkehrend ohne fix: ebenfalls geschützt.
@@ -133,7 +178,12 @@ def check_forecast_logic() -> None:
     _add_category(conn, "Jahresabo", is_recurring=True)
     _set_budget(conn, "Jahresabo", [(2026, m) for m in range(1, 8)], 120.0)
     _book(conn, "Jahresabo", [(2026, 1)], 120.0)
-    assert BudgetSuggestionEngine(conn).compute_category_suggestion(TYP_EXPENSES, "Jahresabo", 2026, 7) is None
+    assert (
+        BudgetSuggestionEngine(conn).compute_category_suggestion(
+            TYP_EXPENSES, "Jahresabo", 2026, 7
+        )
+        is None
+    )
     conn.close()
 
     # Inkrementelle Fixkosten: aktive Monate über Budget dürfen nicht erhöhen,
@@ -142,7 +192,12 @@ def check_forecast_logic() -> None:
     _add_category(conn, "Versicherung", is_fix=True, is_recurring=True)
     _set_budget(conn, "Versicherung", [(2026, m) for m in range(1, 8)], 200.0)
     _book(conn, "Versicherung", [(2026, m) for m in (1, 2, 3)], 250.0)
-    assert BudgetSuggestionEngine(conn).compute_category_suggestion(TYP_EXPENSES, "Versicherung", 2026, 7) is None
+    assert (
+        BudgetSuggestionEngine(conn).compute_category_suggestion(
+            TYP_EXPENSES, "Versicherung", 2026, 7
+        )
+        is None
+    )
     conn.close()
 
     # Wiederholte echte Überschreitung bei Fixkosten darf erhöhen.
@@ -150,7 +205,9 @@ def check_forecast_logic() -> None:
     _add_category(conn, "Strom", is_fix=True, is_recurring=True)
     _set_budget(conn, "Strom", [(2026, m) for m in range(1, 8)], 100.0)
     _book(conn, "Strom", [(2026, m) for m in (1, 2, 3, 4, 5, 6)], 160.0)
-    res = BudgetSuggestionEngine(conn).compute_category_suggestion(TYP_EXPENSES, "Strom", 2026, 7)
+    res = BudgetSuggestionEngine(conn).compute_category_suggestion(
+        TYP_EXPENSES, "Strom", 2026, 7
+    )
     assert res is not None and res.suggested_budget > 100 and res.direction == "deficit"
     conn.close()
 
@@ -160,7 +217,9 @@ def check_forecast_logic() -> None:
     _set_budget(conn, "Hobby", [(2026, m) for m in range(1, 8)], 40.0)
     for m, amount in [(1, 20), (2, 30), (3, 0), (4, 20), (5, 30), (6, 0)]:
         _book(conn, "Hobby", [(2026, m)], amount)
-    res = BudgetSuggestionEngine(conn).compute_category_suggestion(TYP_EXPENSES, "Hobby", 2026, 7)
+    res = BudgetSuggestionEngine(conn).compute_category_suggestion(
+        TYP_EXPENSES, "Hobby", 2026, 7
+    )
     assert res is not None and res.suggested_budget < 40.0
     conn.close()
 
@@ -170,7 +229,12 @@ def check_forecast_logic() -> None:
     _set_budget(conn, "Nahrungsmittel", [(2026, m) for m in (1, 2, 3)], 400.0)
     _book(conn, "Nahrungsmittel", [(2026, 1)], 450.0)
     _book(conn, "Nahrungsmittel", [(2026, 2)], 350.0)
-    assert BudgetSuggestionEngine(conn).compute_category_suggestion(TYP_EXPENSES, "Nahrungsmittel", 2026, 3, months_back=2) is None
+    assert (
+        BudgetSuggestionEngine(conn).compute_category_suggestion(
+            TYP_EXPENSES, "Nahrungsmittel", 2026, 3, months_back=2
+        )
+        is None
+    )
     conn.close()
 
     # Nur ein echter Buchungsmonat nach Start darf keine Fantasie-Vorschläge erzeugen.
@@ -182,8 +246,14 @@ def check_forecast_logic() -> None:
     _book(conn, "Lohn", [(2026, 6)], 5000.0, typ=TYP_INCOME)
     _book(conn, "Hochzeit", [(2026, 6)], 10000.0, typ=TYP_SAVINGS)
     eng = BudgetSuggestionEngine(conn)
-    assert eng.compute_category_suggestion(TYP_INCOME, "Lohn", 2026, 6, months_back=3) is None
-    assert eng.compute_category_suggestion(TYP_SAVINGS, "Hochzeit", 2026, 6, months_back=3) is None
+    assert (
+        eng.compute_category_suggestion(TYP_INCOME, "Lohn", 2026, 6, months_back=3)
+        is None
+    )
+    assert (
+        eng.compute_category_suggestion(TYP_SAVINGS, "Hochzeit", 2026, 6, months_back=3)
+        is None
+    )
     conn.close()
 
 
@@ -191,15 +261,19 @@ def check_no_known_hardcoded_ui_regressions() -> None:
     budget_src = (ROOT / "views" / "tabs" / "budget_tab.py").read_text(encoding="utf-8")
     assert 'QTableWidgetItem("TOTAL")' not in budget_src
     assert 'QTableWidgetItem(tr("header.total"))' in budget_src
-    assert 'ROLE_ROW_KIND' in budget_src
+    assert "ROLE_ROW_KIND" in budget_src
 
     for lang, forbidden in {
         "en": ["Monat", "Bereich", "Bearbeiten", "Fixkosten buchen", "Gesamt/Header"],
         "fr": ["Monat", "Bereich", "Bearbeiten", "Fixkosten buchen", "Gesamt/Header"],
     }.items():
-        flat = _flat(json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8")))
+        flat = _flat(
+            json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8"))
+        )
         offenders = [(k, v) for k, v in flat.items() for term in forbidden if term in v]
-        assert not offenders, f"known German UI terms leaked into {lang}: {offenders[:5]}"
+        assert (
+            not offenders
+        ), f"known German UI terms leaked into {lang}: {offenders[:5]}"
 
     # Exakte Regressionen, die der Release verhindern soll. Der vollständige
     # i18n-Scanner läuft zusätzlich außerhalb dieses 100-Loop-Skripts.
@@ -213,7 +287,9 @@ def check_no_known_hardcoded_ui_regressions() -> None:
 
 
 def check_release_platform_and_updater() -> None:
-    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
+        encoding="utf-8"
+    )
     for needle in [
         "windows-latest",
         "ubuntu-latest",
@@ -222,7 +298,7 @@ def check_release_platform_and_updater() -> None:
         "BudgetManager_Setup.exe",
         "Build portable ZIP + latest.json",
         "portable/BudgetManager.exe",
-        "portable/BudgetManager\"",
+        'portable/BudgetManager"',
         "start-windows.cmd",
         "start-linux.sh",
         "data/.keep",
@@ -231,7 +307,14 @@ def check_release_platform_and_updater() -> None:
         assert needle in workflow, f"workflow missing {needle}"
 
     spec = (ROOT / "BudgetManager.spec").read_text(encoding="utf-8")
-    for needle in ["locales", "data/default_categories.json", "docs/help", "resources/icons", "views/profiles", "budgetmanager.ico"]:
+    for needle in [
+        "locales",
+        "data/default_categories.json",
+        "docs/help",
+        "resources/icons",
+        "views/profiles",
+        "budgetmanager.ico",
+    ]:
         assert needle in spec, f"spec missing {needle}"
 
     latest = json.loads((ROOT / "latest.json.template").read_text(encoding="utf-8"))
@@ -246,7 +329,13 @@ def check_release_platform_and_updater() -> None:
     check = (ROOT / "updater" / "check_update.py").read_text(encoding="utf-8")
     apply = (ROOT / "updater" / "apply_update.py").read_text(encoding="utf-8")
     dialog = (ROOT / "views" / "update_dialog.py").read_text(encoding="utf-8")
-    for needle in ["windows_installer", "direct_windows_exe", "direct_linux_binary", "portable_zip", "preferred_asset_keys"]:
+    for needle in [
+        "windows_installer",
+        "direct_windows_exe",
+        "direct_linux_binary",
+        "portable_zip",
+        "preferred_asset_keys",
+    ]:
         assert needle in common
     assert 'asset_type == "installer"' in check
     assert "write_check_result" in check
@@ -258,19 +347,29 @@ def check_release_platform_and_updater() -> None:
 
     iss = (ROOT / "installer" / "budgetmanager_setup.iss").read_text(encoding="utf-8")
     assert 'Name: "french"; MessagesFile: "compiler:Languages\\French.isl"' in iss
-    assert 'SaveStringToFile(ExpandConstant(\'{app}\\installation.json\')' in iss
+    assert "SaveStringToFile(ExpandConstant('{app}\\installation.json')" in iss
     for lang in REQUIRED_LANGS:
         prefix = {"de": "german", "en": "english", "fr": "french"}[lang]
-        for key in ("DataDirTitle", "PrefsTitle", "LanguageLabel", "CurrencyCHF", "PreferredDayNone"):
+        for key in (
+            "DataDirTitle",
+            "PrefsTitle",
+            "LanguageLabel",
+            "CurrencyCHF",
+            "PreferredDayNone",
+        ):
             assert f"{prefix}.{key}=" in iss
 
 
 def check_graphs_and_dau_static() -> None:
-    overview_test = (ROOT / "tests" / "test_overview_charts.py").read_text(encoding="utf-8")
+    overview_test = (ROOT / "tests" / "test_overview_charts.py").read_text(
+        encoding="utf-8"
+    )
     assert "test_range_budget_spans_window_months_not_single_month" in overview_test
     assert "test_aggregate_top_bookings_sums_salary_once" in overview_test
 
-    kpi = (ROOT / "views" / "tabs" / "overview_kpi_panel.py").read_text(encoding="utf-8")
+    kpi = (ROOT / "views" / "tabs" / "overview_kpi_panel.py").read_text(
+        encoding="utf-8"
+    )
     for needle in [
         "overview.subtab.monthly_trend",
         "overview.subtab.balance_trend",
@@ -283,7 +382,9 @@ def check_graphs_and_dau_static() -> None:
 
     for lang in REQUIRED_LANGS:
         guide = (ROOT / "docs" / f"USER_GUIDE.{lang}.md").read_text(encoding="utf-8")
-        assert ("Diagram" in guide) or ("Chart" in guide) or ("graphique" in guide.lower())
+        assert (
+            ("Diagram" in guide) or ("Chart" in guide) or ("graphique" in guide.lower())
+        )
         assert "data/" in guide
 
     assert not (ROOT / "data" / "users.json").exists()

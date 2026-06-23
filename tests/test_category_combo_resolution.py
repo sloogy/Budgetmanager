@@ -4,6 +4,7 @@ Qt hält bei editierbaren QComboBoxen currentData() oft auf dem vorherigen
 Eintrag, obwohl der Benutzer im Suchfeld bereits einen anderen Text getippt
 hat. Die Schnelleingabe darf dann nicht auf die alte Kategorie buchen.
 """
+
 from __future__ import annotations
 
 import importlib.util

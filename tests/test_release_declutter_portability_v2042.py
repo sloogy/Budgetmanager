@@ -12,6 +12,7 @@ Deckt die zwei Hardening-Fixes ab:
 
 Läuft ohne Qt/PySide6.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -43,9 +44,17 @@ def migrated_conn():
 
 def _make_trans(day: int) -> RecurringTransaction:
     return RecurringTransaction(
-        id=1, typ="Ausgaben", category="Miete", amount=100.0, details="",
-        day_of_month=day, is_active=True, start_date=date(2026, 2, 1),
-        end_date=None, created_date=None, last_booking_date=None,
+        id=1,
+        typ="Ausgaben",
+        category="Miete",
+        amount=100.0,
+        details="",
+        day_of_month=day,
+        is_active=True,
+        start_date=date(2026, 2, 1),
+        end_date=None,
+        created_date=None,
+        last_booking_date=None,
     )
 
 
@@ -54,10 +63,14 @@ def _make_trans(day: int) -> RecurringTransaction:
 
 def test_dead_scheduling_methods_are_removed():
     """Die produktiv toten Scheduling-Methoden sind nicht mehr vorhanden."""
-    for name in ("get_pending_bookings", "_is_already_booked", "update_last_booking_date"):
-        assert not hasattr(RecurringTransactionsModel, name), (
-            f"{name} sollte in v2.1.0 entfernt sein"
-        )
+    for name in (
+        "get_pending_bookings",
+        "_is_already_booked",
+        "update_last_booking_date",
+    ):
+        assert not hasattr(
+            RecurringTransactionsModel, name
+        ), f"{name} sollte in v2.1.0 entfernt sein"
 
 
 def test_kept_crud_and_helpers_still_present():
@@ -79,9 +92,15 @@ def test_kept_date_helpers_still_compute_correctly(migrated_conn):
     """Die verbliebenen Datums-Helfer verhalten sich unverändert."""
     m = RecurringTransactionsModel(migrated_conn)
     # Monatsende-Overflow
-    assert m._calculate_booking_date(_make_trans(31), date(2026, 2, 1)) == date(2026, 2, 28)
-    assert m._calculate_booking_date(_make_trans(31), date(2028, 2, 1)) == date(2028, 2, 29)
-    assert m._calculate_booking_date(_make_trans(31), date(2026, 4, 1)) == date(2026, 4, 30)
+    assert m._calculate_booking_date(_make_trans(31), date(2026, 2, 1)) == date(
+        2026, 2, 28
+    )
+    assert m._calculate_booking_date(_make_trans(31), date(2028, 2, 1)) == date(
+        2028, 2, 29
+    )
+    assert m._calculate_booking_date(_make_trans(31), date(2026, 4, 1)) == date(
+        2026, 4, 30
+    )
     # Gültigkeitsfenster
     t = _make_trans(15)
     assert m._is_valid_booking_date(t, date(2026, 3, 15)) is True
@@ -92,8 +111,12 @@ def test_crud_roundtrip_still_works(migrated_conn):
     """Die generische Tabellen-CRUD funktioniert weiterhin end-to-end."""
     m = RecurringTransactionsModel(migrated_conn)
     m.create_recurring_transaction(
-        typ="Ausgaben", category="Strom", amount=80.0, details="",
-        day_of_month=5, start_date=date(2026, 1, 1),
+        typ="Ausgaben",
+        category="Strom",
+        amount=80.0,
+        details="",
+        day_of_month=5,
+        start_date=date(2026, 1, 1),
     )
     rows = m.get_all_recurring_transactions()
     assert len(rows) == 1 and rows[0].category == "Strom"
@@ -102,14 +125,16 @@ def test_crud_roundtrip_still_works(migrated_conn):
 def test_no_german_marker_filter_in_model_source():
     """Der frühere deutschsprachige Dubletten-Marker wird im Modell nicht
     mehr als Filter/SQL-Literal verwendet (nur Erwähnung im Doku-Kommentar)."""
-    src = (ROOT / "model" / "recurring_transactions_model.py").read_text(encoding="utf-8")
+    src = (ROOT / "model" / "recurring_transactions_model.py").read_text(
+        encoding="utf-8"
+    )
     for line in src.splitlines():
         stripped = line.lstrip()
         if stripped.startswith("#"):
             continue  # Kommentarzeile (Doku) ist erlaubt
-        assert "Wiederkehrend (ID:" not in line, (
-            "Sprachabhängiger Marker darf nicht mehr als Code-Literal vorkommen"
-        )
+        assert (
+            "Wiederkehrend (ID:" not in line
+        ), "Sprachabhängiger Marker darf nicht mehr als Code-Literal vorkommen"
 
 
 # ── Fix 2: Portabler Crash-Log-Pfad ──────────────────────────────
@@ -120,6 +145,6 @@ def test_main_crash_log_fallback_is_portable():
     OS-Temp-Pfad verwenden (Windows-Kompatibilität)."""
     src = (ROOT / "main.py").read_text(encoding="utf-8")
     assert '"/tmp/' not in src, "Hartkodierter /tmp-Pfad darf nicht mehr vorkommen"
-    assert "tempfile.gettempdir()" in src, (
-        "Crash-Log-Fallback muss tempfile.gettempdir() nutzen"
-    )
+    assert (
+        "tempfile.gettempdir()" in src
+    ), "Crash-Log-Fallback muss tempfile.gettempdir() nutzen"

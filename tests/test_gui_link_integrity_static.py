@@ -24,11 +24,17 @@ def _shortcut_defs() -> list[str]:
             value = node.value
         else:
             continue
-        if not any(isinstance(t, ast.Name) and t.id == "SHORTCUT_DEFS" for t in targets):
+        if not any(
+            isinstance(t, ast.Name) and t.id == "SHORTCUT_DEFS" for t in targets
+        ):
             continue
         result: list[str] = []
         for item in value.elts:
-            if isinstance(item, ast.Tuple) and item.elts and isinstance(item.elts[0], ast.Constant):
+            if (
+                isinstance(item, ast.Tuple)
+                and item.elts
+                and isinstance(item.elts[0], ast.Constant)
+            ):
                 result.append(str(item.elts[0].value))
         return result
     raise AssertionError("SHORTCUT_DEFS not found")
@@ -40,7 +46,9 @@ def _main_window_shortcut_bindings() -> set[str]:
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "_apply_shortcut"):
+        if not (
+            isinstance(node.func, ast.Attribute) and node.func.attr == "_apply_shortcut"
+        ):
             continue
         if len(node.args) >= 2 and isinstance(node.args[1], ast.Constant):
             bindings.add(str(node.args[1].value))
@@ -50,7 +58,9 @@ def _main_window_shortcut_bindings() -> set[str]:
 def test_all_configurable_shortcuts_are_bound_to_mainwindow_actions():
     defined = set(_shortcut_defs())
     bound = _main_window_shortcut_bindings()
-    assert defined <= bound, f"Shortcut definitions without QAction binding: {sorted(defined - bound)}"
+    assert (
+        defined <= bound
+    ), f"Shortcut definitions without QAction binding: {sorted(defined - bound)}"
 
 
 def test_mainwindow_has_no_hardcoded_qaction_shortcuts_outside_shortcut_helper():
@@ -64,7 +74,10 @@ def test_mainwindow_has_no_hardcoded_qaction_shortcuts_outside_shortcut_helper()
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        if not (isinstance(node.func, ast.Attribute) and node.func.attr in {"setShortcut", "setShortcuts"}):
+        if not (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr in {"setShortcut", "setShortcuts"}
+        ):
             continue
         if any(start <= node.lineno <= end for start, end in helper_ranges):
             continue
@@ -77,4 +90,4 @@ def test_expert_categories_tab_is_reachable_when_enabled():
     assert '1: (self.categories_tab, tr("tab.categories"))' in src
     assert '1: "categories"' in src
     assert 'self._apply_shortcut(self.goto_categories_action, "tab_categories")' in src
-    assert 'def _goto_categories_or_manager' in src
+    assert "def _goto_categories_or_manager" in src

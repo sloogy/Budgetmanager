@@ -19,15 +19,16 @@ Vordefinierte Formate (siehe ``NUMBER_FORMATS``):
 
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 # ── Währungsdefinitionen ──────────────────────────────────────────────
 
 CURRENCIES: dict[str, dict] = {
     "CHF": {"symbol": "CHF", "position": "suffix", "label": "CHF – Schweizer Franken"},
-    "EUR": {"symbol": "€",   "position": "suffix", "label": "EUR – Euro"},
-    "USD": {"symbol": "$",   "position": "prefix", "label": "USD – US-Dollar"},
-    "GBP": {"symbol": "£",   "position": "prefix", "label": "GBP – Britisches Pfund"},
+    "EUR": {"symbol": "€", "position": "suffix", "label": "EUR – Euro"},
+    "USD": {"symbol": "$", "position": "prefix", "label": "USD – US-Dollar"},
+    "GBP": {"symbol": "£", "position": "prefix", "label": "GBP – Britisches Pfund"},
 }
 
 # Alle Codes in stabiler Reihenfolge (für ComboBoxen)
@@ -40,17 +41,25 @@ CURRENCY_CODES: list[str] = ["CHF", "EUR", "USD", "GBP"]
 # label_key = i18n-Schlüssel für die Anzeige in ComboBoxen (Fallback: label)
 
 NUMBER_FORMATS: dict[str, dict] = {
-    "swiss":  {"decimal": ".", "thousands": "'",      "label": "1'234.56  (Schweiz)"},
-    "german": {"decimal": ",", "thousands": ".",      "label": "1.234,56  (Deutschland/Österreich)"},
-    "french": {"decimal": ",", "thousands": "\u202f", "label": "1\u202f234,56  (Frankreich)"},  # schmales geschütztes Leerzeichen
-    "anglo":  {"decimal": ".", "thousands": ",",      "label": "1,234.56  (US/UK)"},
+    "swiss": {"decimal": ".", "thousands": "'", "label": "1'234.56  (Schweiz)"},
+    "german": {
+        "decimal": ",",
+        "thousands": ".",
+        "label": "1.234,56  (Deutschland/Österreich)",
+    },
+    "french": {
+        "decimal": ",",
+        "thousands": "\u202f",
+        "label": "1\u202f234,56  (Frankreich)",
+    },  # schmales geschütztes Leerzeichen
+    "anglo": {"decimal": ".", "thousands": ",", "label": "1,234.56  (US/UK)"},
 }
 
 NUMBER_FORMAT_CODES: list[str] = ["swiss", "german", "french", "anglo"]
 
 # Sinnvolle Vorauswahl je Sprache (nur Vorschlag im Assistenten)
 LANGUAGE_NUMBER_FORMAT_DEFAULTS: dict[str, str] = {
-    "de": "swiss",   # Schweizer Default-Markt; DE-User wählen ggf. "german"
+    "de": "swiss",  # Schweizer Default-Markt; DE-User wählen ggf. "german"
     "en": "anglo",
     "fr": "french",
 }
@@ -75,10 +84,20 @@ def get_currency() -> str:
 # auf die kanonischen Keys. So fallen bestehende Einstellungen NICHT still auf
 # 'swiss' zurück, sondern werden korrekt migriert.
 _NUMBER_FORMAT_ALIASES: dict[str, str] = {
-    "ch": "swiss", "de_ch": "swiss", "chf": "swiss",
-    "de": "german", "at": "german", "eu": "german", "eur": "german",
-    "fr": "french", "be": "french",
-    "us": "anglo", "uk": "anglo", "gb": "anglo", "en": "anglo", "usd": "anglo",
+    "ch": "swiss",
+    "de_ch": "swiss",
+    "chf": "swiss",
+    "de": "german",
+    "at": "german",
+    "eu": "german",
+    "eur": "german",
+    "fr": "french",
+    "be": "french",
+    "us": "anglo",
+    "uk": "anglo",
+    "gb": "anglo",
+    "en": "anglo",
+    "usd": "anglo",
 }
 
 
@@ -103,7 +122,9 @@ def get_number_format() -> str:
     return _active_number_format
 
 
-def set_money_locale(*, currency: str | None = None, number_format: str | None = None) -> None:
+def set_money_locale(
+    *, currency: str | None = None, number_format: str | None = None
+) -> None:
     """Setzt Währung und Zahlenformat zusammen.
 
     Rückwärtskompatibler Helfer für alte Aufrufer/Tests. ``number_format``
@@ -150,13 +171,14 @@ def get_symbol(code: str | None = None) -> str:
 
 # ── Formatierung ──────────────────────────────────────────────────────
 
+
 def _group_thousands(int_part: str, sep: str) -> str:
     """Fügt ``sep`` als Tausender-Trenner in den Ganzzahl-String ein."""
     if not sep:
         return int_part
     # Von rechts in 3er-Gruppen
     rev = int_part[::-1]
-    chunks = [rev[i:i + 3] for i in range(0, len(rev), 3)]
+    chunks = [rev[i : i + 3] for i in range(0, len(rev), 3)]
     return sep.join(chunks)[::-1]
 
 
@@ -184,7 +206,7 @@ def format_money(
 
     abs_val = abs(value)
     # Immer mit Punkt-Dezimal rendern, dann auf Zielformat mappen
-    raw = f"{abs_val:.2f}"          # z. B. "1234.56"
+    raw = f"{abs_val:.2f}"  # z. B. "1234.56"
     int_part, dec_part = raw.split(".")
     int_grouped = _group_thousands(int_part, fmt["thousands"])
     s = f"{int_grouped}{fmt['decimal']}{dec_part}"
@@ -217,6 +239,7 @@ def currency_header() -> str:
 
 
 # ── Parsing ───────────────────────────────────────────────────────────
+
 
 def parse_money(text: str, *, empty_is_zero: bool = True) -> float:
     """Parst einen Geld-String zurück zu ``float``.
@@ -255,13 +278,13 @@ def parse_money(text: str, *, empty_is_zero: bool = True) -> float:
     if has_comma and has_dot:
         # Letztes Trennzeichen = Dezimalzeichen
         if s.rfind(",") > s.rfind("."):
-            s = s.replace(".", "").replace(",", ".")   # europäisch 1.234,56
+            s = s.replace(".", "").replace(",", ".")  # europäisch 1.234,56
         else:
-            s = s.replace(",", "")                       # angelsächsisch 1,234.56
+            s = s.replace(",", "")  # angelsächsisch 1,234.56
     elif has_comma:
         # Nur Komma: Dezimaltrenner ODER Tausender?  Aktives Format entscheidet.
         if get_decimal_separator() == ",":
-            s = s.replace(",", ".")                      # Dezimaltrenner
+            s = s.replace(",", ".")  # Dezimaltrenner
         else:
             # Komma ist hier Tausendertrenner – nur entfernen, wenn es so aussieht
             if _looks_like_thousands(s, ","):
@@ -270,11 +293,11 @@ def parse_money(text: str, *, empty_is_zero: bool = True) -> float:
                 s = s.replace(",", ".")
     elif has_dot:
         # Nur Punkt: Dezimaltrenner ODER Tausender?
-        if get_decimal_separator() == "." :
-            pass                                         # Punkt ist Dezimaltrenner
+        if get_decimal_separator() == ".":
+            pass  # Punkt ist Dezimaltrenner
         else:
             if _looks_like_thousands(s, "."):
-                s = s.replace(".", "")                   # Tausendertrenner (z. B. "1.234")
+                s = s.replace(".", "")  # Tausendertrenner (z. B. "1.234")
             # sonst Punkt als Dezimaltrenner stehen lassen
 
     try:
@@ -292,5 +315,5 @@ def _looks_like_thousands(s: str, sep: str) -> bool:
     last = s.rfind(sep)
     if last <= 0:
         return False
-    after = s[last + 1:]
+    after = s[last + 1 :]
     return after.isdigit() and len(after) == 3

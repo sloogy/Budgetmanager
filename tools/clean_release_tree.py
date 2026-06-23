@@ -3,6 +3,7 @@
 
 Entfernt nur generierbare Laufzeit-/Testartefakte, keine Quell- oder Doku-Dateien.
 """
+
 from __future__ import annotations
 
 import shutil

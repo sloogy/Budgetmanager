@@ -21,4 +21,6 @@ def savings_goal_bounds_text(error: SavingsGoalBoundsError) -> str:
 def show_savings_goal_bounds_warning(
     parent: QWidget | None, error: SavingsGoalBoundsError
 ) -> None:
-    QMessageBox.warning(parent, tr("savings.bounds.title"), savings_goal_bounds_text(error))
+    QMessageBox.warning(
+        parent, tr("savings.bounds.title"), savings_goal_bounds_text(error)
+    )

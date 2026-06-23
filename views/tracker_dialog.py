@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+
 logger = logging.getLogger(__name__)
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -8,8 +9,17 @@ import sqlite3
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog, QFormLayout, QHBoxLayout, QPushButton, QComboBox,
-    QLineEdit, QDateEdit, QVBoxLayout, QMessageBox, QLabel, QCompleter
+    QDialog,
+    QFormLayout,
+    QHBoxLayout,
+    QPushButton,
+    QComboBox,
+    QLineEdit,
+    QDateEdit,
+    QVBoxLayout,
+    QMessageBox,
+    QLabel,
+    QCompleter,
 )
 
 from model.category_model import CategoryModel
@@ -18,8 +28,10 @@ from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS, normalize
 from utils.money import parse_money, currency_header
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
+
 def parse_amount(text: str) -> float:
     return parse_money(text, empty_is_zero=False)
+
 
 @dataclass(frozen=True)
 class TrackingInput:
@@ -29,8 +41,16 @@ class TrackingInput:
     amount: float
     details: str
 
+
 class TrackerDialog(QDialog):
-    def __init__(self, parent=None, *, conn: sqlite3.Connection, cats: CategoryModel, preset: dict | None = None):
+    def __init__(
+        self,
+        parent=None,
+        *,
+        conn: sqlite3.Connection,
+        cats: CategoryModel,
+        preset: dict | None = None,
+    ):
         super().__init__(parent)
         self.setMinimumSize(650, 420)
         self.setWindowTitle(tr("dlg.tracking_entry"))
@@ -55,12 +75,16 @@ class TrackerDialog(QDialog):
         self.cb_cat.setMaxVisibleItems(18)
         self.cb_cat.setToolTip(tr("tracking.category_tip"))
         try:
-            self.cb_cat.lineEdit().setPlaceholderText(tr("tracking.category_placeholder"))
+            self.cb_cat.lineEdit().setPlaceholderText(
+                tr("tracking.category_placeholder")
+            )
         except Exception:
             pass
 
         self.ed_amount = QLineEdit()
-        self.ed_amount.setPlaceholderText(tr('auto.views_tracker_dialog.54_z_b_12_50_7eb13fc1'))
+        self.ed_amount.setPlaceholderText(
+            tr("auto.views_tracker_dialog.54_z_b_12_50_7eb13fc1")
+        )
 
         self.ed_details = QLineEdit()
 
@@ -121,7 +145,6 @@ class TrackerDialog(QDialog):
         if "details" in p and p["details"] is not None:
             self.ed_details.setText(str(p["details"]))
 
-
     def _set_combo_by_data(self, combo, value: str) -> None:
         """Setzt ComboBox-Auswahl über itemData (fallback: Textvergleich)."""
         if not value:
@@ -150,12 +173,15 @@ class TrackerDialog(QDialog):
                 return [(n, n) for n in self.cats.list_names(typ)]
 
     def _fill_categories(self) -> None:
-        typ = self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
+        typ = self.cb_typ.currentData() or db_typ_from_display(
+            self.cb_typ.currentText()
+        )
         self.cb_cat.setEnabled(True)
         current_data = self.cb_cat.currentData() or self.cb_cat.currentText().strip()
 
         try:
             from views.category_picker import populate_grouped_combo
+
             grouped = self.cats.list_for_tracking_dropdown_grouped(typ)
             if grouped:
                 populate_grouped_combo(self.cb_cat, grouped)
@@ -190,7 +216,9 @@ class TrackerDialog(QDialog):
                     break
 
     def _selected_typ(self) -> str:
-        return normalize_typ(self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText()))
+        return normalize_typ(
+            self.cb_typ.currentData() or db_typ_from_display(self.cb_typ.currentText())
+        )
 
     def _selected_category(self) -> str:
         from views.category_picker import resolve_combo_category
@@ -202,22 +230,34 @@ class TrackerDialog(QDialog):
     def _validate_and_accept(self) -> None:
         typ = self._selected_typ()
         if not typ:
-            QMessageBox.warning(self, tr('auto.views_tracker_dialog.162_fehlt_fb898654'), tr("dlg.bitte_typ_auswaehlen"))
+            QMessageBox.warning(
+                self,
+                tr("auto.views_tracker_dialog.162_fehlt_fb898654"),
+                tr("dlg.bitte_typ_auswaehlen"),
+            )
             return
         category = self._selected_category()
         if not category:
-            QMessageBox.warning(self, tr('auto.views_tracker_dialog.165_fehlt_a7f19cb1'), tr("dlg.bitte_kategorie_auswaehlen"))
+            QMessageBox.warning(
+                self,
+                tr("auto.views_tracker_dialog.165_fehlt_a7f19cb1"),
+                tr("dlg.bitte_kategorie_auswaehlen"),
+            )
             return
         if not self.cats.resolve_name(typ, category):
-            QMessageBox.warning(self, tr("dlg.hinweis"), trf("dlg.unknown_category", name=category))
+            QMessageBox.warning(
+                self, tr("dlg.hinweis"), trf("dlg.unknown_category", name=category)
+            )
             return
         try:
             amt = parse_amount(self.ed_amount.text())
         except Exception:
-            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.betrag_ist_ungueltig"))
+            QMessageBox.warning(self, tr("dlg.hinweis"), tr("dlg.betrag_ist_ungueltig"))
             return
         if typ == TYP_EXPENSES and amt < 0:
-            QMessageBox.warning(self, tr("dlg.nicht_erlaubt"), tr("dlg.bei_ausgaben_sind_negative"))
+            QMessageBox.warning(
+                self, tr("dlg.nicht_erlaubt"), tr("dlg.bei_ausgaben_sind_negative")
+            )
             return
         self.accept()
 
