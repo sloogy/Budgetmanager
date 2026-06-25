@@ -17,7 +17,6 @@ Lokal ohne PySide6 werden die Tests übersprungen (skip), nicht rot.
 Ausführen:
     pytest tests/ -v
 """
-
 from __future__ import annotations
 
 import os
@@ -34,8 +33,7 @@ sys.path.insert(0, str(ROOT))
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 QtWidgets = pytest.importorskip(
-    "PySide6.QtWidgets",
-    reason="PySide6 nicht installiert — GUI-Smoke-Tests übersprungen",
+    "PySide6.QtWidgets", reason="PySide6 nicht installiert — GUI-Smoke-Tests übersprungen"
 )
 
 from PySide6.QtWidgets import QApplication  # noqa: E402
@@ -116,9 +114,8 @@ def test_language_switch_rebuilds_menus(main_window, qapp):
             f"Menüanzahl nach Sprachwechsel verändert: "
             f"{menu_count_before} → {len(actions_after)}"
         )
-        assert all(
-            a.text() or a.isSeparator() for a in actions_after
-        ), "Menü ohne Titel nach Sprachwechsel"
+        assert all(a.text() or a.isSeparator() for a in actions_after), \
+            "Menü ohne Titel nach Sprachwechsel"
     finally:
         i18n.set_language(original_lang)
         main_window._retranslate_ui()

@@ -11,7 +11,6 @@ test_picker_and_budget_reached.py) UND verankert sie über
 Quelltext-Marker-Assertions im echten Code, damit ein stilles Abdriften des
 GUI-Pfads auffällt. Läuft ohne Qt/PySide6 (reine Datenschicht).
 """
-
 from __future__ import annotations
 
 import calendar
@@ -53,7 +52,6 @@ def _fresh():
 
 # ── Reine Logik: Clamping des Soll-Tags ──────────────────────────
 
-
 def test_recurring_day_is_honored_within_month():
     assert _booking_day(2026, 1, 15) == 15
     assert _booking_day(2026, 6, 1) == 1
@@ -86,7 +84,6 @@ def test_recurring_day_lower_bound_is_first():
 
 # ── End-to-End auf der Datenschicht ──────────────────────────────
 
-
 def test_booking_lands_on_recurring_day_end_to_end():
     """Buchung über die echten Modelle landet auf dem Soll-Tag."""
     conn, p = _fresh()
@@ -95,24 +92,12 @@ def test_booking_lands_on_recurring_day_end_to_end():
         b = BudgetModel(conn)
         t = TrackingModel(conn)
         y, m = 2026, 3
-        c.create(
-            TYP_EXPENSES,
-            "Versicherung",
-            is_fix=True,
-            is_recurring=True,
-            recurring_day=17,
-        )
+        c.create(TYP_EXPENSES, "Versicherung", is_fix=True, is_recurring=True, recurring_day=17)
         b.set_amount(y, m, TYP_EXPENSES, "Versicherung", 90.0)
 
         day = _booking_day(y, m, 17)
-        t.add(
-            date(y, m, day),
-            TYP_EXPENSES,
-            "Versicherung",
-            90.0,
-            "März - Versicherung",
-            source="auto_fixcost",
-        )
+        t.add(date(y, m, day), TYP_EXPENSES, "Versicherung", 90.0,
+              "März - Versicherung", source="auto_fixcost")
 
         rows = [r for r in t.list_all_sorted() if r.category == "Versicherung"]
         assert len(rows) == 1
@@ -130,21 +115,13 @@ def test_booking_clamps_february_end_to_end():
         b = BudgetModel(conn)
         t = TrackingModel(conn)
         y, m = 2026, 2  # 28 Tage
-        c.create(
-            TYP_EXPENSES, "Leasing", is_fix=True, is_recurring=True, recurring_day=31
-        )
+        c.create(TYP_EXPENSES, "Leasing", is_fix=True, is_recurring=True, recurring_day=31)
         b.set_amount(y, m, TYP_EXPENSES, "Leasing", 250.0)
 
         day = _booking_day(y, m, 31)
         assert day == 28
-        t.add(
-            date(y, m, day),
-            TYP_EXPENSES,
-            "Leasing",
-            250.0,
-            "Februar - Leasing",
-            source="auto_fixcost",
-        )
+        t.add(date(y, m, day), TYP_EXPENSES, "Leasing", 250.0,
+              "Februar - Leasing", source="auto_fixcost")
 
         rows = [r for r in t.list_all_sorted() if r.category == "Leasing"]
         assert len(rows) == 1
@@ -155,7 +132,6 @@ def test_booking_clamps_february_end_to_end():
 
 
 # ── Verankerung: Produktionslogik existiert weiterhin im GUI-Pfad ─
-
 
 def test_production_path_still_derives_and_clamps_booking_day():
     """Stilles Abdriften des GUI-Buchungspfads soll auffallen."""

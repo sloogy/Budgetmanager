@@ -9,9 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
-def test_legacy_200k_wrapped_key_still_authenticates_and_upgrades(
-    monkeypatch, tmp_path
-):
+def test_legacy_200k_wrapped_key_still_authenticates_and_upgrades(monkeypatch, tmp_path):
     monkeypatch.setenv("BUDGETMANAGER_APP_DIR", str(tmp_path))
 
     import importlib
@@ -28,9 +26,7 @@ def test_legacy_200k_wrapped_key_still_authenticates_and_upgrades(
     secret = "1234"
     salt = crypto.generate_salt()
     db_key = crypto.generate_db_key()
-    wrapped = crypto._ensure_crypto()(
-        crypto.derive_key_from_secret(secret, salt, iterations=200_000)
-    ).encrypt(db_key)
+    wrapped = crypto._ensure_crypto()(crypto.derive_key_from_secret(secret, salt, iterations=200_000)).encrypt(db_key)
 
     user_payload = {
         "users": [

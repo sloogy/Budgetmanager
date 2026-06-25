@@ -9,7 +9,6 @@ Warum diese Datei existiert:
 Die Helfer sind bewusst konservativ: Sie erzwingen keinen festen Scale-Factor,
 sondern lassen Qt die Plattform-DPI nutzen und runden nicht grob auf/ab.
 """
-
 from __future__ import annotations
 
 import logging
@@ -48,16 +47,12 @@ def configure_qt_scaling_environment() -> None:
                 Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
             )
         except Exception as exc:  # pragma: no cover - abhaengig von Qt-Version
-            logger.debug(
-                "High-DPI-Rounding-Policy konnte nicht gesetzt werden: %s", exc
-            )
+            logger.debug("High-DPI-Rounding-Policy konnte nicht gesetzt werden: %s", exc)
     except Exception as exc:  # pragma: no cover
         logger.debug("Qt-Skalierungsumgebung konnte nicht vorbereitet werden: %s", exc)
 
 
-def clamp_geometry_to_available_screen(
-    x: int, y: int, width: int, height: int, *, margin_ratio: float = 0.96
-) -> tuple[int, int, int, int]:
+def clamp_geometry_to_available_screen(x: int, y: int, width: int, height: int, *, margin_ratio: float = 0.96) -> tuple[int, int, int, int]:
     """Fenstergeometrie in den sichtbaren Desktopbereich klemmen.
 
     Gibt ``(x, y, width, height)`` in logischen Qt-Pixeln zurueck. Hilft gegen
@@ -87,12 +82,7 @@ def clamp_geometry_to_available_screen(
         width = min(max(safe_min_w, int(width)), max_w)
         height = min(max(safe_min_h, int(height)), max_h)
 
-        if (
-            x < rect.left()
-            or y < rect.top()
-            or x + width > rect.right()
-            or y + height > rect.bottom()
-        ):
+        if x < rect.left() or y < rect.top() or x + width > rect.right() or y + height > rect.bottom():
             x = rect.left() + max(0, (rect.width() - width) // 2)
             y = rect.top() + max(0, (rect.height() - height) // 2)
 

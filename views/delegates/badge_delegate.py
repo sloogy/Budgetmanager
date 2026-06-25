@@ -1,7 +1,6 @@
 from __future__ import annotations
 import logging
 from utils.i18n import tr, trf
-
 logger = logging.getLogger(__name__)
 
 from PySide6.QtCore import Qt, QRect
@@ -27,13 +26,7 @@ class BadgeDelegate(QStyledItemDelegate):
     Optional:
       - border_color: str (Hex) oder None
     """
-
-    def __init__(
-        self,
-        parent=None,
-        color_map: dict[str, str] | None = None,
-        border_color: str | None = None,
-    ):
+    def __init__(self, parent=None, color_map: dict[str, str] | None = None, border_color: str | None = None):
         super().__init__(parent)
         self.color_map = color_map or {}
         self.border_color = border_color

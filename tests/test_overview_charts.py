@@ -7,7 +7,6 @@
 
 Läuft ohne Qt/PySide6 (reine Datenschicht + Qt-freier Aggregations-Helfer).
 """
-
 from __future__ import annotations
 
 import os
@@ -39,11 +38,8 @@ def _months_between(d1: date, d2: date):
     out = []
     while cur <= end:
         out.append((cur.year, cur.month))
-        cur = date(
-            cur.year + (1 if cur.month == 12 else 0),
-            1 if cur.month == 12 else cur.month + 1,
-            1,
-        )
+        cur = date(cur.year + (1 if cur.month == 12 else 0),
+                   1 if cur.month == 12 else cur.month + 1, 1)
     return out
 
 
@@ -63,7 +59,6 @@ def _sum_for(sums: dict, typ: str) -> float:
 
 
 # ── 1. Donut-Budget bereichsbezogen ──────────────────────────────
-
 
 def test_range_budget_spans_window_months_not_single_month():
     conn, p = _fresh()
@@ -88,7 +83,6 @@ def test_range_budget_spans_window_months_not_single_month():
 
 
 # ── 2. Top-Buchungen-Aggregation ─────────────────────────────────
-
 
 @dataclass
 class _Row:

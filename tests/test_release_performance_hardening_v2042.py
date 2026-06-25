@@ -41,15 +41,9 @@ def test_tracking_month_checks_are_boundary_correct_and_index_friendly():
         model.add(date(2026, 1, 31), TYP_EXPENSES, "Miete", 100)
         model.add(date(2026, 2, 1), TYP_EXPENSES, "Miete", 200)
 
-        assert model.exists_in_month(
-            year=2026, month=1, typ=TYP_EXPENSES, category="Miete"
-        )
-        assert model.exists_in_month(
-            year=2026, month=2, typ=TYP_EXPENSES, category="Miete"
-        )
-        assert not model.exists_in_month(
-            year=2026, month=3, typ=TYP_EXPENSES, category="Miete"
-        )
+        assert model.exists_in_month(year=2026, month=1, typ=TYP_EXPENSES, category="Miete")
+        assert model.exists_in_month(year=2026, month=2, typ=TYP_EXPENSES, category="Miete")
+        assert not model.exists_in_month(year=2026, month=3, typ=TYP_EXPENSES, category="Miete")
 
         src = inspect.getsource(TrackingModel.exists_in_month)
         assert "substr(date" not in src
@@ -71,18 +65,14 @@ def test_tracking_year_month_aggregates_keep_semantics_without_year_substr_filte
             TYP_INCOME: 2000.0,
             TYP_EXPENSES: 500.0,
         }
-        assert model.sum_by_category(TYP_EXPENSES, year=2026, month=1) == {
-            "Miete": 500.0
-        }
+        assert model.sum_by_category(TYP_EXPENSES, year=2026, month=1) == {"Miete": 500.0}
         by_month = model.sum_by_month(2026, TYP_EXPENSES)
         assert by_month[1] == 500.0
         assert by_month[2] == 700.0
         assert by_month[12] == 0.0
 
         assert "substr(date,1,4)" not in inspect.getsource(TrackingModel.sum_by_typ)
-        assert "substr(date,1,4)" not in inspect.getsource(
-            TrackingModel.sum_by_category
-        )
+        assert "substr(date,1,4)" not in inspect.getsource(TrackingModel.sum_by_category)
         assert "substr(date,1,4)" not in inspect.getsource(TrackingModel.sum_by_month)
     finally:
         conn.close()

@@ -1,46 +1,75 @@
 # Portable Updater (GitHub Releases)
 
-Dieser Updater ist für die portable Version gedacht:
+Der Updater ersetzt Programmdateien, aber keine Nutzerdaten:
 
-- `data/` bleibt erhalten (DB, Settings, Backups).
-- Update ersetzt nur Programmdateien.
-- Windows-Installer-Installationen bevorzugen das Installer-Asset `windows_installer`.
-- Portable Windows/Linux bevorzugen das portable ZIP.
+- `data/` bleibt erhalten: DB, Settings, Backups.
+- `updates/` bleibt erhalten: Staging, Cache und Rollback-Backups.
+- Windows-Installer-Installationen bevorzugen das Asset `windows_installer` mit Typ `installer`.
+- Portable Windows/Linux behalten die Plattform-Keys `windows` und `linux` als portable ZIPs.
 
 ## Manifest-URL (Default)
 
-Der Updater erwartet ein `latest.json` im GitHub Release:
+Der Updater erwartet ein `latest.json` im neuesten GitHub Release:
 
 ```text
 https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json
 ```
 
-## latest.json erzeugen (inkl. SHA256)
+## Updater-Vertrag
 
-Der GitHub-Workflow erzeugt `latest.json` automatisch. Für einen manuellen Build von v2.1.0 kann das Manifest so erzeugt werden:
+In `latest.json` müssen diese Plattform-Keys update-sicher bleiben:
 
-```bash
-python -m updater.generate_manifest \
-  --version 2.1.0 \
-  --release-tag v2.1.0 \
-  --channel stable \
-  --windows-zip dist/BudgetManager-v2.1.0-portable.zip \
-  --linux-zip dist/BudgetManager-v2.1.0-portable.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0 \
-  --out latest.json
+```json
+{
+  "assets": {
+    "windows": { "type": "portable-zip" },
+    "linux": { "type": "portable-zip" },
+    "windows_installer": { "type": "installer" }
+  }
+}
 ```
 
-GitHub-Release-Assets für v2.1.0:
+Wichtig: `windows_installer` muss exakt den Typ `installer` haben. Der Updater erkennt nur so, dass eine Setup-EXE gestaged und später im Installer-Update-Modus gestartet werden muss.
 
-- `BudgetManager-v2.1.0-portable.zip`
+Die portablen ZIPs müssen stabile Binary-Namen enthalten:
+
+- Windows: `BudgetManager.exe`
+- Linux: `BudgetManager`
+
+## Vollständige Release-Artefakte erzeugen
+
+Bevorzugt über den GitHub-Workflow `.github/workflows/build.yml`.
+
+Lokal kann das Paketieren so getestet werden:
+
+```bash
+python tools/build_release_assets.py   --version 2.1.0   --release-tag v2.1.0   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0   --windows-build-dir artifacts/windows   --linux-build-dir artifacts/linux   --out-dir release_assets
+```
+
+Das erzeugt:
+
+- `BudgetManager-v2.1.0-portable-windows.zip`
+- `BudgetManager-v2.1.0-portable-linux.zip`
 - `BudgetManager-v2.1.0-windows.exe`
 - `BudgetManager-v2.1.0-linux`
-- `BudgetManager_Setup_2.1.0.exe`
+- `BudgetManager_Setup_2.1.0.exe`, falls der Installer vorhanden ist.
+- `BudgetManager_Setup_2.1.0.zip`, falls der Installer vorhanden ist.
 - `latest.json`
+- `SHA256SUMS.txt`
+
+Der direkte Installer bleibt für Nutzer verfügbar. Der Installer-ZIP ist der Windows-Download-Fallback, wenn Browser oder SmartScreen die direkte EXE blockieren.
+
+## Nur latest.json erzeugen
+
+Der kleine Manifest-Helfer bleibt für einfache ZIP-Releases erhalten:
+
+```bash
+python -m updater.generate_manifest   --version 2.1.0   --release-tag v2.1.0   --channel stable   --windows-zip dist/BudgetManager-v2.1.0-portable-windows.zip   --linux-zip dist/BudgetManager-v2.1.0-portable-linux.zip   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0   --out latest.json
+```
 
 Der Updater prüft die SHA256-Werte aus dem Manifest fail-closed. Fehlt ein Hash oder passt er nicht, wird das Update abgelehnt.
 
-## Nutzung (manuell)
+## Nutzung manuell
 
 1. Prüfen, Download und Staging:
 
@@ -56,4 +85,4 @@ python -m updater.check_update
 python -m updater.apply_update
 ```
 
-Unter Windows muss die gestartete EXE geschlossen sein, sonst kann sie nicht ersetzt werden.
+Unter Windows startet die App dafür einen externen Helfer, damit `BudgetManager.exe` nicht während des laufenden Prozesses überschrieben werden muss.

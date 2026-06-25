@@ -37,21 +37,15 @@ _FALLBACK_LANG = "de"
 # ── Interner State ──────────────────────────────────────────────
 
 _lang: str = _FALLBACK_LANG
-_strings: dict[str, str] = {}  # aktive Sprache
-_fallback: dict[str, str] = {}  # de.json (immer geladen)
-_available: list[str] = []  # verfuegbare Sprachcodes
+_strings: dict[str, str] = {}       # aktive Sprache
+_fallback: dict[str, str] = {}      # de.json (immer geladen)
+_available: list[str] = []          # verfuegbare Sprachcodes
 
 # Missing-Key Debug (optional)
-_debug_missing_keys: bool = os.environ.get("BM_I18N_DEBUG", "").strip() not in (
-    "",
-    "0",
-    "false",
-    "False",
-)
+_debug_missing_keys: bool = os.environ.get("BM_I18N_DEBUG", "").strip() not in ("", "0", "false", "False")
 
 
 # ── Laden ───────────────────────────────────────────────────────
-
 
 def _load_json(lang_code: str) -> dict[str, str]:
     """Laedt eine locale/<code>.json Datei.  Gibt {} bei Fehler zurueck."""
@@ -98,18 +92,14 @@ def _discover_languages() -> list[str]:
 
 # ── Oeffentliche API ────────────────────────────────────────────
 
-
 def init() -> None:
     """Initialisiert das Uebersetzungssystem.  Wird automatisch aufgerufen."""
     global _fallback, _strings, _available
     _available = _discover_languages()
     _fallback = _load_json(_FALLBACK_LANG)
     _strings = _fallback.copy()
-    logger.debug(
-        "i18n initialisiert: %d Sprachen, %d Fallback-Strings",
-        len(_available),
-        len(_fallback),
-    )
+    logger.debug("i18n initialisiert: %d Sprachen, %d Fallback-Strings",
+                 len(_available), len(_fallback))
 
 
 def set_language(code: str) -> None:
@@ -120,14 +110,10 @@ def set_language(code: str) -> None:
     global _lang, _strings
 
     name_map = {
-        "deutsch": "de",
-        "german": "de",
-        "englisch": "en",
-        "english": "en",
-        "französisch": "fr",
-        "french": "fr",
-        "italiano": "it",
-        "italian": "it",
+        "deutsch": "de", "german": "de",
+        "englisch": "en", "english": "en",
+        "französisch": "fr", "french": "fr",
+        "italiano": "it", "italian": "it",
     }
     low = code.lower().strip()
     resolved = name_map.get(low, low)
@@ -208,36 +194,21 @@ def tr_msg(message) -> str:
     - 'key.path'                  -> tr
     - alles andere                -> str(message)
     """
-    if (
-        isinstance(message, tuple)
-        and len(message) == 2
-        and isinstance(message[0], str)
-        and isinstance(message[1], dict)
-    ):
+    if isinstance(message, tuple) and len(message) == 2 and isinstance(message[0], str) and isinstance(message[1], dict):
         return trf(message[0], **message[1])
     if isinstance(message, str):
         # Wenn es wie ein Key aussieht, versuchen wir tr().
         if "." in message and message.split(".", 1)[0] in {
-            "msg",
-            "dlg",
-            "tab_ui",
-            "account",
-            "budget",
-            "export",
-            "update",
-            "common",
-            "database",
-            "error",
-            "info",
-            "settings_ui",
+            "msg", "dlg", "tab_ui", "account", "budget", "export", "update", "common", "database", "error", "info", "settings_ui",
         }:
             return tr(message)
         return message
     return str(message)
 
 
-# ── Display-Helfer fuer Sicherheitsstufen ───────────────────────
 
+
+# ── Display-Helfer fuer Sicherheitsstufen ───────────────────────
 
 def display_security_label(security: str) -> str:
     """Lokalisiert technische Sicherheitsstufenwerte fuer die UI.
@@ -262,7 +233,6 @@ def display_secret_kind(security_or_kind: str) -> str:
 
 
 # ── Display-Helfer fuer DB-Werte ────────────────────────────────
-
 
 def display_typ(db_typ: str) -> str:
     """Uebersetzt einen DB-Typwert ('Ausgaben') in die Anzeigesprache.
@@ -289,7 +259,6 @@ def tr_category_name(name: str) -> str:
     """Übersetzt bekannte Default-Kategorien (ohne DB-Migration)."""
     try:
         from utils.category_i18n import DEFAULT_CATEGORY_NAME_TO_KEY
-
         key = DEFAULT_CATEGORY_NAME_TO_KEY.get(name)
         return tr(key) if key else name
     except Exception:

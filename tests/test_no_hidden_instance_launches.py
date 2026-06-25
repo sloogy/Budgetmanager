@@ -8,14 +8,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 def test_cockpit_does_not_launch_processes() -> None:
     source = (ROOT / "views" / "tabs" / "cockpit_tab.py").read_text(encoding="utf-8")
-    forbidden = [
-        "QProcess",
-        "subprocess",
-        "Popen",
-        "startDetached",
-        "sys.executable",
-        "main.py",
-    ]
+    forbidden = ["QProcess", "subprocess", "Popen", "startDetached", "sys.executable", "main.py"]
     for token in forbidden:
         assert token not in source
 
@@ -30,13 +23,11 @@ def test_restore_window_state_does_not_show_window_inside_constructor() -> None:
     source = (ROOT / "views" / "main_window.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     main_window = next(
-        node
-        for node in tree.body
+        node for node in tree.body
         if isinstance(node, ast.ClassDef) and node.name == "MainWindow"
     )
     fn = next(
-        node
-        for node in main_window.body
+        node for node in main_window.body
         if isinstance(node, ast.FunctionDef) and node.name == "_restore_window_state"
     )
     forbidden_calls = {"show", "showMaximized", "showFullScreen"}

@@ -157,10 +157,18 @@ end;
 function ExistingDataDirFromMarker: String;
 var
   MarkerFile: String;
+  AppDir: String;
   JsonText: AnsiString;
 begin
   Result := '';
-  MarkerFile := ExpandConstant('{app}\installation.json');
+
+  { In InitializeWizard ist die App-Pfad-Konstante noch nicht initialisiert.
+    WizardDirValue enthält hier den aktuellen/Default-Installationspfad. }
+  AppDir := WizardDirValue;
+  if AppDir = '' then
+    AppDir := ExpandConstant('{autopf}\{#MyAppName}');
+
+  MarkerFile := AddBackslash(AppDir) + 'installation.json';
   if FileExists(MarkerFile) then
   begin
     if LoadStringFromFile(MarkerFile, JsonText) then

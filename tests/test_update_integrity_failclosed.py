@@ -7,7 +7,6 @@ Andernfalls könnte ein manipuliertes Manifest die Integritätsprüfung umgehen.
 Ebenfalls geprüft: is_newer liefert bei nicht interpretierbaren Versionen
 konservativ False (kein fälschlicher Update-Hinweis).
 """
-
 from __future__ import annotations
 
 import hashlib
@@ -43,20 +42,10 @@ def test_update_without_sha256_is_rejected(monkeypatch, tmp_path):
             },
         ),
     )
-    monkeypatch.setattr(
-        check_update, "cache_zip_path", lambda remote: tmp_path / f"u_{remote}.zip"
-    )
-    monkeypatch.setattr(
-        check_update,
-        "download_file",
-        lambda url, dest: dest.write_bytes(source_zip.read_bytes()),
-    )
-    monkeypatch.setattr(
-        check_update, "staging_dir_for", lambda remote: tmp_path / "staging" / remote
-    )
-    monkeypatch.setattr(
-        check_update, "write_check_result", lambda data: writes.append(dict(data))
-    )
+    monkeypatch.setattr(check_update, "cache_zip_path", lambda remote: tmp_path / f"u_{remote}.zip")
+    monkeypatch.setattr(check_update, "download_file", lambda url, dest: dest.write_bytes(source_zip.read_bytes()))
+    monkeypatch.setattr(check_update, "staging_dir_for", lambda remote: tmp_path / "staging" / remote)
+    monkeypatch.setattr(check_update, "write_check_result", lambda data: writes.append(dict(data)))
 
     rc = check_update.main()
 
@@ -96,20 +85,10 @@ def test_update_with_wrong_sha256_is_rejected(monkeypatch, tmp_path):
             },
         ),
     )
-    monkeypatch.setattr(
-        check_update, "cache_zip_path", lambda remote: tmp_path / f"u_{remote}.zip"
-    )
-    monkeypatch.setattr(
-        check_update,
-        "download_file",
-        lambda url, dest: dest.write_bytes(source_zip.read_bytes()),
-    )
-    monkeypatch.setattr(
-        check_update, "staging_dir_for", lambda remote: tmp_path / "staging" / remote
-    )
-    monkeypatch.setattr(
-        check_update, "write_check_result", lambda data: writes.append(dict(data))
-    )
+    monkeypatch.setattr(check_update, "cache_zip_path", lambda remote: tmp_path / f"u_{remote}.zip")
+    monkeypatch.setattr(check_update, "download_file", lambda url, dest: dest.write_bytes(source_zip.read_bytes()))
+    monkeypatch.setattr(check_update, "staging_dir_for", lambda remote: tmp_path / "staging" / remote)
+    monkeypatch.setattr(check_update, "write_check_result", lambda data: writes.append(dict(data)))
 
     rc = check_update.main()
     assert rc != 0

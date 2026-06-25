@@ -12,8 +12,8 @@ Beispiel (Windows + Linux ZIPs):
     --version 2.1.0 \
     --release-tag v2.1.0 \
     --channel stable \
-    --windows-zip dist/BudgetManager-v2.1.0-portable.zip \
-    --linux-zip dist/BudgetManager-v2.1.0-portable.zip \
+    --windows-zip dist/BudgetManager-v2.1.0-portable-windows.zip \
+    --linux-zip dist/BudgetManager-v2.1.0-portable-linux.zip \
     --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0 \
     --out latest.json
 
@@ -33,7 +33,7 @@ def _asset_entry(base_url: str, zip_path: Path) -> dict:
     return {
         "url": f"{base_url.rstrip('/')}/{zip_path.name}",
         "sha256": sha256_file(zip_path),
-        "type": "portable",
+        "type": "portable-zip",
     }
 
 

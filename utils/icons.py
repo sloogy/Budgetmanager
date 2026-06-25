@@ -6,7 +6,6 @@ Strategie:
 2) Falls nicht verfuegbar: Emoji auf transparentes QPixmap zeichnen.
 3) Falls Emoji nicht sichtbar renderbar: farbiger Buchstaben-Fallback.
 """
-
 from __future__ import annotations
 
 import logging

@@ -14,7 +14,6 @@ Aufruf aus dem Projekt-Root:
     python tools/sync_version.py
     python tools/sync_version.py --check
 """
-
 from __future__ import annotations
 
 import json
@@ -39,22 +38,37 @@ def _latest_template_data() -> dict:
         "assets": {
             "windows": {
                 "type": "portable-zip",
-                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable.zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable-windows.zip",
                 "sha256": "PUT_SHA256_HERE",
             },
             "linux": {
                 "type": "portable-zip",
-                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable.zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable-linux.zip",
+                "sha256": "PUT_SHA256_HERE",
+            },
+            "portable_windows_zip": {
+                "type": "portable-zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable-windows.zip",
+                "sha256": "PUT_SHA256_HERE",
+            },
+            "portable_linux_zip": {
+                "type": "portable-zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable-linux.zip",
                 "sha256": "PUT_SHA256_HERE",
             },
             "portable_zip": {
                 "type": "portable-zip",
-                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable.zip",
+                "url": f"{base}/BudgetManager-v{APP_VERSION}-portable-windows.zip",
                 "sha256": "PUT_SHA256_HERE",
             },
             "windows_installer": {
                 "type": "installer",
                 "url": f"{base}/BudgetManager_Setup_{APP_VERSION}.exe",
+                "sha256": "PUT_SHA256_HERE",
+            },
+            "windows_installer_zip": {
+                "type": "installer-zip",
+                "url": f"{base}/BudgetManager_Setup_{APP_VERSION}.zip",
                 "sha256": "PUT_SHA256_HERE",
             },
             "direct_windows_exe": {
@@ -84,9 +98,7 @@ def sync_version_json(check: bool) -> bool:
         return ok
     data["app"] = APP_NAME
     data["version"] = APP_VERSION
-    p.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return True
 
 
@@ -141,9 +153,7 @@ def sync_latest_template(rel_path: str, check: bool) -> bool:
     if check or ok:
         return ok
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(
-        json.dumps(expected, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    p.write_text(json.dumps(expected, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     return True
 
 
@@ -154,9 +164,7 @@ def main() -> int:
         "VERSION_INFO.txt": sync_version_info_txt(check),
         "installer/budgetmanager_setup.iss": sync_installer(check),
         "latest.json.template": sync_latest_template("latest.json.template", check),
-        "docs/latest.json.template": sync_latest_template(
-            "docs/latest.json.template", check
-        ),
+        "docs/latest.json.template": sync_latest_template("docs/latest.json.template", check),
     }
     if check:
         bad = [name for name, ok in results.items() if not ok]

@@ -6,13 +6,9 @@ from utils.money import parse_money, CURRENCIES
 
 import logging
 from utils.i18n import tr, trf, db_typ_from_display
-
 logger = logging.getLogger(__name__)
 
-
-def apply_tracking_type_colors(
-    table, type_colors: dict[str, str], negative_color: str | None = None
-) -> None:
+def apply_tracking_type_colors(table, type_colors: dict[str, str], negative_color: str | None = None) -> None:
     """
     Erwartet QTableWidget mit Spalten:
       Datum | Typ | Kategorie | <Währung> | Details | _id

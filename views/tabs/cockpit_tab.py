@@ -7,25 +7,10 @@ from typing import Iterable
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QProgressBar,
-    QGridLayout,
-    QScrollArea,
-    QMenu,
-    QSizePolicy,
-    QDialog,
-    QListWidget,
-    QListWidgetItem,
-    QDialogButtonBox,
-    QAbstractScrollArea,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QTableWidget, QTableWidgetItem, QHeaderView, QProgressBar, QGridLayout,
+    QScrollArea, QMenu, QSizePolicy, QDialog, QListWidget, QListWidgetItem,
+    QDialogButtonBox, QAbstractScrollArea
 )
 
 from model.favorites_model import FavoritesModel
@@ -39,6 +24,7 @@ from utils.money import format_money
 from utils.icons import get_icon
 
 logger = logging.getLogger(__name__)
+
 
 
 class _Card(QFrame):
@@ -135,12 +121,7 @@ class CockpitTab(QWidget):
             if self.settings.get(marker, False):
                 return
             cfg = self.settings.get("cockpit_visible_panels", {}) or {}
-            cfg = {
-                **self.PANEL_DEFAULTS,
-                **cfg,
-                "warnings": True,
-                "budget_warnings": True,
-            }
+            cfg = {**self.PANEL_DEFAULTS, **cfg, "warnings": True, "budget_warnings": True}
             self.settings.set("cockpit_visible_panels", cfg)
             self.settings.set(marker, True)
         except Exception:
@@ -192,9 +173,7 @@ class CockpitTab(QWidget):
         self.card_balance = _Card(tr("cockpit.month_feeling"), "–")
         # 2x2 statt 4 nebeneinander: deutlich robuster bei Windows 125/150 %,
         # kleinen Notebook-Displays und portabler Nutzung an fremden Monitoren.
-        for i, card in enumerate(
-            [self.card_income, self.card_expenses, self.card_savings, self.card_balance]
-        ):
+        for i, card in enumerate([self.card_income, self.card_expenses, self.card_savings, self.card_balance]):
             card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
             card.setMinimumWidth(0)
             row, col = divmod(i, 2)
@@ -209,40 +188,14 @@ class CockpitTab(QWidget):
         act_lay.setContentsMargins(10, 28, 10, 10)
         act_lay.setHorizontalSpacing(8)
         act_lay.setVerticalSpacing(8)
-        for i, (label, slot, tip) in enumerate(
-            [
-                (
-                    tr("cockpit.action_quick_add"),
-                    self.quick_add_requested.emit,
-                    tr("cockpit.action_quick_add_tip"),
-                ),
-                (
-                    tr("cockpit.action_fixcosts"),
-                    self.fixcost_requested.emit,
-                    tr("cockpit.action_fixcosts_tip"),
-                ),
-                (
-                    tr("cockpit.action_check_budget"),
-                    self.goto_budget_requested.emit,
-                    tr("cockpit.action_check_budget_tip"),
-                ),
-                (
-                    tr("cockpit.action_budget_warnings"),
-                    self.budget_warnings_requested.emit,
-                    tr("cockpit.action_budget_warnings_tip"),
-                ),
-                (
-                    tr("cockpit.action_savings"),
-                    self.savings_requested.emit,
-                    tr("cockpit.action_savings_tip"),
-                ),
-                (
-                    tr("cockpit.action_overview"),
-                    self.goto_overview_requested.emit,
-                    tr("cockpit.action_overview_tip"),
-                ),
-            ]
-        ):
+        for i, (label, slot, tip) in enumerate([
+            (tr("cockpit.action_quick_add"), self.quick_add_requested.emit, tr("cockpit.action_quick_add_tip")),
+            (tr("cockpit.action_fixcosts"), self.fixcost_requested.emit, tr("cockpit.action_fixcosts_tip")),
+            (tr("cockpit.action_check_budget"), self.goto_budget_requested.emit, tr("cockpit.action_check_budget_tip")),
+            (tr("cockpit.action_budget_warnings"), self.budget_warnings_requested.emit, tr("cockpit.action_budget_warnings_tip")),
+            (tr("cockpit.action_savings"), self.savings_requested.emit, tr("cockpit.action_savings_tip")),
+            (tr("cockpit.action_overview"), self.goto_overview_requested.emit, tr("cockpit.action_overview_tip")),
+        ]):
             b = QPushButton(label)
             b.setToolTip(tip)
             b.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
@@ -256,13 +209,7 @@ class CockpitTab(QWidget):
         # Main grid-ish rows
         self.favorites_panel = self._table_section(
             tr("cockpit.panel.favorites"),
-            [
-                tr("col.typ"),
-                tr("col.kategorie"),
-                tr("col.budget"),
-                tr("col.gebucht"),
-                tr("col.rest"),
-            ],
+            [tr("col.typ"), tr("col.kategorie"), tr("col.budget"), tr("col.gebucht"), tr("col.rest")],
         )
         self.tbl_favorites = self.favorites_panel.findChild(QTableWidget)
         self._add_panel("favorites", self.favorites_panel)
@@ -274,67 +221,34 @@ class CockpitTab(QWidget):
 
         self.warnings_panel = self._table_section(
             tr("cockpit.panel.warnings"),
-            [
-                tr("col.status"),
-                tr("col.typ"),
-                tr("col.kategorie"),
-                tr("col.budget"),
-                tr("col.gebucht"),
-            ],
+            [tr("col.status"), tr("col.typ"), tr("col.kategorie"), tr("col.budget"), tr("col.gebucht")],
         )
         self.tbl_warnings = self.warnings_panel.findChild(QTableWidget)
-        self.tbl_warnings.itemDoubleClicked.connect(
-            lambda *_: self.budget_warnings_requested.emit()
-        )
+        self.tbl_warnings.itemDoubleClicked.connect(lambda *_: self.budget_warnings_requested.emit())
         self._add_panel("warnings", self.warnings_panel)
 
         self.budget_warnings_panel = self._table_section(
             tr("cockpit.panel.budget_warnings"),
-            [
-                tr("col.typ"),
-                tr("col.kategorie"),
-                tr("col.budget"),
-                tr("col.gebucht"),
-                tr("col.auslastung"),
-                tr("col.empfehlung"),
-            ],
+            [tr("col.typ"), tr("col.kategorie"), tr("col.budget"), tr("col.gebucht"), tr("col.auslastung"), tr("col.empfehlung")],
         )
         self.tbl_budget_warnings = self.budget_warnings_panel.findChild(QTableWidget)
-        self.tbl_budget_warnings.itemDoubleClicked.connect(
-            lambda *_: self.budget_warnings_requested.emit()
-        )
+        self.tbl_budget_warnings.itemDoubleClicked.connect(lambda *_: self.budget_warnings_requested.emit())
         self._add_panel("budget_warnings", self.budget_warnings_panel)
 
         self.missing_panel = self._table_section(
             tr("cockpit.panel.missing"),
-            [
-                tr("col.typ"),
-                tr("col.kategorie"),
-                tr("col.faelligkeit"),
-                tr("col.rest"),
-                tr("col.aktion"),
-            ],
+            [tr("col.typ"), tr("col.kategorie"), tr("col.faelligkeit"), tr("col.rest"), tr("col.aktion")],
         )
         self.tbl_missing = self.missing_panel.findChild(QTableWidget)
-        self.tbl_missing.itemDoubleClicked.connect(
-            lambda *_: self.fixcost_requested.emit()
-        )
+        self.tbl_missing.itemDoubleClicked.connect(lambda *_: self.fixcost_requested.emit())
         self._add_panel("missing", self.missing_panel)
 
         self.recent_panel = self._table_section(
             tr("cockpit.panel.recent"),
-            [
-                tr("col.datum"),
-                tr("col.typ"),
-                tr("col.kategorie"),
-                tr("col.betrag"),
-                tr("col.bemerkung"),
-            ],
+            [tr("col.datum"), tr("col.typ"), tr("col.kategorie"), tr("col.betrag"), tr("col.bemerkung")],
         )
         self.tbl_recent = self.recent_panel.findChild(QTableWidget)
-        self.tbl_recent.itemDoubleClicked.connect(
-            lambda *_: self.goto_tracking_requested.emit()
-        )
+        self.tbl_recent.itemDoubleClicked.connect(lambda *_: self.goto_tracking_requested.emit())
         self._add_panel("recent", self.recent_panel)
 
         self.body_layout.addStretch(1)
@@ -408,9 +322,7 @@ class CockpitTab(QWidget):
         self._apply_panel_visibility()
 
     # ── Refresh helpers ──────────────────────────────────────────
-    def _sum_budget_actual(
-        self, y: int, m: int, typ: str, category: str | None = None
-    ) -> tuple[float, float]:
+    def _sum_budget_actual(self, y: int, m: int, typ: str, category: str | None = None) -> tuple[float, float]:
         start, end = month_bounds(y, m)
         params_b: list[object] = [y, m, typ]
         params_a: list[object] = [start, end, typ]
@@ -429,29 +341,14 @@ class CockpitTab(QWidget):
         income_b, income_a = self._sum_budget_actual(y, m, TYP_INCOME)
         exp_b, exp_a = self._sum_budget_actual(y, m, TYP_EXPENSES)
         sav_b, sav_a = self._sum_budget_actual(y, m, TYP_SAVINGS)
-        self.card_income.set_values(
-            format_money(income_a),
-            tr("cockpit.kpi_budget").format(amount=format_money(income_b)),
-        )
-        self.card_expenses.set_values(
-            format_money(exp_a),
-            tr("cockpit.kpi_budget").format(amount=format_money(exp_b)),
-        )
-        self.card_savings.set_values(
-            format_money(sav_a),
-            tr("cockpit.kpi_budget").format(amount=format_money(sav_b)),
-        )
+        self.card_income.set_values(format_money(income_a), tr("cockpit.kpi_budget").format(amount=format_money(income_b)))
+        self.card_expenses.set_values(format_money(exp_a), tr("cockpit.kpi_budget").format(amount=format_money(exp_b)))
+        self.card_savings.set_values(format_money(sav_a), tr("cockpit.kpi_budget").format(amount=format_money(sav_b)))
         rest = income_a - exp_a - sav_a
-        hint = (
-            tr("cockpit.balance_positive")
-            if rest >= 0
-            else tr("cockpit.balance_warning")
-        )
+        hint = tr("cockpit.balance_positive") if rest >= 0 else tr("cockpit.balance_warning")
         self.card_balance.set_values(format_money(rest), hint)
 
-    def _set_table_rows(
-        self, table: QTableWidget, rows: Iterable[Iterable[str]], empty_text: str
-    ) -> None:
+    def _set_table_rows(self, table: QTableWidget, rows: Iterable[Iterable[str]], empty_text: str) -> None:
         rows = list(rows)
         if not rows:
             table.setRowCount(1)
@@ -484,20 +381,14 @@ class CockpitTab(QWidget):
             header.setStretchLastSection(True)
             fm = table.fontMetrics()
             for c in range(table.columnCount()):
-                text = (
-                    table.horizontalHeaderItem(c).text()
-                    if table.horizontalHeaderItem(c)
-                    else ""
-                )
+                text = table.horizontalHeaderItem(c).text() if table.horizontalHeaderItem(c) else ""
                 min_w = max(72, fm.horizontalAdvance(str(text)) + 28)
                 # Kategorie/Bemerkung/Empfehlung brauchen auf skalierten Displays mehr Platz.
                 if c in (1, table.columnCount() - 1):
                     min_w = max(min_w, 140)
                 table.setColumnWidth(c, min_w)
         except Exception as exc:
-            logger.debug(
-                "Cockpit-Tabellenspalten konnten nicht stabilisiert werden: %s", exc
-            )
+            logger.debug("Cockpit-Tabellenspalten konnten nicht stabilisiert werden: %s", exc)
 
     def _refresh_favorites(self, y: int, m: int) -> None:
         favs = FavoritesModel(self.conn).list_all()[:12]
@@ -506,15 +397,7 @@ class CockpitTab(QWidget):
             b, a = self._sum_budget_actual(y, m, typ, cat)
             # Für Einnahmen ist Rest = Ist-Budget; für Ausgaben/Ersparnisse Budget-Ist.
             rest = (a - b) if typ == TYP_INCOME else (b - a)
-            rows.append(
-                [
-                    display_typ(typ),
-                    cat,
-                    format_money(b),
-                    format_money(a),
-                    format_money(rest),
-                ]
-            )
+            rows.append([display_typ(typ), cat, format_money(b), format_money(a), format_money(rest)])
         self._set_table_rows(self.tbl_favorites, rows, tr("cockpit.empty_favorites"))
 
     def _refresh_savings(self) -> None:
@@ -524,11 +407,7 @@ class CockpitTab(QWidget):
             w = item.widget()
             if w:
                 w.deleteLater()
-        goals = [
-            g
-            for g in SavingsGoalsModel(self.conn).list_all()
-            if getattr(g, "status", STATUS_SAVING) in (STATUS_SAVING, STATUS_RELEASED)
-        ][:6]
+        goals = [g for g in SavingsGoalsModel(self.conn).list_all() if getattr(g, "status", STATUS_SAVING) in (STATUS_SAVING, STATUS_RELEASED)][:6]
         if not goals:
             lbl = QLabel(tr("cockpit.no_active_savings"))
             lbl.setWordWrap(True)
@@ -541,11 +420,7 @@ class CockpitTab(QWidget):
             bar = QProgressBar()
             target = float(getattr(g, "target_amount", 0) or 0)
             current = float(getattr(g, "current_amount", 0) or 0)
-            pct = (
-                int(max(0, min(100, round((current / target) * 100))))
-                if target > 0
-                else 0
-            )
+            pct = int(max(0, min(100, round((current / target) * 100)))) if target > 0 else 0
             bar.setValue(pct)
             bar.setFormat(f"{pct}% · {format_money(current)} / {format_money(target)}")
             btn = QPushButton(tr("cockpit.open"))
@@ -574,11 +449,8 @@ class CockpitTab(QWidget):
             HAVING budget > 0
             ORDER BY b.typ, b.category
         """
-        for typ, cat, budget, actual in self.conn.execute(
-            sql, (start, end, y, m)
-        ).fetchall():
-            budget = float(budget or 0)
-            actual = float(actual or 0)
+        for typ, cat, budget, actual in self.conn.execute(sql, (start, end, y, m)).fetchall():
+            budget = float(budget or 0); actual = float(actual or 0)
             status = None
             if typ == TYP_EXPENSES:
                 if actual > budget:
@@ -589,15 +461,7 @@ class CockpitTab(QWidget):
                 if actual < budget:
                     status = "🟡 " + tr("cockpit.warning_goal_open")
             if status:
-                rows.append(
-                    [
-                        status,
-                        display_typ(typ),
-                        cat,
-                        format_money(budget),
-                        format_money(actual),
-                    ]
-                )
+                rows.append([status, display_typ(typ), cat, format_money(budget), format_money(actual)])
             if len(rows) >= 10:
                 break
         self._set_table_rows(self.tbl_warnings, rows, tr("cockpit.empty_warnings"))
@@ -613,18 +477,12 @@ class CockpitTab(QWidget):
         try:
             if self._warnings_model_ext is None:
                 self._warnings_model_ext = BudgetWarningsModelExtended(self.conn)
-            excs = self._warnings_model_ext.check_warnings_extended(
-                y, m, lookback_months=6
-            )
+            excs = self._warnings_model_ext.check_warnings_extended(y, m, lookback_months=6)
         except Exception as e:
             logger.debug("budget_warnings: %s", e)
             excs = []
 
-        excs = sorted(
-            excs,
-            key=lambda e: float(getattr(e, "percent_used", 0.0) or 0.0),
-            reverse=True,
-        )
+        excs = sorted(excs, key=lambda e: float(getattr(e, "percent_used", 0.0) or 0.0), reverse=True)
         rows = []
         for exc in excs[:10]:
             pct = float(getattr(exc, "percent_used", 0.0) or 0.0)
@@ -632,19 +490,15 @@ class CockpitTab(QWidget):
             auslastung = f"{pct:.0f}%" + (f" ({cnt}×)" if cnt > 1 else "")
             sug = getattr(exc, "suggestion", None)
             empfehlung = format_money(float(sug)) if sug else "—"
-            rows.append(
-                [
-                    display_typ(getattr(exc, "typ", "")),
-                    str(getattr(exc, "category", "")),
-                    format_money(float(getattr(exc, "budget", 0.0) or 0.0)),
-                    format_money(float(getattr(exc, "spent", 0.0) or 0.0)),
-                    auslastung,
-                    empfehlung,
-                ]
-            )
-        self._set_table_rows(
-            self.tbl_budget_warnings, rows, tr("cockpit.empty_budget_warnings")
-        )
+            rows.append([
+                display_typ(getattr(exc, "typ", "")),
+                str(getattr(exc, "category", "")),
+                format_money(float(getattr(exc, "budget", 0.0) or 0.0)),
+                format_money(float(getattr(exc, "spent", 0.0) or 0.0)),
+                auslastung,
+                empfehlung,
+            ])
+        self._set_table_rows(self.tbl_budget_warnings, rows, tr("cockpit.empty_budget_warnings"))
 
     def _refresh_missing(self, y: int, m: int) -> None:
         rows = []
@@ -683,8 +537,7 @@ class CockpitTab(QWidget):
         }
         EPS = 1e-6
         for typ, name, is_fix, is_recurring, day in self.conn.execute(sql).fetchall():
-            is_fix = bool(is_fix)
-            is_recurring = bool(is_recurring)
+            is_fix = bool(is_fix); is_recurring = bool(is_recurring)
             budget = budgets.get((str(typ), str(name)), 0.0)
             booked = booked_totals.get((str(typ), str(name)), 0.0)
 
@@ -703,15 +556,7 @@ class CockpitTab(QWidget):
                     rest = budget - booked
 
             if open_item:
-                rows.append(
-                    [
-                        display_typ(typ),
-                        name,
-                        str(day or 1),
-                        format_money(rest),
-                        tr("cockpit.doubleclick_book"),
-                    ]
-                )
+                rows.append([display_typ(typ), name, str(day or 1), format_money(rest), tr("cockpit.doubleclick_book")])
             if len(rows) >= 10:
                 break
         self._set_table_rows(self.tbl_missing, rows, tr("cockpit.empty_missing"))
@@ -722,9 +567,7 @@ class CockpitTab(QWidget):
             "SELECT date, typ, category, amount, COALESCE(details,'') FROM tracking ORDER BY date DESC, id DESC LIMIT 10"
         )
         for d, typ, cat, amount, details in cur.fetchall():
-            rows.append(
-                [d, display_typ(typ), cat, format_money(float(amount or 0)), details]
-            )
+            rows.append([d, display_typ(typ), cat, format_money(float(amount or 0)), details])
         self._set_table_rows(self.tbl_recent, rows, tr("cockpit.empty_recent"))
 
     # ── Panel-Reihenfolge ───────────────────────────────────────
@@ -777,11 +620,7 @@ class CockpitTab(QWidget):
             visible = bool(cfg.get(key, True))
             if key == "savings":
                 try:
-                    has_goals = any(
-                        getattr(g, "status", STATUS_SAVING)
-                        in (STATUS_SAVING, STATUS_RELEASED)
-                        for g in SavingsGoalsModel(self.conn).list_all()
-                    )
+                    has_goals = any(getattr(g, "status", STATUS_SAVING) in (STATUS_SAVING, STATUS_RELEASED) for g in SavingsGoalsModel(self.conn).list_all())
                     visible = visible and has_goals
                 except Exception:
                     pass
@@ -804,12 +643,7 @@ class CockpitTab(QWidget):
         for key in self._panel_order():
             item = QListWidgetItem(self._panel_title(key))
             item.setData(Qt.UserRole, key)
-            item.setFlags(
-                item.flags()
-                | Qt.ItemIsUserCheckable
-                | Qt.ItemIsSelectable
-                | Qt.ItemIsEnabled
-            )
+            item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsSelectable | Qt.ItemIsEnabled)
             item.setCheckState(Qt.Checked if bool(cfg.get(key, True)) else Qt.Unchecked)
             lst.addItem(item)
         lay.addWidget(lst, 1)
@@ -848,12 +682,7 @@ class CockpitTab(QWidget):
             for key in self.PANEL_ORDER_DEFAULTS:
                 item = QListWidgetItem(self._panel_title(key))
                 item.setData(Qt.UserRole, key)
-                item.setFlags(
-                    item.flags()
-                    | Qt.ItemIsUserCheckable
-                    | Qt.ItemIsSelectable
-                    | Qt.ItemIsEnabled
-                )
+                item.setFlags(item.flags() | Qt.ItemIsUserCheckable | Qt.ItemIsSelectable | Qt.ItemIsEnabled)
                 item.setCheckState(states.get(key, Qt.Checked))
                 lst.addItem(item)
 

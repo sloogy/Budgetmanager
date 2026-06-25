@@ -41,7 +41,6 @@ def _candidate_translation_dirs() -> list[Path]:
     # 1) Offizieller Weg über Qt
     try:
         from PySide6.QtCore import QLibraryInfo
-
         try:
             # Qt6-API
             p = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
@@ -56,7 +55,6 @@ def _candidate_translation_dirs() -> list[Path]:
     # 2) PySide6-Paketverzeichnis (…/site-packages/PySide6/translations)
     try:
         import PySide6
-
         base = Path(PySide6.__file__).resolve().parent
         dirs.append(base / "translations")
         dirs.append(base / "Qt" / "translations")
@@ -84,14 +82,10 @@ def _candidate_translation_dirs() -> list[Path]:
 def _normalize_lang(code: str) -> str:
     """'Deutsch'/'de_CH'/'DE' -> 'de'.  Gibt 2-Buchstaben-Code zurück."""
     name_map = {
-        "deutsch": "de",
-        "german": "de",
-        "englisch": "en",
-        "english": "en",
-        "französisch": "fr",
-        "french": "fr",
-        "italiano": "it",
-        "italian": "it",
+        "deutsch": "de", "german": "de",
+        "englisch": "en", "english": "en",
+        "französisch": "fr", "french": "fr",
+        "italiano": "it", "italian": "it",
     }
     low = (code or "").lower().strip()
     low = name_map.get(low, low)
@@ -153,14 +147,10 @@ def install_qt_translations(app, lang_code: str) -> bool:
     if not loaded_any:
         logger.info(
             "Keine qtbase_%s.qm gefunden – native Kontextmenüs bleiben englisch. "
-            "Geprüfte Pfade: %s",
-            lang,
-            [str(d) for d in dirs],
+            "Geprüfte Pfade: %s", lang, [str(d) for d in dirs]
         )
     else:
-        logger.info(
-            "Qt-Übersetzungen für '%s' aktiv (native Kontextmenüs lokalisiert).", lang
-        )
+        logger.info("Qt-Übersetzungen für '%s' aktiv (native Kontextmenüs lokalisiert).", lang)
     return loaded_any
 
 
@@ -185,18 +175,10 @@ def apply_number_locale(number_format: str) -> bool:
 
     code = (number_format or "swiss").strip().lower()
     locale_name = {
-        "swiss": "de_CH",
-        "ch": "de_CH",
-        "de_ch": "de_CH",
-        "german": "de_DE",
-        "eu": "de_DE",
-        "de": "de_DE",
-        "french": "fr_FR",
-        "fr": "fr_FR",
-        "anglo": "en_US",
-        "us": "en_US",
-        "en": "en_US",
-        "uk": "en_US",
+        "swiss": "de_CH", "ch": "de_CH", "de_ch": "de_CH",
+        "german": "de_DE", "eu": "de_DE", "de": "de_DE",
+        "french": "fr_FR", "fr": "fr_FR",
+        "anglo": "en_US", "us": "en_US", "en": "en_US", "uk": "en_US",
     }.get(code, "de_CH")
     try:
         QLocale.setDefault(QLocale(locale_name))

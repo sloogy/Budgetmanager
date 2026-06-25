@@ -34,6 +34,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Set
 
+
 TR_CALL_RE = re.compile(r"\b(?:tr|trf)\(\s*['\"]([^'\"]+)['\"]", re.MULTILINE)
 
 # Heuristik: UI-Calls, in denen harte Strings typischerweise user-visible sind.
@@ -53,10 +54,9 @@ OK_LITERAL_PATTERNS = [
     re.compile(r"^#[0-9A-Fa-f]{3,8}$"),
     re.compile(r"^[a-z_][a-z0-9_]*$"),  # interne Datenkeys wie is_fix
     re.compile(r"^[%dmyYHMS.:%\- /]+$"),  # Datumsformate
-    re.compile(r"^[Xx-]+$"),  # Masken/Placeholder ohne Sprache
-    re.compile(r"^<\/?[a-z][a-z0-9]*>$"),  # HTML-Trenner wie <br>
+    re.compile(r"^[Xx-]+$"),            # Masken/Placeholder ohne Sprache
+    re.compile(r"^<\/?[a-z][a-z0-9]*>$"), # HTML-Trenner wie <br>
 ]
-
 
 def _looks_user_text_literal(s: str) -> bool:
     t = str(s or "").strip()
@@ -67,12 +67,9 @@ def _looks_user_text_literal(s: str) -> bool:
     # F-Strings wie "{icon} {name}" enthalten im Quelltext Buchstaben,
     # aber keinen festen user-visible Text. Erst Platzhalter entfernen.
     without_placeholders = re.sub(r"\{[^{}]+\}", "", t).strip()
-    if not without_placeholders or not re.search(
-        r"[A-Za-zÄÖÜäöüßÉéÈèÀàÇç]", without_placeholders
-    ):
+    if not without_placeholders or not re.search(r"[A-Za-zÄÖÜäöüßÉéÈèÀàÇç]", without_placeholders):
         return False
     return True
-
 
 IGNORE_PATH_PARTS = {
     "__pycache__",
@@ -139,9 +136,7 @@ GERMAN_RESIDUAL_RE = re.compile(
 )
 
 
-def _find_german_residual_values(
-    values: Dict[str, str], referenced: Set[str]
-) -> Dict[str, str]:
+def _find_german_residual_values(values: Dict[str, str], referenced: Set[str]) -> Dict[str, str]:
     findings: Dict[str, str] = {}
     for key in sorted(referenced):
         if "language_select_dialog" in key:
@@ -218,9 +213,7 @@ def _write_report(path: Path, content: str) -> None:
 def main(argv: List[str]) -> int:
     ap = argparse.ArgumentParser(description="BudgetManager i18n Audit")
     ap.add_argument("--root", default=".", help="Projekt-Root (Default: .)")
-    ap.add_argument(
-        "--locales", default="locales", help="Locales-Ordner (Default: locales)"
-    )
+    ap.add_argument("--locales", default="locales", help="Locales-Ordner (Default: locales)")
     ap.add_argument(
         "--lang",
         action="append",
@@ -228,9 +221,7 @@ def main(argv: List[str]) -> int:
         help="Sprache(n) prüfen (Default: --lang de --lang en)",
     )
     ap.add_argument("--out", default="", help="Optional: Report-Datei schreiben")
-    ap.add_argument(
-        "--max-hardcoded", type=int, default=80, help="Max. Hardcoded-Zeilen im Output"
-    )
+    ap.add_argument("--max-hardcoded", type=int, default=80, help="Max. Hardcoded-Zeilen im Output")
     args = ap.parse_args(argv)
 
     root = Path(args.root).resolve()
@@ -287,9 +278,7 @@ def main(argv: List[str]) -> int:
             out_lines.append(f"  - {k}")
         out_lines.append("")
     else:
-        out_lines.append(
-            f"[OK] Alle referenzierten Keys existieren in {base_lang}.json"
-        )
+        out_lines.append(f"[OK] Alle referenzierten Keys existieren in {base_lang}.json")
         out_lines.append("")
 
     for lang in langs[1:]:
@@ -297,9 +286,7 @@ def main(argv: List[str]) -> int:
         extra = extra_by_lang.get(lang, set())
 
         if miss:
-            out_lines.append(
-                f"[WARN] {len(miss)} Key(s) fehlen in {lang}.json (gegenüber {base_lang}.json):"
-            )
+            out_lines.append(f"[WARN] {len(miss)} Key(s) fehlen in {lang}.json (gegenüber {base_lang}.json):")
             for k in sorted(miss)[:200]:
                 out_lines.append(f"  - {k}")
             if len(miss) > 200:
@@ -310,9 +297,7 @@ def main(argv: List[str]) -> int:
             out_lines.append("")
 
         if extra:
-            out_lines.append(
-                f"[INFO] {len(extra)} extra Key(s) in {lang}.json (nicht in {base_lang}.json):"
-            )
+            out_lines.append(f"[INFO] {len(extra)} extra Key(s) in {lang}.json (nicht in {base_lang}.json):")
             for k in sorted(extra)[:80]:
                 out_lines.append(f"  - {k}")
             if len(extra) > 80:
@@ -334,9 +319,7 @@ def main(argv: List[str]) -> int:
                 out_lines.append(f"  ... (+{len(residual)-120} weitere)")
             out_lines.append("")
         else:
-            out_lines.append(
-                f"[OK] Keine deutschen Restübersetzungen in referenzierten {lang}.json-Werten"
-            )
+            out_lines.append(f"[OK] Keine deutschen Restübersetzungen in referenzierten {lang}.json-Werten")
             out_lines.append("")
 
     if unused_in_base:
@@ -353,9 +336,7 @@ def main(argv: List[str]) -> int:
         out_lines.append("")
 
     if hardcoded:
-        out_lines.append(
-            f"[WARN] {len(hardcoded)} verdächtige hardcoded UI-Strings gefunden (Heuristik):"
-        )
+        out_lines.append(f"[WARN] {len(hardcoded)} verdächtige hardcoded UI-Strings gefunden (Heuristik):")
         for f in hardcoded[: args.max_hardcoded]:
             rel = f.file.relative_to(root)
             out_lines.append(f"  - {rel}:{f.line_no}: {f.line}")
@@ -370,11 +351,7 @@ def main(argv: List[str]) -> int:
     print(report)
 
     if args.out:
-        out_path = (
-            (root / args.out).resolve()
-            if not os.path.isabs(args.out)
-            else Path(args.out)
-        )
+        out_path = (root / args.out).resolve() if not os.path.isabs(args.out) else Path(args.out)
         _write_report(out_path, report)
         print(f"\nReport geschrieben nach: {out_path}")
 

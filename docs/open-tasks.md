@@ -47,8 +47,11 @@ pytest tests/ -v
 - GitHub-Tag eindeutig setzen: `v2.1.0`.
 - Nicht mehrere Release-Tags auf denselben alten Commit zeigen lassen.
 - Release-Assets prüfen:
-  - `BudgetManager-v2.1.0-portable.zip`
+  - `BudgetManager-v2.1.0-portable-windows.zip`
+  - `BudgetManager-v2.1.0-portable-linux.zip`
   - `BudgetManager-v2.1.0-windows.exe`
   - `BudgetManager-v2.1.0-linux`
   - `BudgetManager_Setup_2.1.0.exe`
+  - `BudgetManager_Setup_2.1.0.zip`
   - `latest.json`
+  - `SHA256SUMS.txt`

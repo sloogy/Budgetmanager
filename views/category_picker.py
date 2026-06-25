@@ -8,7 +8,6 @@ Kombiniert vier Wünsche in einem Picker:
 
 Die Kopfzeilen sind nicht auswählbar und tauchen nicht als Kategorie auf.
 """
-
 from __future__ import annotations
 
 import logging
@@ -95,9 +94,7 @@ def filter_grouped_categories(
     return out
 
 
-def populate_grouped_combo(
-    combo: QComboBox, grouped: list[tuple[str, str, object]]
-) -> None:
+def populate_grouped_combo(combo: QComboBox, grouped: list[tuple[str, str, object]]) -> None:
     """Befüllt eine ComboBox mit gruppierten Einträgen.
 
     grouped: Liste aus ("header", titel, None) und ("item", label, echter_name).
@@ -196,19 +193,13 @@ def resolve_combo_category(combo: QComboBox) -> str:
             if not isinstance(d, str) or not d.strip():
                 continue
             label = combo.itemText(i)
-            if _same_text(label, text) or _same_text(
-                _clean_category_label(label), text
-            ):
+            if _same_text(label, text) or _same_text(_clean_category_label(label), text):
                 return d.strip()
 
     # 2) currentData ist nur vertrauenswürdig, wenn der Text zum aktuellen
     #    Eintrag passt oder das Suchfeld leer ist.
     if isinstance(current_data, str) and current_data.strip():
-        if (
-            not text
-            or _same_text(text, current_label)
-            or _same_text(text, _clean_category_label(current_label))
-        ):
+        if not text or _same_text(text, current_label) or _same_text(text, _clean_category_label(current_label)):
             return current_data.strip()
 
     # 3) Direkter Treffer auf itemData (Benutzer tippt den echten Namen).

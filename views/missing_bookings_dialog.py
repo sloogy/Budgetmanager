@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging
-
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
@@ -22,7 +21,6 @@ from PySide6.QtWidgets import (
 from utils.money import format_short as _fmt_chf, currency_header
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
-
 @dataclass(frozen=True)
 class PendingBooking:
     d: date
@@ -43,13 +41,7 @@ class MissingBookingsDialog(QDialog):
     User kann auswählen, was tatsächlich gebucht werden soll.
     """
 
-    def __init__(
-        self,
-        parent=None,
-        *,
-        items: list[PendingBooking],
-        title: str = "Fehlende Buchungen",
-    ):
+    def __init__(self, parent=None, *, items: list[PendingBooking], title: str = "Fehlende Buchungen"):
         super().__init__(parent)
         self.setMinimumSize(600, 420)
         self.setModal(True)
@@ -57,22 +49,12 @@ class MissingBookingsDialog(QDialog):
         self._items = items
 
         self.lbl = QLabel(
-            tr(
-                "auto.views_missing_bookings_dialog.47_folgende_buchungen_sind_in_diesem_m_5717d0dc"
-            )
+            tr('auto.views_missing_bookings_dialog.47_folgende_buchungen_sind_in_diesem_m_5717d0dc')
         )
         self.lbl.setWordWrap(True)
 
         self.table = QTableWidget(0, 5)
-        self.table.setHorizontalHeaderLabels(
-            [
-                tr("btn.book"),
-                tr("header.date"),
-                tr("header.type"),
-                tr("header.category"),
-                currency_header(),
-            ]
-        )
+        self.table.setHorizontalHeaderLabels([tr('btn.book'), tr('header.date'), tr('header.type'), tr("header.category"), currency_header()])
         self.table.setAlternatingRowColors(True)
         # PySide6: Enums hängen an QAbstractItemView, nicht an der Instanz
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)

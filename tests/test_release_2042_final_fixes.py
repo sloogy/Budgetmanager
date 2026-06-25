@@ -14,7 +14,20 @@ DB_TYPE_LITERALS = {TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS}
 
 def test_production_code_uses_db_type_constants_instead_of_raw_literals():
     """Release guard: DB-Typwerte dürfen nur zentral als Konstanten definiert werden."""
-    ignored_parts = {"tests", "locales", "data", "docs"}
+    ignored_parts = {
+        "tests",
+        "locales",
+        "data",
+        "docs",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        ".pytest_cache",
+        "build",
+        "dist",
+        "release_assets",
+    }
     ignored_files = {ROOT / "model" / "typ_constants.py"}
     offenders: list[str] = []
 

@@ -5,21 +5,57 @@
 
 Diese README gehört zu v2.1.0. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
 
-## Windows Portable
+## Windows: empfohlener Download
 
-1. `BudgetManager-v2.1.0-portable.zip` herunterladen.
-2. ZIP in einen eigenen Ordner entpacken, z. B. `C:\BudgetManager` oder auf einen USB-Stick.
-3. `BudgetManager.exe` starten.
+Für Windows gibt es im GitHub Release mehrere Dateien:
 
-Standardmäßig liegen die Nutzerdaten im Ordner `data/` neben der Anwendung. Über den Reiter `Konto` → Speicherort kann ein anderer Datenordner gewählt werden; bei einem Wechsel bietet BudgetManager eine sichere Datenübernahme mit Sicherheits-ZIP an.
+- `BudgetManager_Setup_2.1.0.zip` — empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren.
+- `BudgetManager_Setup_2.1.0.exe` — direkter Installer.
+- `BudgetManager-v2.1.0-portable-windows.zip` — portable Windows-Version ohne Installation.
+- `BudgetManager-v2.1.0-windows.exe` — direkte Einzel-EXE für Standalone-Nutzung.
+- `SHA256SUMS.txt` — Prüfsummen zur Kontrolle.
+
+Windows SmartScreen kann neue, unsignierte Open-Source-Installer blockieren, weil der Herausgeber noch keine ausreichende Reputation hat. Deshalb wird der Installer zusätzlich als ZIP bereitgestellt.
+
+### Prüfsumme unter Windows prüfen
+
+PowerShell im Download-Ordner öffnen:
+
+```powershell
+Get-FileHash .\BudgetManager_Setup_2.1.0.exe -Algorithm SHA256
+```
+
+Den angezeigten Hash mit `SHA256SUMS.txt` vergleichen.
+
+Falls Windows die Datei nach dem Download blockiert:
+
+```powershell
+Unblock-File .\BudgetManager_Setup_2.1.0.exe
+```
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.1.0.exe` starten, falls ein Installer-Asset gebaut wurde.
-2. Installation abschließen.
-3. BudgetManager über Startmenü/Desktop starten.
+1. `BudgetManager_Setup_2.1.0.zip` herunterladen.
+2. ZIP entpacken.
+3. Optional: SHA256 gegen `SHA256SUMS.txt` prüfen.
+4. `BudgetManager_Setup_2.1.0.exe` starten.
+5. Datenverzeichnis wählen.
+6. Sprache, Währung und bevorzugten Buchungstag auswählen.
+7. BudgetManager starten.
 
-## Linux / Entwicklung
+Der Installer schreibt `installation.json` in den Programmordner und nutzt den gewählten Datenordner für Nutzerdaten und Update-Staging. Bestehende Einstellungen werden nicht überschrieben.
+
+## Windows Portable
+
+1. `BudgetManager-v2.1.0-portable-windows.zip` herunterladen.
+2. ZIP in einen normalen Benutzerordner entpacken, zum Beispiel `Dokumente\BudgetManager` oder auf einen USB-Stick.
+3. `start-windows.cmd` oder `BudgetManager.exe` starten.
+
+Standardmäßig liegen die Nutzerdaten im Ordner `data/` neben der Anwendung. Über den Reiter `Konto` → Speicherort kann ein anderer Datenordner gewählt werden; bei einem Wechsel bietet BudgetManager eine sichere Datenübernahme mit Sicherheits-ZIP an.
+
+Wichtig für den Updater: In der portablen Windows-ZIP heißt die App bewusst stabil `BudgetManager.exe`. Nicht in einen versionierten Namen umbenennen.
+
+## Linux Portable / Entwicklung
 
 ```bash
 python3 -m venv .venv
@@ -27,6 +63,8 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python3 main.py
 ```
+
+Für Releases gibt es zusätzlich `BudgetManager-v2.1.0-portable-linux.zip`. Darin startet Linux über `./start-linux.sh`; die Binary heißt stabil `BudgetManager`.
 
 ## Update aus der App
 

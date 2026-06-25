@@ -5,7 +5,6 @@ Bestätigungs-Häkchen zeigt) ist dieser hier jederzeit über die Hilfe
 erreichbar: ansehen + kopieren. Der Key gehört zur aktuell geöffneten
 Datenbank.
 """
-
 from __future__ import annotations
 
 import logging
@@ -45,9 +44,7 @@ class RestoreKeyDialog(QDialog):
 
         self.key_box = QTextEdit()
         self.key_box.setReadOnly(True)
-        self.key_box.setPlainText(
-            self._key if self._key else tr("account.restorekey_nicht_verfuegbar")
-        )
+        self.key_box.setPlainText(self._key if self._key else tr("account.restorekey_nicht_verfuegbar"))
         self.key_box.setStyleSheet(
             "font-family: 'Consolas', 'Courier New', monospace; "
             "font-size: 14px; padding: 10px; letter-spacing: 1px;"
@@ -81,6 +78,4 @@ class RestoreKeyDialog(QDialog):
                 cb.setText(self._key)
                 self.lbl_copied.setText(tr("restore_key.copied"))
         except Exception:
-            logger.exception(
-                "Restore-Key konnte nicht in die Zwischenablage kopiert werden"
-            )
+            logger.exception("Restore-Key konnte nicht in die Zwischenablage kopiert werden")

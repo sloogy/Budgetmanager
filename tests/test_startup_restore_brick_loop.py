@@ -11,7 +11,6 @@ Sicherheitsseite hängen bleiben. Stattdessen:
 
 Reine Quelltextprüfung (kein Qt nötig) – analog test_startup_restore_regression.py.
 """
-
 from __future__ import annotations
 
 import json
@@ -63,10 +62,6 @@ def test_retry_hint_key_present_and_referenced_in_all_locales():
     src = _wizard_src()
     assert 'tr("startup.restore_retry_from_start")' in src
     for loc in ("de", "en", "fr"):
-        data = json.loads(
-            (ROOT / "locales" / f"{loc}.json").read_text(encoding="utf-8")
-        )
+        data = json.loads((ROOT / "locales" / f"{loc}.json").read_text(encoding="utf-8"))
         val = data.get("startup", {}).get("restore_retry_from_start")
-        assert (
-            val and val.strip()
-        ), f"{loc}: startup.restore_retry_from_start fehlt/leer"
+        assert val and val.strip(), f"{loc}: startup.restore_retry_from_start fehlt/leer"

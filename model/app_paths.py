@@ -5,6 +5,7 @@ import json
 import os
 import sys
 
+
 INSTALL_TYPES_WITH_EXTERNAL_DATA = {"windows_installer", "installer"}
 SETTINGS_FILENAME = "budgetmanager_settings.json"
 INSTALLATION_MARKER = "installation.json"

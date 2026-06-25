@@ -44,7 +44,7 @@ def draw_icon(size: int) -> Image.Image:
 
     # Abgerundetes Rechteck als Hintergrund
     radius = max(4, size // 8)
-    bg_color = (37, 99, 235, 255)  # #2563EB
+    bg_color = (37, 99, 235, 255)      # #2563EB
     draw.rounded_rectangle([(0, 0), (size - 1, size - 1)], radius=radius, fill=bg_color)
 
     # Symbol-Schriftgroesse: ca. 60 % der Icon-Groesse

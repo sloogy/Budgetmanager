@@ -1,29 +1,13 @@
 """Erstes-Start Sprach-Auswahl Dialog."""
-
 from __future__ import annotations
 from utils.i18n import tr, trf, set_language
 from PySide6.QtCore import Qt, QSignalBlocker
 from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QFormLayout,
-    QPushButton,
-    QListWidget,
-    QListWidgetItem,
-    QComboBox,
-    QGroupBox,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QFormLayout,
+    QPushButton, QListWidget, QListWidgetItem, QComboBox, QGroupBox
 )
 from views.ui_colors import ui_colors
-from utils.money import (
-    CURRENCIES,
-    CURRENCY_CODES,
-    NUMBER_FORMATS,
-    NUMBER_FORMAT_CODES,
-    LANGUAGE_NUMBER_FORMAT_DEFAULTS,
-    normalize_number_format,
-)
+from utils.money import CURRENCIES, CURRENCY_CODES, NUMBER_FORMATS, NUMBER_FORMAT_CODES, LANGUAGE_NUMBER_FORMAT_DEFAULTS, normalize_number_format
 
 
 class LanguageSelectDialog(QDialog):
@@ -52,15 +36,11 @@ class LanguageSelectDialog(QDialog):
     ):
         super().__init__(parent)
         # Dialog ist selbst die Sprachwahl: beim Umschalten live übersetzen.
-        self.setWindowTitle(
-            tr("auto.views_language_select_dialog.22_language_sprache_langue_cec30925")
-        )
+        self.setWindowTitle(tr('auto.views_language_select_dialog.22_language_sprache_langue_cec30925'))
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
         self.setMinimumWidth(420)
         self.selected_code = current
-        self.selected_currency = (
-            current_currency if current_currency in CURRENCIES else "CHF"
-        )
+        self.selected_currency = current_currency if current_currency in CURRENCIES else "CHF"
         self.selected_number_format = normalize_number_format(current_number_format)
         try:
             self.selected_recurring_day = int(current_recurring_day or 0)
@@ -107,13 +87,9 @@ class LanguageSelectDialog(QDialog):
         self.cmb_currency = QComboBox()
         for code in CURRENCY_CODES:
             self.cmb_currency.addItem(self._currency_label(code), code)
-        idx_currency = self.cmb_currency.findData(
-            current_currency if current_currency in CURRENCIES else "CHF"
-        )
+        idx_currency = self.cmb_currency.findData(current_currency if current_currency in CURRENCIES else "CHF")
         self.cmb_currency.setCurrentIndex(max(0, idx_currency))
-        self.cmb_currency.currentIndexChanged.connect(
-            lambda _i: setattr(self, "_currency_touched", True)
-        )
+        self.cmb_currency.currentIndexChanged.connect(lambda _i: setattr(self, "_currency_touched", True))
         form.addRow(self.lbl_currency, self.cmb_currency)
 
         self.lbl_number_format = QLabel()
@@ -124,17 +100,13 @@ class LanguageSelectDialog(QDialog):
         if idx_nf < 0:
             idx_nf = self.cmb_number_format.findData("swiss")
         self.cmb_number_format.setCurrentIndex(max(0, idx_nf))
-        self.cmb_number_format.currentIndexChanged.connect(
-            lambda _i: setattr(self, "_numfmt_touched", True)
-        )
+        self.cmb_number_format.currentIndexChanged.connect(lambda _i: setattr(self, "_numfmt_touched", True))
         form.addRow(self.lbl_number_format, self.cmb_number_format)
 
         self.lbl_recurring_day = QLabel()
         self.cmb_recurring_day = QComboBox()
         self._fill_recurring_day_combo(current_recurring_day)
-        self.cmb_recurring_day.currentIndexChanged.connect(
-            lambda _i: setattr(self, "_day_touched", True)
-        )
+        self.cmb_recurring_day.currentIndexChanged.connect(lambda _i: setattr(self, "_day_touched", True))
         form.addRow(self.lbl_recurring_day, self.cmb_recurring_day)
 
         self.lbl_region_hint = QLabel()
@@ -153,12 +125,9 @@ class LanguageSelectDialog(QDialog):
 
         self._retranslate_ui()
 
+
     def _currency_label(self, code: str) -> str:
-        return (
-            tr(f"currency.{code}")
-            if tr(f"currency.{code}") != f"currency.{code}"
-            else CURRENCIES[code]["label"]
-        )
+        return tr(f"currency.{code}") if tr(f"currency.{code}") != f"currency.{code}" else CURRENCIES[code]["label"]
 
     def _number_format_label(self, code: str) -> str:
         key_map = {
@@ -172,11 +141,7 @@ class LanguageSelectDialog(QDialog):
         return label if label and label != key else NUMBER_FORMATS[code]["label"]
 
     def _fill_recurring_day_combo(self, current_day: int | None = None) -> None:
-        current = (
-            self.cmb_recurring_day.currentData()
-            if self.cmb_recurring_day.count()
-            else current_day
-        )
+        current = self.cmb_recurring_day.currentData() if self.cmb_recurring_day.count() else current_day
         if current is None:
             current = current_day
         blocker = QSignalBlocker(self.cmb_recurring_day)
@@ -194,14 +159,9 @@ class LanguageSelectDialog(QDialog):
     def _retranslate_ui(self) -> None:
         """Übersetzt den Dialog sofort in die aktuell gewählte Sprache."""
         c = ui_colors(self)
-        self.setWindowTitle(
-            tr("auto.views_language_select_dialog.22_language_sprache_langue_cec30925")
-        )
+        self.setWindowTitle(tr('auto.views_language_select_dialog.22_language_sprache_langue_cec30925'))
         self.lbl_welcome.setText(
-            trf(
-                "auto.views_language_select_dialog.34_h3_style_margin_0_welcome_willkomme_eef30112",
-                value_0=(c.text_dim),
-            )
+            trf('auto.views_language_select_dialog.34_h3_style_margin_0_welcome_willkomme_eef30112', value_0=(c.text_dim))
         )
         self.gb_region.setTitle(tr("setup.region_box"))
         self.lbl_currency.setText(tr("settings.currency"))
@@ -210,7 +170,7 @@ class LanguageSelectDialog(QDialog):
         self.lbl_region_hint.setText(tr("setup.region_hint"))
         self.cmb_number_format.setToolTip(tr("settings.number_format_tip"))
         self.cmb_recurring_day.setToolTip(tr("setup.preferred_day_tip"))
-        self.btn_ok.setText(tr("auto.views_language_select_dialog.57_ok_6128635b"))
+        self.btn_ok.setText(tr('auto.views_language_select_dialog.57_ok_6128635b'))
 
         # Combo-Texte neu setzen, Auswahl aber behalten.
         cur_currency = self.cmb_currency.currentData()
@@ -234,9 +194,7 @@ class LanguageSelectDialog(QDialog):
         del blocker_n
         self._fill_recurring_day_combo(self.cmb_recurring_day.currentData())
 
-    def _on_language_changed(
-        self, current: QListWidgetItem | None, _previous: QListWidgetItem | None = None
-    ):
+    def _on_language_changed(self, current: QListWidgetItem | None, _previous: QListWidgetItem | None = None):
         if current is None:
             return
         code = current.data(Qt.UserRole)
@@ -250,9 +208,7 @@ class LanguageSelectDialog(QDialog):
                 self.cmb_currency.setCurrentIndex(idx)
                 del blocker
         if not self._numfmt_touched:
-            idx = self.cmb_number_format.findData(
-                LANGUAGE_NUMBER_FORMAT_DEFAULTS.get(code, "swiss")
-            )
+            idx = self.cmb_number_format.findData(LANGUAGE_NUMBER_FORMAT_DEFAULTS.get(code, "swiss"))
             if idx >= 0:
                 blocker = QSignalBlocker(self.cmb_number_format)
                 self.cmb_number_format.setCurrentIndex(idx)

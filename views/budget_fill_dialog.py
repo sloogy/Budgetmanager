@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-
 logger = logging.getLogger(__name__)
 import sqlite3
 from datetime import date
@@ -38,9 +37,7 @@ class BudgetFillDialog(QDialog):
         root = QVBoxLayout(self)
 
         hint = QLabel(
-            tr(
-                "auto.views_budget_fill_dialog.40_b_budget_ausfuellen_b_br_trage_dein_680d66fc"
-            )
+            tr('auto.views_budget_fill_dialog.40_b_budget_ausfuellen_b_br_trage_dein_680d66fc')
         )
         hint.setTextFormat(Qt.RichText)
         hint.setWordWrap(True)

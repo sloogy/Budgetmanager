@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 from utils.i18n import tr, trf, tr_category_name
-
 logger = logging.getLogger(__name__)
 import sqlite3
 
@@ -45,7 +44,7 @@ class CategoriesTab(QWidget):
     - 3 Root-Nodes (Top Level): Einkommen / Ausgaben / Ersparnisse
     - darunter: Hauptkategorien und Unterkategorien (parent_id)
     """
-
+    
     # Signal für Schnelleingabe (wird von MainWindow abgehört)
     quick_add_requested = Signal()
 
@@ -68,16 +67,12 @@ class CategoriesTab(QWidget):
         self._loading = False
 
         # Buttons
-        self.btn_new = QPushButton(
-            tr("auto.views_tabs_categories_tab.68_neu_hauptkategorie_d317a531")
-        )
-        self.btn_new_sub = QPushButton(
-            tr("auto.views_tabs_categories_tab.69_neu_unterkategorie_577581bc")
-        )
+        self.btn_new = QPushButton(tr('auto.views_tabs_categories_tab.68_neu_hauptkategorie_d317a531'))
+        self.btn_new_sub = QPushButton(tr('auto.views_tabs_categories_tab.69_neu_unterkategorie_577581bc'))
         self.btn_delete = QPushButton(tr("common.delete"))
         self.btn_quick_add = QPushButton(tr("budget.btn.quick_add"))
         self.btn_quick_add.setToolTip(tr("budget.tip.quick_add"))
-
+        
         # Filter
         self.filter_combo = QComboBox()
         for label, key in [
@@ -91,14 +86,7 @@ class CategoriesTab(QWidget):
         # Tree
         self.tree = QTreeWidget()
         self.tree.setColumnCount(4)
-        self.tree.setHeaderLabels(
-            [
-                tr("header.category"),
-                tr("tracking.title.fixcosts"),
-                tr("lbl.recurring"),
-                tr("header.day"),
-            ]
-        )
+        self.tree.setHeaderLabels([tr("header.category"), tr("tracking.title.fixcosts"), tr("lbl.recurring"), tr("header.day")])
         self.tree.setAlternatingRowColors(True)
         self.tree.setExpandsOnDoubleClick(True)
         self.tree.setSelectionMode(self.tree.SelectionMode.ExtendedSelection)
@@ -110,6 +98,7 @@ class CategoriesTab(QWidget):
         # Rechtsklick-Kontextmenü
         self.tree.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.tree.customContextMenuRequested.connect(self._show_tree_context_menu)
+
 
         top = QHBoxLayout()
         top.addWidget(QLabel(tr("categories.tree_title")))
@@ -164,13 +153,8 @@ class CategoriesTab(QWidget):
 
         # Fix/Recurring Checkboxes
         it.setFlags(it.flags() | Qt.ItemFlag.ItemIsUserCheckable)
-        it.setCheckState(
-            self.COL_FIX, Qt.CheckState.Checked if c.is_fix else Qt.CheckState.Unchecked
-        )
-        it.setCheckState(
-            self.COL_REC,
-            Qt.CheckState.Checked if c.is_recurring else Qt.CheckState.Unchecked,
-        )
+        it.setCheckState(self.COL_FIX, Qt.CheckState.Checked if c.is_fix else Qt.CheckState.Unchecked)
+        it.setCheckState(self.COL_REC, Qt.CheckState.Checked if c.is_recurring else Qt.CheckState.Unchecked)
 
         # Day
         it.setText(self.COL_DAY, str(int(c.recurring_day)) if c.is_recurring else "")
@@ -248,22 +232,11 @@ class CategoriesTab(QWidget):
         sel = self.tree.currentItem()
         root = self._nearest_typ_root(sel) if sel else None
         if root is None:
-            QMessageBox.information(
-                self,
-                tr("dlg.hinweis"),
-                tr("kpi.income")
-                + ", "
-                + tr("kpi.expenses")
-                + tr("lbl.oder_ersparnisse_auswaehlen"),
-            )
+            QMessageBox.information(self, tr("dlg.hinweis"), tr("kpi.income") + ", " + tr("kpi.expenses") + tr("lbl.oder_ersparnisse_auswaehlen"))
             return
 
         typ = root.text(self.COL_NAME)
-        name, ok = QInputDialog.getText(
-            self,
-            tr("btn.new_category"),
-            trf("tab_ui.name_der_neuen_kategorie", typ=typ),
-        )
+        name, ok = QInputDialog.getText(self, tr('btn.new_category'), trf("tab_ui.name_der_neuen_kategorie", typ=typ))
         if not ok:
             return
         name = (name or "").strip()
@@ -271,18 +244,9 @@ class CategoriesTab(QWidget):
             return
 
         try:
-            self.model.create(
-                typ,
-                name,
-                is_fix=False,
-                is_recurring=False,
-                recurring_day=1,
-                parent_id=None,
-            )
+            self.model.create(typ, name, is_fix=False, is_recurring=False, recurring_day=1, parent_id=None)
         except Exception as e:
-            QMessageBox.critical(
-                self, tr("msg.error"), trf("msg.kategorie_anlegen_fehler", e=str(e))
-            )
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.kategorie_anlegen_fehler", e=str(e)))
             return
 
         self.refresh()
@@ -290,9 +254,7 @@ class CategoriesTab(QWidget):
     def add_subcategory(self) -> None:
         sel = self.tree.currentItem()
         if sel is None:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("tab_ui.bitte_zuerst_eine_kategorie")
-            )
+            QMessageBox.information(self, tr("msg.info"), tr("tab_ui.bitte_zuerst_eine_kategorie"))
             return
 
         if self._is_root_node(sel):
@@ -300,9 +262,7 @@ class CategoriesTab(QWidget):
         else:
             parent_id = sel.data(self.COL_NAME, self.ROLE_ID)
             if not parent_id:
-                QMessageBox.information(
-                    self, tr("msg.info"), tr("tab_ui.bitte_eine_echte_kategorie")
-                )
+                QMessageBox.information(self, tr("msg.info"), tr("tab_ui.bitte_eine_echte_kategorie"))
                 return
 
         root = self._nearest_typ_root(sel)
@@ -310,11 +270,7 @@ class CategoriesTab(QWidget):
             return
         typ = root.text(self.COL_NAME)
 
-        name, ok = QInputDialog.getText(
-            self,
-            tr("budget.title.new_subcategory"),
-            trf("tab_ui.name_der_unterkategorie_typ", typ=typ),
-        )
+        name, ok = QInputDialog.getText(self, tr("budget.title.new_subcategory"), trf("tab_ui.name_der_unterkategorie_typ", typ=typ))
         if not ok:
             return
         name = (name or "").strip()
@@ -322,20 +278,9 @@ class CategoriesTab(QWidget):
             return
 
         try:
-            self.model.create(
-                typ,
-                name,
-                is_fix=False,
-                is_recurring=False,
-                recurring_day=1,
-                parent_id=(int(parent_id) if parent_id else None),
-            )
+            self.model.create(typ, name, is_fix=False, is_recurring=False, recurring_day=1, parent_id=(int(parent_id) if parent_id else None))
         except Exception as e:
-            QMessageBox.critical(
-                self,
-                tr("msg.error"),
-                trf("msg.unterkategorie_anlegen_fehler", e=str(e)),
-            )
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.unterkategorie_anlegen_fehler", e=str(e)))
             return
 
         self.refresh()
@@ -343,21 +288,13 @@ class CategoriesTab(QWidget):
     def delete_selected(self) -> None:
         items = self.tree.selectedItems()
         if not items:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("tab_ui.bitte_zuerst_kategorien_auswaehlen_1")
-            )
+            QMessageBox.information(self, tr("msg.info"), tr("tab_ui.bitte_zuerst_kategorien_auswaehlen_1"))
             return
 
         # Root-Nodes nie löschen
-        deletable = [
-            it
-            for it in items
-            if not self._is_root_node(it) and it.data(self.COL_NAME, self.ROLE_ID)
-        ]
+        deletable = [it for it in items if not self._is_root_node(it) and it.data(self.COL_NAME, self.ROLE_ID)]
         if not deletable:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("tab_ui.bitte_nur_kategorien_auswaehlen")
-            )
+            QMessageBox.information(self, tr("msg.info"), tr("tab_ui.bitte_nur_kategorien_auswaehlen"))
             return
 
         # Nur die ausgewählten Kategorien löschen. Direkte Unterkategorien werden
@@ -376,9 +313,7 @@ class CategoriesTab(QWidget):
                 promote_children=True,
             )
         except Exception as e:
-            QMessageBox.critical(
-                self, tr("msg.error"), trf("msg.kategorie_loeschen_fehler", e=str(e))
-            )
+            QMessageBox.critical(self, tr("msg.error"), trf("msg.kategorie_loeschen_fehler", e=str(e)))
             return
 
         self.refresh()
@@ -392,8 +327,7 @@ class CategoriesTab(QWidget):
     def _selected_editable_category_items(self) -> list[QTreeWidgetItem]:
         items = self.tree.selectedItems()
         return [
-            it
-            for it in items
+            it for it in items
             if not self._is_root_node(it) and it.data(self.COL_NAME, self.ROLE_ID)
         ]
 
@@ -408,18 +342,12 @@ class CategoriesTab(QWidget):
         editable = self._selected_editable_category_items()
         menu = QMenu(self)
 
-        act_new_root = menu.addAction(
-            tr("auto.views_tabs_categories_tab.344_neu_hauptkategorie_852d2884")
-        )
+        act_new_root = menu.addAction(tr('auto.views_tabs_categories_tab.344_neu_hauptkategorie_852d2884'))
         act_new_root.setIcon(get_icon("➕"))
-        act_new_sub = menu.addAction(
-            tr("auto.views_tabs_categories_tab.346_neu_unterkategorie_18e330b2")
-        )
+        act_new_sub = menu.addAction(tr('auto.views_tabs_categories_tab.346_neu_unterkategorie_18e330b2'))
         act_new_sub.setIcon(get_icon("📂"))
         menu.addSeparator()
-        act_rename = menu.addAction(
-            tr("auto.views_tabs_categories_tab.349_umbenennen_4ad27303")
-        )
+        act_rename = menu.addAction(tr('auto.views_tabs_categories_tab.349_umbenennen_4ad27303'))
         act_rename.setIcon(get_icon("✏️"))
         act_delete = menu.addAction(tr("btn.loeschen_1"))
         act_mass = menu.addAction(tr("ctx.mass_edit"))
@@ -439,18 +367,10 @@ class CategoriesTab(QWidget):
         act_set_day.setEnabled(has_editable)
 
         if has_editable:
-            all_fix = all(
-                it.checkState(self.COL_FIX) == Qt.CheckState.Checked for it in editable
-            )
-            all_rec = all(
-                it.checkState(self.COL_REC) == Qt.CheckState.Checked for it in editable
-            )
-            act_fix_toggle.setText(
-                tr("budget.ctx.fix_disable") if all_fix else tr("budget.ctx.fix_enable")
-            )
-            act_rec_toggle.setText(
-                tr("budget.ctx.rec_disable") if all_rec else tr("budget.ctx.rec_enable")
-            )
+            all_fix = all(it.checkState(self.COL_FIX) == Qt.CheckState.Checked for it in editable)
+            all_rec = all(it.checkState(self.COL_REC) == Qt.CheckState.Checked for it in editable)
+            act_fix_toggle.setText(tr("budget.ctx.fix_disable") if all_fix else tr("budget.ctx.fix_enable"))
+            act_rec_toggle.setText(tr("budget.ctx.rec_disable") if all_rec else tr("budget.ctx.rec_enable"))
 
         chosen = menu.exec(self.tree.viewport().mapToGlobal(pos))
         if chosen is None:
@@ -480,48 +400,34 @@ class CategoriesTab(QWidget):
             return
 
         if chosen == act_fix_toggle:
-            target = not all(
-                it.checkState(self.COL_FIX) == Qt.CheckState.Checked for it in editable
-            )
+            target = not all(it.checkState(self.COL_FIX) == Qt.CheckState.Checked for it in editable)
             self._set_loading(True)
             try:
                 for it in editable:
                     cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
                     self.model.update_flags(cat_id, is_fix=target)
-                    it.setCheckState(
-                        self.COL_FIX,
-                        Qt.CheckState.Checked if target else Qt.CheckState.Unchecked,
-                    )
+                    it.setCheckState(self.COL_FIX, Qt.CheckState.Checked if target else Qt.CheckState.Unchecked)
             finally:
                 self._set_loading(False)
             return
 
         if chosen == act_rec_toggle:
-            target = not all(
-                it.checkState(self.COL_REC) == Qt.CheckState.Checked for it in editable
-            )
+            target = not all(it.checkState(self.COL_REC) == Qt.CheckState.Checked for it in editable)
             self._set_loading(True)
             try:
                 for it in editable:
                     cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
                     if target:
-                        pref = int(
-                            self.settings.get("recurring_preferred_day", 25) or 0
-                        )
+                        pref = int(self.settings.get("recurring_preferred_day", 25) or 0)
                         if pref > 0 and not (it.text(self.COL_DAY) or "").strip():
                             pref = max(1, min(31, pref))
-                            self.model.update_flags(
-                                cat_id, is_recurring=True, recurring_day=pref
-                            )
+                            self.model.update_flags(cat_id, is_recurring=True, recurring_day=pref)
                             it.setText(self.COL_DAY, str(pref))
                         else:
                             self.model.update_flags(cat_id, is_recurring=True)
                     else:
                         self.model.update_flags(cat_id, is_recurring=False)
-                    it.setCheckState(
-                        self.COL_REC,
-                        Qt.CheckState.Checked if target else Qt.CheckState.Unchecked,
-                    )
+                    it.setCheckState(self.COL_REC, Qt.CheckState.Checked if target else Qt.CheckState.Unchecked)
                     if not target:
                         it.setText(self.COL_DAY, "")
             finally:
@@ -537,7 +443,7 @@ class CategoriesTab(QWidget):
             day, ok = QInputDialog.getInt(
                 self,
                 tr("dlg.faelligkeitstag"),
-                tr("categories.day_prompt"),
+                tr('categories.day_prompt'),
                 cur,
                 1,
                 31,
@@ -550,9 +456,7 @@ class CategoriesTab(QWidget):
             try:
                 for it in editable:
                     cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
-                    self.model.update_flags(
-                        cat_id, is_recurring=True, recurring_day=int(day)
-                    )
+                    self.model.update_flags(cat_id, is_recurring=True, recurring_day=int(day))
                     it.setCheckState(self.COL_REC, Qt.CheckState.Checked)
                     it.setText(self.COL_DAY, str(int(day)))
             finally:
@@ -581,16 +485,10 @@ class CategoriesTab(QWidget):
             if not new_name or new_name == old_name:
                 return
             try:
-                self.model.rename_and_cascade(
-                    cat_id, typ=typ, old_name=old_name, new_name=new_name
-                )
+                self.model.rename_and_cascade(cat_id, typ=typ, old_name=old_name, new_name=new_name)
                 item.setData(self.COL_NAME, self.ROLE_OLD_NAME, new_name)
             except Exception as e:
-                QMessageBox.critical(
-                    self,
-                    tr("msg.error"),
-                    trf("msg.rename_failed_with_error", err=str(e)),
-                )
+                QMessageBox.critical(self, tr("msg.error"), trf("msg.rename_failed_with_error", err=str(e)))
                 self._set_loading(True)
                 try:
                     item.setText(self.COL_NAME, old_name)
@@ -608,9 +506,7 @@ class CategoriesTab(QWidget):
                 if is_rec:
                     cur_day_txt = (item.text(self.COL_DAY) or "").strip()
                     if not cur_day_txt.isdigit():
-                        pref = int(
-                            self.settings.get("recurring_preferred_day", 25) or 0
-                        )
+                        pref = int(self.settings.get("recurring_preferred_day", 25) or 0)
                         if pref > 0:
                             pref = max(1, min(31, pref))
                             self._set_loading(True)
@@ -618,26 +514,15 @@ class CategoriesTab(QWidget):
                                 item.setText(self.COL_DAY, str(pref))
                             finally:
                                 self._set_loading(False)
-                            self.model.update_flags(
-                                cat_id,
-                                is_fix=is_fix,
-                                is_recurring=is_rec,
-                                recurring_day=pref,
-                            )
+                            self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec, recurring_day=pref)
                         else:
-                            self.model.update_flags(
-                                cat_id, is_fix=is_fix, is_recurring=is_rec
-                            )
+                            self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec)
                     else:
-                        self.model.update_flags(
-                            cat_id, is_fix=is_fix, is_recurring=is_rec
-                        )
+                        self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec)
                 else:
                     self.model.update_flags(cat_id, is_fix=is_fix, is_recurring=is_rec)
             except Exception as e:
-                QMessageBox.critical(
-                    self, tr("msg.error"), trf("msg.save_failed_with_error", err=str(e))
-                )
+                QMessageBox.critical(self, tr("msg.error"), trf("msg.save_failed_with_error", err=str(e)))
                 return
 
             # Tag-Text
@@ -668,9 +553,7 @@ class CategoriesTab(QWidget):
                         self._set_loading(False)
                 self.model.update_flags(cat_id, is_recurring=True, recurring_day=day)
             except Exception as e:
-                QMessageBox.critical(
-                    self, tr("msg.error"), trf("msg.save_failed_with_error", err=str(e))
-                )
+                QMessageBox.critical(self, tr("msg.error"), trf("msg.save_failed_with_error", err=str(e)))
                 return
 
             self._set_loading(True)
@@ -755,9 +638,7 @@ class CategoriesTab(QWidget):
         editable = self._selected_editable_category_items()
 
         if not editable:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("tab_ui.bitte_zuerst_kategorien_auswaehlen")
-            )
+            QMessageBox.information(self, tr("msg.info"), tr("tab_ui.bitte_zuerst_kategorien_auswaehlen"))
             return
 
         dlg = QDialog(self)
@@ -765,51 +646,28 @@ class CategoriesTab(QWidget):
         dlg.setMinimumWidth(420)
 
         layout = QVBoxLayout(dlg)
-        info = QLabel(
-            trf(
-                "tab_ui.aenderungen_auf_bleneditableb_ausgewaehlte", count=len(editable)
-            )
-        )
+        info = QLabel(trf("tab_ui.aenderungen_auf_bleneditableb_ausgewaehlte", count=len(editable)))
         info.setWordWrap(True)
         layout.addWidget(info)
 
         form = QFormLayout()
 
         self._mass_fix = QComboBox()
-        self._mass_fix.addItems(
-            [
-                tr("tab_ui.nicht_aendern"),
-                tr("auto.views_tabs_categories_tab.647_setzen_ja_f86a5233"),
-                tr("auto.views_tabs_categories_tab.647_setzen_nein_60c1ccf6"),
-            ]
-        )
+        self._mass_fix.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.647_setzen_ja_f86a5233'), tr('auto.views_tabs_categories_tab.647_setzen_nein_60c1ccf6')])
         form.addRow(tr("tracking.title.fixcosts"), self._mass_fix)
 
         self._mass_rec = QComboBox()
-        self._mass_rec.addItems(
-            [
-                tr("tab_ui.nicht_aendern"),
-                tr("auto.views_tabs_categories_tab.651_setzen_ja_63aa1520"),
-                tr("auto.views_tabs_categories_tab.651_setzen_nein_e7dfddad"),
-            ]
-        )
+        self._mass_rec.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.651_setzen_ja_63aa1520'), tr('auto.views_tabs_categories_tab.651_setzen_nein_e7dfddad')])
         form.addRow(tr("lbl.recurring"), self._mass_rec)
 
         day_row = QHBoxLayout()
         self._mass_day_mode = QComboBox()
-        self._mass_day_mode.addItems(
-            [
-                tr("tab_ui.nicht_aendern"),
-                tr("auto.views_tabs_categories_tab.656_tag_setzen_c7df7554"),
-            ]
-        )
+        self._mass_day_mode.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.656_tag_setzen_c7df7554')])
         self._mass_day = QSpinBox()
         self._mass_day.setRange(1, 31)
         self._mass_day.setValue(1)
         self._mass_day.setEnabled(False)
-        self._mass_day_mode.currentIndexChanged.connect(
-            lambda i: self._mass_day.setEnabled(i == 1)
-        )
+        self._mass_day_mode.currentIndexChanged.connect(lambda i: self._mass_day.setEnabled(i == 1))
         day_row.addWidget(self._mass_day_mode, 1)
         day_row.addWidget(self._mass_day, 0)
         form.addRow(tr("dlg.faelligkeitstag_1"), day_row)
@@ -864,24 +722,10 @@ class CategoriesTab(QWidget):
                         changed += 1
 
                         if "is_fix" in kwargs:
-                            item.setCheckState(
-                                self.COL_FIX,
-                                (
-                                    Qt.CheckState.Checked
-                                    if kwargs["is_fix"]
-                                    else Qt.CheckState.Unchecked
-                                ),
-                            )
+                            item.setCheckState(self.COL_FIX, Qt.CheckState.Checked if kwargs["is_fix"] else Qt.CheckState.Unchecked)
 
                         if "is_recurring" in kwargs:
-                            item.setCheckState(
-                                self.COL_REC,
-                                (
-                                    Qt.CheckState.Checked
-                                    if kwargs["is_recurring"]
-                                    else Qt.CheckState.Unchecked
-                                ),
-                            )
+                            item.setCheckState(self.COL_REC, Qt.CheckState.Checked if kwargs["is_recurring"] else Qt.CheckState.Unchecked)
                             if not kwargs["is_recurring"]:
                                 item.setText(self.COL_DAY, "")
 
@@ -893,12 +737,5 @@ class CategoriesTab(QWidget):
             self._set_loading(False)
 
         if changed > 0:
-            QMessageBox.information(
-                self,
-                "OK",
-                trf(
-                    "auto.views_tabs_categories_tab.730_value_0_kategorie_n_aktualisiert_0cf1c2ab",
-                    value_0=(changed),
-                ),
-            )
+            QMessageBox.information(self, "OK", trf('auto.views_tabs_categories_tab.730_value_0_kategorie_n_aktualisiert_0cf1c2ab', value_0=(changed)))
             self.refresh()

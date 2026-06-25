@@ -3,21 +3,10 @@ import sqlite3
 import csv
 from datetime import date, datetime
 from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QComboBox,
-    QCheckBox,
-    QGroupBox,
-    QPushButton,
-    QFileDialog,
-    QDialogButtonBox,
-    QMessageBox,
-    QSpinBox,
-    QRadioButton,
-    QButtonGroup,
-    QProgressBar,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
+    QCheckBox, QGroupBox, QPushButton, QFileDialog,
+    QDialogButtonBox, QMessageBox, QSpinBox, QRadioButton,
+    QButtonGroup, QProgressBar
 )
 
 from model.budget_model import BudgetModel
@@ -28,73 +17,63 @@ import logging
 from utils.icons import get_icon
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
-
 logger = logging.getLogger(__name__)
-
 
 class ExportDialog(QDialog):
     """Export-Dialog für Daten (CSV, PDF)"""
-
+    
     def __init__(self, conn: sqlite3.Connection, parent=None):
         super().__init__(parent)
         self.conn = conn
         self.budget = BudgetModel(conn)
         self.tracking = TrackingModel(conn)
-
+        
         self.setWindowTitle(tr("dlg.export"))
         self.setMinimumWidth(500)
-
+        
         layout = QVBoxLayout()
-
+        
         # === FORMAT ===
-        format_group = QGroupBox(
-            tr("auto.views_export_dialog.37_export_format_46cddde9")
-        )
+        format_group = QGroupBox(tr('auto.views_export_dialog.37_export_format_46cddde9'))
         format_layout = QVBoxLayout()
-
+        
         self.format_group = QButtonGroup(self)
         self.radio_csv = QRadioButton(tr("radio.export_csv"))
         self.radio_csv.setChecked(True)
         self.format_group.addButton(self.radio_csv, 0)
         format_layout.addWidget(self.radio_csv)
-
+        
         self.radio_txt = QRadioButton(tr("radio.export_txt"))
         self.format_group.addButton(self.radio_txt, 1)
         format_layout.addWidget(self.radio_txt)
-
+        
         format_group.setLayout(format_layout)
         layout.addWidget(format_group)
-
+        
         # === DATENAUSWAHL ===
-        data_group = QGroupBox(
-            tr("auto.views_export_dialog.54_zu_exportierende_daten_263da15e")
-        )
+        data_group = QGroupBox(tr('auto.views_export_dialog.54_zu_exportierende_daten_263da15e'))
         data_layout = QVBoxLayout()
-
-        self.chk_tracking = QCheckBox(
-            tr("auto.views_export_dialog.57_tracking_daten_transaktionen_e754548e")
-        )
+        
+        self.chk_tracking = QCheckBox(tr('auto.views_export_dialog.57_tracking_daten_transaktionen_e754548e'))
         self.chk_tracking.setChecked(True)
         data_layout.addWidget(self.chk_tracking)
-
-        self.chk_budget = QCheckBox(
-            tr("auto.views_export_dialog.61_budget_daten_d0bbdcff")
-        )
+        
+        self.chk_budget = QCheckBox(tr('auto.views_export_dialog.61_budget_daten_d0bbdcff'))
         self.chk_budget.setChecked(True)
         data_layout.addWidget(self.chk_budget)
-
-        self.chk_categories = QCheckBox(tr("tab.categories"))
+        
+        self.chk_categories = QCheckBox(tr('tab.categories'))
         data_layout.addWidget(self.chk_categories)
-
+        
         data_group.setLayout(data_layout)
         layout.addWidget(data_group)
-
+        
         # === ZEITRAUM ===
-        period_group = QGroupBox(tr("auto.views_export_dialog.72_zeitraum_91c1e2b4"))
+        period_group = QGroupBox(tr('auto.views_export_dialog.72_zeitraum_91c1e2b4'))
         period_layout = QVBoxLayout()
-
+        
         year_row = QHBoxLayout()
-        year_row.addWidget(QLabel(tr("lbl.year")))
+        year_row.addWidget(QLabel(tr('lbl.year')))
         self.year_combo = QComboBox()
         self.year_combo.addItem(tr("lbl.all_years"), None)
         years = sorted(set(self.budget.years()) | set(self.tracking.years()))
@@ -107,60 +86,52 @@ class ExportDialog(QDialog):
             self.year_combo.setCurrentIndex(idx)
         year_row.addWidget(self.year_combo, 1)
         period_layout.addLayout(year_row)
-
+        
         period_group.setLayout(period_layout)
         layout.addWidget(period_group)
-
+        
         # === OPTIONEN ===
-        options_group = QGroupBox(tr("auto.views_export_dialog.94_optionen_21208517"))
+        options_group = QGroupBox(tr('auto.views_export_dialog.94_optionen_21208517'))
         options_layout = QVBoxLayout()
-
+        
         self.chk_include_header = QCheckBox(tr("dlg.spaltenueberschriften_einfuegen"))
         self.chk_include_header.setChecked(True)
         options_layout.addWidget(self.chk_include_header)
-
+        
         self.chk_utf8_bom = QCheckBox(tr("dlg.utf8_bom_fuer_excel"))
         self.chk_utf8_bom.setChecked(True)
         options_layout.addWidget(self.chk_utf8_bom)
-
+        
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
-
+        
         # === BUTTONS ===
         btn_layout = QHBoxLayout()
-
-        self.btn_export = QPushButton(
-            tr("auto.views_export_dialog.111_exportieren_f9fcfb6d")
-        )
+        
+        self.btn_export = QPushButton(tr('auto.views_export_dialog.111_exportieren_f9fcfb6d'))
         self.btn_export.setIcon(get_icon("📤"))
         self.btn_export.clicked.connect(self._do_export)
         btn_layout.addWidget(self.btn_export)
-
+        
         btn_cancel = QPushButton(tr("btn.cancel"))
         btn_cancel.clicked.connect(self.reject)
         btn_layout.addWidget(btn_cancel)
-
+        
         layout.addLayout(btn_layout)
-
+        
         self.setLayout(layout)
-
+    
     def _do_export(self):
         """Führt den Export durch"""
-        if not (
-            self.chk_tracking.isChecked()
-            or self.chk_budget.isChecked()
-            or self.chk_categories.isChecked()
-        ):
-            QMessageBox.warning(
-                self, tr("dlg.hinweis"), tr("dlg.bitte_mindestens_einen_datentyp")
-            )
+        if not (self.chk_tracking.isChecked() or self.chk_budget.isChecked() or self.chk_categories.isChecked()):
+            QMessageBox.warning(self, tr('dlg.hinweis'), tr("dlg.bitte_mindestens_einen_datentyp"))
             return
-
+        
         # Dateiname vorschlagen
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         year_text = self.year_combo.currentText().replace(" ", "_")
         default_name = f"budgetmanager_export_{year_text}_{timestamp}"
-
+        
         # Format bestimmen
         if self.radio_csv.isChecked():
             ext = "csv"
@@ -168,78 +139,66 @@ class ExportDialog(QDialog):
         else:
             ext = "txt"
             filter_str = "Text-Dateien (*.txt)"
-
+        
         # Speicherort wählen
         file_path, _ = QFileDialog.getSaveFileName(
             self,
-            tr("auto.views_export_dialog.146_export_speichern_unter_7108d72d"),
-            trf(
-                "auto.views_export_dialog.147_value_0_value_1_3c09bb8d",
-                value_0=(default_name),
-                value_1=(ext),
-            ),
-            filter_str,
+            tr('auto.views_export_dialog.146_export_speichern_unter_7108d72d'),
+            trf('auto.views_export_dialog.147_value_0_value_1_3c09bb8d', value_0=(default_name), value_1=(ext)),
+            filter_str
         )
-
+        
         if not file_path:
             return
-
+        
         try:
             self._export_to_file(file_path)
             QMessageBox.information(
                 self,
                 tr("export.success_title"),
-                trf("export.success_body", path=file_path),
+                trf("export.success_body", path=file_path)
             )
             self.accept()
         except Exception as e:
-            QMessageBox.critical(
-                self, tr("export.error_title"), trf("export.error_body", err=str(e))
-            )
-
+            QMessageBox.critical(self, tr("export.error_title"), trf("export.error_body", err=str(e)))
+    
     def _export_to_file(self, file_path: str):
         """Exportiert die Daten in eine Datei"""
-        delimiter = "," if self.radio_csv.isChecked() else "\t"
+        delimiter = ',' if self.radio_csv.isChecked() else '\t'
         year_data = self.year_combo.currentData()
         year_filter = int(year_data) if year_data is not None else None
-
+        
         # Encoding
-        encoding = "utf-8-sig" if self.chk_utf8_bom.isChecked() else "utf-8"
-
-        with open(file_path, "w", newline="", encoding=encoding) as f:
+        encoding = 'utf-8-sig' if self.chk_utf8_bom.isChecked() else 'utf-8'
+        
+        with open(file_path, 'w', newline='', encoding=encoding) as f:
             writer = csv.writer(f, delimiter=delimiter)
-
+            
             # === TRACKING ===
             if self.chk_tracking.isChecked():
                 if self.chk_include_header.isChecked():
                     writer.writerow(["=== TRACKING-DATEN ==="])
-                    writer.writerow(
-                        ["Datum", "Typ", tr("header.category"), "Betrag", "Details"]
-                    )
-
+                    writer.writerow(["Datum", "Typ", tr("header.category"), "Betrag", "Details"])
+                
                 rows = self.tracking.list_filtered(
                     year=year_filter if year_filter else None
                 )
                 for r in rows:
-                    writer.writerow(
-                        [
-                            r.d.strftime("%d.%m.%Y"),
-                            r.typ,
-                            r.category,
-                            f"{r.amount:.2f}",
-                            r.details,
-                        ]
-                    )
+                    writer.writerow([
+                        r.d.strftime("%d.%m.%Y"),
+                        r.typ,
+                        r.category,
+                        f"{r.amount:.2f}",
+                        r.details
+                    ])
                 writer.writerow([])  # Leerzeile
-
+            
             # === BUDGET ===
             if self.chk_budget.isChecked():
                 if self.chk_include_header.isChecked():
                     writer.writerow(["=== BUDGET-DATEN ==="])
-                    writer.writerow(
-                        ["Jahr", "Monat", "Typ", tr("header.category"), "Betrag"]
-                    )
-
+                    writer.writerow(["Jahr", "Monat", "Typ", tr("header.category"), "Betrag"])
+                
                 years = [year_filter] if year_filter else self.budget.years()
                 for year in years:
                     for typ in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
@@ -247,51 +206,30 @@ class ExportDialog(QDialog):
                         for cat, months in matrix.items():
                             for month, amount in months.items():
                                 if abs(float(amount)) > 0.01:
-                                    writer.writerow(
-                                        [year, month, typ, cat, f"{amount:.2f}"]
-                                    )
+                                    writer.writerow([
+                                        year,
+                                        month,
+                                        typ,
+                                        cat,
+                                        f"{amount:.2f}"
+                                    ])
                 writer.writerow([])
-
+            
             # === KATEGORIEN ===
             if self.chk_categories.isChecked():
                 if self.chk_include_header.isChecked():
                     writer.writerow(["=== KATEGORIEN ==="])
-                    writer.writerow(
-                        [
-                            "Typ",
-                            "Hauptkategorie",
-                            "Unterkategorie",
-                            "Fix (0/1)",
-                            "Wiederkehrend (0/1)",
-                            "Tag (1-31)",
-                        ]
-                    )
+                    writer.writerow(["Typ", "Hauptkategorie", "Unterkategorie",
+                                     "Fix (0/1)", "Wiederkehrend (0/1)", "Tag (1-31)"])
 
                 from model.category_model import CategoryModel
-
                 cats = CategoryModel(self.conn)
                 for typ in [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS]:
                     for root in cats.build_tree(cats.list(typ)):
                         rc = root["cat"]
-                        writer.writerow(
-                            [
-                                typ,
-                                rc.name,
-                                "",
-                                int(rc.is_fix),
-                                int(rc.is_recurring),
-                                int(rc.recurring_day),
-                            ]
-                        )
+                        writer.writerow([typ, rc.name, "",
+                                         int(rc.is_fix), int(rc.is_recurring), int(rc.recurring_day)])
                         for ch in root["children"]:
                             cc = ch["cat"]
-                            writer.writerow(
-                                [
-                                    typ,
-                                    rc.name,
-                                    cc.name,
-                                    int(cc.is_fix),
-                                    int(cc.is_recurring),
-                                    int(cc.recurring_day),
-                                ]
-                            )
+                            writer.writerow([typ, rc.name, cc.name,
+                                             int(cc.is_fix), int(cc.is_recurring), int(cc.recurring_day)])

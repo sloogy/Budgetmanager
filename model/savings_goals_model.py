@@ -12,6 +12,7 @@ from model.database import db_transaction
 from model.crypto import suspend_after_commit_autosave
 from model.typ_constants import TYP_SAVINGS
 
+
 """Sparziele-Datenmodell.
 
 Verwaltet Sparziele mit Lebenszyklusstatus (sparend, freigegeben, abgeschlossen),

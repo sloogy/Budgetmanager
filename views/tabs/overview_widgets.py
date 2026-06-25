@@ -8,34 +8,19 @@ Enthält die wiederverwendbaren Basiswidgets:
 Wurde aus overview_tab.py extrahiert (v1.0.5 – Patch C: Aufspaltung).
 Alle anderen Overview-Sub-Module importieren aus dieser Datei.
 """
-
 from __future__ import annotations
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 from PySide6.QtCore import Qt, Signal, QMargins
 from PySide6.QtGui import QPainter, QFont, QCursor, QColor
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QFrame,
-    QProgressBar,
-    QSizePolicy,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QProgressBar, QSizePolicy,
 )
 from PySide6.QtCharts import (
-    QChart,
-    QChartView,
-    QPieSeries,
-    QPieSlice,
-    QBarSeries,
-    QStackedBarSeries,
-    QBarSet,
-    QBarCategoryAxis,
-    QValueAxis,
+    QChart, QChartView, QPieSeries, QPieSlice,
+    QBarSeries, QStackedBarSeries, QBarSet, QBarCategoryAxis, QValueAxis,
     QLineSeries,
 )
 
@@ -47,17 +32,10 @@ from views.ui_colors import ui_colors
 
 class CompactKPICard(QFrame):
     """Kompakte KPI-Karte – anklickbar, farbkodiert."""
-
     clicked = Signal(str)
 
-    def __init__(
-        self,
-        title: str,
-        value: str = "0",
-        icon: str = "💰",
-        color: str = None,
-        parent=None,
-    ):
+    def __init__(self, title: str, value: str = "0", icon: str = "💰",
+                 color: str = None, parent=None):
         super().__init__(parent)
         self.title = title
         self._color = color or ui_colors(self).accent
@@ -119,16 +97,7 @@ class CompactProgressBar(QWidget):
     Ersparnisse) kann ``typ_key`` gesetzt werden; dann verwendet der Balken
     immer die Kontofarbe aus dem aktiven Theme statt Grün/Gelb/Rot.
     """
-
-    def __init__(
-        self,
-        label: str,
-        max_value: float = 100,
-        parent=None,
-        *,
-        typ_key: str | None = None,
-        bar_color: str | None = None,
-    ):
+    def __init__(self, label: str, max_value: float = 100, parent=None, *, typ_key: str | None = None, bar_color: str | None = None):
         super().__init__(parent)
         self.max_value = max_value
         self.current_value = 0.0
@@ -187,7 +156,6 @@ class CompactProgressBar(QWidget):
 
 class CompactChart(QChartView):
     """Kompaktes Diagramm mit Click-Signal."""
-
     slice_clicked = Signal(str)
 
     def __init__(self, parent=None):
@@ -215,12 +183,7 @@ class CompactChart(QChartView):
             self._chart.removeAxis(axis)
         self._chart.legend().setVisible(bool(keep_legend))
 
-    def create_pie_chart(
-        self,
-        data: dict[str, float],
-        title: str = "",
-        color_map: dict[str, str] | None = None,
-    ) -> None:
+    def create_pie_chart(self, data: dict[str, float], title: str = "", color_map: dict[str, str] | None = None) -> None:
         self._clear_chart(keep_legend=False)
         if not data:
             self._chart.setTitle(title + tr("tab_ui.keine_daten"))
@@ -284,17 +247,13 @@ class CompactChart(QChartView):
                 except Exception as e:
                     logger.debug("sl.setBorderWidth: %s", e)
                 try:
-                    sl.hovered.connect(
-                        lambda state, s=sl: self._on_slice_hover(state, s)
-                    )
+                    sl.hovered.connect(lambda state, s=sl: self._on_slice_hover(state, s))
                 except Exception as e:
                     logger.debug("sl.hovered connect: %s", e)
 
             try:
                 series.clicked.connect(
-                    lambda sl: self.slice_clicked.emit(
-                        str(sl.property("raw_label") or "")
-                    )
+                    lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
                 )
             except Exception as e:
                 logger.debug("series.clicked connect: %s", e)
@@ -341,7 +300,7 @@ class CompactChart(QChartView):
                 continue
             series = QLineSeries()
             series.setName(sd.get("label", ""))
-            for i, val in enumerate(values[: len(categories)]):
+            for i, val in enumerate(values[:len(categories)]):
                 series.append(i, val)
                 all_values.append(val)
             if sd.get("color"):
@@ -376,6 +335,7 @@ class CompactChart(QChartView):
             series.attachAxis(axis_y)
 
         self._chart.setTitle(title)
+
 
     def create_colored_bar_chart(self, bars: list[dict], title: str = "") -> None:
         """Balkendiagramm mit individueller Farbe je Balken.

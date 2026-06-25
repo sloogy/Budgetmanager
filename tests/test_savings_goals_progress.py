@@ -6,11 +6,7 @@ import sqlite3
 import pytest
 
 from model.migrations import migrate_all
-from model.savings_goals_model import (
-    SavingsGoal,
-    SavingsGoalBoundsError,
-    SavingsGoalsModel,
-)
+from model.savings_goals_model import SavingsGoal, SavingsGoalBoundsError, SavingsGoalsModel
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_SAVINGS
 

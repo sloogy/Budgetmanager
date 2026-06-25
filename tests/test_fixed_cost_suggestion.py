@@ -13,7 +13,6 @@ Interpretation für die Engine:
 
 Läuft ohne Qt/PySide6.
 """
-
 from __future__ import annotations
 
 import sqlite3
@@ -29,8 +28,8 @@ from model.migrations import migrate_all  # noqa: E402
 from model.budget_suggestion_engine import BudgetSuggestionEngine  # noqa: E402
 from model.typ_constants import TYP_EXPENSES  # noqa: E402
 
-# ── Helpers ──────────────────────────────────────────────────────
 
+# ── Helpers ──────────────────────────────────────────────────────
 
 def _prev_months(year: int, month: int, n: int):
     """Liefert n (year, month)-Paare rückwärts inkl. Startmonat."""
@@ -54,7 +53,7 @@ def _add_category(conn, name, *, is_fix=False, is_recurring=False):
 
 
 def _set_budget(conn, name, months, amount):
-    for y, m in months:
+    for (y, m) in months:
         conn.execute(
             "INSERT OR REPLACE INTO budget(year, month, typ, category, amount) "
             "VALUES(?,?,?,?,?)",
@@ -65,7 +64,7 @@ def _set_budget(conn, name, months, amount):
 def _book(conn, name, months, amount):
     if amount == 0:
         return
-    for y, m in months:
+    for (y, m) in months:
         conn.execute(
             "INSERT INTO tracking(date, typ, category, amount, details) "
             "VALUES(?,?,?,?,?)",
@@ -92,7 +91,6 @@ HISTORY_MONTHS = _prev_months(2025, 11, 8)
 
 # ── T1: Fixkosten + 0 Buchungen → kein Vorschlag ─────────────────
 
-
 def test_fixed_cost_zero_actuals_no_suggestion(conn):
     _add_category(conn, "Miete", is_fix=True)
     _set_budget(conn, "Miete", BUDGET_MONTHS, 1500.0)
@@ -105,7 +103,6 @@ def test_fixed_cost_zero_actuals_no_suggestion(conn):
 
 
 # ── T2: Nicht-Fixkosten, gleiche Daten → 0-Reduktion liefert Vorschlag ─
-
 
 def test_non_fixed_zero_actuals_does_suggest(conn):
     _add_category(conn, "Hobby", is_fix=False)
@@ -120,7 +117,6 @@ def test_non_fixed_zero_actuals_does_suggest(conn):
 
 # ── T3: Fixkosten mit echten, wiederholten Buchungen → Vorschlag erlaubt ─
 
-
 def test_fixed_cost_with_repeated_real_bookings_still_suggests(conn):
     _add_category(conn, "Strom", is_fix=True)
     _set_budget(conn, "Strom", BUDGET_MONTHS, 100.0)
@@ -130,33 +126,24 @@ def test_fixed_cost_with_repeated_real_bookings_still_suggests(conn):
     res = eng.compute_category_suggestion(
         typ=TYP_EXPENSES, category="Strom", year=TARGET_Y, month=TARGET_M
     )
-    assert (
-        res is not None
-    ), "Fixkosten mit wiederholten echten Buchungen müssen analysiert werden"
+    assert res is not None, "Fixkosten mit wiederholten echten Buchungen müssen analysiert werden"
     assert res.suggested_budget > 100.0, "Dauerhafte Überschreitung → Budget erhöhen"
     assert res.direction == "deficit"
 
 
 # ── T4: Schutz abschaltbar ───────────────────────────────────────
 
-
 def test_respect_fixed_costs_flag_can_disable(conn):
     _add_category(conn, "Versicherung", is_fix=True)
     _set_budget(conn, "Versicherung", BUDGET_MONTHS, 1500.0)
     eng = BudgetSuggestionEngine(conn)
     # Mit Schutz: kein Vorschlag
-    assert (
-        eng.compute_category_suggestion(
-            typ=TYP_EXPENSES, category="Versicherung", year=TARGET_Y, month=TARGET_M
-        )
-        is None
-    )
+    assert eng.compute_category_suggestion(
+        typ=TYP_EXPENSES, category="Versicherung", year=TARGET_Y, month=TARGET_M
+    ) is None
     # Ohne Schutz: 0-Reduktion greift wie bei normalen Kategorien
     res = eng.compute_category_suggestion(
-        typ=TYP_EXPENSES,
-        category="Versicherung",
-        year=TARGET_Y,
-        month=TARGET_M,
+        typ=TYP_EXPENSES, category="Versicherung", year=TARGET_Y, month=TARGET_M,
         respect_fixed_costs=False,
     )
     assert res is not None
@@ -164,7 +151,6 @@ def test_respect_fixed_costs_flag_can_disable(conn):
 
 
 # ── T5: Dein Versicherungsfall: 1 echte Buchung + viele 0 → kein Senken ─
-
 
 def test_fixed_cost_one_real_booking_plus_zeros_does_not_reduce(conn):
     """Budget 200, Ist 250/0/0/... darf kein Senkungsvorschlag werden."""
@@ -181,9 +167,7 @@ def test_fixed_cost_one_real_booking_plus_zeros_does_not_reduce(conn):
     assert res is None
 
 
-def test_fixed_incremental_over_budget_active_months_but_total_covered_no_increase(
-    conn,
-):
+def test_fixed_incremental_over_budget_active_months_but_total_covered_no_increase(conn):
     """Budget 200, Ist 250/250/250/0/0/0 ist total gedeckt und darf nicht erhöhen."""
     months = _prev_months(2026, 7, 7)
     # HISTORY_MONTHS in zeitlicher Reihenfolge: Juni, Mai, April, März, Februar, Januar.
@@ -218,7 +202,6 @@ def test_fixed_incremental_total_undercovered_uses_window_average(conn):
 
 # ── T6: Wiederkehrend ohne is_fix wird ebenfalls geschützt ─────────
 
-
 def test_recurring_category_zero_months_do_not_reduce_budget(conn):
     """Auch is_recurring=1 ist fixed-like und darf nicht wegen 0-Monaten senken."""
     months = _prev_months(2026, 7, 7)
@@ -235,7 +218,6 @@ def test_recurring_category_zero_months_do_not_reduce_budget(conn):
 
 
 # ── T7: Flexible Budgets bleiben flexibel ─────────────────────────
-
 
 def test_flexible_category_can_reduce_from_repeated_low_pattern_with_zero(conn):
     """Hobby 40 CHF, Ist 20/30/0/20/30/0 darf gesenkt werden."""
@@ -254,7 +236,6 @@ def test_flexible_category_can_reduce_from_repeated_low_pattern_with_zero(conn):
 
 
 # ── T8: Ausreißer rauf/runter bleibt stabil ───────────────────────
-
 
 def test_food_overshoot_then_undershoot_stays_stable(conn):
     """Nahrungsmittel 400, Ist 450 danach 350 ergibt keinen Vorschlag."""

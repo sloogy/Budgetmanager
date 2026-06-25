@@ -252,13 +252,13 @@ python -m updater.generate_manifest \
   --version 2.1.0 \
   --release-tag v2.1.0 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.1.0-portable.zip \
-  --linux-zip dist/BudgetManager-v2.1.0-portable.zip \
+  --windows-zip dist/BudgetManager-v2.1.0-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.1.0-portable-linux.zip \
   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0 \
   --out latest.json
 ```
 
-Die Datei `latest.json` muss zusammen mit dem Portable-ZIP / der Windows-EXE in das GitHub-Release hochgeladen werden.
+Die Datei `latest.json` muss zusammen mit den Plattform-ZIPs, Installer-Artefakten und `SHA256SUMS.txt` in das GitHub-Release hochgeladen werden.
 
 ---
 

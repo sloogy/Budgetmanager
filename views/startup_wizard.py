@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
@@ -10,31 +9,15 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QRadioButton,
-    QButtonGroup,
-    QGroupBox,
-    QFrame,
-    QFormLayout,
-    QFileDialog,
-    QMessageBox,
-    QInputDialog,
-    QStackedWidget,
-    QTextEdit,
-    QCheckBox,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QLineEdit, QRadioButton, QButtonGroup, QGroupBox, QFrame,
+    QFormLayout, QFileDialog, QMessageBox, QInputDialog,
+    QStackedWidget, QTextEdit, QCheckBox,
 )
 
 from model.user_model import (
-    UserModel,
-    User,
-    SECURITY_QUICK,
-    SECURITY_PIN,
-    SECURITY_PASSWORD,
+    UserModel, User,
+    SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD,
 )
 from views.ui_colors import ui_colors
 from utils.i18n import tr, trf
@@ -76,9 +59,7 @@ class StartupWizard(QDialog):
         # ── Title ──
         title = QLabel(tr("startup.welcome_title"))
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet(
-            "font-size: 18px; font-weight: 700; padding: 16px 24px 8px 24px;"
-        )
+        title.setStyleSheet("font-size: 18px; font-weight: 700; padding: 16px 24px 8px 24px;")
         root.addWidget(title)
 
         # ── Stacked pages ──
@@ -94,12 +75,7 @@ class StartupWizard(QDialog):
         nav.setContentsMargins(24, 8, 24, 16)
         nav.setSpacing(8)
 
-        self.btn_back = QPushButton(
-            trf(
-                "auto.views_startup_wizard.78_value_0_9628887f",
-                value_0=(tr("btn.back_step")),
-            )
-        )
+        self.btn_back = QPushButton(trf('auto.views_startup_wizard.78_value_0_9628887f', value_0=(tr('btn.back_step'))))
         self.btn_back.setVisible(False)
         self.btn_back.clicked.connect(self._go_back)
         nav.addWidget(self.btn_back)
@@ -110,12 +86,7 @@ class StartupWizard(QDialog):
         self.btn_cancel.clicked.connect(self.reject)
         nav.addWidget(self.btn_cancel)
 
-        self.btn_next = QPushButton(
-            trf(
-                "auto.views_startup_wizard.89_value_0_e2a7ae74",
-                value_0=(tr("btn.continue")),
-            )
-        )
+        self.btn_next = QPushButton(trf('auto.views_startup_wizard.89_value_0_e2a7ae74', value_0=(tr('btn.continue'))))
         self.btn_next.setDefault(True)
         self.btn_next.setMinimumWidth(110)
         self.btn_next.clicked.connect(self._go_next)
@@ -220,7 +191,7 @@ class StartupWizard(QDialog):
 
         self.edt_secret = QLineEdit()
         self.edt_secret.setStyleSheet("padding: 6px;")
-        self.lbl_secret = QLabel(tr("create_user.pin_label"))
+        self.lbl_secret = QLabel(tr('create_user.pin_label'))
         sf_lay.addRow(self.lbl_secret, self.edt_secret)
 
         self.edt_secret2 = QLineEdit()
@@ -258,21 +229,14 @@ class StartupWizard(QDialog):
             self.btn_next.setText(tr("btn.finish"))
             self.btn_next.setVisible(True)
         else:
-            self.btn_next.setText(
-                trf(
-                    "auto.views_startup_wizard.232_value_0_0df8e20d",
-                    value_0=(tr("btn.continue")),
-                )
-            )
+            self.btn_next.setText(trf('auto.views_startup_wizard.232_value_0_0df8e20d', value_0=(tr('btn.continue'))))
             self.btn_next.setVisible(True)
 
     def _go_next(self) -> None:
         page = self.stack.currentIndex()
         if page == self._PAGE_NAME:
             if not self.edt_name.text().strip():
-                QMessageBox.warning(
-                    self, tr("msg.info"), tr("account.bitte_einen_namen_eingeben")
-                )
+                QMessageBox.warning(self, tr("msg.info"), tr("account.bitte_einen_namen_eingeben"))
                 self.edt_name.setFocus()
                 return
             self._goto(self._PAGE_CHOICE)
@@ -300,9 +264,7 @@ class StartupWizard(QDialog):
             self,
             tr("lbl.backup_auswaehlen"),
             str(Path.home()),
-            tr(
-                "auto.views_startup_wizard.267_budgetmanager_backups_bmr_enc_db_d504b057"
-            ),
+            tr('auto.views_startup_wizard.267_budgetmanager_backups_bmr_enc_db_d504b057')
         )
         if not src_path:
             return
@@ -331,14 +293,10 @@ class StartupWizard(QDialog):
             self.edt_secret.setMaxLength(8)
             self.lbl_secret2.setText(tr("create_user.pin_repeat_label"))
             self.edt_secret2.setEchoMode(QLineEdit.Password)
-            self.edt_secret2.setPlaceholderText(
-                tr("create_user.pin_repeat_placeholder")
-            )
+            self.edt_secret2.setPlaceholderText(tr("create_user.pin_repeat_placeholder"))
             self.edt_secret2.setMaxLength(8)
             self.lbl_warn.setText(tr("account.pin_oder_restorekey_verlieren"))
-            self.lbl_warn.setStyleSheet(
-                f"color: {c.negative}; font-size: 11px; padding: 5px;"
-            )
+            self.lbl_warn.setStyleSheet(f"color: {c.negative}; font-size: 11px; padding: 5px;")
         elif not is_quick:
             self.lbl_secret.setText(tr("create_user.password_label"))
             self.edt_secret.setEchoMode(QLineEdit.Password)
@@ -346,19 +304,13 @@ class StartupWizard(QDialog):
             self.edt_secret.setMaxLength(128)
             self.lbl_secret2.setText(tr("create_user.repeat_label"))
             self.edt_secret2.setEchoMode(QLineEdit.Password)
-            self.edt_secret2.setPlaceholderText(
-                tr("create_user.password_repeat_placeholder")
-            )
+            self.edt_secret2.setPlaceholderText(tr("create_user.password_repeat_placeholder"))
             self.edt_secret2.setMaxLength(128)
             self.lbl_warn.setText(tr("account.passwort_oder_restorekey_verlieren"))
-            self.lbl_warn.setStyleSheet(
-                f"color: {c.negative}; font-size: 11px; padding: 5px;"
-            )
+            self.lbl_warn.setStyleSheet(f"color: {c.negative}; font-size: 11px; padding: 5px;")
         else:
             self.lbl_warn.setText(tr("account.schuetzt_vor_versehenneugier_nicht"))
-            self.lbl_warn.setStyleSheet(
-                f"color: {c.text_dim}; font-size: 11px; padding: 5px;"
-            )
+            self.lbl_warn.setStyleSheet(f"color: {c.text_dim}; font-size: 11px; padding: 5px;")
 
     # ──────────────────────────────────────────────
     # Final step: create user (+ optional import)
@@ -367,9 +319,7 @@ class StartupWizard(QDialog):
     def _finish(self) -> None:
         name = self.edt_name.text().strip()
         if not name:
-            QMessageBox.warning(
-                self, tr("msg.info"), tr("account.bitte_einen_namen_eingeben")
-            )
+            QMessageBox.warning(self, tr("msg.info"), tr("account.bitte_einen_namen_eingeben"))
             return
 
         if self.rb_quick.isChecked():
@@ -382,24 +332,16 @@ class StartupWizard(QDialog):
                 QMessageBox.warning(self, tr("msg.info"), tr("account.pin_length"))
                 return
             if secret != self.edt_secret2.text():
-                QMessageBox.warning(
-                    self, tr("msg.info"), tr("account.pins_stimmen_nicht_ueberein")
-                )
+                QMessageBox.warning(self, tr("msg.info"), tr("account.pins_stimmen_nicht_ueberein"))
                 return
         else:
             security = SECURITY_PASSWORD
             secret = self.edt_secret.text()
             if len(secret) < 4:
-                QMessageBox.warning(
-                    self, tr("msg.info"), tr("account.password_min_length")
-                )
+                QMessageBox.warning(self, tr("msg.info"), tr("account.password_min_length"))
                 return
             if secret != self.edt_secret2.text():
-                QMessageBox.warning(
-                    self,
-                    tr("msg.info"),
-                    tr("account.passwoerter_stimmen_nicht_ueberein"),
-                )
+                QMessageBox.warning(self, tr("msg.info"), tr("account.passwoerter_stimmen_nicht_ueberein"))
                 return
 
         try:
@@ -414,9 +356,7 @@ class StartupWizard(QDialog):
             try:
                 self.user_model.delete_user(user.username, delete_db=True)
             except Exception as exc:
-                logger.warning(
-                    "Rollback des neu erstellten Benutzers fehlgeschlagen: %s", exc
-                )
+                logger.warning("Rollback des neu erstellten Benutzers fehlgeschlagen: %s", exc)
 
         # ── Import / Restore ZUERST versuchen (falls gewählt) ──────────────
         # Erst nach erfolgreicher Entschlüsselung wird fortgefahren. Schlägt sie
@@ -430,9 +370,7 @@ class StartupWizard(QDialog):
                 self._restore_into_user(Path(self._import_src_path), user, db_key)
             except Exception as exc:
                 _rollback_created_user()
-                logger.info(
-                    "Erststart-Restore fehlgeschlagen – zurück zum Anfang: %s", exc
-                )
+                logger.info("Erststart-Restore fehlgeschlagen – zurück zum Anfang: %s", exc)
                 QMessageBox.critical(
                     self,
                     tr("msg.error"),
@@ -451,12 +389,9 @@ class StartupWizard(QDialog):
         if not restore_key:
             try:
                 from model.crypto import db_key_to_restore_key
-
                 restore_key = db_key_to_restore_key(db_key)
             except Exception as exc:
-                logger.warning(
-                    "Restore-Key für Quick-User konnte nicht abgeleitet werden: %s", exc
-                )
+                logger.warning("Restore-Key für Quick-User konnte nicht abgeleitet werden: %s", exc)
                 restore_key = ""
 
         if restore_key:
@@ -465,9 +400,7 @@ class StartupWizard(QDialog):
                 return  # user closed dialog without confirming
 
         if self._import_src_path:
-            QMessageBox.information(
-                self, tr("startup.import_title"), tr("startup.import_success")
-            )
+            QMessageBox.information(self, tr("startup.import_title"), tr("startup.import_success"))
 
         self.result = StartupResult(user=user, db_key=db_key)
         self.accept()
@@ -498,11 +431,7 @@ class StartupWizard(QDialog):
         layout = QVBoxLayout(dlg)
 
         c = ui_colors(dlg)
-        intro_key = (
-            "dlg.restore_key_intro_quick"
-            if getattr(user, "is_quick", False)
-            else "dlg.restore_key_intro"
-        )
+        intro_key = "dlg.restore_key_intro_quick" if getattr(user, "is_quick", False) else "dlg.restore_key_intro"
         layout.addWidget(QLabel(trf(intro_key, color=c.negative)))
 
         key_box = QTextEdit()
@@ -591,9 +520,7 @@ class StartupWizard(QDialog):
                 try:
                     extracted_tmp.unlink(missing_ok=True)
                 except Exception as e:
-                    logger.debug(
-                        "Temporäre Restore-Datei konnte nicht gelöscht werden: %s", e
-                    )
+                    logger.debug("Temporäre Restore-Datei konnte nicht gelöscht werden: %s", e)
 
     def _import_enc_to_user(
         self,
@@ -605,11 +532,7 @@ class StartupWizard(QDialog):
         bundle_path: Path | None = None,
     ) -> None:
         """Importiert eine verschlüsselte DB in den neu angelegten Benutzer."""
-        from model.crypto import (
-            decrypt_db_from_file,
-            encrypt_db_to_file,
-            restore_key_to_db_key,
-        )
+        from model.crypto import decrypt_db_from_file, encrypt_db_to_file, restore_key_to_db_key
 
         # 1) Backup passt bereits zum neu erstellten Benutzer-Key.
         try:
@@ -623,18 +546,14 @@ class StartupWizard(QDialog):
         # 2) Wenn es ein .bmr mit users.json ist, Quick-Backups automatisch öffnen.
         #    Das ist wichtig im Erststart: Quick-User haben zwar einen DB-Key in
         #    users.json, aber der Nutzer hat oft keinen Restore-Key griffbereit.
-        for label, candidate_key in self._candidate_db_keys_from_bundle_users(
-            bundle_path, src_enc
-        ):
+        for label, candidate_key in self._candidate_db_keys_from_bundle_users(bundle_path, src_enc):
             try:
                 tmp_conn = decrypt_db_from_file(src_enc, candidate_key)
                 try:
                     encrypt_db_to_file(tmp_conn, dest_enc, new_db_key, new_salt)
                 finally:
                     tmp_conn.close()
-                logger.info(
-                    "Import-DB über Bundle-users.json entschlüsselt (%s)", label
-                )
+                logger.info("Import-DB über Bundle-users.json entschlüsselt (%s)", label)
                 return
             except Exception as exc:
                 logger.debug("Bundle-Key-Kandidat nicht passend (%s): %s", label, exc)
@@ -660,17 +579,9 @@ class StartupWizard(QDialog):
                     QMessageBox.warning(
                         self,
                         tr("msg.info"),
-                        trf(
-                            "auto.views_startup_wizard.480_bitte_erneut_versuchen_value_0_2762b9bc",
-                            value_0=(exc),
-                        ),
+                        trf('auto.views_startup_wizard.480_bitte_erneut_versuchen_value_0_2762b9bc', value_0=(exc)),
                     )
-        raise ValueError(
-            trf(
-                "dlg.entschluesselung_mit_restorekey_fehlgeschlagen",
-                last_exc=str(last_exc),
-            )
-        )
+        raise ValueError(trf("dlg.entschluesselung_mit_restorekey_fehlgeschlagen", last_exc=str(last_exc)))
 
     def _candidate_db_keys_from_bundle_users(
         self,
@@ -714,9 +625,7 @@ class StartupWizard(QDialog):
         if not users:
             return []
 
-        source_db_name = str(
-            manifest.get("source_db_name") or manifest.get("source_db") or ""
-        ).strip()
+        source_db_name = str(manifest.get("source_db_name") or manifest.get("source_db") or "").strip()
 
         def score(entry: dict) -> int:
             value = 0
@@ -744,9 +653,7 @@ class StartupWizard(QDialog):
             result.append((str(label), key.encode("ascii")))
         return result
 
-    def _import_db_to_enc(
-        self, src_db: Path, dest_enc: Path, db_key: bytes, salt: bytes
-    ) -> None:
+    def _import_db_to_enc(self, src_db: Path, dest_enc: Path, db_key: bytes, salt: bytes) -> None:
         import sqlite3
         from model.crypto import encrypt_db_to_file
 
@@ -782,7 +689,6 @@ class StartupWizard(QDialog):
     def _extract_bmr_to_temp(self, bundle_path: Path) -> Path:
         import json
         import zipfile
-
         tmp_dir = Path(bundle_path).parent / "_tmp_restore"
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
@@ -801,10 +707,7 @@ class StartupWizard(QDialog):
                     raise ValueError(tr("dlg.ungueltiges_bmr_keine_datenbankdatei"))
 
             suffix = ".enc" if db_file.endswith(".enc") else ".db"
-            out = (
-                tmp_dir
-                / f"startup_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}{suffix}"
-            )
+            out = tmp_dir / f"startup_restore_{datetime.now().strftime('%Y%m%d_%H%M%S')}{suffix}"
             with open(out, "wb") as f:
                 f.write(zf.read(db_file))
         return out

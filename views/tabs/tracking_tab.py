@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-
 logger = logging.getLogger(__name__)
 import sqlite3
 import calendar
@@ -9,26 +8,10 @@ from datetime import date
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QCheckBox,
-    QTableWidget,
-    QTableWidgetItem,
-    QAbstractItemView,
-    QMessageBox,
-    QDialog,
-    QComboBox,
-    QLabel,
-    QLineEdit,
-    QDateEdit,
-    QGroupBox,
-    QDoubleSpinBox,
-    QMenu,
-    QProgressBar,
-    QHeaderView,
-    QSizePolicy,
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QCheckBox,
+    QTableWidget, QTableWidgetItem, QAbstractItemView, QMessageBox, QDialog,
+    QComboBox, QLabel, QLineEdit, QDateEdit, QGroupBox, QDoubleSpinBox, QMenu,
+    QProgressBar, QHeaderView, QSizePolicy
 )
 
 from model.category_model import CategoryModel
@@ -50,93 +33,78 @@ from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from model.coverage_model import coverage_from_tracking_rows, CoverageResult
 from utils.i18n import display_typ, db_typ_from_display
 
-
-def _months_de() -> list[str]:
-    return [tr(f"month.{i}") for i in range(1, 13)]
-
-
+def _months_de() -> list[str]: return [tr(f"month.{i}") for i in range(1, 13)]
 class TrackingTab(QWidget):
     def __init__(self, conn: sqlite3.Connection, settings=None):
         super().__init__()
-        self.conn = conn
+        self.conn=conn
         self.settings = settings
         try:
-            self.recent_days = (
-                30 if int(getattr(settings, "recent_days", 14)) == 30 else 14
-            )
+            self.recent_days = 30 if int(getattr(settings, "recent_days", 14)) == 30 else 14
         except Exception:
             self.recent_days = 14
-        self.cats = CategoryModel(conn)
-        self.model = TrackingModel(conn)
-        self.budget = BudgetModel(conn)
-        self.tags_model = TagsModel(conn)
-        self.savings_model = SavingsGoalsModel(conn)
+        self.cats=CategoryModel(conn)
+        self.model=TrackingModel(conn)
+        self.budget=BudgetModel(conn)
+        self.tags_model=TagsModel(conn)
+        self.savings_model=SavingsGoalsModel(conn)
 
         # Buttons
-        self.btn_add = QPushButton(tr("btn.add") + "…")
+        self.btn_add=QPushButton(tr("btn.add") + "…")
         # Quick action: erzeugt Buchungen aus Fixkosten-/Wiederkehrend-Markierungen der Kategorien
-        self.btn_fix = QPushButton(tr("btn.recurring_book"))
-        self.btn_edit = QPushButton(tr("btn.edit"))
-        self.btn_del = QPushButton(tr("btn.delete"))
-        self.btn_clear_filters = QPushButton(tr("btn.reset_filters"))
+        self.btn_fix=QPushButton(tr("btn.recurring_book"))
+        self.btn_edit=QPushButton(tr("btn.edit"))
+        self.btn_del=QPushButton(tr("btn.delete"))
+        self.btn_clear_filters=QPushButton(tr("btn.reset_filters"))
 
         # Quick Filters
-        self.chk_recent = QCheckBox(
-            trf(
-                "auto.views_tabs_tracking_tab.56_nur_letzte_value_0_tage_48196fae",
-                value_0=(self.recent_days),
-            )
-        )
+        self.chk_recent=QCheckBox(trf('auto.views_tabs_tracking_tab.56_nur_letzte_value_0_tage_48196fae', value_0=(self.recent_days)))
         self.chk_recent.setChecked(False)
-
+        
         # ===== ERWEITERTE FILTER =====
-
+        
         # Typ-Filter
         self.filter_typ = QComboBox()
         # userData = DB-Schlüssel (sprachunabhängig), text = Anzeigename
-        for _disp, _key in [
-            (tr("typ.Alle"), ""),
-            (tr("typ.Ausgaben"), TYP_EXPENSES),
-            (tr("typ.Einkommen"), TYP_INCOME),
-            (tr("typ.Ersparnisse"), TYP_SAVINGS),
-        ]:
+        for _disp, _key in [(tr("typ.Alle"), ""), (tr("typ.Ausgaben"), TYP_EXPENSES),
+                             (tr("typ.Einkommen"), TYP_INCOME), (tr("typ.Ersparnisse"), TYP_SAVINGS)]:
             self.filter_typ.addItem(_disp, _key)
-
+        
         # Kategorie-Filter
         self.filter_category = QComboBox()
         self.filter_category.addItem(tr("tracking.filter.all_categories"))
         self._reload_categories()
-
+        
         # Datumsfilter
         self.filter_date_from = QDateEdit()
         self.filter_date_from.setCalendarPopup(True)
         self.filter_date_from.setDate(date.today().replace(day=1))  # Erster des Monats
         self.filter_date_from.setDisplayFormat("dd.MM.yyyy")
-
+        
         self.filter_date_to = QDateEdit()
         self.filter_date_to.setCalendarPopup(True)
         self.filter_date_to.setDate(date.today())
         self.filter_date_to.setDisplayFormat("dd.MM.yyyy")
-
+        
         self.chk_use_date_filter = QCheckBox(tr("tracking.chk.date_filter"))
         self.chk_use_date_filter.setChecked(False)
-
+        
         # Betragsfilter
         self.filter_min_amount = QDoubleSpinBox()
         self.filter_min_amount.setRange(0, 999999)
         self.filter_min_amount.setPrefix(f"{currency_header()} ")
         self.filter_min_amount.setValue(0)
         self.filter_min_amount.setSingleStep(10)
-
+        
         self.filter_max_amount = QDoubleSpinBox()
         self.filter_max_amount.setRange(0, 999999)
         self.filter_max_amount.setPrefix(f"{currency_header()} ")
         self.filter_max_amount.setValue(999999)
         self.filter_max_amount.setSingleStep(10)
-
+        
         self.chk_use_amount_filter = QCheckBox(tr("tracking.chk.amount_filter"))
         self.chk_use_amount_filter.setChecked(False)
-
+        
         # Textsuche
         self.filter_search = QLineEdit()
         self.filter_search.setPlaceholderText(tr("tracking.ph.search"))
@@ -162,35 +130,16 @@ class TrackingTab(QWidget):
         self.savings_panel = self._build_savings_panel()
 
         # Tabelle
-        self.table = QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels(
-            [
-                tr("header.date"),
-                tr("header.type"),
-                tr("header.category"),
-                currency_header(),
-                tr("header.description"),
-                tr("auto.views_tabs_tracking_tab.119_id_db302b9b"),
-            ]
-        )
+        self.table=QTableWidget(0, 6)
+        self.table.setHorizontalHeaderLabels([tr("header.date"), tr("header.type"), tr("header.category"), currency_header(), tr("header.description"), tr('auto.views_tabs_tracking_tab.119_id_db302b9b')])
 
         # Accessibility: Header-Tooltips
         _hdr = self.table.horizontalHeader()
-        for _i, _tip in enumerate(
-            [
-                tr("tracking.tip.col_date"),
-                tr("tracking.tip.col_type"),
-                tr("tracking.tip.col_category"),
-                tr("tracking.tip.col_amount"),
-                tr("tracking.tip.col_details"),
-            ]
-        ):
+        for _i, _tip in enumerate([tr("tracking.tip.col_date"), tr("tracking.tip.col_type"), tr("tracking.tip.col_category"), tr("tracking.tip.col_amount"), tr("tracking.tip.col_details")]):
             if _i < self.table.columnCount():
                 self.table.horizontalHeaderItem(_i).setToolTip(_tip)
         # Badge/Pillen Darstellung für Typ-Spalte
-        self._badge_delegate = BadgeDelegate(
-            self.table, color_map=self.settings.get("type_colors", {})
-        )
+        self._badge_delegate = BadgeDelegate(self.table, color_map=self.settings.get("type_colors", {}))
         self.table.setItemDelegateForColumn(1, self._badge_delegate)
         self.table.setColumnWidth(1, 120)
         self.table.setColumnHidden(5, True)  # internal id
@@ -209,9 +158,9 @@ class TrackingTab(QWidget):
         self._refresh_timer.timeout.connect(self.refresh)
 
         # === LAYOUTS ===
-
+        
         # Button-Leiste (kompakt - nur Hinzufügen und Löschen)
-        top = QHBoxLayout()
+        top=QHBoxLayout()
         top.addWidget(self.btn_add)
         top.addWidget(self.btn_fix)
         top.addWidget(self.btn_del)
@@ -223,48 +172,48 @@ class TrackingTab(QWidget):
         # Filter-GroupBox
         filter_group = QGroupBox(tr("tracking.grp.filters"))
         filter_layout = QVBoxLayout()
-
+        
         # Zeile 1: Typ und Kategorie
         row1 = QHBoxLayout()
-        row1.addWidget(QLabel(tr("lbl.type")))
+        row1.addWidget(QLabel(tr('lbl.type')))
         row1.addWidget(self.filter_typ, 1)
         row1.addWidget(QLabel(tr("lbl.category")))
         row1.addWidget(self.filter_category, 2)
-        row1.addWidget(QLabel(tr("lbl.tag")))
+        row1.addWidget(QLabel(tr('lbl.tag')))
         row1.addWidget(self.filter_tag, 1)
         filter_layout.addLayout(row1)
-
+        
         # Zeile 2: Datumsfilter
         row2 = QHBoxLayout()
         row2.addWidget(self.chk_use_date_filter)
-        row2.addWidget(QLabel(tr("lbl.from")))
+        row2.addWidget(QLabel(tr('lbl.from')))
         row2.addWidget(self.filter_date_from)
-        row2.addWidget(QLabel(tr("lbl.to")))
+        row2.addWidget(QLabel(tr('lbl.to')))
         row2.addWidget(self.filter_date_to)
         row2.addStretch(1)
         filter_layout.addLayout(row2)
-
+        
         # Zeile 3: Betragsfilter
         row3 = QHBoxLayout()
         row3.addWidget(self.chk_use_amount_filter)
-        row3.addWidget(QLabel(tr("lbl.min")))
+        row3.addWidget(QLabel(tr('lbl.min')))
         row3.addWidget(self.filter_min_amount)
-        row3.addWidget(QLabel(tr("lbl.max")))
+        row3.addWidget(QLabel(tr('lbl.max')))
         row3.addWidget(self.filter_max_amount)
         row3.addStretch(1)
         filter_layout.addLayout(row3)
-
+        
         # Zeile 4: Textsuche und Reset
         row4 = QHBoxLayout()
         row4.addWidget(QLabel(tr("lbl.search")))
         row4.addWidget(self.filter_search, 3)
         row4.addWidget(self.btn_clear_filters)
         filter_layout.addLayout(row4)
-
+        
         filter_group.setLayout(filter_layout)
 
         # Hauptlayout
-        root = QVBoxLayout()
+        root=QVBoxLayout()
         root.addLayout(top)
         root.addWidget(filter_group)
         root.addWidget(self.savings_panel)
@@ -279,13 +228,11 @@ class TrackingTab(QWidget):
         self.btn_edit.clicked.connect(self.edit)
         self.btn_del.clicked.connect(self.delete)
         self.btn_clear_filters.clicked.connect(self.clear_filters)
-
+        
         # Filter-Änderungen triggern debounced refresh (200ms)
         self.chk_recent.toggled.connect(lambda _: self._delayed_refresh())
         self.filter_typ.currentIndexChanged.connect(lambda _: self._on_typ_changed())
-        self.filter_category.currentIndexChanged.connect(
-            lambda _: self._delayed_refresh()
-        )
+        self.filter_category.currentIndexChanged.connect(lambda _: self._delayed_refresh())
         self.chk_use_date_filter.toggled.connect(lambda _: self._delayed_refresh())
         self.filter_date_from.dateChanged.connect(lambda _: self._delayed_refresh())
         self.filter_date_to.dateChanged.connect(lambda _: self._delayed_refresh())
@@ -294,7 +241,7 @@ class TrackingTab(QWidget):
         self.filter_max_amount.valueChanged.connect(lambda _: self._delayed_refresh())
         self.filter_search.textChanged.connect(lambda _: self._delayed_refresh())
         self.filter_tag.currentIndexChanged.connect(lambda _: self._delayed_refresh())
-
+        
         self.table.doubleClicked.connect(lambda _: self.edit())
 
         self.refresh()
@@ -317,27 +264,19 @@ class TrackingTab(QWidget):
         self.lbl_savings_panel_hint.setWordWrap(True)
         header.addWidget(self.lbl_savings_panel_hint, 1)
         self.btn_manage_savings_goals = QPushButton(tr("tracking.savings_panel.manage"))
-        self.btn_manage_savings_goals.setToolTip(
-            tr("tracking.savings_panel.manage_tip")
-        )
-        self.btn_manage_savings_goals.clicked.connect(
-            lambda: self._open_savings_goal(None)
-        )
+        self.btn_manage_savings_goals.setToolTip(tr("tracking.savings_panel.manage_tip"))
+        self.btn_manage_savings_goals.clicked.connect(lambda: self._open_savings_goal(None))
         header.addWidget(self.btn_manage_savings_goals)
         layout.addLayout(header)
 
         self.savings_table = QTableWidget(0, 4)
-        self.savings_table.setHorizontalHeaderLabels(
-            [
-                tr("tracking.savings_panel.goal"),
-                tr("tracking.savings_panel.progress"),
-                tr("tracking.savings_panel.remaining"),
-                tr("tracking.savings_panel.status"),
-            ]
-        )
-        self.savings_table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
+        self.savings_table.setHorizontalHeaderLabels([
+            tr("tracking.savings_panel.goal"),
+            tr("tracking.savings_panel.progress"),
+            tr("tracking.savings_panel.remaining"),
+            tr("tracking.savings_panel.status"),
+        ])
+        self.savings_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.savings_table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.savings_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self.savings_table.verticalHeader().setVisible(False)
@@ -349,9 +288,7 @@ class TrackingTab(QWidget):
         header_view.setSectionResizeMode(1, QHeaderView.Stretch)
         header_view.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header_view.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        self.savings_table.doubleClicked.connect(
-            lambda _: self._open_selected_savings_goal()
-        )
+        self.savings_table.doubleClicked.connect(lambda _: self._open_selected_savings_goal())
         layout.addWidget(self.savings_table)
 
         panel.setVisible(False)
@@ -360,11 +297,7 @@ class TrackingTab(QWidget):
     def _refresh_savings_panel(self) -> None:
         """Aktive Sparziele im Tracking anzeigen; ohne aktive Ziele ausblenden."""
         try:
-            goals = [
-                g
-                for g in self.savings_model.list_all()
-                if not getattr(g, "is_completed", False)
-            ]
+            goals = [g for g in self.savings_model.list_all() if not getattr(g, "is_completed", False)]
         except Exception as exc:
             logger.debug("Sparziele-Panel konnte nicht geladen werden: %s", exc)
             goals = []
@@ -375,9 +308,7 @@ class TrackingTab(QWidget):
 
         self.savings_panel.setVisible(True)
         self.savings_table.setRowCount(0)
-        self.lbl_savings_panel_hint.setText(
-            trf("tracking.savings_panel.hint", count=len(goals))
-        )
+        self.lbl_savings_panel_hint.setText(trf("tracking.savings_panel.hint", count=len(goals)))
         colors = ui_colors(self)
 
         for goal in goals:
@@ -389,13 +320,9 @@ class TrackingTab(QWidget):
             name_item.setData(Qt.UserRole, goal.id)
             tip_parts = []
             if goal.category:
-                tip_parts.append(
-                    trf("tracking.savings_panel.tip_category", category=goal.category)
-                )
+                tip_parts.append(trf("tracking.savings_panel.tip_category", category=goal.category))
             if goal.deadline:
-                tip_parts.append(
-                    trf("tracking.savings_panel.tip_deadline", deadline=goal.deadline)
-                )
+                tip_parts.append(trf("tracking.savings_panel.tip_deadline", deadline=goal.deadline))
             tip_parts.append(tr("tracking.savings_panel.tip_open"))
             name_item.setToolTip("\n".join(tip_parts))
             self.savings_table.setItem(row, 0, name_item)
@@ -432,9 +359,7 @@ class TrackingTab(QWidget):
             pl.addWidget(bar)
             self.savings_table.setCellWidget(row, 1, pw)
 
-            remaining_item = QTableWidgetItem(
-                format_money(getattr(goal, "remaining_amount", 0))
-            )
+            remaining_item = QTableWidgetItem(format_money(getattr(goal, "remaining_amount", 0)))
             remaining_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
             self.savings_table.setItem(row, 2, remaining_item)
 
@@ -462,7 +387,6 @@ class TrackingTab(QWidget):
 
     def _open_savings_goal(self, goal_id: int | None = None) -> None:
         from views.savings_goals_dialog import SavingsGoalsDialog
-
         dialog = SavingsGoalsDialog(self.window(), self.conn, initial_goal_id=goal_id)
         dialog.exec()
         self._refresh_savings_panel()
@@ -474,21 +398,14 @@ class TrackingTab(QWidget):
         if data is not None:
             return data if data else "Alle"
         # Fallback für Index-0 (leer = Alle)
-        return (
-            "Alle"
-            if self.filter_typ.currentIndex() == 0
-            else self.filter_typ.currentText()
-        )
+        return "Alle" if self.filter_typ.currentIndex() == 0 else self.filter_typ.currentText()
 
     def _is_all_typ(self) -> bool:
         return self._current_filter_typ_db() == "Alle"
 
     def _reload_categories(self):
         """Lädt alle Kategorien in den Filter (Tree-fähig)"""
-        current_data = (
-            self.filter_category.currentData()
-            or self.filter_category.currentText().strip()
-        )
+        current_data = self.filter_category.currentData() or self.filter_category.currentText().strip()
         self.filter_category.clear()
         self.filter_category.addItem(tr("tracking.filter.all_categories"), None)
 
@@ -503,28 +420,10 @@ class TrackingTab(QWidget):
                     pairs = []
             if pairs:
                 for label, real in pairs:
-                    rows.append(
-                        (
-                            trf(
-                                "tracking.filter.typ_prefix",
-                                typ=display_typ(typ),
-                                label=label,
-                            ),
-                            real,
-                        )
-                    )
+                    rows.append((trf("tracking.filter.typ_prefix", typ=display_typ(typ), label=label), real))
             else:
                 for cat in self.cats.list_names(typ):
-                    rows.append(
-                        (
-                            trf(
-                                "tracking.filter.typ_prefix",
-                                typ=display_typ(typ),
-                                label=cat,
-                            ),
-                            cat,
-                        )
-                    )
+                    rows.append((trf("tracking.filter.typ_prefix", typ=display_typ(typ), label=cat), cat))
 
         # sort by display text
         for disp, real in sorted(rows, key=lambda x: str(x[0]).lower()):
@@ -533,11 +432,7 @@ class TrackingTab(QWidget):
         # Auswahl wiederherstellen
         if current_data:
             for i in range(self.filter_category.count()):
-                if self.filter_category.itemData(
-                    i
-                ) == current_data or self.filter_category.itemText(i).strip().endswith(
-                    str(current_data)
-                ):
+                if self.filter_category.itemData(i) == current_data or self.filter_category.itemText(i).strip().endswith(str(current_data)):
                     self.filter_category.setCurrentIndex(i)
                     break
 
@@ -564,10 +459,7 @@ class TrackingTab(QWidget):
         if typ == "Alle":
             self._reload_categories()
         else:
-            current_data = (
-                self.filter_category.currentData()
-                or self.filter_category.currentText().strip()
-            )
+            current_data = self.filter_category.currentData() or self.filter_category.currentText().strip()
             self.filter_category.clear()
             self.filter_category.addItem(tr("tracking.filter.all_categories"), None)
 
@@ -587,16 +479,10 @@ class TrackingTab(QWidget):
 
             if current_data:
                 for i in range(self.filter_category.count()):
-                    if self.filter_category.itemData(
-                        i
-                    ) == current_data or self.filter_category.itemText(
-                        i
-                    ).strip() == str(
-                        current_data
-                    ):
+                    if self.filter_category.itemData(i) == current_data or self.filter_category.itemText(i).strip() == str(current_data):
                         self.filter_category.setCurrentIndex(i)
                         break
-
+        
         self._delayed_refresh()
 
     def _delayed_refresh(self):
@@ -644,7 +530,6 @@ class TrackingTab(QWidget):
 
         # Einfacher Checkable-Dialog
         from PySide6.QtWidgets import QListWidget, QListWidgetItem, QDialogButtonBox
-
         dlg = QDialog(self)
         dlg.setWindowTitle(tr("tracking.title.set_tags"))
         dlg.setMinimumWidth(300)
@@ -681,9 +566,7 @@ class TrackingTab(QWidget):
         r = self.table.currentRow()
         typ = self.table.item(r, 1).text()
         cat = self.table.item(r, 2).text()
-        amt_txt = (
-            self.table.item(r, 3).text().replace("'", "").replace(",", ".").strip()
-        )
+        amt_txt = self.table.item(r, 3).text().replace("'", "").replace(",", ".").strip()
         try:
             amt = float(amt_txt)
         except Exception:
@@ -710,7 +593,7 @@ class TrackingTab(QWidget):
         r = self.table.currentRow()
         if r < 0:
             return None
-        it = self.table.item(r, 5)
+        it = self.table.item(r,5)
         if not it:
             return None
         try:
@@ -721,12 +604,7 @@ class TrackingTab(QWidget):
     def set_recent_days(self, days: int):
         """Setzt den Zeitraum für den Quick-Filter (nur 14 oder 30)."""
         self.recent_days = 30 if int(days) == 30 else 14
-        self.chk_recent.setText(
-            trf(
-                "auto.views_tabs_tracking_tab.457_nur_letzte_value_0_tage_be9a083a",
-                value_0=(self.recent_days),
-            )
-        )
+        self.chk_recent.setText(trf('auto.views_tabs_tracking_tab.457_nur_letzte_value_0_tage_be9a083a', value_0=(self.recent_days)))
         # Wenn Quick-Filter aktiv ist, sofort neu laden
         if self.chk_recent.isChecked():
             self.refresh()
@@ -743,9 +621,7 @@ class TrackingTab(QWidget):
             )
         combined = result.combined_savings_suggestions()
         if combined:
-            parts = ", ".join(
-                f"{s.category} {format_money(s.amount)}" for s in combined[:4]
-            )
+            parts = ", ".join(f"{s.category} {format_money(s.amount)}" for s in combined[:4])
             if len(combined) > 4:
                 parts += " …"
             return trf("coverage.suggestion_combined", categories=parts)
@@ -762,7 +638,6 @@ class TrackingTab(QWidget):
             settings_obj = self.settings
             if settings_obj is None:
                 from settings import Settings
-
                 settings_obj = Settings()
             if not bool(settings_obj.get("warn_budget_overrun", False)):
                 self.lbl_coverage_warning.clear()
@@ -797,35 +672,33 @@ class TrackingTab(QWidget):
             )
             self.lbl_coverage_warning.setVisible(True)
         except Exception as exc:
-            logger.debug(
-                "Tracking-Deckungswarnung konnte nicht berechnet werden: %s", exc
-            )
+            logger.debug("Tracking-Deckungswarnung konnte nicht berechnet werden: %s", exc)
             self.lbl_coverage_warning.clear()
             self.lbl_coverage_warning.setVisible(False)
 
     def refresh(self):
         """Lädt Daten mit aktiven Filtern"""
-
+        
         # Quick Filter: Letzte 14 Tage
         if self.chk_recent.isChecked():
             rows = self.model.list_recent_sorted(self.recent_days)
         else:
             # Erweiterte Filter verwenden
-            typ = self._current_filter_typ_db() if not self._is_all_typ() else None
+            typ = (self._current_filter_typ_db() if not self._is_all_typ() else None)
             category = self.filter_category.currentData()
-
+            
             date_from = None
             date_to = None
             if self.chk_use_date_filter.isChecked():
                 date_from = self.filter_date_from.date().toPython()
                 date_to = self.filter_date_to.date().toPython()
-
+            
             min_amount = None
             max_amount = None
             if self.chk_use_amount_filter.isChecked():
                 min_amount = self.filter_min_amount.value()
                 max_amount = self.filter_max_amount.value()
-
+            
             search_text = self.filter_search.text().strip() or None
 
             # Tag-Filter
@@ -847,25 +720,19 @@ class TrackingTab(QWidget):
         total_ausgaben = 0.0
         total_einkommen = 0.0
         total_ersparnisse = 0.0
-
+        
         for r in rows:
-            i = self.table.rowCount()
+            i=self.table.rowCount()
             self.table.insertRow(i)
-            self.table.setItem(i, 0, QTableWidgetItem(r.d.strftime("%d.%m.%Y")))
-            self.table.setItem(i, 1, QTableWidgetItem(display_typ(str(r.typ))))
-            self.table.setItem(
-                i,
-                2,
-                QTableWidgetItem(
-                    self.cats.display_with_parent(str(r.typ), str(r.category))
-                ),
-            )
-            a = QTableWidgetItem(format_chf(float(r.amount)))
-            a.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            self.table.setItem(i, 3, a)
-            self.table.setItem(i, 4, QTableWidgetItem(str(r.details)))
-            self.table.setItem(i, 5, QTableWidgetItem(str(r.id)))
-
+            self.table.setItem(i,0,QTableWidgetItem(r.d.strftime("%d.%m.%Y")))
+            self.table.setItem(i,1,QTableWidgetItem(display_typ(str(r.typ))))
+            self.table.setItem(i,2,QTableWidgetItem(self.cats.display_with_parent(str(r.typ), str(r.category))))
+            a=QTableWidgetItem(format_chf(float(r.amount)))
+            a.setTextAlignment(Qt.AlignRight|Qt.AlignVCenter)
+            self.table.setItem(i,3,a)
+            self.table.setItem(i,4,QTableWidgetItem(str(r.details)))
+            self.table.setItem(i,5,QTableWidgetItem(str(r.id)))
+            
             # Summen berechnen
             if r.typ == TYP_EXPENSES:
                 total_ausgaben += r.amount
@@ -873,19 +740,12 @@ class TrackingTab(QWidget):
                 total_einkommen += r.amount
             elif r.typ == TYP_SAVINGS:
                 total_ersparnisse += r.amount
-
+        
         self.table.resizeColumnsToContents()
-
+        
         # Summen anzeigen
         saldo = total_einkommen - total_ausgaben - total_ersparnisse
-        summary_text = trf(
-            "tracking.summary",
-            count=len(rows),
-            income=format_money(total_einkommen),
-            expenses=format_money(total_ausgaben),
-            savings=format_money(total_ersparnisse),
-            balance=format_money(saldo),
-        )
+        summary_text = trf("tracking.summary", count=len(rows), income=format_money(total_einkommen), expenses=format_money(total_ausgaben), savings=format_money(total_ersparnisse), balance=format_money(saldo))
         self.lbl_summary.setText(summary_text)
         self._update_tracking_coverage_warning(rows)
         self._refresh_savings_panel()
@@ -897,9 +757,9 @@ class TrackingTab(QWidget):
             main_window = self
             while main_window.parent() is not None:
                 main_window = main_window.parent()
-
+            
             # Hole Farben vom Theme Manager
-            if hasattr(main_window, "theme_manager"):
+            if hasattr(main_window, 'theme_manager'):
                 type_colors = main_window.theme_manager.get_type_colors()
                 negative_color = main_window.theme_manager.get_negative_color()
             else:
@@ -912,17 +772,17 @@ class TrackingTab(QWidget):
             _uc = ui_colors(self)
             type_colors = _uc.type_colors
             negative_color = _uc.negative
-
+        
         try:
             apply_tracking_type_colors(self.table, type_colors, negative_color)
-            if hasattr(self, "_badge_delegate") and self._badge_delegate is not None:
+            if hasattr(self, '_badge_delegate') and self._badge_delegate is not None:
                 self._badge_delegate.set_colors(type_colors)
                 self.table.viewport().update()
         except Exception as e:
             logger.debug("apply_tracking_type_colors(self.table, type_colors: %s", e)
 
     def add(self):
-        dlg = TrackerDialog(self, conn=self.conn, cats=self.cats)
+        dlg=TrackerDialog(self, conn=self.conn, cats=self.cats)
         if dlg.exec() != QDialog.Accepted:
             return
         inp: TrackingInput = dlg.get_input()
@@ -962,10 +822,10 @@ class TrackingTab(QWidget):
             'withdrawal' = Bezug/Entnahme (buchen + Warnung)
             'cancel' = Abbrechen
         """
-        goal_name = conflict["goal_name"]
-        goal_status = conflict["goal_status"]
-        current = conflict["current_amount"]
-        target = conflict["target_amount"]
+        goal_name = conflict['goal_name']
+        goal_status = conflict['goal_status']
+        current = conflict['current_amount']
+        target = conflict['target_amount']
         abs_amount = abs(amount)
 
         if goal_status == "sparend":
@@ -982,12 +842,8 @@ class TrackingTab(QWidget):
             box.setText(msg)
             box.setIcon(QMessageBox.Question)
 
-            btn_correction = box.addButton(
-                tr("tracking.btn.correction"), QMessageBox.AcceptRole
-            )
-            btn_withdrawal = box.addButton(
-                tr("tracking.btn.withdrawal"), QMessageBox.DestructiveRole
-            )
+            btn_correction = box.addButton(tr("tracking.btn.correction"), QMessageBox.AcceptRole)
+            btn_withdrawal = box.addButton(tr("tracking.btn.withdrawal"), QMessageBox.DestructiveRole)
             btn_cancel = box.addButton(tr("btn.cancel"), QMessageBox.RejectRole)
 
             box.exec()
@@ -998,11 +854,7 @@ class TrackingTab(QWidget):
                 QMessageBox.warning(
                     self,
                     tr("msg.info"),
-                    trf("tracking.msg.goal_still_saving", goal_name=goal_name)
-                    + "\n\n"
-                    + tr("tracking.tip.unlock_goal_1")
-                    + tr("tracking.tip.unlock_goal_2")
-                    + tr("tracking.tip.unlock_goal_3"),
+                    trf("tracking.msg.goal_still_saving", goal_name=goal_name) + "\n\n" + tr("tracking.tip.unlock_goal_1") + tr("tracking.tip.unlock_goal_2") + tr("tracking.tip.unlock_goal_3")
                 )
                 return "withdrawal"
             else:
@@ -1013,12 +865,7 @@ class TrackingTab(QWidget):
             QMessageBox.information(
                 self,
                 tr("tracking.title.savings_consumption"),
-                trf(
-                    "auto.views_tabs_tracking_tab.682_diese_buchung_wird_als_verbrauch_vo_54220c3f",
-                    value_0=(goal_name),
-                    value_1=(format_money(conflict["current_amount"])),
-                    value_2=(format_money(abs_amount)),
-                ),
+                trf('auto.views_tabs_tracking_tab.682_diese_buchung_wird_als_verbrauch_vo_54220c3f', value_0=(goal_name), value_1=(format_money(conflict['current_amount'])), value_2=(format_money(abs_amount)))
             )
             return "withdrawal"
 
@@ -1036,7 +883,7 @@ class TrackingTab(QWidget):
 
         year = req.d.year
         month = req.d.month
-        month_name = _months_de()[month - 1]
+        month_name = _months_de()[month-1]
 
         # Kandidaten sammeln: Fixkosten, wiederkehrende variable Posten und
         # optionale Budgetposten (ohne Fix-/Wiederkehrend-Flag).
@@ -1051,19 +898,11 @@ class TrackingTab(QWidget):
 
         for typ in [TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS]:
             for cat in self.cats.list(typ):
-                budget_amt = float(
-                    self.budget.get_amount(year, month, typ, cat.name) or 0.0
-                )
-                booked = float(
-                    self.model.get_month_total(year, month, typ, cat.name) or 0.0
-                )
+                budget_amt = float(self.budget.get_amount(year, month, typ, cat.name) or 0.0)
+                booked = float(self.model.get_month_total(year, month, typ, cat.name) or 0.0)
 
                 # Buchungsdatum: Tag aus Kategorie (falls gesetzt), sonst Monatsanfang
-                day = (
-                    int(cat.recurring_day or 1)
-                    if (cat.is_recurring or cat.is_fix)
-                    else 1
-                )
+                day = int(cat.recurring_day or 1) if (cat.is_recurring or cat.is_fix) else 1
                 if day < 1:
                     day = 1
                 if day > last_day:
@@ -1078,28 +917,16 @@ class TrackingTab(QWidget):
                 if both_flags:
                     # Echte Fixkosten (fix UND wiederkehrend): fixer Betrag, einmal pro Monat.
                     # "Abgeschlossen", sobald irgendeine Buchung existiert.
-                    if self.model.exists_in_month(
-                        year=year, month=month, typ=typ, category=cat.name
-                    ):
+                    if self.model.exists_in_month(year=year, month=month, typ=typ, category=cat.name):
                         skipped_existing += 1
                         continue
                     if abs(budget_amt) < EPS:
                         skipped_zero += 1
                         continue
-                    fix_items.append(
-                        PendingBooking(
-                            d=d,
-                            typ=typ,
-                            category=cat.name,
-                            amount=budget_amt,
-                            details=details,
-                            source="auto_fixcost",
-                            is_fix=True,
-                            is_recurring=True,
-                            budget=budget_amt,
-                            booked=booked,
-                        )
-                    )
+                    fix_items.append(PendingBooking(
+                        d=d, typ=typ, category=cat.name, amount=budget_amt, details=details,
+                        source="auto_fixcost", is_fix=True, is_recurring=True,
+                        budget=budget_amt, booked=booked))
                     continue
 
                 if single_flag:
@@ -1121,20 +948,10 @@ class TrackingTab(QWidget):
                         continue
 
                     src = "auto_fixcost" if cat.is_fix else "auto_recurring"
-                    recurring_items.append(
-                        PendingBooking(
-                            d=d,
-                            typ=typ,
-                            category=cat.name,
-                            amount=float(remaining),
-                            details=details,
-                            source=src,
-                            is_fix=bool(cat.is_fix),
-                            is_recurring=bool(cat.is_recurring),
-                            budget=budget_amt,
-                            booked=booked,
-                        )
-                    )
+                    recurring_items.append(PendingBooking(
+                        d=d, typ=typ, category=cat.name, amount=float(remaining), details=details,
+                        source=src, is_fix=bool(cat.is_fix), is_recurring=bool(cat.is_recurring),
+                        budget=budget_amt, booked=booked))
                     continue
 
                 if no_flags:
@@ -1151,34 +968,20 @@ class TrackingTab(QWidget):
                     if abs(remaining) < EPS:
                         skipped_zero += 1
                         continue
-                    optional_items.append(
-                        PendingBooking(
-                            d=d,
-                            typ=typ,
-                            category=cat.name,
-                            amount=float(remaining),
-                            details=details,
-                            source="auto_optional",
-                            is_fix=False,
-                            is_recurring=False,
-                            budget=budget_amt,
-                            booked=booked,
-                        )
-                    )
+                    optional_items.append(PendingBooking(
+                        d=d, typ=typ, category=cat.name, amount=float(remaining), details=details,
+                        source="auto_optional", is_fix=False, is_recurring=False,
+                        budget=budget_amt, booked=booked))
                     continue
 
         if not fix_items and not recurring_items and not optional_items:
             if skipped_existing > 0:
-                QMessageBox.information(
-                    self, tr("msg.info"), tr("tracking.msg.already_booked")
-                )
+                QMessageBox.information(self, tr("msg.info"), tr("tracking.msg.already_booked"))
             else:
                 QMessageBox.information(
                     self,
                     tr("msg.info"),
-                    tr("tracking.msg.no_fix_or_recurring")
-                    + "\n"
-                    + tr("tracking.tip.set_budget_and_mark_fix"),
+                    tr("tracking.msg.no_fix_or_recurring") + "\n" + tr("tracking.tip.set_budget_and_mark_fix"),
                 )
             return
 
@@ -1198,30 +1001,18 @@ class TrackingTab(QWidget):
         else:
             # Nur Fixkosten: optional Liste anzeigen (wie vorher)
             if not fix_items:
-                QMessageBox.information(
-                    self, tr("msg.info"), tr("tracking.msg.no_fixcosts")
-                )
+                QMessageBox.information(self, tr("msg.info"), tr("tracking.msg.no_fixcosts"))
                 return
             res = QMessageBox.question(
                 self,
                 tr("tracking.title.fixcosts"),
-                trf(
-                    "tracking.msg.fixcosts_missing",
-                    count=len(fix_items),
-                    month=month_name,
-                    year=year,
-                )
-                + "\n\n"
-                + tr("tracking.msg.show_list_prompt")
-                + tr("tracking.msg.no_means_book_all"),
+                trf("tracking.msg.fixcosts_missing", count=len(fix_items), month=month_name, year=year) + "\n\n" + tr("tracking.msg.show_list_prompt") + tr("tracking.msg.no_means_book_all"),
                 QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
             )
             if res == QMessageBox.Cancel:
                 return
             if res == QMessageBox.Yes:
-                dlg_list = MissingBookingsDialog(
-                    self, items=fix_items, title=tr("tracking.title.fixcosts")
-                )
+                dlg_list = MissingBookingsDialog(self, items=fix_items, title=tr("tracking.title.fixcosts"))
                 if dlg_list.exec() != QDialog.Accepted:
                     return
                 to_book = dlg_list.selected_items()
@@ -1231,32 +1022,18 @@ class TrackingTab(QWidget):
         inserted = 0
         skipped_zero_book = 0
         from model.crypto import coalesced_commits
-
         with coalesced_commits(self.conn):
             for it in to_book:
                 if abs(float(it.amount)) < 1e-9:
                     skipped_zero_book += 1
                     continue
-                self.model.add(
-                    it.d,
-                    it.typ,
-                    it.category,
-                    float(it.amount),
-                    it.details,
-                    source=getattr(it, "source", "manual"),
-                )
+                self.model.add(it.d, it.typ, it.category, float(it.amount), it.details, source=getattr(it, "source", "manual"))
                 inserted += 1
 
         QMessageBox.information(
             self,
             "OK",
-            trf(
-                "tracking.msg.fixcosts_result",
-                inserted=inserted,
-                skipped_existing=skipped_existing,
-                skipped_zero=skipped_zero,
-                skipped_zero_book=skipped_zero_book,
-            ),
+            trf("tracking.msg.fixcosts_result", inserted=inserted, skipped_existing=skipped_existing, skipped_zero=skipped_zero, skipped_zero_book=skipped_zero_book),
         )
         self.refresh()
 
@@ -1267,37 +1044,22 @@ class TrackingTab(QWidget):
             return
 
         r = self.table.currentRow()
-        d = self.table.item(r, 0).text()
-        typ = self.table.item(r, 1).text()
-        cat = self.table.item(r, 2).text()
-        amt_txt = (
-            self.table.item(r, 3).text().replace("'", "").replace(",", ".").strip()
-        )
+        d = self.table.item(r,0).text()
+        typ = self.table.item(r,1).text()
+        cat = self.table.item(r,2).text()
+        amt_txt = self.table.item(r,3).text().replace("'", "").replace(",", ".").strip()
         try:
             amt = float(amt_txt)
         except Exception:
             amt = 0.0
-        details = self.table.item(r, 4).text() if self.table.item(r, 4) else ""
+        details = self.table.item(r,4).text() if self.table.item(r,4) else ""
 
-        dlg = TrackerDialog(
-            self,
-            conn=self.conn,
-            cats=self.cats,
-            preset={
-                "date": d,
-                "typ": typ,
-                "category": cat,
-                "amount": amt,
-                "details": details,
-            },
-        )
+        dlg=TrackerDialog(self, conn=self.conn, cats=self.cats, preset={"date": d, "typ": typ, "category": cat, "amount": amt, "details": details})
         if dlg.exec() != QDialog.Accepted:
             return
         inp: TrackingInput = dlg.get_input()
         try:
-            self.model.update(
-                row_id, inp.d, inp.typ, inp.category, inp.amount, inp.details
-            )
+            self.model.update(row_id, inp.d, inp.typ, inp.category, inp.amount, inp.details)
         except SavingsGoalBoundsError as e:
             show_savings_goal_bounds_warning(self, e)
             return
@@ -1310,14 +1072,7 @@ class TrackingTab(QWidget):
             return
         r = self.table.currentRow()
         summary = f"{self.table.item(r,0).text()} | {self.table.item(r,1).text()} | {self.table.item(r,2).text()} | {self.table.item(r,3).text()}"
-        if (
-            QMessageBox.question(
-                self,
-                tr("msg.delete_entry"),
-                trf("tracking.msg.delete_confirm", summary=summary),
-            )
-            != QMessageBox.Yes
-        ):
+        if QMessageBox.question(self, tr("msg.delete_entry"), trf("tracking.msg.delete_confirm", summary=summary)) != QMessageBox.Yes:
             return
         try:
             self.model.delete(row_id)

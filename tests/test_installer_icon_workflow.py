@@ -35,48 +35,43 @@ def test_app_icon_assets_and_build_config_are_wired():
 
 
 def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset():
-    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
     assert "installer:" in workflow
     assert "choco install innosetup" in workflow
     assert "installer\\budgetmanager_setup.iss" in workflow
-    assert "BudgetManager_Setup_${VERSION}.exe" in workflow
+    assert "tools/build_release_assets.py" in workflow
+    assert "release_assets/*" in workflow
     assert "windows_installer" in workflow
+    builder = (ROOT / "tools" / "build_release_assets.py").read_text(encoding="utf-8")
+    assert "BudgetManager_Setup_{version}.exe" in builder
+    assert "BudgetManager_Setup_{version}.zip" in builder
+    assert "SHA256SUMS.txt" in builder
 
     for rel in ["latest.json.template", "docs/latest.json.template"]:
         data = json.loads((ROOT / rel).read_text(encoding="utf-8"))
         assert data["assets"]["windows_installer"]["type"] == "installer"
+        assert data["assets"]["windows_installer_zip"]["type"] == "installer-zip"
+        assert data["assets"]["windows"]["url"].endswith("portable-windows.zip")
+        assert data["assets"]["linux"]["url"].endswith("portable-linux.zip")
 
 
-def test_updater_has_different_asset_paths_for_installer_direct_and_portable(
-    monkeypatch, tmp_path
-):
+def test_updater_has_different_asset_paths_for_installer_direct_and_portable(monkeypatch, tmp_path):
     import updater.common as common
 
     monkeypatch.setattr(common, "app_dir", lambda: tmp_path)
     monkeypatch.setattr(common, "current_exe_filename", lambda: "BudgetManager.exe")
     monkeypatch.setattr(common, "_is_frozen", lambda: True)
-    assert common.preferred_asset_keys("windows")[:3] == [
-        "direct_windows_exe",
-        "windows",
-        "portable_zip",
-    ]
+    assert common.preferred_asset_keys("windows")[:3] == ["direct_windows_exe", "windows", "portable_zip"]
 
-    (tmp_path / "installation.json").write_text(
-        '{"install_type":"windows_installer","data_directory":"%s"}'
-        % (tmp_path / "data"),
-        encoding="utf-8",
-    )
+    (tmp_path / "installation.json").write_text('{"install_type":"windows_installer","data_directory":"%s"}' % (tmp_path / "data"), encoding="utf-8")
     keys = common.preferred_asset_keys("windows")
     assert keys[0] == "windows_installer"
 
     (tmp_path / "installation.json").unlink()
-    monkeypatch.setattr(
-        common, "current_exe_filename", lambda: "BudgetManager-v2.0.28-windows.exe"
-    )
+    monkeypatch.setattr(common, "current_exe_filename", lambda: "BudgetManager-v2.0.28-windows.exe")
     keys = common.preferred_asset_keys("windows")
     assert "direct_windows_exe" in keys
+
 
 
 def test_update_check_stages_windows_installer_asset(monkeypatch, tmp_path):
@@ -92,9 +87,7 @@ def test_update_check_stages_windows_installer_asset(monkeypatch, tmp_path):
 
     monkeypatch.setattr(check_update, "read_current_version", lambda: "2.0.33")
     monkeypatch.setattr(check_update, "detect_platform_key", lambda: "windows")
-    monkeypatch.setattr(
-        check_update, "preferred_asset_keys", lambda _platform: ["windows_installer"]
-    )
+    monkeypatch.setattr(check_update, "preferred_asset_keys", lambda _platform: ["windows_installer"])
     monkeypatch.setattr(
         check_update,
         "fetch_manifest",
@@ -115,10 +108,7 @@ def test_update_check_stages_windows_installer_asset(monkeypatch, tmp_path):
     monkeypatch.setattr(
         check_update,
         "download_file",
-        lambda _url, dest: (
-            dest.parent.mkdir(parents=True, exist_ok=True),
-            dest.write_bytes(b"setup-exe"),
-        ),
+        lambda _url, dest: (dest.parent.mkdir(parents=True, exist_ok=True), dest.write_bytes(b"setup-exe")),
     )
     monkeypatch.setattr(check_update, "staging_dir_for", lambda _remote: staging)
     monkeypatch.setattr(
@@ -128,9 +118,7 @@ def test_update_check_stages_windows_installer_asset(monkeypatch, tmp_path):
             '{"asset_type":"installer"}', encoding="utf-8"
         ),
     )
-    monkeypatch.setattr(
-        check_update, "write_check_result", lambda data: writes.append(dict(data))
-    )
+    monkeypatch.setattr(check_update, "write_check_result", lambda data: writes.append(dict(data)))
 
     assert check_update.main() == 0
     assert (staging / "BudgetManager_Setup_2.0.34.exe").read_bytes() == b"setup-exe"
@@ -156,4 +144,4 @@ def test_installer_apply_uses_waiting_batch_and_preserves_data_dir():
     assert "/UPDATE_MODE=1" in batch
     assert '/DATA_DIR="%DATADIR%"' in batch
     assert r"D:\BudgetManagerData" in batch
-    assert 'start "" "%LAUNCHPATH%"' in batch
+    assert "start \"\" \"%LAUNCHPATH%\"" in batch

@@ -3,7 +3,7 @@ name: Build Executables
 on:
   push:
     tags:
-      - 'v*'          # Trigger: git tag v2.0.8 && git push origin v2.0.8
+      - 'v*'          # Trigger: git tag v2.1.0 && git push origin v2.1.0
 
 permissions:
   contents: write
@@ -42,7 +42,7 @@ jobs:
 
       - name: Install UPX (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y upx-ucl
+        run: sudo apt-get update && sudo apt-get install -y upx-ucl
 
       - name: Install Qt offscreen dependencies (Linux)
         if: runner.os == 'Linux'
@@ -94,6 +94,7 @@ jobs:
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.artifact_name }}
+          if-no-files-found: error
 
   # ── Job 3: Windows Installer bauen ───────────────────────────────
   installer:
@@ -137,7 +138,7 @@ jobs:
           $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $iscc) { throw "ISCC.exe nicht gefunden." }
           & $iscc "installer\budgetmanager_setup.iss"
-          $setup = Get-ChildItem -Path . -Filter "BudgetManager_Setup_*.exe" -Recurse | Select-Object -First 1
+          $setup = Get-ChildItem -Path . -Filter "BudgetManager_Setup_*.exe" -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $setup) { throw "Installer-EXE wurde nicht erzeugt." }
           Copy-Item -Force $setup.FullName "BudgetManager_Setup.exe"
 
@@ -146,8 +147,9 @@ jobs:
         with:
           name: BudgetManager_Setup.exe
           path: BudgetManager_Setup.exe
+          if-no-files-found: error
 
-  # ── Job 4: ZIP + latest.json generieren & hochladen ──────────────────
+  # ── Job 4: Release-Artefakte, ZIPs, latest.json, SHA256 ───────────────
   manifest:
     needs: [build, installer]
     runs-on: ubuntu-latest
@@ -156,163 +158,81 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
           name: BudgetManager-windows.exe
-          path: artifacts/
+          path: artifacts/windows/
 
       - name: Download Linux artifact
         uses: actions/download-artifact@v4
         with:
           name: BudgetManager-linux
-          path: artifacts/
+          path: artifacts/linux/
 
       - name: Download Windows installer artifact
         uses: actions/download-artifact@v4
         with:
           name: BudgetManager_Setup.exe
-          path: artifacts/
+          path: artifacts/windows/
 
-      - name: Build portable ZIP + latest.json
+      - name: Build release assets + updater manifest
         shell: bash
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
-          WIN_EXE_NAME="BudgetManager-v${VERSION}-windows.exe"
-          LIN_EXE_NAME="BudgetManager-v${VERSION}-linux"
-          ZIP_NAME="BudgetManager-v${VERSION}-portable.zip"
-          SETUP_NAME="BudgetManager_Setup_${VERSION}.exe"
+          python tools/build_release_assets.py \
+            --version "${VERSION}" \
+            --release-tag "${TAG}" \
+            --base-url "${BASE}" \
+            --windows-build-dir artifacts/windows \
+            --linux-build-dir artifacts/linux \
+            --out-dir release_assets \
+            --require-installer
 
-          # ── Versionierte Einzeldateien für das GitHub Release ────────
-          cp artifacts/BudgetManager-windows.exe "${WIN_EXE_NAME}"
-          cp artifacts/BudgetManager-linux "${LIN_EXE_NAME}"
-          cp artifacts/BudgetManager_Setup.exe "${SETUP_NAME}"
-          chmod +x "${LIN_EXE_NAME}"
+          echo "Release assets:"
+          ls -lah release_assets
 
-          # ── Portable-Ordnerstruktur aufbauen ─────────────────────────
-          mkdir -p portable/data/backups
+      - name: Verify updater manifest stays updater-safe
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json
+          import zipfile
+          from pathlib import Path
 
-          # Executables im ZIP stabil benennen. Release-Assets bleiben versioniert,
-          # aber der In-App-Updater braucht im portablen Ordner stabile Startpunkte.
-          cp artifacts/BudgetManager-windows.exe "portable/BudgetManager.exe"
-          cp artifacts/BudgetManager-linux "portable/BudgetManager"
-          chmod +x "portable/BudgetManager"
+          data = json.loads(Path('release_assets/latest.json').read_text(encoding='utf-8'))
+          assets = data['assets']
+          assert assets['windows']['type'] == 'portable-zip', assets['windows']
+          assert assets['linux']['type'] == 'portable-zip', assets['linux']
+          assert assets['windows']['url'].endswith('-portable-windows.zip'), assets['windows']
+          assert assets['linux']['url'].endswith('-portable-linux.zip'), assets['linux']
+          assert assets['windows_installer']['type'] == 'installer', assets['windows_installer']
+          assert assets['windows_installer_zip']['type'] == 'installer-zip', assets['windows_installer_zip']
+          assert Path('release_assets/SHA256SUMS.txt').is_file()
 
-          # Platzhalter damit data/ nicht leer ist
-          touch portable/data/.keep
-          touch portable/data/backups/.keep
+          with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-windows.zip'))) as zf:
+              names = set(zf.namelist())
+              assert 'BudgetManager.exe' in names
+              assert 'start-windows.cmd' in names
+              assert 'data/.keep' in names
+          with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-linux.zip'))) as zf:
+              names = set(zf.namelist())
+              assert 'BudgetManager' in names
+              assert 'start-linux.sh' in names
+              assert 'data/.keep' in names
+          print('latest.json und portable ZIPs OK')
+          PY
 
-          # Windows-Starter: stabiler Einstiegspunkt
-          cat > portable/start-windows.cmd <<'STARTWIN'
-          @echo off
-          setlocal EnableExtensions
-          set "DIR=%~dp0"
-          rem DPI/Scaling: System-Skalierung verwenden, Fractional Scaling nicht grob runden.
-          set "QT_ENABLE_HIGHDPI_SCALING=1"
-          set "QT_AUTO_SCREEN_SCALE_FACTOR=1"
-          set "QT_SCALE_FACTOR_ROUNDING_POLICY=PassThrough"
-          start "" "%DIR%BudgetManager.exe"
-          STARTWIN
-
-          # Linux-Starter: stabiler Einstiegspunkt
-          cat > portable/start-linux.sh <<'STARTER'
-          #!/usr/bin/env bash
-          DIR="$(cd "$(dirname "$0")" && pwd)"
-          # DPI/Scaling: System-Skalierung verwenden, Fractional Scaling nicht grob runden.
-          export QT_ENABLE_HIGHDPI_SCALING="${QT_ENABLE_HIGHDPI_SCALING:-1}"
-          export QT_AUTO_SCREEN_SCALE_FACTOR="${QT_AUTO_SCREEN_SCALE_FACTOR:-1}"
-          export QT_SCALE_FACTOR_ROUNDING_POLICY="${QT_SCALE_FACTOR_ROUNDING_POLICY:-PassThrough}"
-          chmod +x "$DIR/BudgetManager"
-          exec "$DIR/BudgetManager" "$@"
-          STARTER
-          chmod +x portable/start-linux.sh
-
-          # README
-          cat > portable/README.txt <<RDME
-          BudgetManager ${VERSION} — Portable
-          =====================================
-          Windows : Doppelklick auf start-windows.cmd oder BudgetManager.exe
-          Linux   : ./start-linux.sh  (oder chmod +x BudgetManager && ./BudgetManager)
-
-          Daten (DB, Einstellungen, Backups) werden in ./data/ gespeichert.
-          Stick einfach mitnehmen — alles bleibt portabel.
-
-          Hinweis zum Updater:
-          Der Updater lädt dieses portable ZIP und ersetzt nur Programmdateien.
-          data/ und updates/ bleiben erhalten.
-          RDME
-
-          # ── ZIP erstellen ────────────────────────────────────────────
-          cd portable && zip -r "../${ZIP_NAME}" . && cd ..
-
-          # ── SHA256 berechnen ─────────────────────────────────────────
-          WIN_SHA=$(sha256sum "${WIN_EXE_NAME}" | awk '{print $1}')
-          LIN_SHA=$(sha256sum "${LIN_EXE_NAME}" | awk '{print $1}')
-          ZIP_SHA=$(sha256sum "${ZIP_NAME}" | awk '{print $1}')
-          SETUP_SHA=$(sha256sum "${SETUP_NAME}" | awk '{print $1}')
-
-          # ── latest.json schreiben ────────────────────────────────────
-          # Wichtig: windows/linux zeigen bewusst auf das portable ZIP.
-          # Der In-App-Updater kann ZIPs sicher stagen; direkte EXE-Assets
-          # können unter Windows nicht zuverlässig über sich selbst ersetzt werden.
-          cat > latest.json <<EOF
-          {
-            "app": "Budgetmanager",
-            "channel": "stable",
-            "version": "${VERSION}",
-            "release_tag": "${TAG}",
-            "assets": {
-              "windows": {
-                "type": "portable-zip",
-                "url": "${BASE}/${ZIP_NAME}",
-                "sha256": "${ZIP_SHA}"
-              },
-              "linux": {
-                "type": "portable-zip",
-                "url": "${BASE}/${ZIP_NAME}",
-                "sha256": "${ZIP_SHA}"
-              },
-              "portable_zip": {
-                "type": "portable-zip",
-                "url": "${BASE}/${ZIP_NAME}",
-                "sha256": "${ZIP_SHA}"
-              },
-              "windows_installer": {
-                "type": "installer",
-                "url": "${BASE}/${SETUP_NAME}",
-                "sha256": "${SETUP_SHA}"
-              },
-              "direct_windows_exe": {
-                "type": "exe",
-                "url": "${BASE}/${WIN_EXE_NAME}",
-                "sha256": "${WIN_SHA}"
-              },
-              "direct_linux_binary": {
-                "type": "binary",
-                "url": "${BASE}/${LIN_EXE_NAME}",
-                "sha256": "${LIN_SHA}"
-              }
-            }
-          }
-          EOF
-
-          echo "WIN_EXE_NAME=${WIN_EXE_NAME}" >> "$GITHUB_ENV"
-          echo "LIN_EXE_NAME=${LIN_EXE_NAME}" >> "$GITHUB_ENV"
-          echo "ZIP_NAME=${ZIP_NAME}" >> "$GITHUB_ENV"
-          echo "SETUP_NAME=${SETUP_NAME}" >> "$GITHUB_ENV"
-          echo "ZIP: ${ZIP_NAME}"
-          cat latest.json
-
-      - name: Upload to Release
+      - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: |
-            ${{ env.WIN_EXE_NAME }}
-            ${{ env.LIN_EXE_NAME }}
-            ${{ env.ZIP_NAME }}
-            ${{ env.SETUP_NAME }}
-            latest.json
+          files: release_assets/*

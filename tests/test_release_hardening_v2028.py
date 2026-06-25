@@ -65,9 +65,7 @@ def test_en_fr_no_known_german_ui_regressions():
         "Alle Dateien",
     ]
     for lang in ["en", "fr"]:
-        data = _flat(
-            json.loads((Path("locales") / f"{lang}.json").read_text(encoding="utf-8"))
-        )
+        data = _flat(json.loads((Path("locales") / f"{lang}.json").read_text(encoding="utf-8")))
         offenders = []
         for key, value in data.items():
             for term in forbidden_terms:

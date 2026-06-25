@@ -28,9 +28,7 @@ def _month_names() -> list[str]:
 class ThirteenthSalaryDialog(QDialog):
     """Kleiner Dialog für den 13. Monatslohn."""
 
-    def __init__(
-        self, parent=None, *, conn: sqlite3.Connection, default_year: int | None = None
-    ):
+    def __init__(self, parent=None, *, conn: sqlite3.Connection, default_year: int | None = None):
         super().__init__(parent)
         self.conn = conn
         self.setWindowTitle(tr("income13.title"))
@@ -105,9 +103,7 @@ class ThirteenthSalaryDialog(QDialog):
             year=int(self.year.value()),
             payout_month=int(self.month.currentData() or 11),
             amount=float(self.amount.value()),
-            category=str(
-                self.category.currentText() or tr("income13.default_category")
-            ).strip()
+            category=str(self.category.currentText() or tr("income13.default_category")).strip()
             or tr("income13.default_category"),
         )
 

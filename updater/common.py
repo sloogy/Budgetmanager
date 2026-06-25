@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging
-
 logger = logging.getLogger(__name__)
 
 """Gemeinsame Updater-Helfer.
@@ -15,6 +14,7 @@ Ziele:
 import hashlib
 import json
 import os
+import re
 import sys
 import time
 import zipfile
@@ -26,9 +26,7 @@ import requests
 from packaging import version as _version
 
 
-DEFAULT_MANIFEST_URL = (
-    "https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json"
-)
+DEFAULT_MANIFEST_URL = "https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json"
 
 
 @dataclass(frozen=True)
@@ -142,13 +140,29 @@ def read_install_type() -> str:
         marker = installation_marker_path()
         if not marker.is_file():
             return ""
-        data = json.loads(marker.read_text(encoding="utf-8"))
-        if not isinstance(data, dict):
-            return ""
-        return str(data.get("install_type", "")).strip().lower()
+        text = marker.read_text(encoding="utf-8")
     except Exception as e:
         logger.debug("Installationsart konnte nicht gelesen werden: %s", e)
         return ""
+
+    try:
+        data = json.loads(text)
+        if isinstance(data, dict):
+            return str(data.get("install_type", "")).strip().lower()
+    except Exception as e:
+        logger.debug("Installationsart-JSON konnte nicht geparst werden: %s", e)
+
+    # Fallback für robuste Windows-Tests/Altmarker: data_directory kann
+    # unescaped Backslashes enthalten; für die Asset-Priorität reicht
+    # install_type. Nicht als allgemeiner JSON-Parser verwenden.
+    match = re.search(
+        r'"install_type"\s*:\s*"(?P<install_type>[^"]+)"',
+        text,
+        flags=re.IGNORECASE,
+    )
+    if not match:
+        return ""
+    return match.group("install_type").strip().lower()
 
 
 def preferred_asset_keys(platform_key: str) -> list[str]:
@@ -180,7 +194,6 @@ def preferred_asset_keys(platform_key: str) -> list[str]:
 
     # Duplikate stabil entfernen
     return list(dict.fromkeys(keys))
-
 
 def is_windows() -> bool:
     return sys.platform.startswith("win")
@@ -216,10 +229,7 @@ def update_target_exe_filename() -> str:
     """
     current = current_exe_filename()
     low = current.lower()
-    if low.startswith("budgetmanager-v") or low in {
-        "budgetmanager-windows.exe",
-        "budgetmanager-linux",
-    }:
+    if low.startswith("budgetmanager-v") or low in {"budgetmanager-windows.exe", "budgetmanager-linux"}:
         return stable_exe_filename()
     return current
 
@@ -254,7 +264,7 @@ def read_current_version() -> str:
 
 def parse_manifest(data: dict) -> Manifest:
     assets: Dict[str, AssetInfo] = {}
-    raw_assets = data.get("assets") or {}
+    raw_assets = (data.get("assets") or {})
     if isinstance(raw_assets, dict):
         for platform_key, info in raw_assets.items():
             if not isinstance(info, dict):
@@ -263,9 +273,7 @@ def parse_manifest(data: dict) -> Manifest:
             sha = str(info.get("sha256", "")).strip().lower()
             a_type = str(info.get("type", "portable")).strip() or "portable"
             if url:
-                assets[str(platform_key)] = AssetInfo(
-                    url=url, sha256=sha, asset_type=a_type
-                )
+                assets[str(platform_key)] = AssetInfo(url=url, sha256=sha, asset_type=a_type)
 
     return Manifest(
         version=str(data.get("version", "0.0.0")).strip(),
@@ -275,9 +283,7 @@ def parse_manifest(data: dict) -> Manifest:
     )
 
 
-def fetch_manifest(
-    manifest_url: str = DEFAULT_MANIFEST_URL, timeout_s: int = 10
-) -> Manifest:
+def fetch_manifest(manifest_url: str = DEFAULT_MANIFEST_URL, timeout_s: int = 10) -> Manifest:
     r = requests.get(manifest_url, timeout=timeout_s)
     r.raise_for_status()
     data = r.json()
@@ -346,9 +352,7 @@ def cache_zip_path(version_str: str) -> Path:
     return updates_dir() / "cache" / f"update_{version_str}.zip"
 
 
-def prune_other_staging(
-    keep_staging_dir: Path, keep_cache_file: Path | None = None
-) -> None:
+def prune_other_staging(keep_staging_dir: Path, keep_cache_file: Path | None = None) -> None:
     """Entfernt veraltete Staging-Ordner und Cache-Dateien neben dem aktuellen.
 
     Warum: ``apply_update`` faellt ohne gueltiges ``last_check.json`` sicher auf
@@ -433,9 +437,7 @@ def find_staged_root(staging_dir: Path) -> Path:
     return staging_dir
 
 
-def _zip_add_dir(
-    zf: zipfile.ZipFile, src: Path, arc_base: Path, exclude_names: Tuple[str, ...]
-) -> None:
+def _zip_add_dir(zf: zipfile.ZipFile, src: Path, arc_base: Path, exclude_names: Tuple[str, ...]) -> None:
     for root, dirs, files in os.walk(src):
         root_p = Path(root)
         rel = root_p.relative_to(src)
@@ -449,9 +451,7 @@ def _zip_add_dir(
             zf.write(s, arc)
 
 
-def backup_current_zip(
-    backup_dir: Path, label: str, exclude_names: Tuple[str, ...]
-) -> Path:
+def backup_current_zip(backup_dir: Path, label: str, exclude_names: Tuple[str, ...]) -> Path:
     """Erstellt ein ZIP-Backup des aktuellen App-Ordners (Rollback).
 
     - exclude_names wird sowohl auf Top-Level als auch in der Tiefe respektiert.
@@ -486,7 +486,6 @@ def startup_check_result_path() -> Path:
 def write_check_result(data: dict) -> None:
     """Schreibt das Ergebnis einer Update-Prüfung als JSON für den Update-Dialog."""
     from datetime import datetime
-
     payload = dict(data)
     payload.setdefault("checked_at", datetime.now().isoformat(timespec="seconds"))
     try:
@@ -522,7 +521,6 @@ def clear_check_result() -> None:
 def write_startup_check_result(data: dict) -> None:
     """Schreibt das Ergebnis der nicht-blockierenden Startpruefung."""
     from datetime import datetime
-
     payload = dict(data)
     payload.setdefault("checked_at", datetime.now().isoformat(timespec="seconds"))
     try:
@@ -531,9 +529,7 @@ def write_startup_check_result(data: dict) -> None:
             encoding="utf-8",
         )
     except Exception as e:
-        logger.debug(
-            "Startup-Update-Check-Ergebnis konnte nicht geschrieben werden: %s", e
-        )
+        logger.debug("Startup-Update-Check-Ergebnis konnte nicht geschrieben werden: %s", e)
 
 
 def read_startup_check_result() -> dict:
@@ -554,56 +550,4 @@ def clear_startup_check_result() -> None:
         if p.exists():
             p.unlink()
     except Exception as e:
-        logger.debug(
-            "Startup-Update-Check-Ergebnis konnte nicht gelöscht werden: %s", e
-        )
-
-
-# --- v2.1.0 hotfix: keep Windows installer asset first ---
-# GitHub Actions regression:
-# Installer installations must prefer the installer asset before the direct EXE.
-# Keep the original selection logic, but normalize the final order.
-_preferred_asset_keys_base = preferred_asset_keys
-
-
-def preferred_asset_keys(platform_name: str) -> list[str]:
-    keys = list(_preferred_asset_keys_base(platform_name))
-    platform_key = str(platform_name or "").lower()
-
-    if platform_key.startswith("win") and "windows_installer" in keys:
-        keys = ["windows_installer"] + [
-            key for key in keys if key != "windows_installer"
-        ]
-
-    return keys
-
-
-# --- v2.1.0 hotfix: tolerant installer marker parsing ---
-# Windows tests/installer markers may contain unescaped backslashes in
-# data_directory. The updater only needs install_type for asset priority here,
-# so fall back to a narrow regex if json.loads() cannot parse the full file.
-_read_install_type_json_first = read_install_type
-
-
-def read_install_type() -> str:
-    value = _read_install_type_json_first()
-    if value:
-        return value
-
-    try:
-        text = installation_marker_path().read_text(encoding="utf-8")
-    except Exception as e:
-        logger.debug("Installationsart konnte nicht gelesen werden: %s", e)
-        return ""
-
-    import re
-
-    match = re.search(
-        r'"install_type"\s*:\s*"(?P<install_type>[^"]+)"',
-        text,
-        flags=re.IGNORECASE,
-    )
-    if not match:
-        return ""
-
-    return match.group("install_type").strip().lower()
+        logger.debug("Startup-Update-Check-Ergebnis konnte nicht gelöscht werden: %s", e)

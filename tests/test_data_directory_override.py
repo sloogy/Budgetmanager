@@ -7,7 +7,6 @@ Qt-frei. Prüft:
 - Relativer Wert -> relativ zu app_dir aufgelöst
 - settings_path() bleibt portable bei Source/ZIP, liegt aber bei Installer im gewählten Datenordner
 """
-
 from __future__ import annotations
 
 import importlib
@@ -22,7 +21,6 @@ sys.path.insert(0, str(ROOT))
 def _fresh_app_paths(monkeypatch, app_dir: Path):
     monkeypatch.setenv("BUDGETMANAGER_APP_DIR", str(app_dir))
     import model.app_paths as ap
-
     importlib.reload(ap)
     return ap
 
@@ -67,9 +65,7 @@ def test_relative_data_directory_resolved_against_app_dir(monkeypatch, tmp_path)
     assert ap.data_dir() == (app_dir / "userdata" / "budget").resolve()
 
 
-def test_settings_path_portable_for_source_even_with_data_override(
-    monkeypatch, tmp_path
-):
+def test_settings_path_portable_for_source_even_with_data_override(monkeypatch, tmp_path):
     app_dir = tmp_path / "app"
     target = tmp_path / "woanders"
     _write_settings(app_dir, {"data_directory": str(target)})
@@ -85,13 +81,11 @@ def test_installer_settings_and_data_stay_in_selected_data_dir(monkeypatch, tmp_
     selected = tmp_path / "selected_data"
     app_dir.mkdir(parents=True)
     (app_dir / "installation.json").write_text(
-        json.dumps(
-            {
-                "install_type": "windows_installer",
-                "version": "2.0.33",
-                "data_directory": str(selected),
-            }
-        ),
+        json.dumps({
+            "install_type": "windows_installer",
+            "version": "2.0.33",
+            "data_directory": str(selected),
+        }),
         encoding="utf-8",
     )
     ap = _fresh_app_paths(monkeypatch, app_dir)
@@ -115,7 +109,6 @@ def _cleanup(monkeypatch):
     # app_paths nach den Tests in sauberen Zustand zurückbringen
     monkeypatch.delenv("BUDGETMANAGER_APP_DIR", raising=False)
     import model.app_paths as ap
-
     importlib.reload(ap)
 
 

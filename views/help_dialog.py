@@ -8,7 +8,6 @@ Ein einfacher, durchsuchbarer Themenbrowser:
 Die Inhalte stehen sprachneutral in ``views/help_content.py``. Die angezeigte
 Sprache richtet sich nach der App-Sprache (Fallback Deutsch).
 """
-
 from __future__ import annotations
 
 import logging
@@ -45,14 +44,7 @@ _ROLE_TOPIC = Qt.UserRole + 1
 class HelpDialog(QDialog):
     """Durchsuchbares In-App-Handbuch."""
 
-    def __init__(
-        self,
-        parent=None,
-        *,
-        start_topic_id: str | None = None,
-        on_show_key=None,
-        on_open_mindmap=None,
-    ):
+    def __init__(self, parent=None, *, start_topic_id: str | None = None, on_show_key=None, on_open_mindmap=None):
         super().__init__(parent)
         self._lang = self._resolve_lang()
         self._on_show_key = on_show_key
@@ -109,6 +101,7 @@ class HelpDialog(QDialog):
         root.addLayout(btn_row)
 
         self._populate(select_id=start_topic_id)
+
 
     def _handle_open_mindmap(self) -> None:
         if callable(self._on_open_mindmap):
@@ -179,9 +172,7 @@ class HelpDialog(QDialog):
         for i in range(self.topic_list.count()):
             item = self.topic_list.item(i)
             topic = self._topic_by_id(item.data(_ROLE_TOPIC))
-            match = (not needle) or (
-                topic is not None and needle in help_topic_haystack(topic, self._lang)
-            )
+            match = (not needle) or (topic is not None and needle in help_topic_haystack(topic, self._lang))
             item.setHidden(not match)
             if match:
                 visible += 1

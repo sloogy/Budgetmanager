@@ -5,7 +5,6 @@ bestehenden Dialoge delegiert und sowohl im Reiter „Konto" als auch in der
 Einstellungen-Seite eingebettet ist – und dass die verstreuten Einstiege
 entfernt wurden.
 """
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -35,8 +34,8 @@ def test_mainwindow_registers_account_tab():
     assert "from views.account_data_hub import AccountDataHub" in src
     assert "self.account_tab = AccountDataHub(" in src
     # In Tab-Definition, Sichtbarkeit und Default-Reihenfolge eingehängt
-    assert '6: (self.account_tab, tr("tab.account"))' in src
-    assert '6: "account"' in src
+    assert "6: (self.account_tab, tr(\"tab.account\"))" in src
+    assert "6: \"account\"" in src
     assert "default_order = [5, 0, 1, 2, 3, 4, 6]" in src
 
 
