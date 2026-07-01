@@ -3,7 +3,7 @@ Budget-Erfassungs-Dialog
 ========================
 Dialog zum Erfassen und Bearbeiten von Budget-Einträgen.
 
-Version: 2.0.41 - Mit integrierter Kategorien-Erstellung und sprachneutralen Modi
+Version: 2.1.1 - Mit integrierter Kategorien-Erstellung und sprachneutralen Modi
 - Neue Kategorien können direkt beim Budget-Erfassen erstellt werden
 - Wahlweise als Hauptkategorie oder Unterkategorie
 - Kategorien-Eigenschaften (Fixkosten, Wiederkehrend) direkt setzen

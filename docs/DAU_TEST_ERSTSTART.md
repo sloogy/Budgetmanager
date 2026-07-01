@@ -1,6 +1,6 @@
 # DAU-Test — Usability & Durchführung nach dem ersten Start
 
-Stand: v2.1.0 · 22. Juni 2026
+Stand: v2.1.1 · 26. Juni 2026
 
 „DAU" = der technisch völlig unbedarfte Nutzer. Getestet wurde der komplette
 Weg vom allerersten Start bis zur ersten eigenen Buchung — einerseits als
@@ -72,7 +72,7 @@ Setup-Assistenten).
 
 ---
 
-## Teil C — Aktueller Stand in v2.1.0
+## Teil C — Aktueller Stand in v2.1.1
 
 - **B3** Quick-Modus: Warnung jetzt **fett in Warnfarbe** mit klarem Text
   („Jede Person mit Dateizugriff kann deine Daten öffnen").

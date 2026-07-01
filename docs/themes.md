@@ -1,4 +1,4 @@
-# Theme-System — BudgetManager v2.1.0
+# Theme-System — BudgetManager v2.1.1
 
 ## Überblick
 
@@ -20,4 +20,4 @@ BudgetManager nutzt Designprofile unter `views/profiles/` sowie zentrale Farbhel
 
 ## Release-Hinweis
 
-Für v2.1.0 wurden keine neuen Theme-Profile eingeführt. Relevant ist, dass Cockpit, Budgetwarnungen, Jahreswechsel-Dialog und Diagramme weiterhin zentrale Farb-/UI-Helfer nutzen und keine releasefremden Testfarben erzwingen.
+Für v2.1.1 wurden keine neuen Theme-Profile eingeführt. Relevant ist, dass Cockpit, Budgetwarnungen, Jahreswechsel-Dialog und Diagramme weiterhin zentrale Farb-/UI-Helfer nutzen und keine releasefremden Testfarben erzwingen.

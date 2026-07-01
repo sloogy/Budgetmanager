@@ -448,5 +448,5 @@ def test_version_info_starts_with_current_release_notes():
     assert text.startswith(f"Budgetmanager Version {app_info.APP_VERSION}")
     first_body = text.split("\n\n", 2)[1]
     assert app_info.APP_VERSION in first_body
-    # Sentinel auf den aktuellen Release-Block (2.1.0: Release-Härtung & Performance).
-    assert "RELEASE-HÄRTUNG" in first_body
+    # Sentinel auf den aktuellen Release-Block (2.1.1: Budget-Vorschlag-Fix).
+    assert "BUDGET-VORSCHLAG" in first_body

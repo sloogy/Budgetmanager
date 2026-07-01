@@ -112,7 +112,7 @@ Abgedeckt:
 
 ```text
 python -m compileall -q .                  PASS
-python -m pytest -q -ra                    PASS, 252 passed, 2 skipped
+python -m pytest -q -ra                    PASS, 258 passed
 python tools/sync_version.py --check       PASS, 2.1.0 synchron
 python tools/i18n_audit.py                 PASS
 python tools/dau_first_run_check.py        PASS

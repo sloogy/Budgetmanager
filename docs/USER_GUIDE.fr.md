@@ -1,4 +1,4 @@
-# BudgetManager 2.1.0 – Guide utilisateur
+# BudgetManager 2.1.1 – Guide utilisateur
 
 ## 1. Idée générale
 

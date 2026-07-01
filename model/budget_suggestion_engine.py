@@ -518,16 +518,15 @@ class BudgetSuggestionEngine:
             float(self._get_budget_amount(d.year, d.month, typ, category) or 0.0)
             for d in months
         ]
-        pot_budget = max([float(current_budget), *budgets])
-        if pot_budget <= 0:
-            return None
-
         spent_values = [
             float(self._get_spent_amount(d.year, d.month, typ, category))
             for d in months
         ]
         total_spent = float(sum(spent_values))
         active_months = sum(1 for v in spent_values if abs(v) > 0.000001)
+
+        monthly_budget = float(current_budget)
+        window_budget = float(sum(budgets))
 
         # Kein Verbrauch über den ganzen Jahres-/Langzeit-Zeitraum: bewusst als
         # Vorschlag/Review markieren. Für kurze Fenster bleiben Pots stabil.
@@ -536,11 +535,11 @@ class BudgetSuggestionEngine:
                 typ, category, analysis_year, analysis_month, not_before=not_before
             )
             if zero_streak >= 12:
-                deviations = [pot_budget for _ in months]
+                deviations = [monthly_budget for _ in months]
                 return self._build_zero_reduction_result(
                     typ,
                     category,
-                    pot_budget,
+                    monthly_budget,
                     floor,
                     zero_streak,
                     deviations,
@@ -550,36 +549,62 @@ class BudgetSuggestionEngine:
                 )
             return None
 
-        # Teilverbrauch unterhalb des Pots ist normal (z.B. Franchise 750,
-        # bisher 220 verbraucht) und darf nicht nach unten korrigieren.
-        if total_spent <= pot_budget:
-            return None
+        # Regelmässige Nutzung in (nahezu) jedem Fenstermonat ist kein Topf,
+        # sondern eine laufende Monatsausgabe (z.B. Lebensmittel, versehentlich
+        # als Fix/Pot klassifiziert). Echte Töpfe (Franchise/Selbstbehalt) werden
+        # lumpy bezogen – nur in einzelnen Monaten. Unterscheidungssignal:
+        # Buchungs-Regelmässigkeit. Ein einzelner Null-Monat (Ferien o.ä.) darf
+        # eine sonst monatliche Kategorie nicht in die Topf-Inflation zurückkippen.
+        regular_monthly = active_months >= max(2, len(months) - 1)
 
-        deficit = total_spent - pot_budget
-        suggested = pot_budget + (deficit * float(alpha))
+        if regular_monthly:
+            # Pro-Monat-Vergleich: Fenster-Verbrauch gegen Fenster-Budget (Summe
+            # der Monatsbudgets), Vorschlag als MONATLICHE Erhöhung normiert.
+            if monthly_budget <= 0 or window_budget <= 0:
+                return None
+            if total_spent <= window_budget:
+                return None
+            deficit_per_month = (total_spent - window_budget) / float(len(months))
+            base = monthly_budget
+            suggested = monthly_budget + (deficit_per_month * float(alpha))
+            central_dev = -float(deficit_per_month)
+            avg_dev = -float(deficit_per_month)
+        else:
+            # Echter Topf: Gesamtverbrauch gegen Topf-Cap (höchstes Monatsbudget
+            # im Fenster). Teilverbrauch unter dem Topf ist normal und senkt nicht.
+            pot_budget = max([monthly_budget, *budgets])
+            if pot_budget <= 0:
+                return None
+            if total_spent <= pot_budget:
+                return None
+            deficit = total_spent - pot_budget
+            base = pot_budget
+            suggested = pot_budget + (deficit * float(alpha))
+            central_dev = -float(deficit)
+            avg_dev = (pot_budget - total_spent) / float(len(months))
+
         suggested = max(float(floor), float(suggested))
         if round_to and round_to > 0:
             suggested = round(suggested / round_to) * round_to
             suggested = max(float(floor), float(suggested))
-        delta = float(suggested) - float(pot_budget)
+        delta = float(suggested) - float(base)
 
         if abs(delta) < 0.01:
             return None
         if abs(delta) < float(min_abs_change) and abs(delta) < (
-            float(pot_budget) * float(min_pct_change)
+            float(base) * float(min_pct_change)
         ):
             return None
 
-        avg_deviation = (pot_budget - total_spent) / float(len(months))
         return SuggestionResult(
             typ=typ,
             category=category,
             direction="deficit",
             months_considered=len(months),
             streak_months=int(active_months),
-            central_deviation=-(float(deficit)),
-            avg_deviation=float(avg_deviation),
-            current_budget=float(pot_budget),
+            central_deviation=float(central_dev),
+            avg_deviation=float(avg_dev),
+            current_budget=float(base),
             suggested_budget=float(suggested),
             delta=float(delta),
         )

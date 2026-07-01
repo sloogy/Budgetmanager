@@ -1,5 +1,30 @@
-Budgetmanager Version 2.1.0
-Datum: 22. Juni 2026
+Budgetmanager Version 2.1.1
+Datum: 26. Juni 2026
+
+
+BUDGET-VORSCHLAG: FEHLKLASSIFIZIERTE MONATSAUSGABEN 2.1.1
+-----------------------------------------------------------
+- Fix im Pot-Zweig der Vorschlagsengine (model/budget_suggestion_engine.py): Summe(Ist über N Monate) wurde gegen ein einzelnes Monatsbudget verglichen und erzeugte bei regelmässigen Monatsausgaben absurde Vorschläge (Lebensmittel 400/Monat → 1230).
+- Regelmässigkeits-Heuristik: in (nahezu) jedem Fenstermonat gebuchte "Pot"-Kategorien werden pro Monat verglichen (Fenster-Ist gegen Fenster-Budget, Erhöhung monatlich normiert); echte lumpy Töpfe (Franchise) behalten die Topf-Cap-Logik. Ein einzelner Null-Monat kippt nichts (aktiv ≥ Fenster−1).
+- Echte Töpfe bleiben byte-genau unverändert; alle 6 Pot-Mode-Tests grün.
+- Neue Regression: tests/test_suggestion_regular_monthly_pot.py.
+- Veralteter Datei-Versionsstempel in views/budget_entry_dialog.py auf 2.1.1 nachgezogen.
+- Uneinheitliche Testzahlen der v2.1.0-Nachweise (243/246/252) auf die massgebliche Zahl 258 vereinheitlicht.
+
+CHECKS 2.1.1
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2171 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py (500 Loops / 3.500 Checks)
+- python -m pytest -q -ra → 262 passed
+
+NICHT LOKAL VALIDIERT
+-------------
+- PySide6-GUI-Smoke und Qt-Translation-Verify: PySide6 ist in dieser Umgebung nicht installiert.
+- PyInstaller-/Inno-Setup-Build: muss in GitHub Actions bzw. Windows-Build-Umgebung laufen.
 
 
 RELEASE-HÄRTUNG, PERFORMANCE UND KONSOLIDIERUNG 2.1.0
@@ -26,7 +51,7 @@ CHECKS 2.1.0
 - python tools/dau_first_run_check.py
 - python tools/release_logic_audit_100.py
 - python tools/deep_logic_release_audit.py (500 Loops / 3.500 Checks)
-- python -m pytest -q -ra → 252 passed, 2 skipped
+- python -m pytest -q -ra → 258 passed
 
 NICHT LOKAL VALIDIERT
 -------------

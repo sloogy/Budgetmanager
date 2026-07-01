@@ -1,3 +1,16 @@
+# v2.1.1 – Budget-Vorschlag: Fehlklassifizierte Monatsausgaben nicht mehr aufblähen
+
+Korrigiert einen Fehler im Budget-Anpassungsvorschlag: Eine als **Fix ohne Wiederkehrend** markierte Kategorie wird per Default als Pot/Rückstellung behandelt. Die Pot-Logik verglich jedoch die **Summe mehrerer Monate Ist** gegen **ein einzelnes Monatsbudget**, was bei regelmässigen Monatsausgaben absurde Vorschläge erzeugte (z.B. Lebensmittel mit Budget 400/Monat → Vorschlag 1230).
+
+- **Ursache:** Im Pot-Zweig der Vorschlagsengine wurde `Summe(Ist über N Monate)` gegen `max(Monatsbudget)` (ein Monat) verglichen. Bei einem echten Einmal-Topf (Franchise) ist `Summe = max`, daher fiel es dort nicht auf; bei einem gleichmässig monatlichen Budget (z.B. 400 in jedem Monat) war die Fenster-Kapazität aber N×400, nicht 400.
+- **Fix – Regelmässigkeits-Heuristik:** Eine „Pot"-Kategorie, die in (nahezu) jedem Fenstermonat gebucht wird, ist faktisch eine laufende Monatsausgabe und wird **pro Monat** verglichen (Fenster-Ist gegen Fenster-Budget, Erhöhung monatlich normiert). Echte, lumpy bezogene Töpfe (Franchise/Selbstbehalt) behalten unverändert die Topf-Cap-Logik. Ein einzelner Null-Monat (Ferien) kippt eine sonst monatliche Kategorie nicht zurück in die Topf-Inflation (`aktiv ≥ Fenster−1`).
+- **Wirkung:** Lebensmittel (400/Monat, jeden Monat gebucht) erhält jetzt sinnvolle monatliche Vorschläge (z.B. +40/+60) statt +830. Echte Töpfe sind byte-genau unverändert.
+- **Neue Regression:** `tests/test_suggestion_regular_monthly_pot.py` sichert die Monatslogik bei regelmässiger Buchung, die Selbstkorrektur am aktuellen Budget und die unveränderte Franchise-/Topf-Semantik ab.
+- **Dokumentation konsolidiert:** Die uneinheitlichen Testzahlen der v2.1.0-Nachweise (243/246/252) wurden auf die massgebliche Zahl 258 vereinheitlicht; veralteter Datei-Versionsstempel in `views/budget_entry_dialog.py` auf 2.1.1 nachgezogen.
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (de=en=fr, 2171 Keys), DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, `pytest` headless 262 passed. PySide6-GUI-Smoke, Qt-Translation-Verify, PyInstaller und Inno Setup müssen weiter in der Build-/CI-Umgebung laufen.
+
+
 # v2.1.0 – Release-Härtung, Performance und Konsolidierung
 
 Diese Version bündelt die Fix-Runden aus dem kritischen Release-Audit und setzt die offene Review-Liste vollständig um. Schwerpunkt: weniger doppelte korrektheitskritische Logik, schnellere Datumsabfragen, robusteres SQLite-Locking und nachvollziehbare Release-Dokumentation.
@@ -13,7 +26,7 @@ Diese Version bündelt die Fix-Runden aus dem kritischen Release-Audit und setzt
 - **Lokaler Fehlerbericht ohne Nutzerdatenbank:** Das Diagnose-ZIP enthält Logs, System-/Versionsinfo und bereinigte Einstellungen, aber keine DB, keine Backups und keine Exporte.
 - **Version hochgezogen:** App, Installer, Manifest-Vorlagen, README und Versionsdateien sind auf `2.1.0` synchronisiert.
 
-Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit, DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, `pytest` headless mit 246 PASS / 2 SKIP. PySide6-GUI-Smoke, Qt-Translation-Verify, PyInstaller und Inno Setup müssen weiter in der Build-/CI-Umgebung laufen.
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit, DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, `pytest` headless mit 258 PASS. PySide6-GUI-Smoke, Qt-Translation-Verify, PyInstaller und Inno Setup müssen weiter in der Build-/CI-Umgebung laufen.
 
 
 # v2.0.41 – Sicherheits-Härtung: Verifikations-Hash vom DB-Schlüssel getrennt

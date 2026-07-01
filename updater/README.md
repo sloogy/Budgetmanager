@@ -43,17 +43,17 @@ Bevorzugt über den GitHub-Workflow `.github/workflows/build.yml`.
 Lokal kann das Paketieren so getestet werden:
 
 ```bash
-python tools/build_release_assets.py   --version 2.1.0   --release-tag v2.1.0   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0   --windows-build-dir artifacts/windows   --linux-build-dir artifacts/linux   --out-dir release_assets
+python tools/build_release_assets.py   --version 2.1.1   --release-tag v2.1.1   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.1   --windows-build-dir artifacts/windows   --linux-build-dir artifacts/linux   --out-dir release_assets
 ```
 
 Das erzeugt:
 
-- `BudgetManager-v2.1.0-portable-windows.zip`
-- `BudgetManager-v2.1.0-portable-linux.zip`
-- `BudgetManager-v2.1.0-windows.exe`
-- `BudgetManager-v2.1.0-linux`
-- `BudgetManager_Setup_2.1.0.exe`, falls der Installer vorhanden ist.
-- `BudgetManager_Setup_2.1.0.zip`, falls der Installer vorhanden ist.
+- `BudgetManager-v2.1.1-portable-windows.zip`
+- `BudgetManager-v2.1.1-portable-linux.zip`
+- `BudgetManager-v2.1.1-windows.exe`
+- `BudgetManager-v2.1.1-linux`
+- `BudgetManager_Setup_2.1.1.exe`, falls der Installer vorhanden ist.
+- `BudgetManager_Setup_2.1.1.zip`, falls der Installer vorhanden ist.
 - `latest.json`
 - `SHA256SUMS.txt`
 
@@ -64,7 +64,7 @@ Der direkte Installer bleibt für Nutzer verfügbar. Der Installer-ZIP ist der W
 Der kleine Manifest-Helfer bleibt für einfache ZIP-Releases erhalten:
 
 ```bash
-python -m updater.generate_manifest   --version 2.1.0   --release-tag v2.1.0   --channel stable   --windows-zip dist/BudgetManager-v2.1.0-portable-windows.zip   --linux-zip dist/BudgetManager-v2.1.0-portable-linux.zip   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0   --out latest.json
+python -m updater.generate_manifest   --version 2.1.1   --release-tag v2.1.1   --channel stable   --windows-zip dist/BudgetManager-v2.1.1-portable-windows.zip   --linux-zip dist/BudgetManager-v2.1.1-portable-linux.zip   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.1   --out latest.json
 ```
 
 Der Updater prüft die SHA256-Werte aus dem Manifest fail-closed. Fehlt ein Hash oder passt er nicht, wird das Update abgelehnt.

@@ -118,7 +118,7 @@ Ausgeführt im Source-Paket:
 
 ```text
 python -m compileall -q .                         PASS
-python -m pytest -q -ra                           PASS, 246 passed, 2 skipped
+python -m pytest -q -ra                           PASS, 258 passed
 python tools/sync_version.py --check              PASS, 2.1.0 synchron
 python tools/i18n_audit.py --lang de --lang en --lang fr  PASS
 python tools/dau_first_run_check.py               PASS

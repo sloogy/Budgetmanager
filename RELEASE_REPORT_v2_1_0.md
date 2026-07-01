@@ -211,7 +211,7 @@ python -m compileall -q .
 → PASS
 
 python -m pytest -q -ra
-→ 243 passed, 2 skipped
+→ 258 passed
 
 python tools/i18n_audit.py
 → PASS, keine verdächtigen hardcoded UI-Strings
