@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 """Manifest + SHA256 Generator für GitHub Releases.
@@ -9,12 +10,12 @@ Du nutzt das, wenn du ein neues Release-ZIP gebaut hast.
 Beispiel (Windows + Linux ZIPs):
 
   python -m updater.generate_manifest \
-    --version 2.1.1 \
-    --release-tag v2.1.1 \
+    --version 2.1.3 \
+    --release-tag v2.1.3 \
     --channel stable \
-    --windows-zip dist/BudgetManager-v2.1.1-portable-windows.zip \
-    --linux-zip dist/BudgetManager-v2.1.1-portable-linux.zip \
-    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.1 \
+    --windows-zip dist/BudgetManager-v2.1.3-portable-windows.zip \
+    --linux-zip dist/BudgetManager-v2.1.3-portable-linux.zip \
+    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.3 \
     --out latest.json
 
 Danach lädst du die ZIP(s) + latest.json als Release-Assets hoch.
@@ -39,11 +40,17 @@ def _asset_entry(base_url: str, zip_path: Path) -> dict:
 
 def main() -> int:
     enable_utf8_console()
-    p = argparse.ArgumentParser(description="Generate latest.json manifest for BudgetManager releases")
-    p.add_argument("--version", required=True, help="App version, e.g. 2.1.1")
-    p.add_argument("--release-tag", required=True, help="Git tag, e.g. v2.1.1")
-    p.add_argument("--channel", default="stable", choices=["stable", "dev"], help="Update channel")
-    p.add_argument("--base-url", required=True, help="Base download URL to the release/tag")
+    p = argparse.ArgumentParser(
+        description="Generate latest.json manifest for BudgetManager releases"
+    )
+    p.add_argument("--version", required=True, help="App version, e.g. 2.1.3")
+    p.add_argument("--release-tag", required=True, help="Git tag, e.g. v2.1.3")
+    p.add_argument(
+        "--channel", default="stable", choices=["stable", "dev"], help="Update channel"
+    )
+    p.add_argument(
+        "--base-url", required=True, help="Base download URL to the release/tag"
+    )
     p.add_argument("--windows-zip", help="Path to Windows portable ZIP")
     p.add_argument("--linux-zip", help="Path to Linux portable ZIP")
     p.add_argument("--out", default="latest.json", help="Output filename")

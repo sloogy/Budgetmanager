@@ -1,4 +1,4 @@
-# Paketübersicht — BudgetManager v2.1.1
+# Paketübersicht — BudgetManager v2.1.3
 
 Diese Übersicht beschreibt den aktuellen Release-Quellbaum. Alte Arbeits-, Analyse- und Zwischenstandsberichte sind nicht Bestandteil des Release-Pakets.
 

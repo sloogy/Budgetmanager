@@ -131,8 +131,8 @@ def sync_installer(check: bool) -> bool:
         return True
     src = p.read_text(encoding="utf-8")
     new = re.sub(
-        r'#define MyAppVersion "[^"]*"',
-        f'#define MyAppVersion "{APP_VERSION}"',
+        r'#define MyAppVersion "2.1.3"]*"',
+        f'#define MyAppVersion "2.1.3"',
         src,
     )
     ok = new == src

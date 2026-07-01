@@ -1,6 +1,6 @@
-# Open Tasks — BudgetManager v2.1.1
+# Open Tasks — BudgetManager v2.1.3
 
-Stand: 26. Juni 2026
+Stand: 1. Juli 2026
 
 Diese Liste enthält nur noch Aufgaben, die außerhalb des Source-Pakets durch GitHub Actions oder manuelle Plattform-Smokes bestätigt werden müssen. Lokale Release-Gates sind im Source-Paket grün.
 

@@ -1,4 +1,4 @@
-## Neu in v2.1.1
+## Neu in v2.1.3
 
 - Budget-Anpassungsvorschlag korrigiert: als Fix (ohne Wiederkehrend) markierte, aber regelmässig monatlich gebuchte Kategorien (z.B. Lebensmittel) werden nicht mehr wie ein Jahrestopf aufsummiert und dadurch überhöht vorgeschlagen. Echte Rückstellungen/Franchise bleiben unverändert.
 

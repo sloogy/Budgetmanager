@@ -1,6 +1,6 @@
 # Architektur & System-Analyse (BudgetManager)
 
-Stand: v2.1.1 · 26. Juni 2026
+Stand: v2.1.3 · 1. Juli 2026
 
 ## Übersicht
 Der BudgetManager folgt einer **MVC-Architektur** (Model-View-Controller), wobei die Trennung zwischen Datenlogik (`model/`) und Benutzeroberfläche (`views/`) konsequent umgesetzt wird.

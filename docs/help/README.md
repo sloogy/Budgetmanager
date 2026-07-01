@@ -14,7 +14,7 @@ Das Cockpit ist die ruhige Startseite: Es zeigt das Wichtigste, ohne die Fachrei
 
 
 Stand: 19. Juni 2026  
-Gültig für: BudgetManager 2.1.1
+Gültig für: BudgetManager 2.1.3
 
 Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: **Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore**.
 
