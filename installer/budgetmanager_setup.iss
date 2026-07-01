@@ -8,7 +8,7 @@
 ;
 ; Voraussetzungen:
 ; - Inno Setup 6.x installiert
-; - PyInstaller EXE im dist/ Ordner
+; - PyInstaller onedir-Build im dist\BudgetManager\ Ordner
 
 #define MyAppName "BudgetManager"
 #define MyAppVersion "2.1.1"
@@ -53,7 +53,7 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; Hauptprogramm
-Source: "dist\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
+Source: "dist\BudgetManager\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Dokumentation
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion

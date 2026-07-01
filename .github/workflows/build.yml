@@ -3,21 +3,20 @@ name: Build Executables
 on:
   push:
     tags:
-      - 'v*'          # Trigger: git tag v2.1.0 && git push origin v2.1.0
+      - 'v*'
 
 permissions:
   contents: write
 
 jobs:
-  # ── Job 1+2: Parallel Builds ─────────────────────────────────────────
   build:
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: windows-latest
-            artifact_name: BudgetManager-windows.exe
-            pyinstaller_output: dist/BudgetManager.exe
+            artifact_name: BudgetManager-windows
+            pyinstaller_output: dist/BudgetManager
 
           - os: ubuntu-latest
             artifact_name: BudgetManager-linux
@@ -36,22 +35,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install --upgrade pip
-          pip install -r requirements-build.txt
-          pip install -r requirements-dev.txt
-          python -m pip install "black==26.5.1"
-
-      - name: Install UPX (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y upx-ucl
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-build.txt
+          python -m pip install -r requirements-dev.txt
+          python -m pip install --force-reinstall "black==26.5.1"
 
       - name: Install Qt offscreen dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1
-
-      - name: Install UPX (Windows)
-        if: runner.os == 'Windows'
-        run: choco install upx --no-progress -y
+        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1
 
       - name: Check version consistency
         run: python tools/sync_version.py --check
@@ -59,11 +50,13 @@ jobs:
       - name: Verify Qt translation catalogs
         run: python tools/verify_qt_translations.py
 
-      - name: Compile all sources (syntax check incl. tools/)
-        run: python -m compileall -q . -x '_attic|__pycache__'
+      - name: Compile all sources
+        run: python -m compileall -q . -x '_attic|__pycache__|.venv|venv'
 
       - name: Check model formatting
-        run: python -m black --check model/
+        run: |
+          python -m black --version
+          python -m black --check model/
 
       - name: Type-check model layer
         run: python -m mypy model/
@@ -74,6 +67,7 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           PYTHONUTF8: "1"
           PYTHONIOENCODING: utf-8
+          PYTHONDONTWRITEBYTECODE: "1"
         run: |
           python -m pytest tests/ -v -ra --tb=short
 
@@ -84,20 +78,23 @@ jobs:
         run: python tools/lint_procedure_check.py
 
       - name: Build with PyInstaller
-        run: pyinstaller BudgetManager.spec --noconfirm
+        run: pyinstaller BudgetManager.spec --noconfirm --clean
 
-      - name: Rename artifact
+      - name: Validate PyInstaller onedir output
         shell: bash
-        run: mv "${{ matrix.pyinstaller_output }}" "${{ matrix.artifact_name }}"
+        run: |
+          test -d "${{ matrix.pyinstaller_output }}"
+          test -f "${{ matrix.pyinstaller_output }}/BudgetManager.exe" || test -f "${{ matrix.pyinstaller_output }}/BudgetManager"
+          test -d "${{ matrix.pyinstaller_output }}/_internal"
+          ls -lah "${{ matrix.pyinstaller_output }}"
 
-      - name: Upload artifact (for manifest job)
+      - name: Upload onedir artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.artifact_name }}
+          path: ${{ matrix.pyinstaller_output }}/**
           if-no-files-found: error
 
-  # ── Job 3: Windows Installer bauen ───────────────────────────────
   installer:
     needs: build
     runs-on: windows-latest
@@ -106,20 +103,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Windows artifact
+      - name: Download Windows onedir artifact
         uses: actions/download-artifact@v4
         with:
-          name: BudgetManager-windows.exe
-          path: dist/
+          name: BudgetManager-windows
+          path: dist/BudgetManager/
 
       - name: Prepare installer input
         shell: pwsh
         run: |
-          if (Test-Path "dist\BudgetManager-windows.exe") {
-            Move-Item -Force "dist\BudgetManager-windows.exe" "dist\BudgetManager.exe"
+          if (-not (Test-Path "dist\BudgetManager\BudgetManager.exe")) {
+            throw "dist\BudgetManager\BudgetManager.exe fehlt; Installer kann nicht gebaut werden."
           }
-          if (-not (Test-Path "dist\BudgetManager.exe")) {
-            throw "dist\BudgetManager.exe fehlt; Installer kann nicht gebaut werden."
+          if (-not (Test-Path "dist\BudgetManager\_internal")) {
+            throw "dist\BudgetManager\_internal fehlt; Build ist nicht onedir."
           }
 
       - name: Install Inno Setup
@@ -150,7 +147,6 @@ jobs:
           path: BudgetManager_Setup.exe
           if-no-files-found: error
 
-  # ── Job 4: Release-Artefakte, ZIPs, latest.json, SHA256 ───────────────
   manifest:
     needs: [build, installer]
     runs-on: ubuntu-latest
@@ -167,7 +163,7 @@ jobs:
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
-          name: BudgetManager-windows.exe
+          name: BudgetManager-windows
           path: artifacts/windows/
 
       - name: Download Linux artifact
@@ -216,7 +212,7 @@ jobs:
           assert assets['windows']['url'].endswith('-portable-windows.zip'), assets['windows']
           assert assets['linux']['url'].endswith('-portable-linux.zip'), assets['linux']
           assert assets['windows_installer']['type'] == 'installer', assets['windows_installer']
-          assert assets['windows_installer_zip']['type'] == 'installer-zip', assets['windows_installer_zip']
+          assert assets['windows_installer_zip']['type'] == 'installer-zip'
           assert Path('release_assets/SHA256SUMS.txt').is_file()
 
           with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-windows.zip'))) as zf:
@@ -224,11 +220,13 @@ jobs:
               assert 'BudgetManager.exe' in names
               assert 'start-windows.cmd' in names
               assert 'data/.keep' in names
+              assert any(n.startswith('_internal/') for n in names), 'Windows-ZIP ohne _internal/'
           with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-linux.zip'))) as zf:
               names = set(zf.namelist())
               assert 'BudgetManager' in names
               assert 'start-linux.sh' in names
               assert 'data/.keep' in names
+              assert any(n.startswith('_internal/') for n in names), 'Linux-ZIP ohne _internal/'
           print('latest.json und portable ZIPs OK')
           PY
 

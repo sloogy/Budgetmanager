@@ -7,8 +7,8 @@ verwendet:
     pyinstaller BudgetManager.spec --noconfirm
 
 Erzeugt:
-    dist/BudgetManager.exe   (Windows)
-    dist/BudgetManager       (Linux)
+    dist/BudgetManager/BudgetManager.exe   (Windows onedir)
+    dist/BudgetManager/BudgetManager       (Linux onedir)
 
 WICHTIG — Nicht-Python-Assets müssen hier explizit gelistet sein,
 sonst fehlen sie im Frozen-Build (siehe `datas`):
@@ -85,22 +85,28 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
     [],
+    exclude_binaries=True,
     name="BudgetManager",
     icon="resources/icons/budgetmanager.ico",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
-    upx_exclude=["vcruntime140.dll", "python3*.dll", "Qt6*.dll"],
-    runtime_tmpdir=None,
+    upx=False,
     console=False,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+)
+
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    name="BudgetManager",
 )

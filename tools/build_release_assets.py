@@ -13,6 +13,7 @@ Die Manifest-Keys ``windows`` und ``linux`` bleiben portable ZIPs. Der Installer
 ist ein separates Asset. Installer-Installationen duerfen den Key
 ``windows_installer`` bevorzugen; portable Fallbacks bleiben trotzdem erhalten.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -116,6 +117,33 @@ def _copy_file(src: Path, dst: Path, executable: bool = False) -> None:
             pass
 
 
+def _copy_bundle_contents(src_dir: Path, dst_dir: Path) -> None:
+    """Kopiert einen PyInstaller-onedir-Bundle-Ordner in ein portables ZIP-Arbeitsverzeichnis.
+
+    Installer-Artefakte werden bewusst ausgeschlossen, weil der Manifest-Job
+    Windows-Bundle und Setup-EXE im selben artifacts/windows-Ordner sammelt.
+    """
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    excluded_names = {
+        "BudgetManager_Setup.exe",
+        "BudgetManager_Setup.zip",
+        "SHA256SUMS.txt",
+        "latest.json",
+    }
+    for src in sorted(src_dir.rglob("*")):
+        rel = src.relative_to(src_dir)
+        if any(part.startswith("BudgetManager_Setup_") for part in rel.parts):
+            continue
+        if src.name in excluded_names:
+            continue
+        dst = dst_dir / rel
+        if src.is_dir():
+            dst.mkdir(parents=True, exist_ok=True)
+        else:
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(src, dst)
+
+
 def _write_zip(zip_path: Path, src_dir: Path) -> None:
     zip_path.parent.mkdir(parents=True, exist_ok=True)
     if zip_path.exists():
@@ -131,13 +159,13 @@ def _write_windows_starter(path: Path) -> None:
     path.write_text(
         "@echo off\r\n"
         "setlocal EnableExtensions\r\n"
-        "set \"DIR=%~dp0\"\r\n"
+        'set "DIR=%~dp0"\r\n'
         "rem DPI/Scaling: System-Skalierung verwenden, Fractional Scaling nicht grob runden.\r\n"
-        "set \"QT_ENABLE_HIGHDPI_SCALING=1\"\r\n"
-        "set \"QT_AUTO_SCREEN_SCALE_FACTOR=1\"\r\n"
-        "set \"QT_SCALE_FACTOR_ROUNDING_POLICY=PassThrough\"\r\n"
-        f"if exist \"%DIR%{WINDOWS_CANONICAL_EXE}\" (\r\n"
-        f"  start \"\" \"%DIR%{WINDOWS_CANONICAL_EXE}\"\r\n"
+        'set "QT_ENABLE_HIGHDPI_SCALING=1"\r\n'
+        'set "QT_AUTO_SCREEN_SCALE_FACTOR=1"\r\n'
+        'set "QT_SCALE_FACTOR_ROUNDING_POLICY=PassThrough"\r\n'
+        f'if exist "%DIR%{WINDOWS_CANONICAL_EXE}" (\r\n'
+        f'  start "" "%DIR%{WINDOWS_CANONICAL_EXE}"\r\n'
         "  exit /b 0\r\n"
         ")\r\n"
         f"echo {WINDOWS_CANONICAL_EXE} wurde nicht gefunden.\r\n"
@@ -152,13 +180,13 @@ def _write_linux_starter(path: Path) -> None:
     path.write_text(
         "#!/usr/bin/env bash\n"
         "set -euo pipefail\n"
-        "DIR=\"$(cd \"$(dirname \"$0\")\" && pwd)\"\n"
+        'DIR="$(cd "$(dirname "$0")" && pwd)"\n'
         "# DPI/Scaling: System-Skalierung verwenden, Fractional Scaling nicht grob runden.\n"
-        "export QT_ENABLE_HIGHDPI_SCALING=\"${QT_ENABLE_HIGHDPI_SCALING:-1}\"\n"
-        "export QT_AUTO_SCREEN_SCALE_FACTOR=\"${QT_AUTO_SCREEN_SCALE_FACTOR:-1}\"\n"
-        "export QT_SCALE_FACTOR_ROUNDING_POLICY=\"${QT_SCALE_FACTOR_ROUNDING_POLICY:-PassThrough}\"\n"
-        f"chmod +x \"$DIR/{LINUX_CANONICAL_BINARY}\" 2>/dev/null || true\n"
-        f"exec \"$DIR/{LINUX_CANONICAL_BINARY}\" \"$@\"\n",
+        'export QT_ENABLE_HIGHDPI_SCALING="${QT_ENABLE_HIGHDPI_SCALING:-1}"\n'
+        'export QT_AUTO_SCREEN_SCALE_FACTOR="${QT_AUTO_SCREEN_SCALE_FACTOR:-1}"\n'
+        'export QT_SCALE_FACTOR_ROUNDING_POLICY="${QT_SCALE_FACTOR_ROUNDING_POLICY:-PassThrough}"\n'
+        f'chmod +x "$DIR/{LINUX_CANONICAL_BINARY}" 2>/dev/null || true\n'
+        f'exec "$DIR/{LINUX_CANONICAL_BINARY}" "$@"\n',
         encoding="utf-8",
     )
     mode = os.stat(path).st_mode
@@ -185,14 +213,22 @@ def _write_portable_readme(path: Path, version: str, platform_name: str) -> None
     )
 
 
-def _create_portable_windows_zip(out_dir: Path, version: str, windows_exe: Path) -> Path:
+def _create_portable_windows_zip(
+    out_dir: Path, version: str, windows_exe: Path
+) -> Path:
     work = out_dir / "_portable_windows"
     if work.exists():
         shutil.rmtree(work)
+
+    _copy_bundle_contents(windows_exe.parent, work)
+
+    target_exe = work / WINDOWS_CANONICAL_EXE
+    if not target_exe.is_file():
+        _die(f"Windows-Bundle ohne stabilen Startnamen: {target_exe}")
+
     (work / "data" / "backups").mkdir(parents=True, exist_ok=True)
     (work / "data" / ".keep").touch()
     (work / "data" / "backups" / ".keep").touch()
-    _copy_file(windows_exe, work / WINDOWS_CANONICAL_EXE, executable=False)
     _write_windows_starter(work / "start-windows.cmd")
     _write_portable_readme(work / "README.txt", version, "windows")
     zip_path = out_dir / f"BudgetManager-v{version}-portable-windows.zip"
@@ -205,10 +241,21 @@ def _create_portable_linux_zip(out_dir: Path, version: str, linux_binary: Path) 
     work = out_dir / "_portable_linux"
     if work.exists():
         shutil.rmtree(work)
+
+    _copy_bundle_contents(linux_binary.parent, work)
+
+    target_binary = work / LINUX_CANONICAL_BINARY
+    if not target_binary.is_file():
+        _die(f"Linux-Bundle ohne stabilen Startnamen: {target_binary}")
+    try:
+        mode = os.stat(target_binary).st_mode
+        os.chmod(target_binary, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    except OSError:
+        pass
+
     (work / "data" / "backups").mkdir(parents=True, exist_ok=True)
     (work / "data" / ".keep").touch()
     (work / "data" / "backups" / ".keep").touch()
-    _copy_file(linux_binary, work / LINUX_CANONICAL_BINARY, executable=True)
     _write_linux_starter(work / "start-linux.sh")
     _write_portable_readme(work / "README.txt", version, "linux")
     zip_path = out_dir / f"BudgetManager-v{version}-portable-linux.zip"
@@ -217,7 +264,9 @@ def _create_portable_linux_zip(out_dir: Path, version: str, linux_binary: Path) 
     return zip_path
 
 
-def _create_installer_zip(out_dir: Path, version: str, installer_exe: Path) -> tuple[Path, Path]:
+def _create_installer_zip(
+    out_dir: Path, version: str, installer_exe: Path
+) -> tuple[Path, Path]:
     installer_name = f"BudgetManager_Setup_{version}.exe"
     normalized_installer = out_dir / installer_name
     _copy_file(installer_exe, normalized_installer, executable=False)
@@ -287,7 +336,9 @@ def _write_latest_json(
         # diesen Typ als Setup-EXE und staget ihn nicht als BudgetManager.exe.
         assets["windows_installer"] = _asset(base_url, installer_exe, "installer")
     if installer_zip is not None:
-        assets["windows_installer_zip"] = _asset(base_url, installer_zip, "installer-zip")
+        assets["windows_installer_zip"] = _asset(
+            base_url, installer_zip, "installer-zip"
+        )
 
     manifest = {
         "app": APP_NAME,
@@ -297,26 +348,43 @@ def _write_latest_json(
         "assets": assets,
     }
     path = out_dir / "latest.json"
-    path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return path
 
 
 def _write_sha256sums(out_dir: Path, files: list[Path]) -> Path:
     sums = out_dir / "SHA256SUMS.txt"
-    lines = [f"{_sha256_file(path)}  {path.name}" for path in sorted(files, key=lambda p: p.name)]
+    lines = [
+        f"{_sha256_file(path)}  {path.name}"
+        for path in sorted(files, key=lambda p: p.name)
+    ]
     sums.write_text("\n".join(lines) + "\n", encoding="ascii")
     return sums
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Build BudgetManager GitHub release assets")
-    parser.add_argument("--version", default=APP_VERSION, help="Version, default from app_info.APP_VERSION")
+    parser = argparse.ArgumentParser(
+        description="Build BudgetManager GitHub release assets"
+    )
+    parser.add_argument(
+        "--version",
+        default=APP_VERSION,
+        help="Version, default from app_info.APP_VERSION",
+    )
     parser.add_argument("--release-tag", help="Git tag, default v<version>")
-    parser.add_argument("--base-url", required=True, help="GitHub release download base URL")
+    parser.add_argument(
+        "--base-url", required=True, help="GitHub release download base URL"
+    )
     parser.add_argument("--windows-build-dir", required=True, type=Path)
     parser.add_argument("--linux-build-dir", required=True, type=Path)
     parser.add_argument("--out-dir", default=Path("release_assets"), type=Path)
-    parser.add_argument("--require-installer", action="store_true", help="Fail if Windows installer EXE is missing")
+    parser.add_argument(
+        "--require-installer",
+        action="store_true",
+        help="Fail if Windows installer EXE is missing",
+    )
     args = parser.parse_args()
 
     version = str(args.version).lstrip("v")
@@ -343,7 +411,9 @@ def main() -> int:
     installer_exe: Path | None = None
     installer_zip: Path | None = None
     if installer_source is not None:
-        installer_exe, installer_zip = _create_installer_zip(out_dir, version, installer_source)
+        installer_exe, installer_zip = _create_installer_zip(
+            out_dir, version, installer_source
+        )
 
     latest = _write_latest_json(
         out_dir,
