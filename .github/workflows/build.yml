@@ -39,6 +39,7 @@ jobs:
           pip install --upgrade pip
           pip install -r requirements-build.txt
           pip install -r requirements-dev.txt
+          python -m pip install "black==26.5.1"
 
       - name: Install UPX (Linux)
         if: runner.os == 'Linux'
