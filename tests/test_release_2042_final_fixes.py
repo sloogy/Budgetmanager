@@ -36,7 +36,10 @@ def test_production_code_uses_db_type_constants_instead_of_raw_literals():
     for path in ROOT.rglob("*.py"):
         rel_parts = path.relative_to(ROOT).parts
         if (
-            any(part in ignored_parts or part.startswith((".venv", "venv")) for part in rel_parts)
+            any(
+                part in ignored_parts or part.startswith((".venv", "venv"))
+                for part in rel_parts
+            )
             or path in ignored_files
         ):
             continue

@@ -3,6 +3,7 @@
 
 Entfernt nur generierbare Laufzeit-/Testartefakte, keine Quell- oder Doku-Dateien.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -31,7 +32,9 @@ EXCLUDED_DIR_PREFIXES = (".venv", "venv")
 
 def _is_local_environment(path: Path, root: Path) -> bool:
     """Virtuelle Umgebungen werden nicht als Release-Artefakte behandelt."""
-    return any(part.startswith(EXCLUDED_DIR_PREFIXES) for part in path.relative_to(root).parts)
+    return any(
+        part.startswith(EXCLUDED_DIR_PREFIXES) for part in path.relative_to(root).parts
+    )
 
 
 def clean(root: Path = ROOT) -> list[str]:
