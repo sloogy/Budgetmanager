@@ -14,10 +14,6 @@ DB_TYPE_LITERALS = {TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS}
 
 def test_production_code_uses_db_type_constants_instead_of_raw_literals():
     """Release guard: DB-Typwerte dürfen nur zentral als Konstanten definiert werden."""
-    # Nur echten Projekt-/Produktivcode scannen.
-    # Wichtig: ROOT.rglob("*.py") erwischt sonst auch lokale virtuelle Umgebungen
-    # wie .venv/ und dadurch z. B. PySide-Template-Dateien (*.tmpl.py),
-    # die absichtlich keine parsebaren Python-Dateien sind.
     ignored_parts = {
         ".git",
         ".mypy_cache",
@@ -38,8 +34,11 @@ def test_production_code_uses_db_type_constants_instead_of_raw_literals():
     offenders: list[str] = []
 
     for path in ROOT.rglob("*.py"):
-        rel_parts = set(path.relative_to(ROOT).parts)
-        if rel_parts & ignored_parts or path in ignored_files:
+        rel_parts = path.relative_to(ROOT).parts
+        if (
+            any(part in ignored_parts or part.startswith((".venv", "venv")) for part in rel_parts)
+            or path in ignored_files
+        ):
             continue
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
         for node in ast.walk(tree):

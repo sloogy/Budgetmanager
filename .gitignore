@@ -29,8 +29,8 @@ last_review.md
 __pycache__/
 *.py[cod]
 *.pyo
-.venv/
-venv/
+.venv*/
+venv*/
 .env
 
 # --- Build/Packaging ---

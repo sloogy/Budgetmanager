@@ -26,6 +26,12 @@ DIR_NAMES = {
     "dist",
     "installer_output",
 }
+EXCLUDED_DIR_PREFIXES = (".venv", "venv")
+
+
+def _is_local_environment(path: Path, root: Path) -> bool:
+    """Virtuelle Umgebungen werden nicht als Release-Artefakte behandelt."""
+    return any(part.startswith(EXCLUDED_DIR_PREFIXES) for part in path.relative_to(root).parts)
 
 
 def clean(root: Path = ROOT) -> list[str]:
@@ -38,6 +44,8 @@ def clean(root: Path = ROOT) -> list[str]:
                 removed.append(str(path.relative_to(root)))
 
     for path in sorted(root.rglob("*"), reverse=True):
+        if _is_local_environment(path, root):
+            continue
         if path.is_dir() and path.name in DIR_NAMES:
             shutil.rmtree(path)
             removed.append(str(path.relative_to(root)) + "/")

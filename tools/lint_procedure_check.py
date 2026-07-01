@@ -17,8 +17,6 @@ from typing import Iterable
 ROOT = Path(__file__).resolve().parents[1]
 EXCLUDED_DIRS = {
     ".git",
-    ".venv",
-    "venv",
     "build",
     "dist",
     "installer_output",
@@ -26,7 +24,9 @@ EXCLUDED_DIRS = {
     ".pytest_cache",
     ".mypy_cache",
     ".ruff_cache",
+    ".tox",
 }
+EXCLUDED_DIR_PREFIXES = (".venv", "venv")
 GENERATED_FILE_PATTERNS = (
     "*.pyc",
     "*.pyo",
@@ -53,9 +53,18 @@ def _app_version_and_date() -> tuple[str, str]:
     return version_match.group(1), date_match.group(1)
 
 
+def _is_excluded_path(path: Path) -> bool:
+    """Lokale Umgebungen und generierte Ordner nie als Release-Code werten."""
+    parts = path.relative_to(ROOT).parts
+    return any(
+        part in EXCLUDED_DIRS or part.startswith(EXCLUDED_DIR_PREFIXES)
+        for part in parts
+    )
+
+
 def _python_files() -> Iterable[Path]:
     for path in ROOT.rglob("*.py"):
-        if any(part in EXCLUDED_DIRS for part in path.relative_to(ROOT).parts):
+        if _is_excluded_path(path):
             continue
         yield path
 
@@ -87,13 +96,13 @@ def check_versions() -> list[str]:
 
 def check_generated_artifacts() -> list[str]:
     errors: list[str] = []
-    for name in EXCLUDED_DIRS - {".git", ".venv", "venv"}:
+    for name in EXCLUDED_DIRS - {".git"}:
         for path in ROOT.rglob(name):
-            if path.is_dir():
+            if path.is_dir() and not _is_excluded_path(path):
                 errors.append(f"generiertes Verzeichnis im Release-Baum: {path.relative_to(ROOT)}")
     for pattern in GENERATED_FILE_PATTERNS:
         for path in ROOT.glob(pattern):
-            if path.is_file():
+            if path.is_file() and not _is_excluded_path(path):
                 errors.append(f"generierte/private Datei im Release-Baum: {path.relative_to(ROOT)}")
     return errors
 
