@@ -257,7 +257,8 @@ class TagsModel:
         Basiert auf entry_tags ↔ tracking.
         """
         try:
-            cur = self.conn.execute("""
+            cur = self.conn.execute(
+                """
                 SELECT t.name,
                        COUNT(DISTINCT et.entry_id),
                        COALESCE(SUM(tr.amount), 0)
@@ -266,7 +267,8 @@ class TagsModel:
                 LEFT JOIN tracking tr   ON et.entry_id = tr.id
                 GROUP BY t.id
                 ORDER BY COUNT(DISTINCT et.entry_id) DESC
-                """)
+                """
+            )
             return [(row[0], row[1], row[2]) for row in cur.fetchall()]
         except Exception:
             return []

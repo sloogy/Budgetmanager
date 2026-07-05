@@ -199,17 +199,20 @@ def migrate_all(
 def _migrate_v0_to_v1(conn: sqlite3.Connection) -> None:
     """Migration v0 → v1: Basis-Schema"""
     # categories
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS categories(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             typ TEXT NOT NULL,
             name TEXT NOT NULL,
             UNIQUE(typ, name)
         );
-        """)
+        """
+    )
 
     # budget
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS budget(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             year INTEGER NOT NULL,
@@ -219,10 +222,12 @@ def _migrate_v0_to_v1(conn: sqlite3.Connection) -> None:
             amount REAL NOT NULL DEFAULT 0,
             UNIQUE(year, month, typ, category)
         );
-        """)
+        """
+    )
 
     # tracking
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS tracking(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             date TEXT NOT NULL,
@@ -231,7 +236,8 @@ def _migrate_v0_to_v1(conn: sqlite3.Connection) -> None:
             amount REAL NOT NULL,
             details TEXT
         );
-        """)
+        """
+    )
 
     # Basis-Indizes
     conn.execute("CREATE INDEX IF NOT EXISTS idx_tracking_date ON tracking(date);")
@@ -264,12 +270,14 @@ def _migrate_v1_to_v2(conn: sqlite3.Connection) -> None:
 
 def _migrate_v2_to_v3(conn: sqlite3.Connection) -> None:
     """Migration v2 → v3: System-Flags"""
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS system_flags(
             key TEXT PRIMARY KEY,
             value TEXT
         );
-        """)
+        """
+    )
     conn.commit()
 
 
@@ -277,16 +285,19 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
     """Migration v3 → v4: Neue Features (v0.16.0)"""
 
     # Tags
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS tags(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             color TEXT NOT NULL DEFAULT '#3498db'
         );
-        """)
+        """
+    )
 
     # Category Tags
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS category_tags(
             category_id INTEGER NOT NULL,
             tag_id INTEGER NOT NULL,
@@ -294,10 +305,12 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE CASCADE,
             FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
         );
-        """)
+        """
+    )
 
     # Budget Warnings
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS budget_warnings(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             year INTEGER NOT NULL,
@@ -308,10 +321,12 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
             enabled INTEGER NOT NULL DEFAULT 1,
             UNIQUE(year, month, typ, category)
         );
-        """)
+        """
+    )
 
     # Favorites
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS favorites(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             typ TEXT NOT NULL,
@@ -319,10 +334,12 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
             sort_order INTEGER NOT NULL DEFAULT 0,
             UNIQUE(typ, category)
         );
-        """)
+        """
+    )
 
     # Savings Goals
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS savings_goals(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -333,10 +350,12 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
             notes TEXT,
             created_date TEXT NOT NULL
         );
-        """)
+        """
+    )
 
     # Undo Stack
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS undo_stack(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
@@ -345,16 +364,19 @@ def _migrate_v3_to_v4(conn: sqlite3.Connection) -> None:
             old_data TEXT,
             new_data TEXT
         );
-        """)
+        """
+    )
 
     # Theme Profiles
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS theme_profiles(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL UNIQUE,
             settings TEXT NOT NULL
         );
-        """)
+        """
+    )
 
     # Neue Indizes
     conn.execute(
@@ -368,7 +390,8 @@ def _migrate_v4_to_v5(conn: sqlite3.Connection) -> None:
     """Migration v4 → v5: Wiederkehrende Transaktionen (v0.17.0)"""
 
     # Recurring Transactions Tabelle
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS recurring_transactions(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             typ TEXT NOT NULL,
@@ -382,7 +405,8 @@ def _migrate_v4_to_v5(conn: sqlite3.Connection) -> None:
             created_date TEXT NOT NULL,
             last_booking_date TEXT
         );
-        """)
+        """
+    )
 
     # Index für Performance
     conn.execute(
@@ -471,7 +495,8 @@ def get_migration_info(conn: sqlite3.Connection) -> dict:
 def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
     """Migration v5 → v6: entry_tags Tabelle (Tags ↔ Tracking-Einträge)"""
 
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS entry_tags(
             entry_id INTEGER NOT NULL,
             tag_id INTEGER NOT NULL,
@@ -479,7 +504,8 @@ def _migrate_v5_to_v6(conn: sqlite3.Connection) -> None:
             FOREIGN KEY (entry_id) REFERENCES tracking(id) ON DELETE CASCADE,
             FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
         );
-        """)
+        """
+    )
 
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_entry_tags_entry ON entry_tags(entry_id);"
@@ -553,7 +579,8 @@ def _migrate_v7_to_v8(conn: sqlite3.Connection) -> None:
                 )
 
     # redo_stack Tabelle
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS redo_stack(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts TEXT NOT NULL,
@@ -563,7 +590,8 @@ def _migrate_v7_to_v8(conn: sqlite3.Connection) -> None:
             old_data TEXT,
             new_data TEXT
         );
-        """)
+        """
+    )
 
     # Indizes (optional)
     try:
@@ -646,7 +674,8 @@ def _migrate_v9_to_v10(conn: sqlite3.Connection) -> None:
 
 def _migrate_v10_to_v11(conn: sqlite3.Connection) -> None:
     """Migration v10 → v11: Angenommene Vorschläge tracken (pro Monat nicht wiederholen)."""
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS suggestion_accepted (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             typ TEXT NOT NULL,
@@ -656,7 +685,8 @@ def _migrate_v10_to_v11(conn: sqlite3.Connection) -> None:
             accepted_at TEXT NOT NULL DEFAULT (datetime('now')),
             UNIQUE(typ, category, year, month)
         )
-    """)
+    """
+    )
     conn.commit()
 
 
@@ -706,7 +736,8 @@ def _migrate_v14_to_v15(conn: sqlite3.Connection) -> None:
     ignorieren oder bewusst als unregelmäßige Rückstellung markieren, ohne die
     normale Budget-Vorschlagslogik zu beeinflussen.
     """
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS tracking_learning_state(
             typ TEXT NOT NULL,
             category TEXT NOT NULL,
@@ -715,5 +746,6 @@ def _migrate_v14_to_v15(conn: sqlite3.Connection) -> None:
             changed_at TEXT,
             PRIMARY KEY(typ, category)
         );
-        """)
+        """
+    )
     conn.commit()
