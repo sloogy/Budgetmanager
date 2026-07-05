@@ -10,19 +10,19 @@
 
 <p>Empfohlener roter Faden: Cockpit öffnen → Warnungen/offene Buchungen prüfen → bei Bedarf Buchung erfassen oder Fixkosten buchen → Budget/Sparziele/Übersicht nur öffnen, wenn Details nötig sind.</p>
 
-<p> v2.1.3</p>
+<p> v2.2.6</p>
 
 <p>&gt; Direkt anzeigbare Mindmap: <code>docs/help/mindmap.de.html</code>, <code>docs/help/mindmap.en.html</code>, <code>docs/help/mindmap.fr.html</code> (Browser) · Mermaid-Quellen: <code>docs/help/mindmap.de.mmd</code>, <code>docs/help/mindmap.en.mmd</code>, <code>docs/help/mindmap.fr.mmd</code>. <code>mindmap.html</code> und <code>mindmap.mmd</code> bleiben als deutsche Fallback-Dateien erhalten.</p>
 
 
-<p>Stand: 19. Juni 2026  </p>
-<p>Gültig für: BudgetManager 2.1.3</p>
+<p>Stand: 3. Juli 2026  </p>
+<p>Gültig für: BudgetManager 2.2.6</p>
 
 <p>Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore.</p>
 
 <hr>
 
-<h2>Ergänzung v2.1.0 – Cockpit und Stabilität</h2>
+<h2>Ergänzung v2.2.6 – Cockpit und Stabilität</h2>
 
 <p>- Das Cockpit zeigt zusätzlich Budgetwarnungen und bietet per Rechtsklick sinnvolle Schnellaktionen.</p>
 <p>- Unter Wayland nutzt BudgetManager standardmäßig <code>xcb</code>, um bekannte Qt-TextInput-Abstürze zu vermeiden. Native Wayland-Nutzung ist mit <code>BM_ALLOW_WAYLAND=1</code> möglich.</p>
@@ -646,18 +646,20 @@ Tracking/Buchungen = Realität: Ich habe Geld auf dieses Ziel gelegt oder wieder
 
 <h3>9.3 Diagramme in der Übersicht</h3>
 
-<p>Die Übersicht nutzt Diagramme nur dort, wo sie eine Entscheidung leichter machen. Zu viele Kreisdiagramme werden bewusst vermieden.</p>
+<p>Die Übersicht nutzt Diagramme nur dort, wo sie eine Entscheidung leichter machen. Der Plan/Ist-Donut bleibt erhalten, verwirrende Nebenkreise werden vermieden.</p>
 
 <p>| Diagramm | Wofür es gut ist | Wann du es nutzt |</p>
 <p>|---|---|---|</p>
-<p>| Übersicht / Donut | Schneller Plan-Ist-Status nach Einnahmen, Ausgaben und Ersparnissen | Monatscheck: Ist mein Budget grundsätzlich im Rahmen? |</p>
-<p>| Kategorien | Ausgabenanteile je Kategorie | Herausfinden, welche Kategorie den größten Anteil hat |</p>
-<p>| Verteilung | Einnahmen/Ausgaben/Ersparnisse im Verhältnis | Grober Gesamtblick auf Geldflüsse |</p>
+<p>| Plan/Ist-Donut | Außen Einnahmen, Mitte Ausgaben, innen Ersparnisse; je Ring gebucht/offen/über Budget | Monatscheck: Wo bin ich über oder unter Plan? |</p>
+<p>| Kategorien-Ranking | Größte Ausgaben-Kategorien als Balken statt als unlesbarer Kreis | Herausfinden, welche Kategorie wirklich den größten Betrag verursacht |</p>
+<p>| Konto-Vergleich | Einnahmen, Ausgaben und Ersparnisse als Balken | Grober Geldfluss ohne falsche „Kuchenanteil“-Logik |</p>
 <p>| Monatsverlauf | Ausgaben: Budget vs. gebucht pro Monat | Erkennen, ob Ausgaben dauerhaft steigen oder nur ein Ausreißer vorliegt |</p>
-<p>| Monatsbilanz | Einnahmen minus Ausgaben, echt vs. geplant | Prüfen, ob am Monatsende genug übrig bleibt |</p>
-<p>| Top-Buchungen | Die 5 größten Buchungen im gewählten Zeitraum | Einzelne große Ausreißer schnell finden |</p>
+<p>| Monatsbilanz | Einnahmen minus Ausgaben minus Ersparnisse, echt vs. geplant | Prüfen, ob am Monatsende frei verfügbares Geld übrig bleibt |</p>
+<p>| Top-Buchungen | Die 5 größten zusammengefassten Kategorien/Buchungen im gewählten Zeitraum | Einzelne große Ausreißer schnell finden |</p>
 
-<p>Best Practice: Erst Monatsverlauf ansehen, dann bei Auffälligkeit in Top-Buchungen oder Kategorien nachsehen.</p>
+<p>Best Practice: Erst Plan/Ist prüfen, dann Monatsverlauf ansehen. Bei Auffälligkeiten gehst du in Kategorien-Ranking oder Top-Buchungen.</p>
+
+<p>Wichtig: Der Plan/Ist-Donut zeigt den Status innerhalb jedes Kontos und bleibt deshalb sinnvoll. Der frühere Kreis daneben für Einnahmen/Ausgaben/Ersparnisse bleibt ersetzt, weil diese drei Werte keine Anteile desselben Topfs sind.</p>
 
 <h3>9.4 Letzte Buchungen und Verlauf</h3>
 
@@ -784,7 +786,7 @@ F12
 
 <h3>11.3 Wann nutzen?</h3>
 
-<p>Nutze Favoriten für Kategorien, die du regelmäßig kontrollierst. Nicht jede Kategorie sollte Favorit sein, sonst verliert das Dashboard seinen Nutzen.</p>
+<p>Nutze Favoriten für Kategorien, die du regelmäßig kontrollierst. Nicht jede Kategorie sollte Favorit sein, sonst verliert das Dashboard seinen Nutzen.</p><p><strong>Abgrenzung zu Tags:</strong> Ein Favorit ist ein Schnellzugriff auf eine Kategorie. Er wird nicht einzelnen Buchungen zugewiesen und ist kein Auswertungs-Schlagwort.</p>
 
 <p>Gute Regel:</p>
 
@@ -816,7 +818,7 @@ Maximal 5–10 Favoriten pro Kontotyp
 <pre><code>
 Kategorie: Lebensmittel
 Tag: Geburtstag
-</code></pre>
+</code></pre><p><strong>Wichtig:</strong> Nicht mit dem <strong>Fälligkeitstag</strong> verwechseln. Der Fälligkeitstag ist der Tag im Monat (1–31), an dem Fixkosten oder wiederkehrende Buchungen vorgeschlagen/gebucht werden. Ein Tag/Label ist dagegen ein Schlagwort für Auswertungen.</p>
 
 <hr>
 
@@ -1144,15 +1146,16 @@ Die Sprachwahl übersetzt ihre Regionseinstellungen jetzt live. Wenn du English 
 
 ### Kategorieauswahl in Tracking und Schnelleingabe
 
-Die Kategorieauswahl ist jetzt bewusst nach **Hauptkategorie → Unterkategorie** gruppiert. Sie wird nicht mehr automatisch nach Nutzungshäufigkeit umsortiert, weil das bei vielen Kategorien den roten Faden zerstört.
+Die Kategorieauswahl ist im Tracking bewusst kurz gehalten. Parent-Kategorien mit Unterkategorien werden dort nicht mehr als eigene Buchungszeile angezeigt. Unterkategorien erscheinen ohne Parent-Vorspann, also **Miete** statt **Wohnen › Miete** oder **Wohnen - Miete**.
 
 Best Practice:
 
 1. Zuerst den Typ wählen: Einnahmen, Ausgaben oder Ersparnisse.
 2. Dann Kategorie suchen oder aus der gruppierten Liste wählen.
 3. Tippen filtert die Liste nach enthaltenem Text.
+4. Struktur-Kategorien bleiben im Kategorien-Manager und Budget sichtbar, aber der Tracker zeigt nur sinnvoll buchbare Kategorien.
 
-Ein späteres Nutzungsranking ist sinnvoll, sollte aber als eigene Option kommen, damit die Baumstruktur nicht verloren geht.
+Dadurch wird die tägliche Buchung schneller, ohne die Budget- und Kategorienstruktur zu verlieren.
 
 ### Diagrammfarben
 
@@ -1177,3 +1180,26 @@ Bei Top-Buchungen erkennt man dadurch sofort, ob ein großer Balken Einkommen, A
 <hr>
 <h2>Ergänzung v2.0.11 – Aufgeräumt</h2>
 <p>Der separate <b>Kategorien-Tab (Experten-Modus)</b> wurde entfernt, da redundant. Kategorienverwaltung läuft jetzt über den <b>Kategorie-Manager</b> (Strg+K, Menü Extras) und direkt im <b>Budget</b>-Tab (inkl. Drag &amp; Drop). Die zugehörige Einstellung „separaten Kategorien-Tab anzeigen“ entfällt.</p>
+
+<section>
+<h2>Wiki: Tracking-Lernmodus v2.2.6</h2>
+<p>Der Lernmodus erstellt Startbudgets aus echten manuellen Tracking-Daten, solange im gewählten Jahr noch kein positives Budget für die Kategorie existiert.</p>
+<h3>Erststart mit Lernmodus</h3>
+<p>Wenn der Lernmodus aktiv ist, blockiert der Erststart nicht mehr beim Budget-Schritt. Neue Nutzer können zuerst echte Buchungen sammeln und Budgets später lernen lassen. Wird der Lernmodus ausgeschaltet, bleibt die klassische Mindestprüfung bestehen und mindestens ein Budgetwert ist nötig.</p>
+<ol>
+<li>Tracken ohne Budget.</li>
+<li>Nach der Beobachtungszeit erscheint ein Lernvorschlag.</li>
+<li>Betrag und Budgetart prüfen.</li>
+<li>Budgetart bestätigen oder ändern.</li>
+<li>Erst beim Übernehmen wird ein Budget gesetzt.</li>
+</ol>
+<p>Rechtsklick im Vorschlagsbericht: weiter beobachten, ignorieren, als unregelmäßig markieren oder Lernstatus zurücksetzen.</p>
+<h3>Anzeige in der Übersicht</h3>
+<ul>
+<li><b>🆕</b> = neues Startbudget aus dem Lernmodus.</li>
+<li><b>📉</b> = echte Defizit-/Erhöhungswarnung.</li>
+<li><b>📈</b> = Überschuss-/Senkungsvorschlag.</li>
+</ul>
+<p>Damit ist klar: Ein neues Lernbudget ist kein Fehler und keine Budgetüberschreitung, sondern ein Vorschlag zum erstmaligen Planen.</p>
+<p>Faustregel: Miete ist Fix + wiederkehrend, Franchise/Selbstbehalt ist eher Rückstellung, Lebensmittel sind ein variabler Topf, Stundenlohn ist schwankendes Einkommen.</p>
+</section>

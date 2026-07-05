@@ -126,7 +126,7 @@ class NewCategoryDialog(QDialog):
         day_layout.addWidget(QLabel(tr("dlg.faelligkeitstag_1")))
         self.day_spin = QSpinBox()
         self.day_spin.setRange(1, 31)
-        self.day_spin.setValue(1)
+        self.day_spin.setValue(CategoryModel.preferred_recurring_day())
         self.day_spin.setEnabled(False)
         day_layout.addWidget(self.day_spin)
         day_layout.addStretch()
@@ -144,7 +144,7 @@ class NewCategoryDialog(QDialog):
         layout.addWidget(flags_group)
         
         # Verbindungen
-        self.chk_recurring.toggled.connect(self.day_spin.setEnabled)
+        self.chk_recurring.toggled.connect(self._on_recurring_toggled)
         
         # === Buttons ===
         btn_layout = QHBoxLayout()
@@ -163,6 +163,11 @@ class NewCategoryDialog(QDialog):
         self.btn_create.clicked.connect(self._create_category)
         self.btn_cancel.clicked.connect(self.reject)
     
+    def _on_recurring_toggled(self, checked: bool) -> None:
+        self.day_spin.setEnabled(checked)
+        if checked:
+            self.day_spin.setValue(CategoryModel.preferred_recurring_day())
+
     def _create_category(self) -> None:
         name = self.name_edit.text().strip()
         if not name:

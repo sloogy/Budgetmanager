@@ -40,6 +40,8 @@ def test_lint_procedure_script_exists_and_is_self_contained():
     assert "def check_generated_artifacts" in src
     assert "def check_security_lint" in src
     assert "python tools/clean_release_tree.py" in src
+    assert "--force-reinstall" in src
+    assert "requirements-dev.txt" in src
 
 
 def test_lint_procedure_passes_after_clean_release_tree():

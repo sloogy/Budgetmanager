@@ -1,18 +1,18 @@
-# 📦 BudgetManager v2.1.3 — Installation, Start & Update
+# 📦 BudgetManager v2.2.6 — Installation, Start & Update
 
 
-## Hinweis zu v2.1.3
+## Hinweis zu v2.2.6
 
-Diese README gehört zu v2.1.3. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
+Diese README gehört zu v2.2.6. Enthalten sind der final gehärtete Portable-Updater mit stabilen Startdateien, synchronisierte Release-Dokumentation, i18n-Härtungen sowie Konto-Hub, frei wählbarer Datenordner mit optionaler Datenübernahme, PBKDF2-Härtung mit Legacy-Upgrade, Autobuchungs-Artfilter, Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl. Die zentrale Versionsquelle ist `app_info.py`.
 
 ## Windows: empfohlener Download
 
 Für Windows gibt es im GitHub Release mehrere Dateien:
 
-- `BudgetManager_Setup_2.1.0.zip` — empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren.
-- `BudgetManager_Setup_2.1.0.exe` — direkter Installer.
-- `BudgetManager-v2.1.0-portable-windows.zip` — portable Windows-Version ohne Installation.
-- `BudgetManager-v2.1.0-windows.exe` — direkte Einzel-EXE für Standalone-Nutzung.
+- `BudgetManager_Setup_2.2.6.zip` — empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren.
+- `BudgetManager_Setup_2.2.6.exe` — direkter Installer.
+- `BudgetManager-v2.2.6-portable-windows.zip` — portable Windows-Version ohne Installation.
+- `BudgetManager-v2.2.6-windows.exe` — direkte Einzel-EXE für Standalone-Nutzung.
 - `SHA256SUMS.txt` — Prüfsummen zur Kontrolle.
 
 Windows SmartScreen kann neue, unsignierte Open-Source-Installer blockieren, weil der Herausgeber noch keine ausreichende Reputation hat. Deshalb wird der Installer zusätzlich als ZIP bereitgestellt.
@@ -22,7 +22,7 @@ Windows SmartScreen kann neue, unsignierte Open-Source-Installer blockieren, wei
 PowerShell im Download-Ordner öffnen:
 
 ```powershell
-Get-FileHash .\BudgetManager_Setup_2.1.0.exe -Algorithm SHA256
+Get-FileHash .\BudgetManager_Setup_2.2.6.exe -Algorithm SHA256
 ```
 
 Den angezeigten Hash mit `SHA256SUMS.txt` vergleichen.
@@ -30,15 +30,15 @@ Den angezeigten Hash mit `SHA256SUMS.txt` vergleichen.
 Falls Windows die Datei nach dem Download blockiert:
 
 ```powershell
-Unblock-File .\BudgetManager_Setup_2.1.0.exe
+Unblock-File .\BudgetManager_Setup_2.2.6.exe
 ```
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.1.0.zip` herunterladen.
+1. `BudgetManager_Setup_2.2.6.zip` herunterladen.
 2. ZIP entpacken.
 3. Optional: SHA256 gegen `SHA256SUMS.txt` prüfen.
-4. `BudgetManager_Setup_2.1.0.exe` starten.
+4. `BudgetManager_Setup_2.2.6.exe` starten.
 5. Datenverzeichnis wählen.
 6. Sprache, Währung und bevorzugten Buchungstag auswählen.
 7. BudgetManager starten.
@@ -47,7 +47,7 @@ Der Installer schreibt `installation.json` in den Programmordner und nutzt den g
 
 ## Windows Portable
 
-1. `BudgetManager-v2.1.0-portable-windows.zip` herunterladen.
+1. `BudgetManager-v2.2.6-portable-windows.zip` herunterladen.
 2. ZIP in einen normalen Benutzerordner entpacken, zum Beispiel `Dokumente\BudgetManager` oder auf einen USB-Stick.
 3. `start-windows.cmd` oder `BudgetManager.exe` starten.
 
@@ -64,7 +64,7 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-Für Releases gibt es zusätzlich `BudgetManager-v2.1.0-portable-linux.zip`. Darin startet Linux über `./start-linux.sh`; die Binary heißt stabil `BudgetManager`.
+Für Releases gibt es zusätzlich `BudgetManager-v2.2.6-portable-linux.zip`. Darin startet Linux über `./start-linux.sh`; die Binary heißt stabil `BudgetManager`.
 
 ## Update aus der App
 

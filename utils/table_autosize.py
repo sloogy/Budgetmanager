@@ -17,7 +17,6 @@ logger = logging.getLogger(__name__)
 
 from PySide6.QtWidgets import (
     QApplication,
-    QHeaderView,
     QTableView,
     QTableWidget,
     QTreeView,
@@ -32,25 +31,20 @@ def _calc_row_height(font_metrics: QFontMetrics) -> int:
 
 
 def _apply_to_table_like(w: QWidget, row_h: int) -> None:
+    # v2.1.4 BUG-FIX: Der Horizontal-Header wird bewusst NICHT mehr angefasst.
+    # Die Default-Section-Size steuert dort die Standard-SPALTENBREITE (nicht
+    # die Header-Höhe!). Der frühere Code setzte damit bei jeder Theme-/
+    # Schriftänderung aus den Einstellungen alle Spaltenbreiten auf die
+    # Zeilenhöhe (~30px) zurück. Zusätzlich wurde der Resize-Modus aller
+    # Tabellen global auf Interactive gezwungen und überschrieb so die pro
+    # Tabelle konfigurierten Modi (Stretch/ResizeToContents). Beides
+    # verursachte "springende" Tabellenbreiten nach Einstellungsänderungen.
+    # Es wird nur noch die Zeilenhöhe (Vertikal-Header) an die Schrift angepasst.
     try:
-        if isinstance(w, QTableWidget):
+        if isinstance(w, (QTableWidget, QTableView)):
             vh = w.verticalHeader()
-            hh = w.horizontalHeader()
             if vh:
                 vh.setDefaultSectionSize(row_h)
-            if hh:
-                hh.setDefaultSectionSize(row_h)
-                hh.setSectionResizeMode(QHeaderView.Interactive)
-            return
-
-        if isinstance(w, QTableView):
-            vh = w.verticalHeader()
-            hh = w.horizontalHeader()
-            if vh:
-                vh.setDefaultSectionSize(row_h)
-            if hh:
-                hh.setDefaultSectionSize(row_h)
-                hh.setSectionResizeMode(QHeaderView.Interactive)
             return
 
         if isinstance(w, QTreeView):

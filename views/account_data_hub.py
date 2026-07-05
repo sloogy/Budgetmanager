@@ -8,7 +8,7 @@ from pathlib import Path
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QFormLayout, QLabel,
-    QLineEdit, QPushButton, QFileDialog,
+    QLineEdit, QPushButton, QFileDialog, QMessageBox,
 )
 
 from utils.i18n import tr, trf
@@ -56,6 +56,17 @@ class AccountDataHub(QWidget):
     def _build_ui(self) -> None:
         c = ui_colors(self)
         root = QVBoxLayout(self)
+
+        # v2.2.1 (Bericht-Punkt 6): Fehler landeten bisher nur im Log – der
+        # Nutzer sah nichts, wenn z.B. der Speicherort nicht gespeichert oder
+        # eine Hub-Aktion abgebrochen wurde. Sichtbare Fehlerzeile + Dialog.
+        self.lbl_hub_error = QLabel("")
+        self.lbl_hub_error.setWordWrap(True)
+        self.lbl_hub_error.setVisible(False)
+        self.lbl_hub_error.setStyleSheet(
+            f"color: {ui_colors(self).negative}; font-weight: 600;"
+        )
+        root.addWidget(self.lbl_hub_error)
         root.setContentsMargins(4, 4, 4, 4)
 
         intro = QLabel(tr("account_hub.intro"))
@@ -149,6 +160,7 @@ class AccountDataHub(QWidget):
             self._refresh_effective()
         except Exception as e:
             logger.debug("Hub-Refresh (Speicherort) fehlgeschlagen: %s", e)
+            self._show_error(trf("hub.error_refresh", error=str(e)))
         if self.encrypted_mode and hasattr(self, "lbl_account_summary"):
             try:
                 user = getattr(self._mw(), "_active_user", None)
@@ -158,6 +170,7 @@ class AccountDataHub(QWidget):
                 )
             except Exception as e:
                 logger.debug("Hub-Refresh (Konto) fehlgeschlagen: %s", e)
+                self._show_error(trf("hub.error_refresh", error=str(e)))
 
     def _refresh_effective(self) -> None:
         try:
@@ -201,6 +214,27 @@ class AccountDataHub(QWidget):
                 self._initial_data_dir = new_raw
             except Exception as e:
                 logger.warning("Speicherort konnte nicht gespeichert werden: %s", e)
+                self._show_error(trf("hub.error_save_location", error=str(e)), dialog=True)
+
+    def _show_error(self, text: str, *, dialog: bool = False) -> None:
+        """Zeigt Fehler sichtbar im Hub (und optional als Dialog)."""
+        try:
+            self.lbl_hub_error.setText(f"⚠️ {text}")
+            self.lbl_hub_error.setVisible(True)
+        except Exception as e:
+            logger.debug("hub error label: %s", e)
+        if dialog:
+            try:
+                QMessageBox.warning(self, tr("msg.error"), text)
+            except Exception as e:
+                logger.debug("hub error dialog: %s", e)
+
+    def _clear_error(self) -> None:
+        try:
+            self.lbl_hub_error.setVisible(False)
+            self.lbl_hub_error.setText("")
+        except Exception:
+            pass
 
     # -- Delegationen an bestehende Dialoge --------------------------
     def _open_account(self) -> None:
@@ -217,8 +251,10 @@ class AccountDataHub(QWidget):
         fn = getattr(mw, method_name, None)
         if callable(fn):
             try:
+                self._clear_error()
                 fn()
             except Exception as e:
                 logger.exception("Hub-Aktion %s fehlgeschlagen: %s", method_name, e)
+                self._show_error(trf("hub.error_action", error=str(e)), dialog=True)
         # Nach Rückkehr Werte aktualisieren (z.B. Speicherort nach Reset/Restore)
         self.refresh()

@@ -1,4 +1,4 @@
-# Release-Checkliste — BudgetManager v2.1.3
+# Release-Checkliste — BudgetManager v2.2.6
 
 ## Lokal prüfen
 
@@ -31,10 +31,10 @@ python tools/lint_procedure_check.py
 ```bash
 git status
 git add .
-git commit -m "Release v2.1.0 audit hardening"
+git commit -m "Release v2.2.6"
 git push origin main
-git tag -a v2.1.0 -m "BudgetManager v2.1.0"
-git push origin v2.1.0
+git tag -a v2.2.6 -m "BudgetManager v2.2.6"
+git push origin v2.2.6
 ```
 
 ## Nach GitHub Actions

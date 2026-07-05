@@ -38,6 +38,7 @@ def _get_months():
 
 
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from model.category_model import CategoryModel
 from model.budget_modes import (
     BUDGET_MODE_MONTH,
     BUDGET_MODE_ALL,
@@ -217,14 +218,14 @@ class BudgetEntryDialog(QDialog):
         day_layout.addWidget(QLabel(tr("dlg.faelligkeitstag_1")))
         self.spin_recurring_day = QSpinBox()
         self.spin_recurring_day.setRange(1, 31)
-        self.spin_recurring_day.setValue(1)
+        self.spin_recurring_day.setValue(CategoryModel.preferred_recurring_day())
         self.spin_recurring_day.setEnabled(False)
         day_layout.addWidget(self.spin_recurring_day)
         day_layout.addStretch()
         new_cat_layout.addLayout(day_layout)
 
         # Verbindung: Fälligkeitstag nur aktiv wenn "Wiederkehrend"
-        self.chk_is_recurring.toggled.connect(self.spin_recurring_day.setEnabled)
+        self.chk_is_recurring.toggled.connect(self._on_recurring_toggled)
 
         # --- Buttons ---
         self.btn_ok = QPushButton(tr("dlg.uebernehmen"))
@@ -278,6 +279,11 @@ class BudgetEntryDialog(QDialog):
 
         # Initial Parent-Kategorien laden
         self._update_parent_categories(self.typ.currentData() or self.typ.currentText())
+
+    def _on_recurring_toggled(self, checked: bool) -> None:
+        self.spin_recurring_day.setEnabled(checked)
+        if checked:
+            self.spin_recurring_day.setValue(CategoryModel.preferred_recurring_day())
 
     def _set_categories(self, cats) -> None:
         """Füllt die Kategorie-Combo und speichert existierende Namen."""

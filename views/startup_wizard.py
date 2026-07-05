@@ -47,6 +47,7 @@ class StartupWizard(QDialog):
         self.user_model = user_model
         self.result: StartupResult | None = None
         self._import_src_path: str | None = None
+        self.imported_existing_database = False
 
         self.setWindowTitle(tr("dlg.setup_assistant"))
         self.setMinimumSize(560, 400)
@@ -368,6 +369,15 @@ class StartupWizard(QDialog):
         if self._import_src_path:
             try:
                 self._restore_into_user(Path(self._import_src_path), user, db_key)
+                self.imported_existing_database = True
+                # Ein Import ist kein leerer Erststart. Einstellungen aus dem
+                # Backup werden vorsichtig übernommen, aber Pfade/Benutzerkonto
+                # bleiben zur neuen Installation passend. Danach wird der
+                # geführte Setup-Assistent deaktiviert; sonst wirkt ein Restore
+                # wie eine frische leere Datenbank und Vorschläge/Warnungen laufen
+                # mit falschen Defaults.
+                self._restore_safe_settings_from_bundle(Path(self._import_src_path))
+                self._mark_import_as_existing_setup()
             except Exception as exc:
                 _rollback_created_user()
                 logger.info("Erststart-Restore fehlgeschlagen – zurück zum Anfang: %s", exc)
@@ -475,6 +485,79 @@ class StartupWizard(QDialog):
     # ──────────────────────────────────────────────
     # Import / Restore helpers (unchanged)
     # ──────────────────────────────────────────────
+
+    def _mark_import_as_existing_setup(self) -> None:
+        """Nach erfolgreichem Erstimport Onboarding abschalten.
+
+        Der Nutzer hat bereits eine echte Datenbank importiert. Wird hier der
+        Standard ``setup_completed=False`` beibehalten, startet nach dem Login
+        wieder die Einführung und überschreibt/irritiert Budget-Lern-Settings.
+        """
+        try:
+            from settings import Settings
+
+            settings = Settings()
+            settings.set("show_onboarding", False)
+            settings.set("setup_completed", True)
+            settings.set("tracking_budget_learning_enabled", bool(settings.get("tracking_budget_learning_enabled", True)))
+            settings.set("tracking_budget_learning_show_in_report", bool(settings.get("tracking_budget_learning_show_in_report", True)))
+            settings.set("auto_generate_budget_warnings", bool(settings.get("auto_generate_budget_warnings", True)))
+        except Exception as exc:
+            logger.warning("Import-Setup-Status konnte nicht gespeichert werden: %s", exc)
+
+    def _restore_safe_settings_from_bundle(self, bundle_path: Path) -> None:
+        """Übernimmt sichere App-Einstellungen aus einem .bmr-Backup.
+
+        Nicht übernommen werden Speicherorte, Benutzerkonto-/Fensterzustand und
+        Tab-Layout. Diese Werte können nach einem Restore auf einem anderen
+        Rechner/Portable-Ordner ungültig sein. Fachliche Einstellungen für
+        Lernmodus, Warnungen, Sprache, Währung und Forecast werden dagegen
+        übernommen, weil sie Vorschläge/Warnungen direkt beeinflussen.
+        """
+        if Path(bundle_path).suffix.lower() != ".bmr":
+            return
+        import json
+        import zipfile
+        try:
+            with zipfile.ZipFile(bundle_path, "r") as zf:
+                if "settings.json" not in zf.namelist():
+                    return
+                raw = json.loads(zf.read("settings.json").decode("utf-8"))
+            if not isinstance(raw, dict):
+                return
+            from settings import Settings
+
+            allowed_prefixes = (
+                "budget_suggestion_",
+                "tracking_budget_learning_",
+            )
+            allowed_keys = {
+                "language",
+                "currency",
+                "number_format",
+                "recurring_preferred_day",
+                "budget_zero_balance_rule",
+                "budget_surplus_strategy",
+                "auto_generate_budget_warnings",
+                "warn_budget_overrun",
+                "carryover_start_month",
+                "carryover_start_year",
+                "active_design_profile",
+                "last_design_profile_hell",
+                "last_design_profile_dunkel",
+            }
+            settings = Settings()
+            for key, value in raw.items():
+                if key in allowed_keys or any(str(key).startswith(prefix) for prefix in allowed_prefixes):
+                    settings.settings[key] = value
+            # Import bleibt abgeschlossen, auch wenn das Backup selbst noch
+            # show_onboarding=True enthielt.
+            settings.settings["show_onboarding"] = False
+            settings.settings["setup_completed"] = True
+            settings.save()
+            logger.info("Sichere Settings aus Import-Backup übernommen: %s", bundle_path.name)
+        except Exception as exc:
+            logger.warning("Sichere Settings aus Import-Backup konnten nicht übernommen werden: %s", exc)
 
     def _restore_into_user(self, src: Path, user: User, db_key: bytes) -> None:
         """Schreibt ein Backup in die DB-Datei des neu angelegten Users.

@@ -2,7 +2,7 @@
 
 Kombiniert vier Wünsche in einem Picker:
 1. Gruppen (Favoriten / Fixkosten / Wiederkehrend / Übrige) als Kopfzeilen
-2. Baum-Pfade (Ober-/Unterkategorien als "Eltern › Kind")
+2. Kurze Blattnamen im Tracking ("Miete" statt "Wohnen › Miete")
 3. Häufigkeit (manuelle Buchungen) zuerst innerhalb der Gruppe
 4. Suchfeld + Dropdown oder editierbare ComboBox mit MatchContains-Suche
 
@@ -21,7 +21,8 @@ def _clean_category_label(text: str) -> str:
     """Entfernt reine Anzeige-Marker aus Kategorie-Labels.
 
     Beispiele:
-    - "★ Wohnen › Miete" -> "Miete"
+    - "★ Miete" -> "Miete"
+    - "★ Wohnen › Miete" -> "Miete"  # Alt-/Fallback-Label
     - "  Krankenkasse › Selbstbehalt" -> "Selbstbehalt"
     """
     cleaned = (text or "").replace("★", "").strip()

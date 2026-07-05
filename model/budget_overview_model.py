@@ -13,9 +13,17 @@ logger = logging.getLogger(__name__)
 
 import sqlite3
 from dataclasses import dataclass
-from datetime import date
 from statistics import median
+from datetime import date, datetime
 from utils.money import format_money
+from model.budget_learning import (
+    budget_kind_label,
+    infer_learning_budget_kind,
+    learned_monthly_amount,
+    round_learning_amount,
+    tracking_series_text,
+    KIND_IRREGULAR,
+)
 from model.date_ranges import month_bounds
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
@@ -82,16 +90,25 @@ class CategoryCarryoverRow:
 
 @dataclass
 class BudgetSuggestion:
-    """Vorschlag zur Budget-Anpassung bei dauerhaftem Überschuss/Defizit."""
+    """Vorschlag zur Budget-Anpassung oder ein neues gelerntes Startbudget."""
 
     typ: str
     category: str
-    direction: str  # "surplus" oder "deficit"
-    avg_deviation: float  # Durchschnittliche monatliche Abweichung
-    consecutive_months: int  # Anzahl aufeinanderfolgender Monate
+    direction: str  # "surplus", "deficit" oder "initial"
+    avg_deviation: float  # Durchschnittliche monatliche Abweichung / gelernter Betrag
+    consecutive_months: int  # Anzahl relevanter Monate
     suggested_amount: float  # Vorgeschlagener neuer Budget-Betrag
     current_budget: float  # Aktuelles Budget
     message: str  # Anzeigetext
+    budget_kind: str = ""  # Nur Lernmodus: vorgeschlagene Budgetart
+    learning_phase: str = ""  # observe | projection | stable
+    observed_months: int = 0  # Beobachtete Monate seit erster Buchung
+    tracking_data: str = ""  # Kurze Anzeige der Tracking-Werte
+
+    @property
+    def learning_kind(self) -> str:
+        """Kompatibilität zu v2.1.5: alter Feldname für Lern-Budgetart."""
+        return self.budget_kind
 
 
 # Typ-Normalisierung (gleiche Logik wie overview_tab)
@@ -534,7 +551,438 @@ class BudgetOverviewModel:
                     )
                 )
 
+        # Separate Lernlogik für Kategorien ohne Jahresbudget.
+        # Wichtig: Diese Vorschläge werden erst NACH der normalen Engine ergänzt
+        # und nur für Kategorien erzeugt, die im ganzen Jahr noch kein Budget > 0
+        # haben. Damit bleibt die bestehende Budget-Anpassungslogik unverändert.
+        try:
+            _show_learning = True
+            try:
+                from settings import Settings as _Settings
+
+                _show_learning = bool(
+                    _Settings().get("tracking_budget_learning_show_in_report", True)
+                )
+            except Exception:
+                _show_learning = True
+            existing_keys = {(s.typ, s.category) for s in suggestions}
+            if _show_learning:
+                for learning_suggestion in self.get_tracking_budget_suggestions(
+                    year=year,
+                    current_month=current_month,
+                    types=types,
+                ):
+                    key = (learning_suggestion.typ, learning_suggestion.category)
+                    if key not in existing_keys:
+                        suggestions.append(learning_suggestion)
+                        existing_keys.add(key)
+        except Exception as e:
+            logger.debug("Tracking-Lernvorschläge konnten nicht erstellt werden: %s", e)
+
         return suggestions
+
+    def get_tracking_budget_suggestions(
+        self,
+        year: int,
+        current_month: int,
+        types: list[str] | None = None,
+        *,
+        enabled: bool | None = None,
+        proposal_months: int | None = None,
+        stable_months: int | None = None,
+        include_current_month_projection: bool | None = None,
+        round_to: float | None = None,
+        auto_end: bool | None = None,
+        show_in_report: bool | None = None,
+    ) -> list[BudgetSuggestion]:
+        """Lernt neue Budget-Vorschläge aus reinem Tracking.
+
+        Klare Trennung zur normalen Vorschlagslogik:
+        - Diese Methode erzeugt nur ``direction="initial"``.
+        - Sie greift nur, wenn die Kategorie im gesamten Jahr noch kein
+          positives Budget hat.
+        - Sobald der Nutzer den Vorschlag übernimmt und dadurch ein Budget
+          entsteht, wird diese Kategorie künftig ausschließlich von der normalen
+          Budget-Vorschlagslogik bewertet.
+        """
+        if types is None:
+            types = [TYP_EXPENSES, TYP_SAVINGS, TYP_INCOME]
+
+        try:
+            from settings import Settings
+
+            settings = Settings()
+            if enabled is None:
+                enabled = bool(settings.get("tracking_budget_learning_enabled", True))
+            if proposal_months is None:
+                proposal_months = int(
+                    settings.get("tracking_budget_learning_proposal_months", 2) or 2
+                )
+            if stable_months is None:
+                stable_months = int(
+                    settings.get("tracking_budget_learning_stable_months", 3) or 3
+                )
+            if include_current_month_projection is None:
+                include_current_month_projection = bool(
+                    settings.get(
+                        "tracking_budget_learning_include_current_month_projection",
+                        True,
+                    )
+                )
+            if round_to is None:
+                round_to = float(
+                    settings.get("tracking_budget_learning_round_to", 10) or 10
+                )
+            if auto_end is None:
+                auto_end = bool(
+                    settings.get("tracking_budget_learning_auto_end", False)
+                )
+            if show_in_report is None:
+                show_in_report = bool(
+                    settings.get("tracking_budget_learning_show_in_report", True)
+                )
+        except Exception:
+            enabled = True if enabled is None else enabled
+            proposal_months = 2 if proposal_months is None else proposal_months
+            stable_months = 3 if stable_months is None else stable_months
+            if include_current_month_projection is None:
+                include_current_month_projection = True
+            round_to = 10.0 if round_to is None else round_to
+            auto_end = False if auto_end is None else auto_end
+            show_in_report = True if show_in_report is None else show_in_report
+
+        if not enabled or not show_in_report:
+            return []
+
+        proposal_months = max(1, min(12, int(proposal_months or 2)))
+        stable_months = max(proposal_months, min(12, int(stable_months or 3)))
+        round_to = max(1.0, float(round_to or 10.0))
+        current_month = max(1, min(12, int(current_month or 1)))
+
+        today = date.today()
+        suggestions: list[BudgetSuggestion] = []
+        learning_state = self._load_learning_state()
+
+        for raw_typ in types:
+            try:
+                typ_db = db_typ_from_display(raw_typ)
+            except Exception:
+                typ_db = raw_typ
+            typ_db = normalize_typ(typ_db)
+
+            monthly_by_category = self._tracking_monthly_by_category(
+                year=year,
+                current_month=current_month,
+                typ=typ_db,
+                # Lernmodus soll alle real gebuchten Daten lernen – auch Fixkosten
+                # / wiederkehrende Buchungen, die per Monatsanfang-Automatik
+                # erzeugt wurden. Nur manuell zu zählen blendete nach Restore
+                # genau diese Fälle aus.
+                manual_only=False,
+            )
+
+            for category, monthly in sorted(monthly_by_category.items()):
+                if not str(category or "").strip():
+                    continue
+                if self._has_positive_budget_in_year(year, typ_db, category):
+                    continue
+
+                state = learning_state.get((typ_db, str(category)), {})
+                status = str(state.get("status") or "watch")
+                # ``ignore`` ist eine bewusste Nutzerentscheidung. ``ended`` ist
+                # dagegen nur ein technischer Zustand nach einer Übernahme oder
+                # Auto-Ende. Nach Restore/Reset kann das Budget wieder leer sein;
+                # dann darf ein verwaistes ``ended`` den Lernmodus nicht dauerhaft
+                # blockieren. Die Kernregel oben (positives Jahresbudget beendet
+                # Lernen) bleibt die einzige harte Beendigung.
+                if status == "ignored":
+                    continue
+                if status == "ended":
+                    try:
+                        self.set_learning_action(typ_db, str(category), "reset")
+                    except Exception as exc:
+                        logger.debug("stale ended learning reset: %s", exc)
+                    status = "watch"
+                snooze = str(state.get("snooze_until") or "")
+                if snooze and f"{year:04d}-{current_month:02d}" <= snooze:
+                    continue
+                forced_irregular = status == "irregular"
+
+                positive_months = [
+                    month
+                    for month in range(1, current_month + 1)
+                    if float(monthly.get(month, 0.0) or 0.0) > 0.01
+                ]
+                if not positive_months:
+                    continue
+
+                first_month = min(positive_months)
+                last_positive_month = max(positive_months)
+
+                # Nicht automatisch leere Zukunfts-/aktuelle Monate anhängen.
+                # Beispiel: Jan-Jun mehrfach gebucht, Juli noch leer -> Juli ist
+                # kein echter 0-Monat und darf den Lernvorschlag nicht als
+                # inkrementell/lumpy verfälschen oder den Betrag senken.
+                #
+                # Ausnahme: Wenn zwischen erster und letzter Buchung bereits echte
+                # Lücken liegen (z.B. März/ Mai gebucht, April leer), handelt es
+                # sich um unregelmäßige Rückstellungsdaten. Dann bleibt die
+                # bisherige Beobachtungsdauer bis zum gewählten Monat relevant.
+                # So werden Gesundheits-/Franchise-Töpfe weiterhin über den ganzen
+                # beobachteten Zeitraum verteilt.
+                internal_zero_gap = any(
+                    float(monthly.get(m, 0.0) or 0.0) <= 0.01
+                    for m in range(first_month, last_positive_month + 1)
+                )
+                observation_end_month = last_positive_month
+                current_month_amount = float(monthly.get(current_month, 0.0) or 0.0)
+                if current_month in monthly and current_month_amount > 0.01:
+                    observation_end_month = current_month
+                elif internal_zero_gap:
+                    observation_end_month = current_month
+
+                observed_months = observation_end_month - first_month + 1
+                observed_months = max(1, min(12, observed_months))
+                observed_range = list(range(first_month, observation_end_month + 1))
+
+                observed_values: list[float] = []
+                for month in observed_range:
+                    amount = float(monthly.get(month, 0.0) or 0.0)
+                    if (
+                        include_current_month_projection
+                        and year == today.year
+                        and month == today.month
+                        and month == current_month
+                        and amount > 0
+                    ):
+                        last_day = calendar.monthrange(year, month)[1]
+                        day = max(1, min(today.day, last_day))
+                        if day < last_day:
+                            amount = amount / day * last_day
+                    observed_values.append(float(amount))
+
+                active_count = sum(1 for value in observed_values if value > 0.01)
+                has_zero_gap = any(value <= 0.01 for value in observed_values)
+
+                # Standard: 1. Monat beobachten; ab proposal_months aktiven Monaten
+                # erster Vorschlag. Für unregelmäßige Kategorien mit Null-Lücken darf
+                # nach stabiler Beobachtungszeit ein Rückstellungs-/Topf-Vorschlag
+                # erscheinen, auch wenn nur wenige aktive Buchungsmonate existieren.
+                enough_active_months = active_count >= proposal_months
+                enough_irregular_observation = (
+                    has_zero_gap
+                    and active_count >= 1
+                    and observed_months >= stable_months
+                )
+                if not (enough_active_months or enough_irregular_observation):
+                    continue
+
+                # Optionale Schutzregel: Wer einen stabilen Vorschlag lange nicht
+                # übernimmt, kann den Lernmodus automatisch ausblenden lassen.
+                # Ein echtes Budget beendet den Lernmodus ohnehin über
+                # _has_positive_budget_in_year().
+                if auto_end and active_count > stable_months + 2:
+                    self._set_learning_status(typ_db, str(category), "ended")
+                    continue
+
+                budget_kind = (
+                    KIND_IRREGULAR
+                    if forced_irregular
+                    else infer_learning_budget_kind(typ_db, observed_values)
+                )
+                learned_amount = learned_monthly_amount(
+                    typ_db, budget_kind, observed_values
+                )
+                suggested = round_learning_amount(typ_db, learned_amount, round_to)
+                if suggested <= 0.01:
+                    continue
+
+                if observed_months >= stable_months and active_count >= proposal_months:
+                    msg_key = "suggestion.suggestion_tracking_stable"
+                    phase = "stable"
+                else:
+                    msg_key = "suggestion.suggestion_tracking_projection"
+                    phase = "projection"
+
+                tracking_text = tracking_series_text(year, monthly, observed_range)
+                kind_label = budget_kind_label(budget_kind)
+                msg = trf(
+                    msg_key,
+                    typ=display_typ(typ_db),
+                    cat=str(category),
+                    n=active_count,
+                    months=observed_months,
+                    kind=kind_label,
+                    tracking=tracking_text,
+                    suggested=format_money(suggested),
+                )
+
+                suggestions.append(
+                    BudgetSuggestion(
+                        typ=typ_db,
+                        category=str(category),
+                        direction="initial",
+                        avg_deviation=learned_amount,
+                        consecutive_months=active_count,
+                        suggested_amount=float(suggested),
+                        current_budget=0.0,
+                        message=msg,
+                        budget_kind=budget_kind,
+                        learning_phase=phase,
+                        observed_months=observed_months,
+                        tracking_data=tracking_text,
+                    )
+                )
+
+        return suggestions
+
+    # ------------------------------------------------------------
+    # Lernmodus-Status: Nutzeraktionen aus dem Vorschlagsbericht
+    # ------------------------------------------------------------
+    def _load_learning_state(self) -> dict[tuple[str, str], dict]:
+        """Lädt persistierte Lernmodus-Entscheidungen.
+
+        Fällt bewusst still zurück, falls eine ältere portable Datenbank noch
+        vor der Migration geöffnet wurde. Die Migration legt die Tabelle
+        regulär an.
+        """
+        out: dict[tuple[str, str], dict] = {}
+        try:
+            rows = self.conn.execute(
+                "SELECT typ, category, status, snooze_until FROM tracking_learning_state"
+            ).fetchall()
+        except Exception:
+            return out
+        for row in rows:
+            out[(normalize_typ(str(row[0])), str(row[1]))] = {
+                "status": str(row[2] or "watch"),
+                "snooze_until": row[3],
+            }
+        return out
+
+    def set_learning_action(
+        self, typ: str, category: str, action: str, *, year: int = 0, month: int = 0
+    ) -> None:
+        """Nutzeraktion für einen Lernvorschlag speichern.
+
+        Aktionen:
+        - ``watch_later``: bis einschließlich ``year-month`` ausblenden.
+        - ``ignore``: Lernvorschläge für diese Kategorie manuell beenden.
+        - ``irregular``: Kategorie als unregelmäßige Rückstellung markieren.
+        - ``ended``: Lernphase beendet.
+        - ``reset``: Status entfernen; Lernmodus bewertet wieder normal.
+        """
+        typ_db = normalize_typ(str(typ))
+        cat = str(category)
+        if action == "reset":
+            self.conn.execute(
+                "DELETE FROM tracking_learning_state WHERE typ=? AND category=?",
+                (typ_db, cat),
+            )
+            self.conn.commit()
+            return
+
+        status = "watch"
+        snooze = None
+        if action == "watch_later":
+            y = int(year) if year else date.today().year
+            m = int(month) if month else date.today().month
+            snooze = f"{y:04d}-{m:02d}"
+        elif action == "ignore":
+            status = "ignored"
+        elif action == "irregular":
+            status = "irregular"
+        elif action == "ended":
+            status = "ended"
+
+        now = datetime.now().isoformat(timespec="seconds")
+        self.conn.execute(
+            "INSERT INTO tracking_learning_state(typ, category, status, snooze_until, changed_at) "
+            "VALUES(?,?,?,?,?) "
+            "ON CONFLICT(typ, category) DO UPDATE SET "
+            "status=excluded.status, snooze_until=excluded.snooze_until, "
+            "changed_at=excluded.changed_at",
+            (typ_db, cat, status, snooze, now),
+        )
+        self.conn.commit()
+
+    def _set_learning_status(self, typ: str, category: str, status: str) -> None:
+        try:
+            self.set_learning_action(typ, category, status)
+        except Exception as exc:
+            logger.debug("learning status %s: %s", status, exc)
+
+    def get_year_end_learning_suggestions(
+        self, old_year: int, *, types: list[str] | None = None
+    ) -> list[BudgetSuggestion]:
+        """Jahresend-Auswertung: Tracking ohne Budget → Startvorschläge.
+
+        Diese Vorschläge setzen nichts automatisch. Sie dienen nur als
+        Prüfliste beim Jahreswechsel und werden beim Übernehmen wie normale
+        Lernvorschläge bestätigt.
+        """
+        return self.get_tracking_budget_suggestions(
+            year=int(old_year),
+            current_month=12,
+            types=types,
+            include_current_month_projection=False,
+        )
+
+    def _tracking_monthly_by_category(
+        self,
+        year: int,
+        current_month: int,
+        typ: str,
+        *,
+        manual_only: bool = True,
+    ) -> dict[str, dict[int, float]]:
+        """Tracking-Summen pro Kategorie/Monat, optional nur manuelle Buchungen."""
+        cols = {
+            r[1] for r in self.conn.execute("PRAGMA table_info(tracking)").fetchall()
+        }
+        source_clause = ""
+        if manual_only and "source" in cols:
+            source_clause = " AND COALESCE(source, 'manual') = 'manual'"
+
+        start = f"{int(year):04d}-01-01"
+        end_month = max(1, min(12, int(current_month or 1)))
+        if end_month == 12:
+            end = f"{int(year) + 1:04d}-01-01"
+        else:
+            end = f"{int(year):04d}-{end_month + 1:02d}-01"
+
+        sql = (
+            "SELECT category, CAST(substr(date, 6, 2) AS INTEGER) AS month_no, "
+            "COALESCE(SUM(amount), 0) "
+            "FROM tracking WHERE date >= ? AND date < ? AND typ = ?"
+            f"{source_clause} "
+            "GROUP BY category, month_no"
+        )
+        result: dict[str, dict[int, float]] = {}
+        for category, month_no, amount in self.conn.execute(
+            sql, (start, end, typ)
+        ).fetchall():
+            try:
+                month_int = int(month_no)
+            except Exception:
+                continue
+            if month_int < 1 or month_int > current_month:
+                continue
+            value = float(amount or 0.0)
+            if not is_income(typ):
+                value = abs(value)
+            result.setdefault(str(category), {})[month_int] = value
+        return result
+
+    def _has_positive_budget_in_year(self, year: int, typ: str, category: str) -> bool:
+        """True, wenn Kategorie in irgendeinem Monat des Jahres Budget > 0 hat."""
+        row = self.conn.execute(
+            "SELECT 1 FROM budget "
+            "WHERE year = ? AND typ = ? AND category = ? AND COALESCE(amount, 0) > 0 "
+            "LIMIT 1",
+            (year, typ, category),
+        ).fetchone()
+        return row is not None
 
     def get_balance_suggestions(
         self,
@@ -585,9 +1033,9 @@ class BudgetOverviewModel:
         if strategy not in {"savings", "carryover"}:
             strategy = "savings"
 
-        income_budget = self._budget_sum(year, current_month, TYP_INCOME)
-        expense_budget = self._budget_sum(year, current_month, TYP_EXPENSES)
-        savings_budget = self._budget_sum(year, current_month, TYP_SAVINGS)
+        income_budget = self._effective_budget_sum(year, current_month, TYP_INCOME)
+        expense_budget = self._effective_budget_sum(year, current_month, TYP_EXPENSES)
+        savings_budget = self._effective_budget_sum(year, current_month, TYP_SAVINGS)
         if income_budget <= 0:
             return []
 
@@ -769,7 +1217,7 @@ class BudgetOverviewModel:
         # 1) Ersparnisse zuerst reduzieren; das ist fachlich der sauberste Hebel,
         # weil Fixausgaben nicht unrealistisch klein gerechnet werden sollen.
         savings = sorted(
-            self._budget_by_category(year, month, TYP_SAVINGS).items(),
+            self._effective_budget_by_category(year, month, TYP_SAVINGS).items(),
             key=lambda item: float(item[1]),
             reverse=True,
         )
@@ -807,7 +1255,7 @@ class BudgetOverviewModel:
         # Pot und inkrementelle Jahresrechnungen bleiben bewusst tabu.
         if remaining >= float(min_abs_change):
             expenses = sorted(
-                self._budget_by_category(year, month, TYP_EXPENSES).items(),
+                self._effective_budget_by_category(year, month, TYP_EXPENSES).items(),
                 key=lambda item: float(item[1]),
                 reverse=True,
             )
@@ -863,7 +1311,7 @@ class BudgetOverviewModel:
 
     def _choose_savings_target(self, year: int, month: int) -> tuple[str, float] | None:
         """Wählt die plausibelste Spar-Kategorie für Überschüsse."""
-        savings = self._budget_by_category(year, month, TYP_SAVINGS)
+        savings = self._effective_budget_by_category(year, month, TYP_SAVINGS)
         if not savings:
             return None
         preferred_words = ("not", "reserve", "puffer", "rück", "rueck", "spar", "save")
@@ -948,8 +1396,6 @@ class BudgetOverviewModel:
             zero_balance_enabled = False
             sign_ratio = 0.7
 
-        from statistics import median
-
         for typ in [TYP_EXPENSES, TYP_SAVINGS]:
             # Fenster der letzten N abgeschlossenen Monate (jahresübergreifend)
             # Wir schauen VOR dem aktuellen Monat (da dieser unvollständig sein kann)
@@ -1001,8 +1447,10 @@ class BudgetOverviewModel:
             if zero_balance_enabled and typ == TYP_SAVINGS and direction == "surplus":
                 continue
 
-            # Budget des aktuellen Monats
-            current_budget = self._budget_sum(year, current_month, typ)
+            # Budget des Zielmonats; wenn dieser Monat noch leer ist, letzte
+            # positive Planbasis verwenden. Sonst verschwinden Gesamtvorschläge
+            # genau dann, wenn im aktuellen Monat noch kein Budget erfasst wurde.
+            current_budget = self._effective_budget_sum(year, current_month, typ)
             if current_budget <= 0:
                 continue
 
@@ -1222,6 +1670,49 @@ class BudgetOverviewModel:
             total_rest += rest_sign(typ, b, a)
 
         return total_rest
+
+    def _latest_budget_month_before_or_at(
+        self, year: int, month: int, typ: str
+    ) -> tuple[int, int] | None:
+        """Letzter Monat <= Zielmonat mit positivem Budget für diesen Typ."""
+        ym = int(year) * 100 + int(month)
+        row = self.conn.execute(
+            """
+            SELECT year, month
+            FROM budget
+            WHERE typ=? AND COALESCE(amount, 0) > 0
+              AND (year * 100 + month) <= ?
+            GROUP BY year, month
+            ORDER BY year DESC, month DESC
+            LIMIT 1
+            """,
+            (typ, ym),
+        ).fetchone()
+        if not row:
+            return None
+        return int(row[0]), int(row[1])
+
+    def _effective_budget_sum(self, year: int, month: int, typ: str) -> float:
+        """Budgetsumme im Zielmonat, sonst letzte bekannte positive Planbasis."""
+        current = self._budget_sum(year, month, typ)
+        if current > 0:
+            return current
+        latest = self._latest_budget_month_before_or_at(year, month, typ)
+        if latest is None:
+            return 0.0
+        return self._budget_sum(latest[0], latest[1], typ)
+
+    def _effective_budget_by_category(
+        self, year: int, month: int, typ: str
+    ) -> dict[str, float]:
+        """Kategorie-Budgets im Zielmonat, sonst aus der letzten bekannten Planbasis."""
+        current = self._budget_by_category(year, month, typ)
+        if any(float(v or 0.0) > 0 for v in current.values()):
+            return current
+        latest = self._latest_budget_month_before_or_at(year, month, typ)
+        if latest is None:
+            return {}
+        return self._budget_by_category(latest[0], latest[1], typ)
 
     def _budget_sum(self, year: int, month: int, typ: str) -> float:
         """Summe aller Budget-Einträge für Jahr/Monat/Typ."""

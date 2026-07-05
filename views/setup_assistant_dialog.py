@@ -115,6 +115,15 @@ class SetupAssistantDialog(QDialog):
         self.btn_next.clicked.connect(self._go_next)
         self.btn_finish.clicked.connect(self._finish)
 
+        # v2.2.5 (Führung): "Weiter"/"Fertig" sind Default-Buttons – Enter löst
+        # sie aus und sie werden als primäre Aktion hervorgehoben. "Zurück"
+        # darf nie versehentlich per Enter feuern.
+        self.btn_next.setDefault(True)
+        self.btn_next.setAutoDefault(True)
+        self.btn_finish.setDefault(True)
+        self.btn_finish.setAutoDefault(True)
+        self.btn_back.setAutoDefault(False)
+
         nav.addWidget(self.btn_back)
         nav.addStretch(1)
         nav.addWidget(self.btn_next)
@@ -316,6 +325,14 @@ class SetupAssistantDialog(QDialog):
         lay.addWidget(self.cb_guided)
         lay.addWidget(self.cb_show_on_start)
         lay.addStretch(1)
+        # v2.2.2 (open-tasks): Express-Einrichtung – für "erst tracken,
+        # Budget später lernen": Standard-Kategorien (falls DB leer),
+        # Lernmodus an, alle optionalen Schritte übersprungen.
+        self.btn_express = QPushButton("⚡ " + tr("setup.express_button"))
+        self.btn_express.setToolTip(tr("setup.express_tip"))
+        self.btn_express.clicked.connect(self._express_setup)
+        lay.addWidget(self.btn_express)
+
         self.steps.append(_Step(tr("setup.nav_mode"), self.page_mode))
 
     def _build_step_db(self) -> None:
@@ -511,6 +528,39 @@ class SetupAssistantDialog(QDialog):
         form.addRow("", self.cb_overwrite_budget)
         lay.addLayout(form)
 
+        learning_box = QGroupBox(tr("budget_learning.setup.title"))
+        learning_form = QFormLayout(learning_box)
+        self.cb_setup_learning_enabled = QCheckBox(tr("settings.tracking_budget_learning"))
+        self.cb_setup_learning_enabled.setChecked(bool(self.settings.get("tracking_budget_learning_enabled", True)))
+        self.cb_setup_learning_enabled.setToolTip(tr("settings.tracking_budget_learning_tip"))
+        # v2.1.7 Blocker-Fix: Bei aktivem Lernmodus darf der Budget-Ausfüllschritt
+        # nicht hart blockieren ("erst tracken, Budget später lernen").
+        self.cb_setup_learning_enabled.toggled.connect(
+            lambda _=None: self._recompute_budget_done()
+        )
+        learning_form.addRow("", self.cb_setup_learning_enabled)
+
+        self.spn_setup_learning_proposal = QSpinBox()
+        self.spn_setup_learning_proposal.setRange(1, 12)
+        self.spn_setup_learning_proposal.setValue(int(self.settings.get("tracking_budget_learning_proposal_months", 2) or 2))
+        self.spn_setup_learning_proposal.setSuffix(" " + tr("settings.months_suffix"))
+        learning_form.addRow(tr("settings.tracking_learning_proposal"), self.spn_setup_learning_proposal)
+
+        self.spn_setup_learning_stable = QSpinBox()
+        self.spn_setup_learning_stable.setRange(1, 12)
+        self.spn_setup_learning_stable.setValue(int(self.settings.get("tracking_budget_learning_stable_months", 3) or 3))
+        self.spn_setup_learning_stable.setSuffix(" " + tr("settings.months_suffix"))
+        learning_form.addRow(tr("settings.tracking_learning_stable"), self.spn_setup_learning_stable)
+
+        self.cb_setup_learning_projection = QCheckBox(tr("settings.tracking_learning_projection"))
+        self.cb_setup_learning_projection.setChecked(bool(self.settings.get("tracking_budget_learning_include_current_month_projection", True)))
+        learning_form.addRow("", self.cb_setup_learning_projection)
+
+        hint = QLabel(tr("budget_learning.setup.hint"))
+        hint.setWordWrap(True)
+        learning_form.addRow(hint)
+        lay.addWidget(learning_box)
+
         amounts_box = QGroupBox(tr("setup.budget_quick_amounts"))
         amounts = QFormLayout(amounts_box)
 
@@ -552,6 +602,18 @@ class SetupAssistantDialog(QDialog):
         lay.addStretch(1)
 
         self.steps.append(_Step(tr("setup.nav_budget_starter"), self.page_budget_starter))
+
+    def _save_learning_settings_from_setup(self) -> None:
+        """Persistiert Lernmodus-Optionen aus dem Erststart-Assistenten."""
+        if not hasattr(self, "cb_setup_learning_enabled"):
+            return
+        self.settings.set("tracking_budget_learning_enabled", bool(self.cb_setup_learning_enabled.isChecked()))
+        self.settings.set("tracking_budget_learning_proposal_months", int(self.spn_setup_learning_proposal.value()))
+        stable = max(int(self.spn_setup_learning_proposal.value()), int(self.spn_setup_learning_stable.value()))
+        self.settings.set("tracking_budget_learning_stable_months", stable)
+        self.settings.set("tracking_budget_learning_include_current_month_projection", bool(self.cb_setup_learning_projection.isChecked()))
+        self.settings.set("tracking_budget_learning_show_in_report", True)
+        self.settings.set("tracking_budget_learning_auto_end", False)
 
     def _money_spin(self, value: float = 0.0) -> QDoubleSpinBox:
         """Geldbetrag-Feld für den Setup-Assistenten."""
@@ -697,6 +759,19 @@ class SetupAssistantDialog(QDialog):
         else:
             self.lbl_next_hint.setVisible(False)
 
+        # v2.2.5 (Führung): Default-Button je Seite frisch setzen, damit Enter
+        # zuverlässig die primäre Aktion auslöst (Fokus "klebt" sonst nach
+        # einem Button-Klick auf der vorigen Seite).
+        try:
+            if last and self.btn_finish.isEnabled():
+                self.btn_finish.setDefault(True)
+                self.btn_finish.setFocus()
+            elif self.btn_next.isEnabled():
+                self.btn_next.setDefault(True)
+                self.btn_next.setFocus()
+        except Exception as e:
+            logger.debug("default button focus: %s", e)
+
     def _go_back(self) -> None:
         idx = self._current_idx()
 
@@ -719,6 +794,7 @@ class SetupAssistantDialog(QDialog):
         if idx == 0 and not self.cb_guided.isChecked():
             self.settings.set("show_onboarding", bool(self.cb_show_on_start.isChecked()))
             self.settings.set("setup_completed", True)
+            self._save_learning_settings_from_setup()
             self.close()
             return
 
@@ -736,6 +812,52 @@ class SetupAssistantDialog(QDialog):
 
         self._set_step(idx + 1)
 
+    def _express_setup(self) -> None:
+        """Express-Pfad (v2.2.2): Minimal-Setup ohne die optionalen Seiten.
+
+        - Legt Standard-Kategorien an, falls noch keine existieren.
+        - Aktiviert den Tracking-Lernmodus (Budgets entstehen später aus
+          echten Buchungen; der Budget-Schritt gilt damit als erfüllt).
+        - Markiert alle Schritte als besucht/erledigt und springt zur
+          Abschluss-Seite – der Nutzer bestätigt dort mit "Fertig".
+        """
+        try:
+            if QMessageBox.question(
+                self,
+                tr("setup.express_button"),
+                tr("setup.express_confirm"),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            ) != QMessageBox.Yes:
+                return
+            # Standard-Kategorien nur bei leerer Kategorienliste anlegen.
+            try:
+                n_cats = int(
+                    self.conn.execute("SELECT COUNT(*) FROM categories").fetchone()[0]
+                )
+            except Exception:
+                n_cats = 0
+            if n_cats == 0:
+                from model.default_categories import insert_default_categories
+
+                insert_default_categories(self.conn)
+                self.conn.commit()
+            # Lernmodus aktivieren (erfüllt den Budget-Schritt).
+            if getattr(self, "cb_setup_learning_enabled", None) is not None:
+                self.cb_setup_learning_enabled.setChecked(True)
+            # Alle Schritte als erledigt/besucht markieren, zur letzten Seite.
+            for i in range(len(self._step_done)):
+                self._step_done[i] = True
+                self._visited.add(i)
+            self._recompute_budget_done()
+            self._recompute_tracking_done()
+            for i in range(len(self._step_done)):
+                self._step_done[i] = True
+            self._set_step(len(self.steps) - 1)
+        except Exception as e:
+            logger.warning("express setup: %s", e)
+            QMessageBox.warning(self, tr("msg.error"), str(e))
+
     def _finish(self) -> None:
         # Verhindert, dass _setup_hidden_while_child_open() den Dialog
         # nach dem Abschluss wieder anzeigt (Flag wurde bisher nie gesetzt).
@@ -743,6 +865,7 @@ class SetupAssistantDialog(QDialog):
         # mark completed and apply "show on start"
         self.settings.set("show_onboarding", bool(self.cb_show_on_start_end.isChecked()))
         self.settings.set("setup_completed", True)
+        self._save_learning_settings_from_setup()
         QMessageBox.information(self, tr("msg.info"), tr("setup.finish_done_msg"))
         self.close()
 
@@ -766,6 +889,40 @@ class SetupAssistantDialog(QDialog):
     # ---------------------------------------------------------------------
     # Enter hooks
     # ---------------------------------------------------------------------
+    def keyPressEvent(self, event):  # noqa: N802 (Qt naming)
+        """v2.2.5 (Führung): Enter/Return bewegt den Assistenten vorwärts.
+
+        Bisher war "Weiter" kein Default-Button, deshalb passierte auf der
+        Willkommensseite (ohne fokussiertes Eingabefeld) bei Enter nichts – der
+        Nutzer musste zur Maus greifen. Jetzt löst Enter je nach Seite "Weiter"
+        bzw. auf der letzten Seite "Fertig" aus.
+
+        Ausnahme: Steht der Fokus in einem mehrzeiligen Textfeld (QTextEdit/
+        QPlainTextEdit), bleibt Enter ein Zeilenumbruch. Modifier (Shift/Strg/
+        Alt) werden ebenfalls durchgelassen.
+        """
+        try:
+            from PySide6.QtCore import Qt as _Qt
+            from PySide6.QtWidgets import QPlainTextEdit, QTextEdit
+
+            if event.key() in (_Qt.Key_Return, _Qt.Key_Enter) and (
+                event.modifiers() == _Qt.NoModifier
+            ):
+                focus = self.focusWidget()
+                if not isinstance(focus, (QTextEdit, QPlainTextEdit)):
+                    if self.btn_finish.isVisible() and self.btn_finish.isEnabled():
+                        self._finish()
+                        return
+                    if self.btn_next.isVisible() and self.btn_next.isEnabled():
+                        self._go_next()
+                        return
+                    # Weiter ist gesperrt (Blocker): Hinweis sichtbar lassen,
+                    # aber Enter nicht ins Leere laufen lassen.
+                    return
+        except Exception as e:
+            logger.debug("keyPressEvent enter: %s", e)
+        super().keyPressEvent(event)
+
     def _enter_budget_tab(self) -> None:
         try:
             if hasattr(self.main_window, "_goto_tab"):
@@ -816,7 +973,7 @@ class SetupAssistantDialog(QDialog):
             self._step_done[self._IDX_CAT_MANAGER] = True
             self.lbl_cat_done_1.setText(tr("setup.cat_manager_done"))
             self._update_nav()
-            self.main_window._refresh_all_tabs()
+            self.main_window._schedule_refresh_all_tabs(reason="setup assistant changed data") if hasattr(self.main_window, "_schedule_refresh_all_tabs") else self.main_window._refresh_all_tabs()
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("msg.setup_cat_manager_failed", e=e))
 
@@ -891,7 +1048,7 @@ class SetupAssistantDialog(QDialog):
             self._step_done[self._IDX_CAT_EXCEL] = True
             self.lbl_cat_done_2.setText(tr("setup.excel_import_done"))
             self._update_nav()
-            self.main_window._refresh_all_tabs()
+            self.main_window._schedule_refresh_all_tabs(reason="setup assistant changed data") if hasattr(self.main_window, "_schedule_refresh_all_tabs") else self.main_window._refresh_all_tabs()
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("setup.import_failed", e=e))
 
@@ -1026,7 +1183,7 @@ class SetupAssistantDialog(QDialog):
                 trf("setup.empty_budget_year_created", year=year)
             )
             if hasattr(self.main_window, "_refresh_all_tabs"):
-                self.main_window._refresh_all_tabs()
+                self.main_window._schedule_refresh_all_tabs(reason="setup assistant changed data") if hasattr(self.main_window, "_schedule_refresh_all_tabs") else self.main_window._refresh_all_tabs()
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("msg.setup_budget_template_failed", e=e))
 
@@ -1107,7 +1264,7 @@ class SetupAssistantDialog(QDialog):
                 )
             )
             if hasattr(self.main_window, "_refresh_all_tabs"):
-                self.main_window._refresh_all_tabs()
+                self.main_window._schedule_refresh_all_tabs(reason="setup assistant changed data") if hasattr(self.main_window, "_schedule_refresh_all_tabs") else self.main_window._refresh_all_tabs()
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("msg.setup_budget_template_failed", e=e))
 
@@ -1129,14 +1286,23 @@ class SetupAssistantDialog(QDialog):
 
     def _recompute_budget_done(self) -> None:
         has_val = self._has_budget_value()
-        self._budget_done = has_val
+        # v2.1.7 Blocker-Fix: Aktiver Lernmodus erfüllt den Schritt ebenfalls –
+        # der Nutzer darf erst nur tracken und Budgets später lernen lassen.
+        learning_active = bool(
+            getattr(self, "cb_setup_learning_enabled", None)
+            and self.cb_setup_learning_enabled.isChecked()
+        )
+        done = has_val or learning_active
+        self._budget_done = done
         if len(self._step_done) > self._IDX_BUDGET_LOAD:
-            self._step_done[self._IDX_BUDGET_LOAD] = has_val
+            self._step_done[self._IDX_BUDGET_LOAD] = done
         if hasattr(self, "lbl_budget_done"):
-            self.lbl_budget_done.setText(
-                tr("setup.budget_value_present") if has_val
-                else tr("setup.budget_value_missing")
-            )
+            if has_val:
+                self.lbl_budget_done.setText(tr("setup.budget_value_present"))
+            elif learning_active:
+                self.lbl_budget_done.setText(tr("setup.budget_learning_skip_ok"))
+            else:
+                self.lbl_budget_done.setText(tr("setup.budget_value_missing"))
         self._update_nav()
 
     def _has_tracking_entry(self) -> bool:
@@ -1169,7 +1335,7 @@ class SetupAssistantDialog(QDialog):
 
             # Tabs neu laden (Budget/Übersicht hängen davon ab)
             if hasattr(self.main_window, "_refresh_all_tabs"):
-                self.main_window._refresh_all_tabs()
+                self.main_window._schedule_refresh_all_tabs(reason="setup assistant changed data") if hasattr(self.main_window, "_schedule_refresh_all_tabs") else self.main_window._refresh_all_tabs()
         except Exception as e:
             # Auto-Open soll UI nicht nerven – Button-Open darf Fehler zeigen
             if not auto:
@@ -1218,9 +1384,23 @@ class SetupAssistantDialog(QDialog):
             )
             changed = dlg.restore_external_path(path)
 
-            if changed and encrypted_session is None and hasattr(self.main_window, "_refresh_all_tabs"):
+            if changed:
+                # Ein Restore im Setup-Assistenten bedeutet: Es existiert bereits
+                # eine echte BudgetManager-Datenbank. Deshalb nicht weiter als
+                # leeren Erststart behandeln und die Einführung künftig nicht
+                # automatisch öffnen.
                 try:
-                    self.main_window._refresh_all_tabs()
+                    self.settings.set("show_onboarding", False)
+                    self.settings.set("setup_completed", True)
+                    self.settings.set("tracking_budget_learning_enabled", bool(self.settings.get("tracking_budget_learning_enabled", True)))
+                    self.settings.set("tracking_budget_learning_show_in_report", bool(self.settings.get("tracking_budget_learning_show_in_report", True)))
+                    self.settings.set("auto_generate_budget_warnings", bool(self.settings.get("auto_generate_budget_warnings", True)))
+                except Exception as settings_err:
+                    logger.warning("Setup-Restore-Settings konnten nicht finalisiert werden: %s", settings_err)
+
+            if changed and hasattr(self.main_window, "_refresh_all_tabs"):
+                try:
+                    self.main_window._schedule_refresh_all_tabs(reason="setup assistant changed data") if hasattr(self.main_window, "_schedule_refresh_all_tabs") else self.main_window._refresh_all_tabs()
                 except Exception as refresh_err:
                     logger.warning("Tab-Refresh nach Setup-Restore fehlgeschlagen: %s", refresh_err)
 
@@ -1249,10 +1429,29 @@ class SetupAssistantDialog(QDialog):
             )
             if reply != QMessageBox.Yes:
                 return
-            # DB-Management Dialog öffnen
-            from views.database_management_dialog import DatabaseManagementDialog
-            dlg = DatabaseManagementDialog(self, self.conn, self.settings)
-            dlg.exec()
+            # v2.2.1 (Bericht-Punkt 1): Vorher öffnete die Bestätigung nur den
+            # DB-Verwaltungsdialog – der Reset passierte NICHT, obwohl der
+            # Nutzer ihn gerade bestätigt hatte. Jetzt wird er direkt und mit
+            # automatischem Backup ausgeführt; das Ergebnis wird angezeigt.
+            from model.database_management_model import DatabaseManagementModel
+
+            mgmt = DatabaseManagementModel(str(self.db_path), conn=self.conn)
+            ok, message = mgmt.reset_database(create_backup=True, keep_user_data=False)
+            if ok:
+                msg_text = tr(message) if isinstance(message, str) else tr("database.msg.reset_all")
+                QMessageBox.information(self, tr("setup.setup_db_reset"), msg_text)
+                # Setup-Zustand neu bewerten (Kategorien/Budget/Tracking geändert)
+                try:
+                    self._recompute_budget_done()
+                    self._recompute_tracking_done()
+                except Exception as e2:
+                    logger.debug("recompute after reset: %s", e2)
+            else:
+                info = message
+                if isinstance(message, tuple):
+                    key, params = message
+                    info = trf(key, **(params or {}))
+                QMessageBox.critical(self, tr("msg.error"), str(info))
         except Exception as e:
             from PySide6.QtWidgets import QMessageBox
             QMessageBox.critical(self, tr("msg.error"), str(e))
@@ -1285,6 +1484,6 @@ class SetupAssistantDialog(QDialog):
             self._cat_model.delete_all()
             self.conn.commit()
             QMessageBox.information(self, tr("msg.info"), tr("setup.kategorien_wurden_geloescht"))
-            self.main_window._refresh_all_tabs()
+            self.main_window._schedule_refresh_all_tabs(reason="setup assistant changed data") if hasattr(self.main_window, "_schedule_refresh_all_tabs") else self.main_window._refresh_all_tabs()
         except Exception as e:
             QMessageBox.critical(self, tr("msg.error"), trf("setup.reset_failed", e=e))

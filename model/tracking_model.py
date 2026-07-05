@@ -105,7 +105,7 @@ class TrackingModel:
         amount: float,
         details: str = "",
         source: str = "manual",
-    ) -> None:
+    ) -> int:
         # Fachliche Sparziel-Grenzen vor dem INSERT prüfen.
         if typ == TYP_SAVINGS:
             self.validate_savings_goal_booking(category, float(amount))
@@ -148,6 +148,7 @@ class TrackingModel:
             logger.warning(
                 "Undo-Recording fehlgeschlagen nach INSERT (id=%s): %s", rid, e
             )
+        return rid
 
     def update(
         self,
@@ -239,6 +240,18 @@ class TrackingModel:
 
         # Atomare Transaktion: DELETE + Sparziel-Korrektur
         with db_transaction(self.conn):
+            # Defense-in-Depth: Tag-Verknüpfungen explizit lösen. Die FK-Regel
+            # entry_tags → tracking(id) ON DELETE CASCADE greift nur bei
+            # PRAGMA foreign_keys=ON. Damit ein Löschen auch auf einer ohne das
+            # Pragma geöffneten Verbindung keine verwaisten Verknüpfungen
+            # hinterlässt, wird hier zusätzlich aufgeräumt (wie beim Kategorie-Delete).
+            try:
+                self.conn.execute(
+                    "DELETE FROM entry_tags WHERE entry_id=?", (int(row_id),)
+                )
+            except sqlite3.OperationalError:
+                # Sehr alte DB ohne entry_tags-Tabelle — nichts aufzuräumen.
+                pass
             self.conn.execute("DELETE FROM tracking WHERE id=?", (int(row_id),))
 
             if old_full:
@@ -672,18 +685,21 @@ class TrackingModel:
         """Alias für years() - für Kompatibilität mit overview_tab"""
         return self.years()
 
-    def get_entries_in_range(self, date_from: date, date_to: date) -> list[TrackingRow]:
+    def get_entries_in_range(
+        self, date_from: date, date_to: date, tag_id: int | None = None
+    ) -> list[TrackingRow]:
         """
         Gibt alle Einträge in einem Datumsbereich zurück.
 
         Args:
             date_from: Start-Datum (inklusiv)
             date_to: End-Datum (inklusiv)
+            tag_id: optionaler Tag-Filter (entry_tags JOIN)
 
         Returns:
             Liste von TrackingRow Objekten
         """
-        return self.list_filtered(date_from=date_from, date_to=date_to)
+        return self.list_filtered(date_from=date_from, date_to=date_to, tag_id=tag_id)
 
     def sum_by_month_all(self, typ: str | None = None) -> dict[int, float]:
         where = []

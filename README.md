@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.1.3
+# 💰 BudgetManager v2.2.6
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.1.3-blue)
+![Version](https://img.shields.io/badge/version-2.2.6-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -36,12 +36,12 @@ Alternativ:
 
 ---
 
-## Neu in v2.1.0
+## Neu in v2.2.6
 
 - Zentrale Datumsbereich-Helfer für Monats-/Jahresabfragen; doppelte `_month_bounds()`-Logik entfernt.
 - Tracking, Cockpit, Budgetübersicht, Budgetwarnungen, Vorschlagsengine und KPI-Monatswerte verwenden indexfreundliche halb-offene Datumsbereiche.
 - SQLite-Lock-Timeout konsistent auf 10 Sekunden ausgerichtet.
-- Release-Nachweise aus Fix- und Performance-Runde in `RELEASE_REPORT_v2_1_0.md` konsolidiert.
+- Release-Nachweise aus Fix- und Performance-Runde in `RELEASE_COMPARE_INTEGRATION_REPORT_v2_1_7.md` konsolidiert.
 - Neue Regressionstests sichern Datumsgrenzen, Timeout-Konfiguration und entfernte Logik-Dubletten ab.
 
 - 13. Monatslohn im Budget-Reiter als eigene Einmaleinkommens-Kategorie erfassbar.
@@ -51,7 +51,7 @@ Alternativ:
 - Final-Release-Härtung für den In-App-Updater: Frozen-Builds starten jetzt die echten `--check-update`/`--apply-update`-Pfade.
 - Portable-ZIP nutzt stabile Startdateien (`BudgetManager.exe` / `BudgetManager`), während GitHub-Assets weiterhin versioniert bleiben.
 - Windows-Update migriert alte versionierte Portable-Binaries auf den stabilen Startpunkt und startet danach die neue App.
-- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.1.0 synchronisiert.
+- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.2.6 synchronisiert.
 - i18n-Härtung für mehrere dynamische Dialogtexte in Budget, Tracking, Backup, Konto, Tags, Themes und Sparzielen.
 - Konto & Daten sind in einem eigenen Hub gebündelt: Konto verwalten, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
 - Der Datenordner ist frei wählbar; beim Wechsel kann die App bestehende Nutzerdaten sicher kopieren, inklusive Sicherheits-ZIP.
@@ -75,6 +75,8 @@ Diese Version ist als Release-Ready-Source-Candidate gedacht. Vor Veröffentlich
 
 - Favoriten stehen oben.
 - Normale manuelle Kategorien werden nach manueller Buchungshäufigkeit sortiert.
+- Parent-Kategorien mit Unterkategorien werden im Tracking nicht als eigene Buchungszeile angezeigt.
+- Unterkategorien werden kurz angezeigt: **Miete** statt **Wohnen › Miete** oder **Wohnen - Miete**.
 - Fix-/Wiederkehrend-Kategorien sind eigene Gruppen und werden nicht durch automatische Buchungen hochsortiert.
 
 ### Kategorie-Logik finalisiert
@@ -169,7 +171,8 @@ Wichtig bei Fixkosten: Das Häkchen bucht nichts automatisch im Hintergrund. Es 
 
 - Budget-Ist-Vergleich.
 - KPIs für Einnahmen, Ausgaben, Sparen und Saldo.
-- Diagramme und Auswertungen.
+- Verständlichere Diagramme: bewährter Plan/Ist-Donut, Kategorien-Ranking, Konto-Vergleich als Balken, Monatsverlauf, Monatsbilanz und Top-Buchungen.
+- Der gute Plan/Ist-Donut bleibt. Der verwirrende Kreis daneben wird nicht mehr für Einnahmen/Ausgaben/Ersparnisse genutzt, weil diese Werte keine Anteile desselben Topfs sind.
 - Filter nach Jahr, Monat und Zeitraum.
 
 ### App & Komfort
@@ -210,8 +213,8 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.1.3"
-APP_RELEASE_DATE = "1. Juli 2026"
+APP_VERSION = "2.2.6"
+APP_RELEASE_DATE = "19. Juni 2026"
 ```
 
 Vor einem Release prüfen:
@@ -249,12 +252,12 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.1.0 \
-  --release-tag v2.1.0 \
+  --version 2.2.6 \
+  --release-tag v2.2.6 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.1.0-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.1.0-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.1.0 \
+  --windows-zip dist/BudgetManager-v2.2.6-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.2.6-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.6 \
   --out latest.json
 ```
 
@@ -311,3 +314,28 @@ Zum Beenden alter BudgetManager-Testinstanzen bitte nicht pauschal `pkill -f "py
 ### Cockpit und Instanzen
 
 Das Cockpit startet keine eigene BudgetManager-Instanz. Es ist ein normaler Reiter innerhalb des Hauptfensters. Der Startablauf wurde so angepasst, dass das Hauptfenster genau einmal sichtbar gemacht wird. Update-Prüfungen im Source-Modus laufen über `python -m updater.check_update` statt über ein zweites `python main.py`.
+
+## Lernmodus v2.2.6 – Entscheidungspfad
+
+Der Lernmodus ist für den Einstieg gedacht, wenn noch kein Budget gesetzt wurde und zuerst echte Buchungen gesammelt werden sollen. Im Erststart bedeutet das: Ist der Lernmodus aktiv, darf der Budget-Schritt ohne Budgetwert abgeschlossen werden. Ist der Lernmodus deaktiviert, bleibt die Mindestprüfung hart und es muss mindestens ein Budgetwert vorhanden sein.
+
+1. **Kein Budget im Jahr vorhanden** → die Kategorie darf aus manuellem Tracking ein Startbudget vorschlagen.
+2. **Budget im Jahr vorhanden** → Lernmodus ist für diese Kategorie beendet; danach gilt nur noch die normale Budget-Vorschlagslogik.
+3. **Vorschlag im Budgetwarner** → Betrag prüfen, Budgetart bestätigen und erst dann übernehmen.
+4. **Unsicher** → Rechtsklick auf den Lernvorschlag und „Weiter beobachten“ wählen.
+5. **Kategorie passt nicht monatlich** → „Als unregelmäßig / Rückstellung markieren“ wählen.
+6. **Nicht verwenden** → „Ignorieren“ blendet die Lernphase dauerhaft aus, bis der Status zurückgesetzt wird.
+
+Budgetarten im Lernmodus:
+
+- **Fix + wiederkehrend**: Miete, Abo, gleichbleibender Lohn.
+- **Fix + inkrementell**: Jahres- oder Quartalskosten, die als Monatsreserve geplant werden.
+- **Nur wiederkehrend**: regelmäßig, aber nicht exakt gleich.
+- **Variabler Topf**: Lebensmittel, Hobby, Haushalt.
+- **Ersparnis-Topf**: Sparen als planbarer Topf.
+- **Schwankendes Einkommen**: Stundenlohn oder variable Einnahmen; vorsichtig abgerundet.
+- **Unregelmäßig / Rückstellung**: Franchise, Selbstbehalt, Reparaturen, seltene Kosten.
+
+Best Practice: Erst tracken, dann Vorschläge prüfen, niemals blind alle Vorschläge übernehmen. Gerade bei Gesundheit, Franchise und Jahresrechnungen ist ein Rückstellungsbudget meist besser als ein starrer Monatsfixbetrag.
+
+Hinweis zur Übersicht: Neue Startbudget-Vorschläge aus dem Lernmodus werden im Banner mit **🆕** angezeigt. **📉** bleibt echten Defizit-/Erhöhungswarnungen vorbehalten, **📈** steht für Überschuss-/Senkungsvorschläge.

@@ -303,6 +303,7 @@ class OverviewBudgetPanel(QObject):
     def refresh_budget_overview(
         self, year: int, month_idx: int,
         cat_caches: dict,   # _cat_name_to_id, etc.
+        tag_id: int | None = None,
     ) -> None:
         """Budgetübersicht-Tab (Tab 1) neu laden."""
         typ_sel_display = self.bo_typ_combo.currentText()
@@ -315,7 +316,7 @@ class OverviewBudgetPanel(QObject):
         months = [month_idx] if single_month else list(range(1, 13))
 
         cat_rows, _, _ = self._collect_budget_overview_data(
-            year, typen, typ_sel, months, month_idx, single_month, show_all
+            year, typen, typ_sel, months, month_idx, single_month, show_all, tag_id=tag_id
         )
         self._render_budget_overview_table(cat_rows, year, typ_sel, month_idx, single_month)
         self._render_budget_overview_summary(cat_rows, year, typ_sel, month_idx)
@@ -326,10 +327,11 @@ class OverviewBudgetPanel(QObject):
         cat_caches: dict,
         typ_filter_display: str,
         range_idx: int,
+        tag_id: int | None = None,
     ) -> None:
         """Kategorie-Baum (Tab 2) neu laden."""
         months = _months_between(date_from, date_to)
-        budget_raw, actual_raw = self._collect_main_cat_data(months, date_from, date_to)
+        budget_raw, actual_raw = self._collect_main_cat_data(months, date_from, date_to, tag_id=tag_id)
 
         wanted = None
         if typ_filter_display and typ_filter_display != tr("lbl.all"):
@@ -454,6 +456,7 @@ class OverviewBudgetPanel(QObject):
         year: int, month_idx: int,
         range_idx: int,
         track,  # TrackingModel
+        tag_id: int | None = None,
     ) -> None:
         """Budget-Tabelle (Tab 3) neu laden."""
         # Monate bestimmen
@@ -507,7 +510,7 @@ class OverviewBudgetPanel(QObject):
         if months:
             d1, _ = _month_range(months[0][0], months[0][1])
             _, d2 = _month_range(months[-1][0], months[-1][1])
-            all_rows = track.get_entries_in_range(d1, d2)
+            all_rows = track.get_entries_in_range(d1, d2, tag_id=tag_id)
             cache: dict[tuple[int, int], list] = {}
             for tr_row in all_rows:
                 key = (tr_row.date.year, tr_row.date.month)
@@ -550,6 +553,7 @@ class OverviewBudgetPanel(QObject):
     def _collect_budget_overview_data(
         self, year: int, typen: list, typ_sel: str,
         months: list, month_idx: int, single_month: bool, show_all: bool,
+        tag_id: int | None = None,
     ) -> tuple[list, float, float]:
         suggestion_map: dict[tuple[str, str], float] = {}
         try:
@@ -575,7 +579,10 @@ class OverviewBudgetPanel(QObject):
 
             try:
                 budget_cats = self.budget_overview.budget_by_category_range(year, months, typ_db)
-                actual_cats = self.budget_overview.actual_by_category_range(year, months, typ_db)
+                if tag_id is None:
+                    actual_cats = self.budget_overview.actual_by_category_range(year, months, typ_db)
+                else:
+                    actual_cats = self._actual_by_category_for_tag(year, months, typ_db, tag_id)
             except Exception:
                 budget_cats, actual_cats = {}, {}
 
@@ -807,7 +814,14 @@ class OverviewBudgetPanel(QObject):
             count = len(all_suggs)
             preview = []
             for s in all_suggs[:2]:
-                icon = "📈" if s.direction == "surplus" else "📉"
+                # v2.1.7: Neue Lernbudgets (initial) sind kein Defizit –
+                # eigenes Symbol statt fälschlichem 📉.
+                if s.direction == "initial":
+                    icon = "🆕"
+                elif s.direction == "surplus":
+                    icon = "📈"
+                else:
+                    icon = "📉"
                 preview.append(
                     trf(
                         "overview.sugg.preview_item",
@@ -853,8 +867,38 @@ class OverviewBudgetPanel(QObject):
             logger.warning("suggestions banner: %s", exc)
             self.lbl_suggestions_banner.setVisible(False)
 
+    def _actual_by_category_for_tag(
+        self, year: int, months: list[int], typ_db: str, tag_id: int
+    ) -> dict[str, float]:
+        """Ist-Werte je Kategorie für den zentralen Übersicht-Tag-Filter.
+
+        Budgets selbst tragen keine Tags. Bei aktivem Filter bleibt deshalb der
+        Planwert unverändert, aber die Ist-Spalte zeigt nur Buchungen mit dem
+        gewählten Tag. So sind KPIs, Diagramme und Tabellen konsistent.
+        """
+        from model.tracking_model import TrackingModel
+
+        wanted_months = {int(m) for m in months}
+        actual: dict[str, float] = {}
+        try:
+            rows = TrackingModel(self.conn).list_filtered(year=int(year), tag_id=int(tag_id))
+        except Exception as exc:
+            logger.warning("tag actuals load failed: %s", exc)
+            return actual
+
+        for r in rows:
+            if int(r.date.month) not in wanted_months:
+                continue
+            t = _norm(r.typ)
+            if t != typ_db:
+                continue
+            amt = abs(float(r.amount)) if t == TYP_EXPENSES else float(r.amount)
+            actual[r.category] = actual.get(r.category, 0.0) + amt
+        return actual
+
     def _collect_main_cat_data(
         self, months: list[tuple[int, int]], date_from: date, date_to: date,
+        tag_id: int | None = None,
     ) -> tuple[dict, dict]:
         budget_raw: dict[tuple[str, str], float] = {}
         raw = self.budget.sum_by_typ_category_range(months)
@@ -867,7 +911,7 @@ class OverviewBudgetPanel(QObject):
         try:
             from model.tracking_model import TrackingModel
             track = TrackingModel(self.conn)
-            rows = track.get_entries_in_range(date_from, date_to)
+            rows = track.get_entries_in_range(date_from, date_to, tag_id=tag_id)
         except Exception:
             rows = []
 

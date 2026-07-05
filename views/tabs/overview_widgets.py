@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCharts import (
     QChart, QChartView, QPieSeries, QPieSlice,
     QBarSeries, QStackedBarSeries, QBarSet, QBarCategoryAxis, QValueAxis,
-    QLineSeries,
+    QLineSeries, QHorizontalStackedBarSeries,
 )
 
 from utils.icons import get_icon
@@ -169,8 +169,56 @@ class CompactChart(QChartView):
         # freigeben -> "double free or corruption". Ohne Animation ist das
         # Umzeichnen (z.B. nach einer Budgetanpassung) sicher.
         self._chart.setAnimationOptions(QChart.NoAnimation)
-        self._chart.setMargins(QMargins(0, 0, 0, 0))
+        # v2.1.4: Kleine Margins statt 0, sonst werden aussenliegende
+        # Pie-Labels an den Chart-Rändern abgeschnitten.
+        self._chart.setMargins(QMargins(4, 4, 4, 4))
+        # v2.1.4: QChart ignoriert Qt-Stylesheets. Ohne diese Anpassung bleibt
+        # der Chart-Hintergrund weiss und die Beschriftung schwarz – im dunklen
+        # Theme wirkt das "kaputt". Hintergrund transparent → Theme scheint
+        # durch; Text-/Achsenfarben werden nach jedem Aufbau gesetzt.
+        self._chart.setBackgroundVisible(False)
+        self.setStyleSheet("background: transparent; border: none;")
         self.setChart(self._chart)
+
+    def _apply_theme_colors(self) -> None:
+        """Färbt Titel, Legende, Achsen und Slice-Labels nach dem UI-Theme.
+
+        Muss nach jedem (Neu-)Aufbau der Serien aufgerufen werden, da neue
+        Slices/Achsen wieder mit Qt-Standardfarben (schwarz) entstehen.
+        """
+        try:
+            c = ui_colors(self)
+            text = QColor(c.text)
+            dim = QColor(c.text_dim)
+            grid = QColor(c.border)
+
+            self._chart.setTitleBrush(text)
+
+            legend = self._chart.legend()
+            if legend is not None:
+                legend.setLabelColor(text)
+
+            for axis in self._chart.axes():
+                try:
+                    axis.setLabelsBrush(text)
+                    axis.setTitleBrush(text)
+                    axis.setLinePenColor(dim)
+                    if hasattr(axis, "setGridLinePen"):
+                        pen = axis.gridLinePen()
+                        pen.setColor(grid)
+                        axis.setGridLinePen(pen)
+                except Exception as e:
+                    logger.debug("axis theme: %s", e)
+
+            for series in self._chart.series():
+                if isinstance(series, QPieSeries):
+                    for sl in series.slices():
+                        try:
+                            sl.setLabelBrush(text)
+                        except Exception as e:
+                            logger.debug("slice label brush: %s", e)
+        except Exception as e:
+            logger.debug("_apply_theme_colors: %s", e)
 
     def _clear_chart(self, *, keep_legend: bool = False) -> None:
         """Entfernt Serien und Achsen, damit Pie/Line/Bar sauber umschalten.
@@ -187,6 +235,7 @@ class CompactChart(QChartView):
         self._clear_chart(keep_legend=False)
         if not data:
             self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._apply_theme_colors()
             return
 
         series = QPieSeries()
@@ -218,6 +267,7 @@ class CompactChart(QChartView):
         self._chart.addSeries(series)
         self._chart.setTitle(title)
         self._chart.legend().setVisible(False)
+        self._apply_theme_colors()
 
     def create_nested_donut(self, ring_data: list[dict]) -> None:
         self._clear_chart(keep_legend=False)
@@ -225,6 +275,7 @@ class CompactChart(QChartView):
 
         if not ring_data:
             self._chart.setTitle(tr("dlg.no_data"))
+            self._apply_theme_colors()
             return
 
         for ring in ring_data:
@@ -260,6 +311,8 @@ class CompactChart(QChartView):
 
             self._chart.addSeries(series)
 
+        self._apply_theme_colors()
+
     def _on_slice_hover(self, state: bool, sl: QPieSlice) -> None:
         try:
             if state:
@@ -291,6 +344,7 @@ class CompactChart(QChartView):
 
         if not categories or not series_data:
             self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._apply_theme_colors()
             return
 
         all_values: list[float] = []
@@ -309,10 +363,12 @@ class CompactChart(QChartView):
 
         if not self._chart.series():
             self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._apply_theme_colors()
             return
 
         axis_x = QBarCategoryAxis()
         axis_x.append(categories)
+        axis_x.setTitleText(tr("chart.month"))
         self._chart.addAxis(axis_x, Qt.AlignBottom)
 
         if all_values:
@@ -328,6 +384,7 @@ class CompactChart(QChartView):
         axis_y = QValueAxis()
         axis_y.setRange(min_val - pad if min_val < 0 else 0.0, max_val + pad)
         axis_y.setLabelFormat("%.0f")
+        axis_y.setTitleText(tr("chart.amount"))
         self._chart.addAxis(axis_y, Qt.AlignLeft)
 
         for series in self._chart.series():
@@ -335,7 +392,7 @@ class CompactChart(QChartView):
             series.attachAxis(axis_y)
 
         self._chart.setTitle(title)
-
+        self._apply_theme_colors()
 
     def create_colored_bar_chart(self, bars: list[dict], title: str = "") -> None:
         """Balkendiagramm mit individueller Farbe je Balken.
@@ -348,6 +405,7 @@ class CompactChart(QChartView):
         bars = [b for b in bars if float(b.get("value", 0.0) or 0.0) > 0.0]
         if not bars:
             self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._apply_theme_colors()
             return
 
         labels = [str(b.get("label", "")) for b in bars]
@@ -370,11 +428,60 @@ class CompactChart(QChartView):
         max_val = max(float(b.get("value", 0.0) or 0.0) for b in bars)
         axis_y.setRange(0, max_val * 1.15 if max_val > 0 else 1)
         axis_y.setLabelFormat("%.0f")
+        axis_y.setTitleText(tr("chart.amount"))
         self._chart.addAxis(axis_y, Qt.AlignLeft)
         series.attachAxis(axis_y)
 
         self._chart.setTitle(title)
         self._chart.legend().setVisible(False)
+        self._apply_theme_colors()
+
+
+    def create_horizontal_bar_chart(self, bars: list[dict], title: str = "") -> None:
+        """Horizontales Ranking-Diagramm für Kategorien und Top-Buchungen.
+
+        ``bars``: [{"label": str, "value": float, "color": "#rrggbb"}]
+        Horizontale Balken sind für lange Kategorienamen deutlich lesbarer als
+        Kreisdiagramme oder vertikale Balken.
+        """
+        self._clear_chart(keep_legend=False)
+        bars = [b for b in bars if float(b.get("value", 0.0) or 0.0) > 0.0]
+        if not bars:
+            self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._apply_theme_colors()
+            return
+
+        # Größter Wert oben: Qt zeichnet horizontale Kategorien je nach Theme/
+        # Plattform von unten nach oben, deshalb rückwärts anlegen.
+        bars = list(reversed(bars))
+        labels = [str(b.get("label", "")) for b in bars]
+
+        series = QHorizontalStackedBarSeries()
+        for idx, b in enumerate(bars):
+            bar_set = QBarSet(str(b.get("label", "")))
+            for j in range(len(bars)):
+                bar_set.append(float(b.get("value", 0.0)) if j == idx else 0.0)
+            bar_set.setColor(QColor(str(b.get("color") or ui_colors(self).accent)))
+            series.append(bar_set)
+
+        self._chart.addSeries(series)
+
+        axis_y = QBarCategoryAxis()
+        axis_y.append(labels)
+        self._chart.addAxis(axis_y, Qt.AlignLeft)
+        series.attachAxis(axis_y)
+
+        axis_x = QValueAxis()
+        max_val = max(float(b.get("value", 0.0) or 0.0) for b in bars)
+        axis_x.setRange(0, max_val * 1.15 if max_val > 0 else 1)
+        axis_x.setLabelFormat("%.0f")
+        axis_x.setTitleText(tr("chart.amount"))
+        self._chart.addAxis(axis_x, Qt.AlignBottom)
+        series.attachAxis(axis_x)
+
+        self._chart.setTitle(title)
+        self._chart.legend().setVisible(False)
+        self._apply_theme_colors()
 
     def create_grouped_bar_chart(
         self,
@@ -386,6 +493,7 @@ class CompactChart(QChartView):
 
         if not categories or not series_data:
             self._chart.setTitle(title + tr("tab_ui.keine_daten"))
+            self._apply_theme_colors()
             return
 
         bar_series = QBarSeries()
@@ -406,9 +514,11 @@ class CompactChart(QChartView):
         axis_y = QValueAxis()
         all_vals = [v for sd in series_data for v in sd.get("values", [])]
         max_val = max(all_vals) if all_vals else 1000
-        axis_y.setRange(0, max_val * 1.15)
+        axis_y.setRange(0, max_val * 1.15 if max_val > 0 else 1)
         axis_y.setLabelFormat("%.0f")
+        axis_y.setTitleText(tr("chart.amount"))
         self._chart.addAxis(axis_y, Qt.AlignLeft)
         bar_series.attachAxis(axis_y)
 
         self._chart.setTitle(title)
+        self._apply_theme_colors()

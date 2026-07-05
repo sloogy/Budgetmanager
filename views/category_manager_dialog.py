@@ -233,6 +233,8 @@ class CategoryManagerDialog(QDialog):
 
         props_layout.addWidget(QLabel(tr("forecast.mode.label")), 3, 0)
         self.forecast_combo = QComboBox()
+        # v2.2.0: zentrale Begriffshilfe direkt am Feld (Budgettopf etc.).
+        self.forecast_combo.setToolTip(tr("help.budget_pot"))
         self.forecast_combo.addItem(tr("dlg.nicht_aendern"), None)
         self.forecast_combo.addItem(tr("forecast.mode.auto"), FORECAST_MODE_AUTO)
         self.forecast_combo.addItem(tr("forecast.mode.pot"), FORECAST_MODE_POT)

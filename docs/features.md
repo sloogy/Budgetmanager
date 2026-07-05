@@ -1,4 +1,4 @@
-# BudgetManager v2.1.3 — Feature-Übersicht
+# BudgetManager v2.2.6 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
@@ -66,13 +66,13 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
 - Multi-Account-System mit Quick/PIN/Passwort-Modus.
 - Stabilitätsfallback unter Wayland über `xcb`, abschaltbar mit `BM_ALLOW_WAYLAND=1`.
 
-## Neu bzw. release-relevant in v2.1.0
+## Neu bzw. release-relevant in v2.2.6
 
-- v2.1.0 als Basis mit Cockpit-, Budgetwarnungs-, Wayland-, i18n-, Restore- und Selbstheilungs-Fixes zusammengeführt.
+- v2.2.6 als Basis mit Cockpit-, Budgetwarnungs-, Wayland-, i18n-, Restore- und Selbstheilungs-Fixes zusammengeführt.
 - Cockpit-Rechtsklick-Menüs sind wieder nutzbar und zeigen echte Cockpit-Aktionen.
 - Budgetwarnungen sind direkt im Cockpit sichtbar.
 - Harte Cockpit-Bezeichnungen wurden in Übersetzungsschlüssel überführt.
-- README, Installationsdoku, Feature-Übersicht, Hilfe, technische Dokumente und Manifest-Beispiele wurden auf v2.1.0 bereinigt.
+- README, Installationsdoku, Feature-Übersicht, Hilfe, technische Dokumente und Manifest-Beispiele wurden auf v2.2.6 bereinigt.
 - CI prüft zusätzlich Formatierung im `model/` (`black --check model/`) und Typen im `model/` (`mypy model/`).
 - Alte Arbeitsberichte und Cache-Ordner wurden aus dem Release-Paket entfernt.
 

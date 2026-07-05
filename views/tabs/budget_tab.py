@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QApplication,
     QAbstractItemDelegate,
+    QHeaderView,
 )
 
 from utils.i18n import tr, trf
@@ -256,6 +257,12 @@ class BudgetTab(QWidget):
         self.warnings = BudgetWarningsModelExtended(conn)
 
         self._internal_change = False
+        # Rebuild-Schutz: Ein Budgettab-Refresh kann von Dialogen, Autosave,
+        # Tabwechsel und Menüaktionen nahezu gleichzeitig angefordert werden.
+        # Während load() alte QTableWidget-Zeilen zerstört, darf kein zweiter
+        # Rebuild starten. Unter PySide6/Qt6 führte genau das zu nativen Aborts.
+        self._loading_budget_table = False
+        self._reload_budget_table_again = False
 
         # Cache: (typ, cat) -> {month:int -> buffer(float)}
         self._buffer_cache: dict[tuple[str, str], dict[int, float]] = {}
@@ -336,17 +343,7 @@ class BudgetTab(QWidget):
             + [tr("header.total")]
         )
 
-        # Spaltenbreiten optimieren
-        self.table.setColumnWidth(0, 280)  # Bezeichnung
-        self.table.setColumnWidth(1, 35)  # Fix
-        self.table.setColumnWidth(2, 35)  # Wiederh.
-        self.table.setColumnWidth(3, 45)  # Tag
-
-        # Spaltenbreiten optimieren
-        self.table.setColumnWidth(0, 280)  # Bezeichnung breiter für Hierarchie
-        self.table.setColumnWidth(1, 35)  # Fix-Stern (schmal)
-        self.table.setColumnWidth(2, 35)  # Wiederh-Symbol (schmal)
-        self.table.setColumnWidth(3, 45)  # Tag (schmal)
+        self._apply_stable_column_widths()
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -434,6 +431,21 @@ class BudgetTab(QWidget):
         self.btn_income_13.clicked.connect(self.open_13th_salary_dialog)
 
         self.load()
+
+    def _apply_stable_column_widths(self) -> None:
+        """Fixiert Budgetspalten, damit Settings-/Theme-Refresh nichts verschiebt."""
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        widths = {
+            0: 280,  # Bezeichnung / Hierarchie
+            1: 35,  # Fix
+            2: 35,  # Wiederkehrend
+            3: 45,  # Tag
+            16: 95,  # Total
+        }
+        for col in range(self.table.columnCount()):
+            header.setSectionResizeMode(col, QHeaderView.Fixed)
+            self.table.setColumnWidth(col, widths.get(col, 85))
 
     def open_13th_salary_dialog(self) -> None:
         """Erfasst den 13. Monatslohn als planbares Einmaleinkommen."""
@@ -889,12 +901,17 @@ class BudgetTab(QWidget):
             return
 
         new_rec = not bool(cat_obj.is_recurring)
+        new_day = (
+            CategoryModel.preferred_recurring_day()
+            if new_rec
+            else int(cat_obj.recurring_day or 1)
+        )
 
         self.cats.update_flags(
             cat_obj.id,
             is_fix=bool(cat_obj.is_fix),
             is_recurring=new_rec,
-            recurring_day=int(cat_obj.recurring_day or 1),
+            recurring_day=new_day,
         )
 
         it_rec = self.table.item(row, 2)
@@ -905,7 +922,7 @@ class BudgetTab(QWidget):
 
         if it_day:
             if new_rec:
-                it_day.setText(str(cat_obj.recurring_day or 1))
+                it_day.setText(str(new_day))
                 it_day.setFlags(
                     Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
                 )
@@ -1141,267 +1158,288 @@ class BudgetTab(QWidget):
         self.load()
 
     def load(self):
-        self._close_table_editor("Budget-Tabelle neu laden")
-        year = int(self.year_spin.value())
-        typ = self._current_typ_db()
-
-        if typ == "Alle":
-            types = [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS]
-        else:
-            types = [typ]
-
-        self._buffer_cache.clear()
-
-        _prev_ic = self._internal_change
-        self._internal_change = True
-        self.table.setUpdatesEnabled(False)
+        if getattr(self, "_loading_budget_table", False):
+            self._reload_budget_table_again = True
+            return
+        self._loading_budget_table = True
         try:
-            self.table.setRowCount(0)
+            self._close_table_editor("Budget-Tabelle neu laden")
+            year = int(self.year_spin.value())
+            typ = self._current_typ_db()
 
-            # Budget-Saldo IMMER anzeigen (auch bei einzelnem Typ)
-            self._insert_total_row()
+            if typ == "Alle":
+                types = [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS]
+            else:
+                types = [typ]
 
-            for t in types:
-                matrix = self.budget.get_matrix(year, t)
-                flat, totals_by_name, buffer_by_name, direct_children_by_name = (
-                    self._build_tree_flat(t, matrix)
-                )
+            self._buffer_cache.clear()
 
-                # Buffer cache (für Footer + Parent-Puffer)
-                for name, own in buffer_by_name.items():
-                    self._buffer_cache[(t, name)] = dict(own)
+            _prev_ic = self._internal_change
+            _prev_block = self.table.blockSignals(True)
+            self._internal_change = True
+            self.table.setUpdatesEnabled(False)
+            try:
+                try:
+                    self.table.clearSelection()
+                    self.table.clearFocus()
+                    self.table.viewport().clearFocus()
+                    self.setFocus(Qt.OtherFocusReason)
+                except Exception:
+                    pass
+                self.table.setRowCount(0)
 
-                # Typ-Header, wenn "Alle"
-                if typ == "Alle" and flat:
-                    r = self.table.rowCount()
-                    self.table.insertRow(r)
-                    header_item = QTableWidgetItem(
-                        trf(
-                            "auto.views_tabs_budget_tab.630_value_0_81e0f68e",
-                            value_0=(display_typ(t)),
-                        )
+                # Budget-Saldo IMMER anzeigen (auch bei einzelnem Typ)
+                self._insert_total_row()
+
+                for t in types:
+                    matrix = self.budget.get_matrix(year, t)
+                    flat, totals_by_name, buffer_by_name, direct_children_by_name = (
+                        self._build_tree_flat(t, matrix)
                     )
-                    header_item.setFlags(header_item.flags() & ~Qt.ItemIsEditable)
-                    font = header_item.font()
-                    font.setBold(True)
-                    header_item.setFont(font)
-                    try:
-                        col = self._typ_color(t)
-                        header_item.setForeground(QBrush(col))
 
-                        # Sichtbarer Farb-Header: komplette Zeile dezent einfärben
-                        from PySide6.QtGui import QColor
+                    # Buffer cache (für Footer + Parent-Puffer)
+                    for name, own in buffer_by_name.items():
+                        self._buffer_cache[(t, name)] = dict(own)
 
-                        bg = QColor(col)
-                        bg.setAlpha(35)
-                        header_item.setBackground(QBrush(bg))
-                        # Restliche Zellen werden erst nach dem Insert gesetzt → später unten nachziehen
-                    except Exception as e:
-                        logger.debug("header_item color failed: %s", e)
-                    header_item.setData(ROLE_TYP, t)
-                    self.table.setItem(r, 0, header_item)
-                    # Leere Zellen für alle restlichen Spalten (1-16)
-                    for c in range(1, 17):
-                        empty = QTableWidgetItem("")
-                        empty.setFlags(empty.flags() & ~Qt.ItemIsEditable)
-                        self.table.setItem(r, c, empty)
-
-                    # Background nachziehen (falls Farbe gesetzt wurde)
-                    try:
-                        col = self._typ_color(t)
-                        from PySide6.QtGui import QColor
-
-                        bg = QColor(col)
-                        bg.setAlpha(35)
-                        for cc in range(1, 17):
-                            itx = self.table.item(r, cc)
-                            if itx:
-                                itx.setBackground(QBrush(bg))
-                    except Exception as e:
-                        logger.debug(
-                            "Zeilen-Hintergrund konnte nicht gesetzt werden: %s", e
+                    # Typ-Header, wenn "Alle"
+                    if typ == "Alle" and flat:
+                        r = self.table.rowCount()
+                        self.table.insertRow(r)
+                        header_item = QTableWidgetItem(
+                            trf(
+                                "auto.views_tabs_budget_tab.630_value_0_81e0f68e",
+                                value_0=(display_typ(t)),
+                            )
                         )
+                        header_item.setFlags(header_item.flags() & ~Qt.ItemIsEditable)
+                        font = header_item.font()
+                        font.setBold(True)
+                        header_item.setFont(font)
+                        try:
+                            col = self._typ_color(t)
+                            header_item.setForeground(QBrush(col))
 
-                for row in flat:
-                    name = row["name"]
-                    depth = int(row["depth"])
-                    has_children = bool(row["has_children"])
-                    path = str(row["path"])
+                            # Sichtbarer Farb-Header: komplette Zeile dezent einfärben
+                            from PySide6.QtGui import QColor
 
-                    r = self.table.rowCount()
-                    self.table.insertRow(r)
+                            bg = QColor(col)
+                            bg.setAlpha(35)
+                            header_item.setBackground(QBrush(bg))
+                            # Restliche Zellen werden erst nach dem Insert gesetzt → später unten nachziehen
+                        except Exception as e:
+                            logger.debug("header_item color failed: %s", e)
+                        header_item.setData(ROLE_TYP, t)
+                        self.table.setItem(r, 0, header_item)
+                        # Leere Zellen für alle restlichen Spalten (1-16)
+                        for c in range(1, 17):
+                            empty = QTableWidgetItem("")
+                            empty.setFlags(empty.flags() & ~Qt.ItemIsEditable)
+                            self.table.setItem(r, c, empty)
 
-                    collapsed = False
-                    if getattr(self, "_tree_view_mode", "tree") == "path":
-                        display_name = path
-                    else:
-                        # Im Baum-Modus: nur den Kategorienamen anzeigen – Einrückung macht die Struktur sichtbar.
-                        display_name = tr_category_name(name)
+                        # Background nachziehen (falls Farbe gesetzt wurde)
+                        try:
+                            col = self._typ_color(t)
+                            from PySide6.QtGui import QColor
 
-                    is_favorite = self.favorites.is_favorite(t, name)
+                            bg = QColor(col)
+                            bg.setAlpha(35)
+                            for cc in range(1, 17):
+                                itx = self.table.item(r, cc)
+                                if itx:
+                                    itx.setBackground(QBrush(bg))
+                        except Exception as e:
+                            logger.debug(
+                                "Zeilen-Hintergrund konnte nicht gesetzt werden: %s", e
+                            )
 
-                    label = self._format_cat_label(
-                        display_name, depth, has_children, collapsed
-                    )
-                    cat_item = QTableWidgetItem(label)
-                    cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsEditable)
-                    cat_item.setData(ROLE_TYP, t)
-                    cat_item.setData(ROLE_CAT_REAL, name)
-                    cat_item.setData(ROLE_DEPTH, depth)
-                    cat_item.setData(ROLE_HAS_CHILDREN, has_children)
-                    cat_item.setData(ROLE_PATH, path)
-                    cat_item.setData(ROLE_COLLAPSED, False)
-                    cat_item.setToolTip(path)
-                    if is_favorite:
-                        cat_item.setIcon(get_icon("⭐"))
-                    self.table.setItem(r, 0, cat_item)
+                    for row in flat:
+                        name = row["name"]
+                        depth = int(row["depth"])
+                        has_children = bool(row["has_children"])
+                        path = str(row["path"])
 
-                    # Spalte 1: Fix (Fix)
-                    is_fix = row.get("is_fix", False)
-                    it_fix = QTableWidgetItem("★" if is_fix else "")
-                    it_fix.setTextAlignment(Qt.AlignCenter)
-                    it_fix.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-                    it_fix.setData(ROLE_TYP, t)
-                    it_fix.setData(ROLE_CAT_REAL, name)
-                    it_fix.setToolTip(tr("budget.tooltip.toggle"))
-                    self.table.setItem(r, 1, it_fix)
+                        r = self.table.rowCount()
+                        self.table.insertRow(r)
 
-                    # Spalte 2: Wiederkehrend (∞)
-                    is_rec = row.get("is_recurring", False)
-                    it_rec = QTableWidgetItem("∞" if is_rec else "")
-                    it_rec.setTextAlignment(Qt.AlignCenter)
-                    it_rec.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
-                    it_rec.setData(ROLE_TYP, t)
-                    it_rec.setData(ROLE_CAT_REAL, name)
-                    it_rec.setToolTip(tr("budget.tooltip.toggle"))
-                    self.table.setItem(r, 2, it_rec)
+                        collapsed = False
+                        if getattr(self, "_tree_view_mode", "tree") == "path":
+                            display_name = path
+                        else:
+                            # Im Baum-Modus: nur den Kategorienamen anzeigen – Einrückung macht die Struktur sichtbar.
+                            display_name = tr_category_name(name)
 
-                    # Spalte 3: Tag
-                    rec_day = row.get("recurring_day", 1)
-                    it_day = QTableWidgetItem(str(rec_day) if is_rec else "")
-                    it_day.setTextAlignment(Qt.AlignCenter)
-                    if is_rec:
-                        it_day.setFlags(
-                            Qt.ItemIsEditable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+                        is_favorite = self.favorites.is_favorite(t, name)
+
+                        label = self._format_cat_label(
+                            display_name, depth, has_children, collapsed
                         )
-                    else:
-                        it_day.setFlags(Qt.ItemIsEnabled)
-                    it_day.setData(ROLE_TYP, t)
-                    it_day.setData(ROLE_CAT_REAL, name)
-                    self.table.setItem(r, 3, it_day)
+                        cat_item = QTableWidgetItem(label)
+                        cat_item.setFlags(cat_item.flags() & ~Qt.ItemIsEditable)
+                        cat_item.setData(ROLE_TYP, t)
+                        cat_item.setData(ROLE_CAT_REAL, name)
+                        cat_item.setData(ROLE_DEPTH, depth)
+                        cat_item.setData(ROLE_HAS_CHILDREN, has_children)
+                        cat_item.setData(ROLE_PATH, path)
+                        cat_item.setData(ROLE_COLLAPSED, False)
+                        cat_item.setToolTip(path)
+                        if is_favorite:
+                            cat_item.setIcon(get_icon("⭐"))
+                        self.table.setItem(r, 0, cat_item)
 
-                    # Typ-Farbe auf Label/Badges anwenden (Spalten 0-3)
-                    try:
-                        col = self._typ_color(t)
-                        brush = QBrush(col)
-                        for cc in range(0, 4):
-                            itx = self.table.item(r, cc)
-                            if itx:
-                                itx.setForeground(brush)
-                                from PySide6.QtGui import QColor
+                        # Spalte 1: Fix (Fix)
+                        is_fix = row.get("is_fix", False)
+                        it_fix = QTableWidgetItem("★" if is_fix else "")
+                        it_fix.setTextAlignment(Qt.AlignCenter)
+                        it_fix.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                        it_fix.setData(ROLE_TYP, t)
+                        it_fix.setData(ROLE_CAT_REAL, name)
+                        it_fix.setToolTip(tr("budget.tooltip.toggle"))
+                        self.table.setItem(r, 1, it_fix)
 
-                                bg = QColor(col)
-                                bg.setAlpha(18)
-                                itx.setBackground(QBrush(bg))
-                    except Exception as e:
-                        logger.debug("col = self._typ_color(t): %s", e)
+                        # Spalte 2: Wiederkehrend (∞)
+                        is_rec = row.get("is_recurring", False)
+                        it_rec = QTableWidgetItem("∞" if is_rec else "")
+                        it_rec.setTextAlignment(Qt.AlignCenter)
+                        it_rec.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+                        it_rec.setData(ROLE_TYP, t)
+                        it_rec.setData(ROLE_CAT_REAL, name)
+                        it_rec.setToolTip(tr("budget.tooltip.toggle"))
+                        self.table.setItem(r, 2, it_rec)
 
-                    _SEP = "─" * 26
-                    row_total = 0.0
-                    row_buf_total = 0.0
-                    row_child_total = 0.0
-                    for m in range(1, 13):  # m = logischer Monat (1-12)
-                        col_idx = (
-                            m + 3
-                        )  # Spalte 4-15 (wegen Fix/Wiederkehrend/Tag davor)
+                        # Spalte 3: Tag
+                        rec_day = row.get("recurring_day", 1)
+                        it_day = QTableWidgetItem(str(rec_day) if is_rec else "")
+                        it_day.setTextAlignment(Qt.AlignCenter)
+                        if is_rec:
+                            it_day.setFlags(
+                                Qt.ItemIsEditable
+                                | Qt.ItemIsEnabled
+                                | Qt.ItemIsSelectable
+                            )
+                        else:
+                            it_day.setFlags(Qt.ItemIsEnabled)
+                        it_day.setData(ROLE_TYP, t)
+                        it_day.setData(ROLE_CAT_REAL, name)
+                        self.table.setItem(r, 3, it_day)
 
-                        total_val = float(totals_by_name.get(name, {}).get(m, 0.0))
-                        own_val = float(buffer_by_name.get(name, {}).get(m, 0.0))
-                        child_val = float(total_val - own_val)
+                        # Typ-Farbe auf Label/Badges anwenden (Spalten 0-3)
+                        try:
+                            col = self._typ_color(t)
+                            brush = QBrush(col)
+                            for cc in range(0, 4):
+                                itx = self.table.item(r, cc)
+                                if itx:
+                                    itx.setForeground(brush)
+                                    from PySide6.QtGui import QColor
 
-                        _cell_text = fmt_amount(total_val)
-                        it = QTableWidgetItem(_cell_text)
-                        it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                        it.setData(ROLE_TYP, t)
+                                    bg = QColor(col)
+                                    bg.setAlpha(18)
+                                    itx.setBackground(QBrush(bg))
+                        except Exception as e:
+                            logger.debug("col = self._typ_color(t): %s", e)
+
+                        _SEP = "─" * 26
+                        row_total = 0.0
+                        row_buf_total = 0.0
+                        row_child_total = 0.0
+                        for m in range(1, 13):  # m = logischer Monat (1-12)
+                            col_idx = (
+                                m + 3
+                            )  # Spalte 4-15 (wegen Fix/Wiederkehrend/Tag davor)
+
+                            total_val = float(totals_by_name.get(name, {}).get(m, 0.0))
+                            own_val = float(buffer_by_name.get(name, {}).get(m, 0.0))
+                            child_val = float(total_val - own_val)
+
+                            _cell_text = fmt_amount(total_val)
+                            it = QTableWidgetItem(_cell_text)
+                            it.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                            it.setData(ROLE_TYP, t)
+                            if has_children:
+                                ch_names = direct_children_by_name.get(name, [])
+                                lines = [
+                                    f"{tr('budget.tooltip.puffer')}:  {fmt_amount(max(0.0, own_val))}",
+                                    _SEP,
+                                ]
+                                for ch in ch_names:
+                                    ch_v = float(totals_by_name.get(ch, {}).get(m, 0.0))
+                                    lines.append(
+                                        f"  {tr_category_name(ch)}:  {fmt_amount(ch_v)}"
+                                    )
+                                ch_sum = sum(
+                                    float(totals_by_name.get(ch, {}).get(m, 0.0))
+                                    for ch in ch_names
+                                )
+                                lines += [
+                                    _SEP,
+                                    f"{tr('budget.tooltip.children_sum')}:  {fmt_amount(ch_sum)}",
+                                ]
+                                it.setToolTip("\n".join(lines))
+                            else:
+                                it.setToolTip(path)
+
+                            self.table.setItem(r, col_idx, it)
+                            row_total += total_val
+                            row_buf_total += own_val
+                            row_child_total += child_val
+
                         if has_children:
                             ch_names = direct_children_by_name.get(name, [])
-                            lines = [
-                                f"{tr('budget.tooltip.puffer')}:  {fmt_amount(max(0.0, own_val))}",
+                            _puffer_year = max(0.0, row_buf_total)
+                            tot_lines = [
+                                f"{tr('budget.tooltip.puffer')}:  {fmt_amount(_puffer_year)}",
                                 _SEP,
                             ]
                             for ch in ch_names:
-                                ch_v = float(totals_by_name.get(ch, {}).get(m, 0.0))
-                                lines.append(
-                                    f"  {tr_category_name(ch)}:  {fmt_amount(ch_v)}"
+                                ch_year = sum(
+                                    float(totals_by_name.get(ch, {}).get(mm, 0.0))
+                                    for mm in range(1, 13)
                                 )
-                            ch_sum = sum(
-                                float(totals_by_name.get(ch, {}).get(m, 0.0))
+                                tot_lines.append(
+                                    f"  {tr_category_name(ch)}:  {fmt_amount(ch_year)}"
+                                )
+                            ch_year_sum = sum(
+                                sum(
+                                    float(totals_by_name.get(ch, {}).get(mm, 0.0))
+                                    for mm in range(1, 13)
+                                )
                                 for ch in ch_names
                             )
-                            lines += [
+                            tot_lines += [
                                 _SEP,
-                                f"{tr('budget.tooltip.children_sum')}:  {fmt_amount(ch_sum)}",
+                                f"{tr('budget.tooltip.children_sum')}:  {fmt_amount(ch_year_sum)}",
                             ]
-                            it.setToolTip("\n".join(lines))
+                            tot_tip = "\n".join(tot_lines)
+                            tot_text = fmt_amount(row_total)
                         else:
-                            it.setToolTip(path)
+                            tot_tip = path
+                            tot_text = fmt_amount(row_total)
 
-                        self.table.setItem(r, col_idx, it)
-                        row_total += total_val
-                        row_buf_total += own_val
-                        row_child_total += child_val
+                        tot = QTableWidgetItem(tot_text)
+                        tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
+                        tot.setToolTip(tot_tip)
 
-                    if has_children:
-                        ch_names = direct_children_by_name.get(name, [])
-                        _puffer_year = max(0.0, row_buf_total)
-                        tot_lines = [
-                            f"{tr('budget.tooltip.puffer')}:  {fmt_amount(_puffer_year)}",
-                            _SEP,
-                        ]
-                        for ch in ch_names:
-                            ch_year = sum(
-                                float(totals_by_name.get(ch, {}).get(mm, 0.0))
-                                for mm in range(1, 13)
-                            )
-                            tot_lines.append(
-                                f"  {tr_category_name(ch)}:  {fmt_amount(ch_year)}"
-                            )
-                        ch_year_sum = sum(
-                            sum(
-                                float(totals_by_name.get(ch, {}).get(mm, 0.0))
-                                for mm in range(1, 13)
-                            )
-                            for ch in ch_names
-                        )
-                        tot_lines += [
-                            _SEP,
-                            f"{tr('budget.tooltip.children_sum')}:  {fmt_amount(ch_year_sum)}",
-                        ]
-                        tot_tip = "\n".join(tot_lines)
-                        tot_text = fmt_amount(row_total)
-                    else:
-                        tot_tip = path
-                        tot_text = fmt_amount(row_total)
+                        # Total-Spalte: Parent mit Children -> read-only
+                        if has_children:
+                            tot.setFlags(tot.flags() & ~Qt.ItemIsEditable)
+                        self.table.setItem(r, 16, tot)
 
-                    tot = QTableWidgetItem(tot_text)
-                    tot.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-                    tot.setToolTip(tot_tip)
+                # Budget-Saldo immer aktualisieren
+                self._update_total_row()
 
-                    # Total-Spalte: Parent mit Children -> read-only
-                    if has_children:
-                        tot.setFlags(tot.flags() & ~Qt.ItemIsEditable)
-                    self.table.setItem(r, 16, tot)
-
-            # Budget-Saldo immer aktualisieren
-            self._update_total_row()
-
-            self._reapply_tree_visibility()
-            self._apply_table_styles()
-            self.table.resizeColumnsToContents()
-            self._update_overview_bar()
+                self._reapply_tree_visibility()
+                self._apply_table_styles()
+                self._apply_stable_column_widths()
+                self._update_overview_bar()
+            finally:
+                self.table.setUpdatesEnabled(True)
+                self._internal_change = _prev_ic
+                self.table.blockSignals(_prev_block)
         finally:
-            self.table.setUpdatesEnabled(True)
-            self._internal_change = _prev_ic
+            self._loading_budget_table = False
+            if getattr(self, "_reload_budget_table_again", False):
+                self._reload_budget_table_again = False
+                QTimer.singleShot(0, self.load)
 
     # Einheitliches API: MainWindow kann beim Tab-Wechsel `refresh()` nutzen.
     def refresh(self) -> None:

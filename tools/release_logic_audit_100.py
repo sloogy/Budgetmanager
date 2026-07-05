@@ -251,14 +251,14 @@ def check_release_platform_and_updater() -> None:
     assert assets["windows_installer_zip"]["type"] == "installer-zip"
     assert assets["windows"]["url"].endswith("portable-windows.zip")
     assert assets["linux"]["url"].endswith("portable-linux.zip")
-    assert assets["direct_windows_exe"]["type"] == "exe"
-    assert assets["direct_linux_binary"]["type"] == "binary"
+    assert "direct_windows_exe" not in assets
+    assert "direct_linux_binary" not in assets
 
     common = (ROOT / "updater" / "common.py").read_text(encoding="utf-8")
     check = (ROOT / "updater" / "check_update.py").read_text(encoding="utf-8")
     apply = (ROOT / "updater" / "apply_update.py").read_text(encoding="utf-8")
     dialog = (ROOT / "views" / "update_dialog.py").read_text(encoding="utf-8")
-    for needle in ["windows_installer", "direct_windows_exe", "direct_linux_binary", "portable_zip", "preferred_asset_keys"]:
+    for needle in ["windows_installer", "portable_zip", "preferred_asset_keys"]:
         assert needle in common
     assert 'asset_type == "installer"' in check
     assert "write_check_result" in check
@@ -283,9 +283,11 @@ def check_graphs_and_dau_static() -> None:
     assert "test_aggregate_top_bookings_sums_salary_once" in overview_test
 
     kpi = (ROOT / "views" / "tabs" / "overview_kpi_panel.py").read_text(encoding="utf-8")
+    # v2.2.0: Monats- und Bilanz-Verlauf sind in EINEM "Verlauf"-Reiter
+    # zusammengelegt (subtab.trend); die Erklär-Tooltips der beiden Charts
+    # bleiben bestehen und werden weiterhin geprüft.
     for needle in [
-        "overview.subtab.monthly_trend",
-        "overview.subtab.balance_trend",
+        "overview.subtab.trend",
         "overview.subtab.top_bookings",
         "overview.tip.monthly_trend",
         "overview.tip.balance_trend",

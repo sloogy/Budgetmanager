@@ -159,3 +159,22 @@ def test_category_search_matches_child_name_and_real_name():
     ]
     assert picker.filter_grouped_categories(grouped, "coop") == grouped
     assert picker.filter_grouped_categories(grouped, "lebens") == grouped
+
+
+def test_parent_category_preset_survives_short_label_picker():
+    """Edit-Fall v2.1.7: Alte Buchung auf Parent-Kategorie bearbeiten.
+
+    Parents mit Unterkategorien sind seit v2.1.7 nicht mehr im Picker
+    gelistet. ``TrackerDialog._set_combo_by_data`` setzt den Preset-Wert
+    dann als Freitext (currentIndex=-1). Der Resolver muss daraus wieder
+    exakt die Parent-Kategorie liefern und darf nicht auf den ersten
+    Picker-Eintrag zurückfallen — sonst würde die Buchung beim Speichern
+    still umgehängt.
+    """
+    picker = _picker()
+    combo = FakeCombo(
+        [("★ Miete", "Miete"), ("Internet", "Internet"), ("Lebensmittel", "Lebensmittel")],
+        current_index=-1,
+        typed_text="Wohnen",
+    )
+    assert picker.resolve_combo_category(combo) == "Wohnen"

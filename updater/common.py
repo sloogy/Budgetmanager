@@ -170,11 +170,12 @@ def read_install_type() -> str:
 def preferred_asset_keys(platform_key: str) -> list[str]:
     """Asset-Prioritaet fuer die unterschiedlichen Build-Arten.
 
-    Drei Auslieferungen haben unterschiedliche Updatepfade:
+    Zwei robuste Auslieferungen haben unterschiedliche Updatepfade:
     - Windows-Installer: Setup-EXE herunterladen und starten
-    - Standalone-EXE/Binary: rohe Binary herunterladen und die laufende Datei
-      nach App-Ende ersetzen
-    - Source/Portable-Fallback: ZIP stagen und Programmdateien ersetzen, data/ bleibt
+    - Portable onedir ZIP: Bundle mit _internal stagen und Programmdateien ersetzen, data/ bleibt
+
+    Rohe Einzel-EXE/Binary-Assets werden bewusst nicht mehr bevorzugt: PyInstaller-onedir
+    benötigt _internal/python312.dll bzw. die zugehörigen Bibliotheken.
     """
     keys: list[str] = []
     install_type = read_install_type()
@@ -182,11 +183,8 @@ def preferred_asset_keys(platform_key: str) -> list[str]:
     if platform_key == "windows":
         if install_type in {"windows_installer", "installer"}:
             keys.append("windows_installer")
-        # Ab v2.1.3 werden Windows-Builds als PyInstaller-onedir ausgeliefert.
-        # Eine rohe Einzel-EXE ist ohne _internal/python312.dll nicht lauffähig.
         keys.extend(["windows", "portable_zip"])
     elif platform_key == "linux":
-        # Auch Linux-onedir braucht seine _internal-Abhängigkeiten.
         keys.extend(["linux", "portable_zip"])
     else:
         keys.append(platform_key)

@@ -1,5 +1,227 @@
-Budgetmanager Version 2.1.3
-Datum: 1. Juli 2026
+Budgetmanager Version 2.2.6
+Datum: 5. Juli 2026
+
+KILLCRITIC: LERNZUSTAND FOLGT RENAME/REASSIGN 2.2.6
+-------------------------------------------------------------
+- FIX (Datenkonsistenz): tracking_learning_state (typ+category) wird jetzt bei Rename UND Reassign mitgefuehrt (vorher verwaist -> Nutzerentscheidung verloren, Kategorie taucht unter neuem Namen wieder im Lernmodus auf, alte Zeile bleibt Leiche). Betroffen und gefixt: CategoryModel.rename_and_cascade, CategoryModel._move_category_text_references, UndoRedoModel._rename_cascade (UPDATE OR IGNORE + DELETE, konfliktfrei). tracking_learning_state jetzt in Undo-Whitelist.
+- HAERTUNG: TrackingModel.delete raeumt entry_tags zusaetzlich explizit auf (unabhaengig vom foreign_keys-Pragma), analog zum Kategorie-Delete.
+- Nachgewiesen unberuehrt: Trennung Vorschlagsengine/Lernmodus, POT-Cap=Max (nicht Summe), POT-Heuristik, Sparziel-Vorzeichen bei Undo+Redo, Data-Start-Boundary.
+- i18n: de/en/fr je 2285 Keys, Paritaet gewahrt. Neue Regression: tests/test_release_226_learning_state_cascade.py (5 Tests).
+
+CHECKS 2.2.6
+-------------
+- python tools/sync_version.py --check (2.2.6 synchron)
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2285 Keys, 0 Fehler)
+- python tools/dau_first_run_check.py (alle Checks bestanden)
+- python tools/release_logic_audit_100.py (100 Loops, 0 Findings)
+- python tools/deep_logic_release_audit.py (500 Loops / 3500 Checks, 0 Findings)
+- python tools/lint_procedure_check.py (PASS)
+- pytest headless: 362 passed, 2 skipped
+- KILLCRITIC-Invarianten-Harness: 100 Loops (10 Themen x 10), 0 Findings
+
+
+ERSTSTART-FUEHRUNG: ENTER + WILLKOMMEN/ANLEITUNG 2.2.5
+-------------------------------------------------------------
+- Setup-Assistent: Enter/Return bewegt vorwaerts (Weiter bzw. Fertig); Weiter/Fertig sind Default-Buttons, in mehrzeiligen Textfeldern bleibt Enter ein Zeilenumbruch, Zurueck feuert nie per Enter.
+- Willkommen ausgebaut: erste Seite erklaert zwei Wege (Express/gefuehrt) + Enter-Tipp, dreisprachig.
+- Anleitung ausgebaut: Hilfe-Thema "Einstieg" mit Cockpit/Ampel/Naechste-Schritte/zwei Wege; neues Thema "Monatsabschluss" (Ueberschuss/Defizit, Fixkosten werden nie gekuerzt), de/en/fr.
+- Basis: KILLCRITIC-v2.2.4. v2.2.3-Bericht vom Sweep ausgenommen.
+- i18n: de/en/fr je 2277 Keys, Paritaet gewahrt. Neue Regression: tests/test_release_225_onboarding_enter.py (5 Tests).
+
+CHECKS 2.2.5
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2277 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py
+- python tools/lint_procedure_check.py
+- pytest headless (Qt-freie Tests)
+
+
+FIXKOSTEN-CHECK RESPEKTIERT FAELLIGKEITSTAG 2.2.4
+-------------------------------------------------------------
+- Cockpit-Check "offene Fixkosten": Positionen gelten im laufenden Monat erst ab ihrem Soll-Buchungstag als offen – kein Fehlalarm mehr am Monatsanfang (z.B. Miete mit Tag 25). Vergangene Monate unverändert; bereits gebucht/erfüllt zählt nicht.
+- Logik ausgelagert nach model/fixed_cost_due.py (is_open_this_month), Qt-frei und regressionsgesichert; Cockpit nutzt sie.
+- Basis: KILLCRITIC-v2.2.3 (trf-Import-Blocker, vollständige Zählung, Button-Text) übernommen.
+- v2.2.3-KILLCRITIC-Bericht vom Sweep ausgenommen.
+- Neue Regression: tests/test_release_224_fixed_cost_due.py (7 Tests).
+
+CHECKS 2.2.4
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2277 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py
+- python tools/lint_procedure_check.py
+- pytest headless (Qt-freie Tests)
+
+
+GEFUEHRTES COCKPIT: NAECHSTE SCHRITTE 2.2.3
+-------------------------------------------------------------
+- Cockpit zeigt unter der Ampel bis zu 3 konkrete nächste Handlungen: erste Buchung (Empty State), {n} offene Fixkosten (aus bestehender Prüfung), Monatsabschluss ab dem 25. (falls nicht abgeschlossen); sonst "Alles erledigt".
+- Basis: RECURRING_DAY_DEFAULT-Fix (Fälligkeitstag respektiert Einstellung auf allen 7 Pfaden) mit eigenen Regressionen.
+- v2.2.2-Audit-Berichte vom Sweep ausgenommen (Historie unverändert).
+- i18n: de/en/fr je 2278 Keys. Regression: +1 statischer Test.
+
+CHECKS 2.2.3
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2278 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py
+- python tools/lint_procedure_check.py
+- pytest headless (Qt-freie Tests)
+
+
+KILLCRITIC-NACHHÄRTUNG 2.2.2
+-----------------------------
+- Übersicht: Tag-Filter triggert Refresh und läuft zentral über TrackingModel.get_entries_in_range(..., tag_id=...).
+- Tag-Filter wirkt jetzt konsistent auf KPIs, Diagramme, Budget-Ist-Werte, Kategoriebaum, Budget-Tabelle und Transaktionsliste.
+- Rechte Übersichts-Seitenleiste: Label "Tags" statt missverständlichem "Tag"/Fälligkeitstag.
+- Hilfe erklärt Favorit vs. Tag/Label vs. Fälligkeitstag.
+- Regression: funktionaler Test für get_entries_in_range(..., tag_id=...).
+
+TAG-FILTER UND EXPRESS-SETUP 2.2.2
+-------------------------------------------------------------
+- Übersicht: Tag-Filter-Combo in der Filterleiste; filtert zentral die geladenen Buchungen und wirkt auf KPIs, alle Diagramm-Reiter und Listen. Budgets tragen keine Tags (Tooltip erklärt die Ist-Sicht).
+- Setup-Assistent: "⚡ Express-Einrichtung" – Standard-Kategorien (falls leer, via insert_default_categories), Lernmodus an, optionale Schritte übersprungen, Sprung zur Abschluss-Seite; Sicherheitsabfrage vorab.
+- Basis: KILLCRITIC-FIXED-Stand (CI-Black-Pin entfernt); Grenzfälle Dezember-Abschluss, Doppel-Abschluss, Null-Betrag geprüft.
+- v2.2.1-Audit-Bericht vom Sweep ausgenommen (Historie unverändert).
+- i18n: de/en/fr je 2273 Keys. Regressionen: +3 in tests/test_release_221_reset_and_ux.py.
+
+CHECKS 2.2.2
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2273 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py
+- python tools/lint_procedure_check.py
+- pytest headless (Qt-freie Tests)
+
+
+RESET-FIXES, SICHTBARE FEHLER, ERKLAERTE VORSCHLAEGE 2.2.1
+-------------------------------------------------------------
+- Setup-Reset wird nach Bestätigung DIREKT ausgeführt (mit Backup) statt nur den DB-Dialog zu öffnen; Ergebnis/Fehler sichtbar, Setup-Fortschritt neu bewertet.
+- Teilreset neu: "Nur Budgets zurücksetzen" – Kategorien UND Buchungen bleiben; geleert: budget, budget_warnings, suggestion_accepted, tracking_learning_state. Vollreset dynamisch, system_flags geschützt.
+- Tracking-Tabelle: Kurzlabel, voller Pfad als Tooltip.
+- Schnelleingabe: Auswahl-Zwang bei mehrdeutigem Suchtext (kein stiller Erst-Treffer).
+- Daten-Hub: Fehler als rote Zeile + Dialog statt nur im Log.
+- Vorschlagsbericht: "Warum?"-Tooltips je Zeile, 🆕 für Lernvorschläge.
+- Schnellerfassung: Undo-Hinweis in der Statuszeile nach jeder Buchung.
+- Geplant 2.2.2: Tag-Filter Übersicht, Express-Setup (docs/open-tasks.md).
+- i18n: de/en/fr je 2268 Keys. Neue Regression: tests/test_release_221_reset_and_ux.py (9 Tests).
+
+CHECKS 2.2.1
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2268 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py
+- python tools/lint_procedure_check.py
+- pytest headless (Qt-freie Tests)
+
+
+COCKPIT-START, AMPEL, MONATSABSCHLUSS, VEREINFACHTE ÜBERSICHT 2.2.0
+-------------------------------------------------------------
+- Cockpit ist Startseite (Einstellung start_on_cockpit, Standard an) mit Ampel-Statuszeile und Karte "Frei verfügbar" (E − A − S).
+- Einheitlicher Ampel-Monatsstatus (model/month_status.py) in Cockpit UND Übersicht: Rot = Budget überschritten oder Rest negativ; Gelb = ≥90% Budget oder Rest <5% der Einnahmen; Grün = im Plan. Tooltip erklärt die Regeln.
+- Monatsabschluss-Assistent (Cockpit-Button): E − A − S; Überschuss per Klick in Ersparnis (Vorschlag: offenes Sparziel mit grösstem Restbedarf, Buchung am Monatsletzten); Defizit per Klick aus Ersparnis MIT Guthaben decken; Info zu variablen Budgets mit Spielraum im Folgemonat – Fixkosten/wiederkehrende werden NIE zur Kürzung vorgeschlagen. Vermerk in system_flags; Buchungen normal & undo-fähig.
+- Tracking merkt je Konto die zuletzt gebuchte Kategorie (Schnellerfassung + Buchungsdialog).
+- Übersicht: 4 statt 6 Reiter (Plan vs. Ist, Kategorien, Verlauf [Ausgaben+Bilanz], Top-Buchungen); Konto-Vergleich entfiel; Ampel über den KPIs.
+- Hilfe-Tooltips: Budgettopf (Kategorie-Manager), Ersparnisse, Monatsabschluss, Ampel.
+- i18n: 52 neue Keys, de/en/fr je 2259, Parität geprüft.
+- Neue Regression: tests/test_release_220_cockpit_monthclose.py (14 Tests).
+
+CHECKS 2.2.0
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2259 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py
+- python tools/lint_procedure_check.py
+- pytest headless (Qt-freie Tests)
+
+
+BUDGET-VORSCHLAG: LERNMODUS-INTEGRATION, ANLEITUNG UND WIKI 2.1.7
+
+ÜBERSICHT-GRAPHEN LESBARER
+- Hauptgraph von verschachteltem Donut auf Plan/Ist-Balken je Konto umgestellt.
+- Ausgaben-Kategorien und Top-Buchungen als horizontale Ranking-Balken.
+- Konto-Vergleich nicht mehr als Kreisdiagramm, weil Einnahmen/Ausgaben/Ersparnisse keine Anteile desselben Topfs sind.
+- Kurze Leselogik direkt oberhalb jedes Diagramms ergänzt.
+-------------------------------------------------------------
+- BLOCKER-FIX Erststart: Der Budget-Ausfüllschritt blockiert nicht mehr, wenn der Lernmodus aktiv ist ("erst tracken, Budget später lernen"); eigener Hinweistext, Checkbox-Umschalten aktualisiert die Freigabe sofort. Ohne Lernmodus bleibt die Mindestdaten-Prüfung hart.
+- BLOCKER-FIX Banner: initial-Lernvorschläge zeigen 🆕 statt des falschen Defizit-Symbols 📉.
+- Schema-Version nicht rückläufig: CURRENT_VERSION=15 mit idempotenter v14→v15-Migration, per Regression abgesichert.
+- CHANGELOG-Struktur repariert (2.1.5/2.1.4-Historie wiederhergestellt).
+- Neue Regression: tests/test_release_217_blocker_fixes_static.py.
+- Wiki/Anleitung nachgezogen: Erststart mit aktivem Lernmodus, Banner-Symbole und Entscheidungspfad sind in README, Features, User-Guides und Help-Wiki dokumentiert.
+- Basis: 2.1.6 bleibt die technische Hauptbasis, weil die Budgetarten dort sauber in model/budget_learning.py zentralisiert sind.
+- Aus 2.1.5 integriert: persistente Lernstatus-Aktionen im Vorschlagsbericht (weiter beobachten, ignorieren, unregelmäßig markieren, zurücksetzen), Migration tracking_learning_state und Kategorie-Kaskaden für Rename/Delete.
+- Lernmodus bleibt getrennt: Ohne positives Jahresbudget entsteht nur ein Startbudget-Vorschlag; sobald ein Budget existiert, übernimmt ausschließlich die normale Budget-Vorschlagslogik.
+- Dialog erweitert: Lernvorschläge können per Rechtsklick gesteuert werden; „Weiter beobachten“ und „Ignorieren“ werden dauerhaft gespeichert statt nur für die laufende Sitzung zu verschwinden.
+- Einstellungen korrigiert: Automatisches Ausblenden nach langer stabiler Lernphase ist optional und standardmäßig aus; die Kernregel „Budget gesetzt = Lernmodus beendet“ bleibt immer aktiv.
+- Jahreswechsel erweitert: Die Kopier-Prüfliste zeigt zusätzlich einen verständlichen Hinweis, wenn aus Tracking-Daten Startbudgets fürs neue Jahr erkannt wurden.
+- Anleitung/Wiki erweitert: Lernmodus, Budgetarten, Jahreswechsel, Entscheidungspfade und sichere Nutzung sind in README, Features, User-Guide und Help/Wiki dokumentiert.
+- Neue Regressionen: tests/test_tracking_learning_integrated_v217.py prüft Migration, Statusaktionen, Auto-Ende und Berichtsschalter.
+
+CHECKS 2.1.7
+-------------
+- python -m compileall -q .
+- python -m pytest -q tests/test_tracking_budget_learning.py tests/test_tracking_budget_learning_extended.py tests/test_tracking_learning_integrated_v217.py tests/test_year_end_rules_and_13th_salary.py tests/test_release_214_ui_fixes_static.py
+- python tools/sync_version.py --check
+- python tools/i18n_audit.py
+
+BUDGET-VORSCHLAG: LERNMODUS FINAL-MERGE 2.1.6
+-------------------------------------------------------------
+- Basis bleibt 2.1.6 FINAL; 2.1.5 UNIFIED wurde nicht übernommen, sondern nur als Test-/Ideengeber genutzt.
+- Lernmodus bleibt strikt getrennt von der normalen Budget-Vorschlagslogik: Kategorien ohne positives Jahresbudget erzeugen ausschließlich direction="initial"; Kategorien mit Jahresbudget laufen ausschließlich über die normale Anpassungslogik.
+- Lernmodus erkennt Budgetarten: Fix + wiederholend, Fix + inkrementell, nur wiederholend, variabler Topf, Ersparnis-Topf, schwankendes Einkommen und einmalig/unregelmäßig.
+- Beim Übernehmen eines Lernvorschlags muss die Budgetart bestätigt oder geändert werden; Optionen: Übernehmen, Weiter beobachten, Ignorieren.
+- Konservative Rundung: Ausgaben/Ersparnisse aufrunden, Einkommen abrunden. Unregelmäßige Kosten werden als monatliche Rückstellung/Topf aus dem beobachteten Zeitraum berechnet.
+- Erststart-Assistent und Einstellungen enthalten Lernmodus-Optionen; Anzeige im Budgetvorschlagsbericht separat schaltbar, automatisches Ende bei gesetztem Jahresbudget bleibt als Kernregel aktiv.
+- Jahreswechsel: Kategorien ohne Budget, aber mit Tracking, erscheinen in der Kopier-Prüfliste als mögliche Startbudgets fürs neue Jahr. Offene Lernphasen nutzen den letzten wirklich getrackten Monat statt pauschal Dezember.
+- Neue Regressionen für Miete, schwankenden Lohn, Gesundheit/Franchise, Budgetart-Übernahme und Jahreswechsel-Lernzeilen.
+
+CHECKS 2.1.6
+-------------
+- python -m compileall -q model views settings.py settings_dialog.py app_info.py
+- python -m pytest -q tests/test_tracking_budget_learning.py tests/test_tracking_budget_learning_extended.py tests/test_year_end_rules_and_13th_salary.py tests/test_release_214_ui_fixes_static.py
+
+
+BUDGET-VORSCHLAG: TRACKING-LERNMODUS + UI-FIXES 2.1.6
+-------------------------------------------------------------
+- NEU – Separater Tracking-Lernmodus: Kategorien ohne Budget im GESAMTEN Jahr erhalten aus manuellem Tracking eigene Budget-Vorschläge – getrennt von der normalen Vorschlagsengine, die unverändert bleibt und weiterhin nur bei gesetztem Budget greift. Stufen: 1. Monat beobachten, ab 2 Monaten (einstellbar) Hochrechnung/Vorschlag, ab 3 Monaten (einstellbar) stabiler Vorschlag. Median statt Durchschnitt; laufender Monat optional taggenau hochgerechnet; nur manuelle Buchungen.
+- Einstellungen erweitert: Lernmodus an/aus, Vorschlags-Schwelle, Stabilitäts-Schwelle, Hochrechnung des laufenden Monats (Budget-Übersicht).
+- Budget-Vorschlagsdialog: Lernvorschläge als "neu" (i18n), sprachunabhängige DB-Typen (Qt.UserRole), feste Spaltenbreiten.
+- BUG-FIX Tabellenbreiten (Wurzelursache): utils/table_autosize.py setzte bei jeder Theme-/Schriftanwendung die Standard-Spaltenbreite ALLER Tabellen auf ~Zeilenhöhe zurück und überschrieb Resize-Modi global. Nur noch Zeilenhöhen-Anpassung; zusätzlich feste Breiten in Budget-/Tracking-Tab und Vorschlagsdialog.
+- BUG-FIX Diagramme: QChart ignoriert Stylesheets – CompactChart rendert jetzt transparent, färbt Titel/Legende/Achsen/Slice-Labels nach jedem Serienaufbau über ui_colors, 4px-Margins gegen abgeschnittene Aussenlabels. Inhaltlich: Donut zeigt Über-Budget-Anteile, Bilanz = Einkommen − Ausgaben − Ersparnisse.
+- i18n: 3 neue Vorschlags-/Dialog-Keys + Lernmodus-Einstellungstexte, de/en/fr je 2183 Keys, Parität geprüft; keine hardcodierten Lernmodus-Meldungen mehr.
+- Neue Regressionen: tests/test_tracking_budget_learning.py und tests/test_release_214_ui_fixes_static.py.
+
+CHECKS 2.1.6
+-------------
+- python tools/sync_version.py --check
+- python -m compileall -q .
+- python tools/i18n_audit.py (de=en=fr, je 2183 Keys)
+- python tools/dau_first_run_check.py
+- python tools/release_logic_audit_100.py
+- python tools/deep_logic_release_audit.py
+- python tools/lint_procedure_check.py
+- pytest headless (Qt-freie Tests)
 
 
 BUDGET-VORSCHLAG: FEHLKLASSIFIZIERTE MONATSAUSGABEN 2.1.3

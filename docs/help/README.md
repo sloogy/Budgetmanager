@@ -13,14 +13,14 @@ Das Cockpit ist die ruhige Startseite: Es zeigt das Wichtigste, ohne die Fachrei
 > Direkt anzeigbare Mindmap: `docs/help/mindmap.de.html`, `docs/help/mindmap.en.html`, `docs/help/mindmap.fr.html` (Browser) · Mermaid-Quellen: `docs/help/mindmap.de.mmd`, `docs/help/mindmap.en.mmd`, `docs/help/mindmap.fr.mmd`. `mindmap.html` und `mindmap.mmd` bleiben als deutsche Fallback-Dateien erhalten.
 
 
-Stand: 19. Juni 2026  
-Gültig für: BudgetManager 2.1.3
+Stand: 3. Juli 2026  
+Gültig für: BudgetManager 2.2.6
 
 Diese Wissensdatenbank ist die zentrale Hilfe für Erstnutzer und für spätere Nachschlagefälle. Sie erklärt nicht nur einzelne Knöpfe, sondern den Ablauf: **Kategorien → Budget → Sparziele → Tracking/Buchungen → Übersicht → Backup/Restore**.
 
 ---
 
-## Ergänzung v2.1.0 – Cockpit und Stabilität
+## Ergänzung v2.2.6 – Cockpit und Stabilität
 
 - Das Cockpit zeigt zusätzlich Budgetwarnungen und bietet per Rechtsklick sinnvolle Schnellaktionen.
 - Unter Wayland nutzt BudgetManager standardmäßig `xcb`, um bekannte Qt-TextInput-Abstürze zu vermeiden. Native Wayland-Nutzung ist mit `BM_ALLOW_WAYLAND=1` möglich.
@@ -644,18 +644,20 @@ Typische Spalten:
 
 ### 9.3 Diagramme in der Übersicht
 
-Die Übersicht nutzt Diagramme nur dort, wo sie eine Entscheidung leichter machen. Zu viele Kreisdiagramme werden bewusst vermieden.
+Die Übersicht nutzt Diagramme nur dort, wo sie eine Entscheidung leichter machen. Der Plan/Ist-Donut bleibt erhalten, verwirrende Nebenkreise werden vermieden.
 
 | Diagramm | Wofür es gut ist | Wann du es nutzt |
 |---|---|---|
-| Übersicht / Donut | Schneller Plan-Ist-Status nach Einnahmen, Ausgaben und Ersparnissen | Monatscheck: Ist mein Budget grundsätzlich im Rahmen? |
-| Kategorien | Ausgabenanteile je Kategorie | Herausfinden, welche Kategorie den größten Anteil hat |
-| Verteilung | Einnahmen/Ausgaben/Ersparnisse im Verhältnis | Grober Gesamtblick auf Geldflüsse |
+| Plan/Ist-Donut | Außen Einnahmen, Mitte Ausgaben, innen Ersparnisse; je Ring gebucht/offen/über Budget | Monatscheck: Wo bin ich über oder unter Plan? |
+| Kategorien-Ranking | Größte Ausgaben-Kategorien als Balken statt als unlesbarer Kreis | Herausfinden, welche Kategorie wirklich den größten Betrag verursacht |
+| Konto-Vergleich | Einnahmen, Ausgaben und Ersparnisse als Balken | Grober Geldfluss ohne falsche „Kuchenanteil“-Logik |
 | Monatsverlauf | Ausgaben: Budget vs. gebucht pro Monat | Erkennen, ob Ausgaben dauerhaft steigen oder nur ein Ausreißer vorliegt |
-| Monatsbilanz | Einnahmen minus Ausgaben, echt vs. geplant | Prüfen, ob am Monatsende genug übrig bleibt |
-| Top-Buchungen | Die 5 größten Buchungen im gewählten Zeitraum | Einzelne große Ausreißer schnell finden |
+| Monatsbilanz | Einnahmen minus Ausgaben minus Ersparnisse, echt vs. geplant | Prüfen, ob am Monatsende frei verfügbares Geld übrig bleibt |
+| Top-Buchungen | Die 5 größten zusammengefassten Kategorien/Buchungen im gewählten Zeitraum | Einzelne große Ausreißer schnell finden |
 
-Best Practice: Erst **Monatsverlauf** ansehen, dann bei Auffälligkeit in **Top-Buchungen** oder **Kategorien** nachsehen.
+Best Practice: Erst **Plan/Ist** prüfen, dann **Monatsverlauf** ansehen. Bei Auffälligkeiten gehst du in **Kategorien-Ranking** oder **Top-Buchungen**.
+
+Wichtig: Der Plan/Ist-Donut zeigt den Status innerhalb jedes Kontos und bleibt deshalb sinnvoll. Der frühere Kreis daneben für Einnahmen/Ausgaben/Ersparnisse bleibt ersetzt, weil diese drei Werte keine Anteile desselben Topfs sind.
 
 ### 9.4 Letzte Buchungen und Verlauf
 
@@ -807,6 +809,8 @@ F12
 
 Nutze Favoriten für Kategorien, die du regelmäßig kontrollierst. Nicht jede Kategorie sollte Favorit sein, sonst verliert das Dashboard seinen Nutzen.
 
+**Abgrenzung zu Tags:** Ein Favorit ist ein Schnellzugriff auf eine Kategorie. Er wird nicht einzelnen Buchungen zugewiesen und ist kein Auswertungs-Schlagwort.
+
 Gute Regel:
 
 ```text
@@ -838,6 +842,8 @@ Beispiel:
 Kategorie: Lebensmittel
 Tag: Geburtstag
 ```
+
+**Wichtig:** Nicht mit dem **Fälligkeitstag** verwechseln. Der Fälligkeitstag ist der Tag im Monat (1–31), an dem Fixkosten oder wiederkehrende Buchungen vorgeschlagen/gebucht werden. Ein Tag/Label ist dagegen ein Schlagwort für Auswertungen.
 
 ---
 
@@ -1165,15 +1171,16 @@ Die Sprachwahl übersetzt ihre Regionseinstellungen jetzt live. Wenn du English 
 
 ### Kategorieauswahl in Tracking und Schnelleingabe
 
-Die Kategorieauswahl ist jetzt bewusst nach **Hauptkategorie → Unterkategorie** gruppiert. Sie wird nicht mehr automatisch nach Nutzungshäufigkeit umsortiert, weil das bei vielen Kategorien den roten Faden zerstört.
+Die Kategorieauswahl ist im Tracking bewusst kurz gehalten. Parent-Kategorien mit Unterkategorien werden dort nicht mehr als eigene Buchungszeile angezeigt. Unterkategorien erscheinen ohne Parent-Vorspann, also **Miete** statt **Wohnen › Miete** oder **Wohnen - Miete**.
 
 Best Practice:
 
 1. Zuerst den Typ wählen: Einnahmen, Ausgaben oder Ersparnisse.
 2. Dann Kategorie suchen oder aus der gruppierten Liste wählen.
 3. Tippen filtert die Liste nach enthaltenem Text.
+4. Struktur-Kategorien bleiben im Kategorien-Manager und Budget sichtbar, aber der Tracker zeigt nur sinnvoll buchbare Kategorien.
 
-Ein späteres Nutzungsranking ist sinnvoll, sollte aber als eigene Option kommen, damit die Baumstruktur nicht verloren geht.
+Dadurch wird die tägliche Buchung schneller, ohne die Budget- und Kategorienstruktur zu verlieren.
 
 ### Diagrammfarben
 
@@ -1212,3 +1219,45 @@ Aktuell bleibt BudgetManager bewusst beim Kalender-Monat. Der bevorzugte Tag fü
 
 Der separate **Kategorien-Tab (Experten-Modus)** wurde entfernt, da redundant. Kategorienverwaltung läuft jetzt über den **Kategorie-Manager** (`Strg+K`, Menü Extras → Kategorien verwalten) und direkt im **Budget**-Tab (inkl. Drag & Drop). Die Settings-Option „separaten Kategorien-Tab anzeigen" entfällt.
 
+## Wiki: Tracking-Lernmodus v2.2.6
+
+### Zweck
+
+Der Lernmodus erstellt Startbudgets aus echten Tracking-Daten. Er ist kein Ersatz für die normale Budget-Vorschlagslogik, sondern nur der Einstieg für Kategorien ohne gesetztes Jahresbudget.
+
+### Erststart mit Lernmodus
+
+Wenn der Lernmodus aktiv ist, blockiert der Erststart nicht mehr beim Budget-Schritt. Das ist die richtige Führung für neue Nutzer: Erst echte Buchungen sammeln, dann Budgets lernen lassen. Wird der Lernmodus ausgeschaltet, bleibt die klassische Mindestprüfung bestehen und mindestens ein Budgetwert ist nötig.
+
+### Ablauf
+
+1. Nutzer trackt Buchungen ohne Budget.
+2. Ab der eingestellten Beobachtungszeit erzeugt die App einen Lernvorschlag.
+3. Der Vorschlag zeigt Betrag, Budgetart und beobachtete Daten.
+4. Nutzer bestätigt die Budgetart oder wählt eine andere.
+5. Erst beim Übernehmen entsteht ein Budget.
+6. Danach endet der Lernmodus für diese Kategorie automatisch, weil ein positives Jahresbudget existiert.
+
+### Bedienung im Vorschlagsbericht
+
+- **Übernehmen**: Budget setzen und Budgetart an Kategorie speichern.
+- **Weiter beobachten**: Vorschlag für den aktuellen Monat pausieren.
+- **Ignorieren**: Lernmodus für diese Kategorie beenden.
+- **Als unregelmäßig markieren**: Kategorie als Rückstellung/Topf führen.
+- **Zurücksetzen**: gespeicherten Lernstatus entfernen.
+
+### Anzeige in der Übersicht
+
+- **🆕** = neues Startbudget aus dem Lernmodus.
+- **📉** = echte Defizit-/Erhöhungswarnung.
+- **📈** = Überschuss-/Senkungsvorschlag.
+
+Damit ist klar: Ein neues Lernbudget ist kein Fehler und keine Budgetüberschreitung, sondern ein Vorschlag zum erstmaligen Planen.
+
+### Entscheidungshilfe
+
+- Gleichbleibend jeden Monat → Fix + wiederkehrend.
+- Jährlich/quartalsweise, aber planbar → Fix + inkrementell oder Rückstellung.
+- Regelmäßig, aber variabel → nur wiederkehrend oder variabler Topf.
+- Stundenlohn/Nebenjob → schwankendes Einkommen.
+- Franchise/Selbstbehalt/Reparaturen → unregelmäßig / Rückstellung.

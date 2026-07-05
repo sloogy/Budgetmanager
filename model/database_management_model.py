@@ -143,10 +143,25 @@ class DatabaseManagementModel:
             cursor = conn.cursor()
 
             if keep_user_data:
-                # Nur Budget und Kategorien zurücksetzen
-                cursor.execute("DELETE FROM budget")
-                cursor.execute("DELETE FROM categories")
-                message = "database.msg.reset_budget_categories"
+                # v2.2.1 (Bericht-Punkt 2+3): Teilreset sauber definiert.
+                # Alte Semantik löschte budget UND categories, liess aber
+                # Tracking stehen – Buchungen zeigten danach auf gelöschte
+                # Kategorien und 7 Nebentabellen (Warnungen, Favoriten,
+                # Wiederkehrend, Vorschlags-/Lernstatus, Tags) behielten
+                # Leichen. NEU: "Nur Budgets zurücksetzen" – Kategorien UND
+                # Buchungen bleiben vollständig erhalten; geleert werden nur
+                # Budgets plus die budgetbezogenen Nebentabellen.
+                for table in (
+                    "budget",
+                    "budget_warnings",
+                    "suggestion_accepted",
+                    "tracking_learning_state",
+                ):
+                    try:
+                        cursor.execute(f"DELETE FROM {table}")
+                    except sqlite3.OperationalError as e:
+                        logger.debug("Teilreset %s: %s", table, e)
+                message = "database.msg.reset_budget_only"
             else:
                 # Kompletter Reset - alle User-Tabellen dynamisch aus DB lesen.
                 # Nur SQLite-interne Tabellen und system_flags werden geschützt.

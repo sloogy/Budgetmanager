@@ -1,4 +1,4 @@
-# BudgetManager 2.1.3 – Guide utilisateur
+# BudgetManager 2.2.6 – Guide utilisateur
 
 ## 1. Idée générale
 
@@ -37,7 +37,7 @@ Règles importantes :
 
 ## 4. Suivi / opérations
 
-Le suivi enregistre les mouvements d'argent réels. Le choix de catégorie n'affiche que les catégories du type sélectionné. Les favoris et les catégories manuelles fréquentes apparaissent en haut ; les saisies automatiques de charges fixes ne faussent pas cet ordre.
+Le suivi enregistre les mouvements d'argent réels. Le choix de catégorie n'affiche que les catégories du type sélectionné. Les favoris et les catégories manuelles fréquentes apparaissent en haut ; les saisies automatiques de charges fixes ne faussent pas cet ordre. Les catégories parentes avec sous-catégories ne sont pas affichées comme lignes saisissables ; les sous-catégories restent courtes, p. ex. **Loyer** au lieu de **Logement › Loyer**.
 
 Le bouton **Saisir les charges fixes/récurrentes** crée volontairement les écritures dues pour le mois choisi. Rien n'est saisi en secret en arrière-plan.
 
@@ -59,11 +59,11 @@ L'aperçu compare les valeurs prévues et réelles.
 
 Explication des graphiques :
 
-- **Aperçu / donut** : montre la répartition par compte ou catégorie. Avec un filtre de période, le budget est additionné sur tous les mois concernés.
-- **Catégories** : montre les catégories les plus importantes.
-- **Répartition** : compare revenus, dépenses et épargne.
+- **Donut prévu/réalisé** : anneau extérieur revenus, anneau central dépenses, anneau intérieur épargne. Chaque anneau montre saisi, encore ouvert ou au-dessus du budget. C’est le contrôle mensuel principal.
+- **Classement catégories** : affiche les principales catégories de dépenses en barres. C’est plus lisible qu’un grand camembert.
+- **Comparaison comptes** : affiche revenus, dépenses et épargne en barres. Cela remplace le camembert voisin confus, car ces valeurs ne sont pas des parts d’un même total.
 - **Évolution mensuelle** : montre l'évolution sur plusieurs mois. Utile pour repérer les tendances.
-- **Solde mensuel** : montre revenus moins dépenses et épargne par mois.
+- **Solde mensuel** : montre revenus moins dépenses moins épargne par mois.
 - **Top opérations** : regroupe les catégories et trie par montant, afin que les loyers ou salaires répétés ne créent pas de doublons trompeurs.
 
 S'il n'y a pas de données, l'application affiche un message au lieu d'un graphique vide.
@@ -83,3 +83,24 @@ Chemins de mise à jour :
 La clé de restauration est importante pour les bases chiffrées et la récupération. Conservez-la hors du dossier BudgetManager, par exemple dans Bitwarden.
 
 Avant les grands changements, créez une sauvegarde. Le dossier de données et `data/backups/` ne sont pas écrasés par les mises à jour.
+
+## 5.1 Mode apprentissage du suivi
+
+Le mode apprentissage aide lorsqu’aucun budget n’a encore été défini. Il utilise uniquement les écritures manuelles du suivi et propose un budget de départ.
+
+Lors du premier démarrage, le mode apprentissage actif permet de continuer sans saisir de valeur de budget. C’est volontaire : vous pouvez d’abord suivre vos écritures, puis laisser l’application proposer des budgets à partir des données réelles. Si le mode apprentissage est désactivé, le premier démarrage exige toujours au moins une valeur de budget.
+
+Le mode apprentissage et la logique normale de suggestion sont séparés :
+
+- Aucun budget dans l’année choisie : le mode apprentissage peut proposer un budget de départ.
+- Budget existant dans l’année choisie : le mode apprentissage se termine et la logique normale prend le relais.
+- Une suggestion ne modifie jamais les données automatiquement.
+- Lors de la reprise, le type de budget doit d’abord être confirmé.
+
+Dans le dialogue des suggestions, un clic droit permet de continuer l’observation, ignorer la suggestion, marquer la catégorie comme irrégulière/réserve ou réinitialiser le statut d’apprentissage. C’est utile pour les frais de santé, franchises, réparations et autres dépenses irrégulières.
+
+Dans le bandeau de l’aperçu, les nouveaux budgets de départ appris utilisent **🆕**. Les vraies alertes de déficit/augmentation gardent **📉**, tandis que les suggestions d’excédent/réduction utilisent **📈**.
+
+## 5.2 Copie annuelle avec mode apprentissage
+
+Lors de la copie d’une année, BudgetManager vérifie aussi les catégories suivies mais jamais budgétées dans l’année source. Elles apparaissent comme budgets de départ possibles pour la nouvelle année et peuvent être reprises ou désélectionnées.

@@ -269,6 +269,47 @@ class SettingsDialog(QDialog):
         )
         fl_bo.addRow(tr("dlg.ueberschussdefizitvorschlag_ab"), self._settings_field(self.cmb_budget_suggestion_months, 220))
 
+        self.cb_tracking_budget_learning = QCheckBox(tr("settings.tracking_budget_learning"))
+        self.cb_tracking_budget_learning.setToolTip(
+            tr("settings.tracking_budget_learning_tip")
+        )
+        fl_bo.addRow("", self.cb_tracking_budget_learning)
+
+        self.sb_tracking_learning_proposal_months = QSpinBox()
+        self.sb_tracking_learning_proposal_months.setRange(1, 12)
+        self.sb_tracking_learning_proposal_months.setSuffix(" " + tr("settings.months_suffix"))
+        self.sb_tracking_learning_proposal_months.setToolTip(
+            tr("settings.tracking_learning_proposal_tip")
+        )
+        fl_bo.addRow(tr("settings.tracking_learning_proposal"), self._settings_field(self.sb_tracking_learning_proposal_months, 160))
+
+        self.sb_tracking_learning_stable_months = QSpinBox()
+        self.sb_tracking_learning_stable_months.setRange(1, 12)
+        self.sb_tracking_learning_stable_months.setSuffix(" " + tr("settings.months_suffix"))
+        self.sb_tracking_learning_stable_months.setToolTip(
+            tr("settings.tracking_learning_stable_tip")
+        )
+        fl_bo.addRow(tr("settings.tracking_learning_stable"), self._settings_field(self.sb_tracking_learning_stable_months, 160))
+
+        self.cb_tracking_learning_projection = QCheckBox(tr("settings.tracking_learning_projection"))
+        self.cb_tracking_learning_projection.setToolTip(
+            tr("settings.tracking_learning_projection_tip")
+        )
+        fl_bo.addRow("", self.cb_tracking_learning_projection)
+
+        self.cb_tracking_learning_show_report = QCheckBox(tr("settings.tracking_learning_show_report"))
+        self.cb_tracking_learning_show_report.setToolTip(
+            tr("settings.tracking_learning_show_report_tip")
+        )
+        fl_bo.addRow("", self.cb_tracking_learning_show_report)
+
+        self.cb_tracking_learning_auto_end = QCheckBox(tr("settings.tracking_learning_auto_end"))
+        self.cb_tracking_learning_auto_end.setToolTip(
+            tr("settings.tracking_learning_auto_end_tip")
+        )
+        self.cb_tracking_learning_auto_end.setEnabled(True)
+        fl_bo.addRow("", self.cb_tracking_learning_auto_end)
+
         self.cb_budget_zero_balance_rule = QCheckBox(tr("settings.zero_balance_rule"))
         self.cb_budget_zero_balance_rule.setToolTip(tr("settings.zero_balance_rule_tip"))
         fl_bo.addRow("", self.cb_budget_zero_balance_rule)
@@ -566,6 +607,28 @@ class SettingsDialog(QDialog):
             suggestion_months = 3
         idx_sug = self.cmb_budget_suggestion_months.findData(max(2, min(12, suggestion_months)))
         self.cmb_budget_suggestion_months.setCurrentIndex(max(0, idx_sug))
+        self.cb_tracking_budget_learning.setChecked(
+            bool(self.settings.get("tracking_budget_learning_enabled", True))
+        )
+        try:
+            _learn_proposal = int(self.settings.get("tracking_budget_learning_proposal_months", 2) or 2)
+        except Exception:
+            _learn_proposal = 2
+        try:
+            _learn_stable = int(self.settings.get("tracking_budget_learning_stable_months", 3) or 3)
+        except Exception:
+            _learn_stable = 3
+        self.sb_tracking_learning_proposal_months.setValue(max(1, min(12, _learn_proposal)))
+        self.sb_tracking_learning_stable_months.setValue(max(1, min(12, _learn_stable)))
+        self.cb_tracking_learning_projection.setChecked(
+            bool(self.settings.get("tracking_budget_learning_include_current_month_projection", True))
+        )
+        self.cb_tracking_learning_show_report.setChecked(
+            bool(self.settings.get("tracking_budget_learning_show_in_report", True))
+        )
+        self.cb_tracking_learning_auto_end.setChecked(
+            bool(self.settings.get("tracking_budget_learning_auto_end", False))
+        )
         self.cb_budget_overview_drag_drop.setChecked(bool(self.settings.get("budget_overview_drag_drop", True)))
         self.cb_budget_zero_balance_rule.setChecked(bool(self.settings.get("budget_zero_balance_rule", False)))
         _surplus_strategy = str(self.settings.get("budget_surplus_strategy", "savings") or "savings")
@@ -622,6 +685,12 @@ class SettingsDialog(QDialog):
             "recent_days": int(self.cmb_recent_days.currentText()),
             "recurring_preferred_day": int(self.cmb_recurring_day.currentData() if self.cmb_recurring_day.currentData() is not None else 25),
             "budget_suggestion_months": int(self.cmb_budget_suggestion_months.currentData() or 3),
+            "tracking_budget_learning_enabled": bool(self.cb_tracking_budget_learning.isChecked()),
+            "tracking_budget_learning_proposal_months": int(self.sb_tracking_learning_proposal_months.value()),
+            "tracking_budget_learning_stable_months": int(self.sb_tracking_learning_stable_months.value()),
+            "tracking_budget_learning_include_current_month_projection": bool(self.cb_tracking_learning_projection.isChecked()),
+            "tracking_budget_learning_show_in_report": bool(self.cb_tracking_learning_show_report.isChecked()),
+            "tracking_budget_learning_auto_end": bool(self.cb_tracking_learning_auto_end.isChecked()),
             "budget_zero_balance_rule": bool(self.cb_budget_zero_balance_rule.isChecked()),
             "budget_surplus_strategy": self.cmb_budget_surplus_strategy.currentData() or "savings",
             "budget_overview_drag_drop": bool(self.cb_budget_overview_drag_drop.isChecked()),

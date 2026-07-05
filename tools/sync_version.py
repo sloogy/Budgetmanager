@@ -71,16 +71,6 @@ def _latest_template_data() -> dict:
                 "url": f"{base}/BudgetManager_Setup_{APP_VERSION}.zip",
                 "sha256": "PUT_SHA256_HERE",
             },
-            "direct_windows_exe": {
-                "type": "exe",
-                "url": f"{base}/BudgetManager-v{APP_VERSION}-windows.exe",
-                "sha256": "PUT_SHA256_HERE",
-            },
-            "direct_linux_binary": {
-                "type": "binary",
-                "url": f"{base}/BudgetManager-v{APP_VERSION}-linux",
-                "sha256": "PUT_SHA256_HERE",
-            },
         },
     }
 
@@ -131,8 +121,8 @@ def sync_installer(check: bool) -> bool:
         return True
     src = p.read_text(encoding="utf-8")
     new = re.sub(
-        r'#define MyAppVersion "2.1.3"]*"',
-        f'#define MyAppVersion "2.1.3"',
+        r'#define MyAppVersion "[^"]*"',
+        f'#define MyAppVersion "{APP_VERSION}"',
         src,
     )
     ok = new == src

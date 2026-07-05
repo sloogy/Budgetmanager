@@ -193,3 +193,41 @@ def test_fix_only_quick_button_selects_only_real_fixed_costs():
     src = (ROOT / "views" / "recurring_bookings_dialog.py").read_text(encoding="utf-8")
     assert "item.is_fix and item.is_recurring" in src
     assert "Fix-only Kategorien wie Franchise/Selbstbehalt bleiben bewusst außen vor" in src
+
+
+def test_tracking_picker_shows_child_names_without_parent_prefix():
+    """Tracking soll kurz bleiben: Parent ausblenden, Child nur als Blattname anzeigen."""
+    conn, p = _fresh()
+    try:
+        c = CategoryModel(conn)
+        parent_id = c.create(TYP_EXPENSES, "Wohnen")
+        c.create(TYP_EXPENSES, "Miete", parent_id=parent_id)
+        c.create(TYP_EXPENSES, "Internet", parent_id=parent_id)
+        c.create(TYP_EXPENSES, "Lebensmittel")
+
+        grouped = c.list_for_tracking_dropdown_grouped(TYP_EXPENSES)
+        items = [(label, value) for kind, label, value in grouped if kind == "item"]
+        labels = [label for label, _ in items]
+        values = [value for _, value in items]
+
+        assert "Wohnen" not in labels
+        assert "Wohnen" not in values
+        assert "Miete" in labels
+        assert "Internet" in labels
+        assert "Wohnen › Miete" not in labels
+        assert "Wohnen - Miete" not in labels
+        assert "Lebensmittel" in labels
+    finally:
+        conn.close()
+        os.remove(p)
+
+
+def test_tracker_dialog_keeps_unlisted_preset_category_editable_fallback():
+    """v2.1.7-Blocker-Schutz: ``_set_combo_by_data`` braucht den
+    Editable-Fallback, damit alte Buchungen auf Parent-Kategorien beim
+    Bearbeiten nicht still auf den ersten Picker-Eintrag umgehängt werden."""
+    src = (ROOT / "views" / "tracker_dialog.py").read_text(encoding="utf-8")
+    marker = src.split("def _set_combo_by_data", 1)[1].split("def ", 1)[0]
+    assert "isEditable()" in marker
+    assert "setEditText(value)" in marker
+    assert "setCurrentIndex(-1)" in marker
