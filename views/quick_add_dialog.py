@@ -24,6 +24,7 @@ from views.savings_goal_messages import show_savings_goal_bounds_warning
 
 
 import logging
+from settings import Settings
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 logger = logging.getLogger(__name__)
@@ -33,6 +34,8 @@ class QuickAddDialog(QDialog):
     """Schnelleingabe-Dialog für neue Tracking-Einträge (Strg+N)"""
 
     def __init__(self, conn: sqlite3.Connection, parent=None):
+        # v2.2.0: merkt sich je Konto (Typ) die zuletzt gebuchte Kategorie.
+        self._settings = Settings()
         super().__init__(parent)
         self.conn = conn
         self.cats = CategoryModel(conn)
@@ -200,6 +203,15 @@ class QuickAddDialog(QDialog):
                 ("item", label, real) for label, real in self._category_pairs_structured(typ)
             ]
 
+        # v2.2.0: Ohne aktuelle Auswahl die zuletzt gebuchte Kategorie dieses
+        # Kontos vorschlagen – spart bei täglichen Buchungen einen Klickweg.
+        if not current_data:
+            try:
+                last_map = self._settings.get("tracking_last_category", {}) or {}
+                current_data = str(last_map.get(normalize_typ(str(typ)), "") or "")
+            except Exception as e:
+                logger.debug("last category restore: %s", e)
+
         self._rebuild_category_dropdown(
             query=self.cat_search.text().strip() if hasattr(self, "cat_search") else "",
             preferred_category=str(current_data or ""),
@@ -294,6 +306,30 @@ class QuickAddDialog(QDialog):
                 self, tr("dlg.hinweis"), tr("dlg.bitte_eine_kategorie_auswaehlen")
             )
             return False
+
+        # v2.2.1 (Bericht-Punkt 5): Wenn der Suchtext auf MEHRERE Kategorien
+        # passt und keine explizite Dropdown-Auswahl vorliegt, wird nicht mehr
+        # stillschweigend der erste Treffer gebucht – der Nutzer muss wählen.
+        query = self.cat_search.text().strip() if hasattr(self, "cat_search") else ""
+        explicit = self._selected_category_from_dropdown_only()
+        if query and not explicit:
+            matches = [
+                real
+                for kind, label, real in getattr(self, "_all_category_rows", [])
+                if kind == "item" and real and query.lower() in str(label).lower()
+            ]
+            if len(set(matches)) > 1:
+                QMessageBox.warning(
+                    self,
+                    tr("dlg.hinweis"),
+                    trf("quickadd.ambiguous_category", query=query, n=len(set(matches))),
+                )
+                try:
+                    self.cat_combo.showPopup()
+                except Exception as e:
+                    logger.debug("showPopup: %s", e)
+                return False
+
         resolved = self.cats.resolve_name(typ, category)
         if not resolved:
             QMessageBox.warning(
@@ -357,6 +393,26 @@ class QuickAddDialog(QDialog):
         except SavingsGoalBoundsError as e:
             show_savings_goal_bounds_warning(self, e)
             return False
+        # v2.2.1 (KILLCRITIC): Undo ist mächtig, aber unsichtbar – nach der
+        # Buchung kurz in der Statuszeile des Hauptfensters darauf hinweisen.
+        try:
+            mw = self.window() if callable(getattr(self, "window", None)) else None
+            parent = self.parent()
+            target = parent.window() if parent is not None else mw
+            if target is not None and hasattr(target, "statusBar"):
+                target.statusBar().showMessage(
+                    trf("tracking.booked_undo_hint", category=str(category)), 6000
+                )
+        except Exception as e:
+            logger.debug("undo hint: %s", e)
+
+        # v2.2.0: letzte Auswahl je Konto merken.
+        try:
+            last_map = dict(self._settings.get("tracking_last_category", {}) or {})
+            last_map[normalize_typ(str(typ))] = str(category)
+            self._settings.set("tracking_last_category", last_map)
+        except Exception as e:
+            logger.debug("last category persist: %s", e)
         return True
 
     def _confirm_negative_savings_booking(self, conflict: dict, amount: float) -> bool:

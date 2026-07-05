@@ -130,19 +130,22 @@ class TrackingTab(QWidget):
         self.savings_panel = self._build_savings_panel()
 
         # Tabelle
-        self.table=QTableWidget(0, 6)
-        self.table.setHorizontalHeaderLabels([tr("header.date"), tr("header.type"), tr("header.category"), currency_header(), tr("header.description"), tr('auto.views_tabs_tracking_tab.119_id_db302b9b')])
+        self.table=QTableWidget(0, 7)
+        self.table.setHorizontalHeaderLabels([
+            tr("header.date"), tr("header.type"), tr("header.category"), currency_header(),
+            tr("header.description"), tr("header.tags"), tr('auto.views_tabs_tracking_tab.119_id_db302b9b')
+        ])
 
         # Accessibility: Header-Tooltips
         _hdr = self.table.horizontalHeader()
-        for _i, _tip in enumerate([tr("tracking.tip.col_date"), tr("tracking.tip.col_type"), tr("tracking.tip.col_category"), tr("tracking.tip.col_amount"), tr("tracking.tip.col_details")]):
+        for _i, _tip in enumerate([tr("tracking.tip.col_date"), tr("tracking.tip.col_type"), tr("tracking.tip.col_category"), tr("tracking.tip.col_amount"), tr("tracking.tip.col_details"), tr("header.tags")]):
             if _i < self.table.columnCount():
                 self.table.horizontalHeaderItem(_i).setToolTip(_tip)
         # Badge/Pillen Darstellung für Typ-Spalte
         self._badge_delegate = BadgeDelegate(self.table, color_map=self.settings.get("type_colors", {}))
         self.table.setItemDelegateForColumn(1, self._badge_delegate)
         self.table.setColumnWidth(1, 120)
-        self.table.setColumnHidden(5, True)  # internal id
+        self.table.setColumnHidden(6, True)  # internal id
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QAbstractItemView.SingleSelection)
         self.table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
@@ -150,6 +153,7 @@ class TrackingTab(QWidget):
         self.table.verticalHeader().setVisible(False)
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self._show_context_menu)
+        self._apply_stable_column_widths()
 
         # Debounce-Timer: bei Filter-Änderungen nur 1× refreshen
         self._refresh_timer = QTimer(self)
@@ -245,6 +249,25 @@ class TrackingTab(QWidget):
         self.table.doubleClicked.connect(lambda _: self.edit())
 
         self.refresh()
+
+    def _apply_stable_column_widths(self) -> None:
+        """Fixiert Hauptspalten, damit Tabellenbreiten nach Settings-Reload stabil bleiben."""
+        header = self.table.horizontalHeader()
+        header.setStretchLastSection(False)
+        fixed_widths = {
+            0: 105,  # Datum
+            1: 120,  # Typ
+            2: 220,  # Kategorie
+            3: 115,  # Betrag
+            5: 160,  # Tags
+            6: 55,   # interne ID (versteckt)
+        }
+        for col, width in fixed_widths.items():
+            header.setSectionResizeMode(col, QHeaderView.Fixed)
+            self.table.setColumnWidth(col, width)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        self.table.setColumnHidden(6, True)
 
     def _build_savings_panel(self) -> QGroupBox:
         """Kompakte Sparziel-Leiste für Buchungen/Tracking.
@@ -518,7 +541,7 @@ class TrackingTab(QWidget):
         sel = self.table.currentRow()
         if sel < 0:
             return
-        entry_id = int(self.table.item(sel, 5).text())
+        entry_id = int(self.table.item(sel, 6).text())
 
         all_tags = self.tags_model.list_all()
         if not all_tags:
@@ -557,6 +580,7 @@ class TrackingTab(QWidget):
                     new_ids.append(item.data(Qt.UserRole))
             self.tags_model.set_entry_tags(entry_id, new_ids)
             self._reload_tags()
+            self.refresh()
 
     def _duplicate_selected(self):
         """Dupliziert den ausgewählten Eintrag (mit heutigem Datum)."""
@@ -572,7 +596,11 @@ class TrackingTab(QWidget):
         except Exception:
             amt = 0.0
         details = self.table.item(r, 4).text() if self.table.item(r, 4) else ""
-        self.model.add(date.today(), db_typ_from_display(typ), cat, amt, details)
+        new_id = self.model.add(date.today(), db_typ_from_display(typ), cat, amt, details)
+        try:
+            self.tags_model.set_entry_tags(int(new_id), [t["id"] for t in self.tags_model.get_tags_for_entry(int(row_id))])
+        except Exception as exc:
+            logger.debug("duplicate tags: %s", exc)
         self.refresh()
 
     def clear_filters(self):
@@ -593,7 +621,7 @@ class TrackingTab(QWidget):
         r = self.table.currentRow()
         if r < 0:
             return None
-        it = self.table.item(r,5)
+        it = self.table.item(r,6)
         if not it:
             return None
         try:
@@ -726,12 +754,27 @@ class TrackingTab(QWidget):
             self.table.insertRow(i)
             self.table.setItem(i,0,QTableWidgetItem(r.d.strftime("%d.%m.%Y")))
             self.table.setItem(i,1,QTableWidgetItem(display_typ(str(r.typ))))
-            self.table.setItem(i,2,QTableWidgetItem(self.cats.display_with_parent(str(r.typ), str(r.category))))
+            # v2.2.1 (Bericht-Punkt 4): Kurzlabel in der Zelle, voller Pfad
+            # "Parent › Kind" als Tooltip – konsistent zur Schnellerfassung
+            # und ohne überbreite Kategorie-Spalte bei tiefen Hierarchien.
+            _cat_name = str(r.category)
+            _cat_full = self.cats.display_with_parent(str(r.typ), _cat_name)
+            _cat_item = QTableWidgetItem(_cat_name)
+            if _cat_full != _cat_name:
+                _cat_item.setToolTip(_cat_full)
+            self.table.setItem(i, 2, _cat_item)
             a=QTableWidgetItem(format_chf(float(r.amount)))
             a.setTextAlignment(Qt.AlignRight|Qt.AlignVCenter)
             self.table.setItem(i,3,a)
             self.table.setItem(i,4,QTableWidgetItem(str(r.details)))
-            self.table.setItem(i,5,QTableWidgetItem(str(r.id)))
+            try:
+                _tags = self.tags_model.get_tags_for_entry(int(r.id))
+                _tag_txt = ", ".join(str(t.get("name", "")) for t in _tags if str(t.get("name", "")))
+            except Exception as exc:
+                logger.debug("entry tags display: %s", exc)
+                _tag_txt = ""
+            self.table.setItem(i,5,QTableWidgetItem(_tag_txt))
+            self.table.setItem(i,6,QTableWidgetItem(str(r.id)))
             
             # Summen berechnen
             if r.typ == TYP_EXPENSES:
@@ -741,7 +784,7 @@ class TrackingTab(QWidget):
             elif r.typ == TYP_SAVINGS:
                 total_ersparnisse += r.amount
         
-        self.table.resizeColumnsToContents()
+        self._apply_stable_column_widths()
         
         # Summen anzeigen
         saldo = total_einkommen - total_ausgaben - total_ersparnisse
@@ -804,7 +847,12 @@ class TrackingTab(QWidget):
                     return  # Abbrechen
 
         try:
-            self.model.add(inp.d, inp.typ, inp.category, inp.amount, inp.details)
+            new_id = self.model.add(inp.d, inp.typ, inp.category, inp.amount, inp.details)
+            try:
+                self.tags_model.set_entry_tags(int(new_id), list(inp.tag_ids))
+                self._reload_tags()
+            except Exception as exc:
+                logger.debug("set tags after add: %s", exc)
         except SavingsGoalBoundsError as e:
             show_savings_goal_bounds_warning(self, e)
             return
@@ -1054,12 +1102,21 @@ class TrackingTab(QWidget):
             amt = 0.0
         details = self.table.item(r,4).text() if self.table.item(r,4) else ""
 
-        dlg=TrackerDialog(self, conn=self.conn, cats=self.cats, preset={"date": d, "typ": typ, "category": cat, "amount": amt, "details": details})
+        try:
+            tag_ids = [int(t["id"]) for t in self.tags_model.get_tags_for_entry(int(row_id))]
+        except Exception:
+            tag_ids = []
+        dlg=TrackerDialog(self, conn=self.conn, cats=self.cats, preset={"date": d, "typ": typ, "category": cat, "amount": amt, "details": details, "tag_ids": tag_ids})
         if dlg.exec() != QDialog.Accepted:
             return
         inp: TrackingInput = dlg.get_input()
         try:
             self.model.update(row_id, inp.d, inp.typ, inp.category, inp.amount, inp.details)
+            try:
+                self.tags_model.set_entry_tags(int(row_id), list(inp.tag_ids))
+                self._reload_tags()
+            except Exception as exc:
+                logger.debug("set tags after edit: %s", exc)
         except SavingsGoalBoundsError as e:
             show_savings_goal_bounds_warning(self, e)
             return

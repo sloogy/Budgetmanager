@@ -1,4 +1,4 @@
-# BudgetManager 2.1.3 – Benutzeranleitung
+# BudgetManager 2.2.6 – Benutzeranleitung
 
 ## 1. Grundidee
 
@@ -37,7 +37,7 @@ Wichtige Regeln:
 
 ## 4. Tracking / Buchungen
 
-Im Tracking erfasst du echte Geldbewegungen. Die Kategorieauswahl zeigt nur Kategorien des gewählten Typs. Favoriten und häufig manuell genutzte Kategorien erscheinen oben, automatische Fixkosten verzerren diese Reihenfolge nicht.
+Im Tracking erfasst du echte Geldbewegungen. Die Kategorieauswahl zeigt nur Kategorien des gewählten Typs. Favoriten und häufig manuell genutzte Kategorien erscheinen oben, automatische Fixkosten verzerren diese Reihenfolge nicht. Parent-Kategorien mit Unterkategorien werden dort nicht als eigene Buchungszeile angezeigt; Unterkategorien erscheinen kurz, z. B. **Miete** statt **Wohnen › Miete**.
 
 Der Button **Fix/Wiederkehrend buchen** erstellt bewusst die fälligen Fixkosten und wiederkehrenden Buchungen für den gewählten Monat. Es wird nichts heimlich im Hintergrund gebucht.
 
@@ -61,11 +61,11 @@ Die Übersicht vergleicht Plan und Ist.
 
 Diagramme erklärt:
 
-- **Übersicht / Donut**: zeigt die Verteilung nach Konto oder Kategorie. Bei Zeitraumfiltern wird das Budget über alle betroffenen Monate summiert.
-- **Kategorien**: zeigt, welche Kategorien den größten Anteil ausmachen.
-- **Verteilung**: zeigt Einnahmen, Ausgaben und Ersparnisse im Verhältnis.
+- **Plan/Ist-Donut**: Außen Einnahmen, Mitte Ausgaben, innen Ersparnisse. Jeder Ring zeigt gebucht, offen oder über Budget. Das ist der wichtigste Monatscheck.
+- **Kategorien-Ranking**: zeigt die größten Ausgaben-Kategorien als Balken. Das ist leichter lesbar als ein großes Kreisdiagramm.
+- **Konto-Vergleich**: zeigt Einnahmen, Ausgaben und Ersparnisse als Balken. Das ersetzt den verwirrenden Kreis daneben, weil diese Werte keine Anteile desselben Topfs sind.
 - **Monatsverlauf**: zeigt die Entwicklung über Monate. Gut, um Trends zu erkennen.
-- **Monatsbilanz**: zeigt Einnahmen minus Ausgaben und Sparen pro Monat.
+- **Monatsbilanz**: zeigt Einnahmen minus Ausgaben minus Ersparnisse pro Monat.
 - **Top-Buchungen**: fasst Kategorien zusammen und sortiert nach Betrag, damit wiederholte Lohn- oder Mietbuchungen nicht mehrfach als Einzelzeilen verwirren.
 
 Wenn keine Daten vorhanden sind, zeigt die App einen Hinweis statt eines leeren Diagramms.
@@ -85,3 +85,31 @@ Updatewege:
 Der Restore-Key ist wichtig für verschlüsselte Datenbanken und Wiederherstellung. Sichere ihn außerhalb des BudgetManager-Ordners, zum Beispiel in Bitwarden.
 
 Vor großen Änderungen: Backup erstellen. Der Datenordner und `data/backups/` werden bei Updates nicht überschrieben.
+
+## 5.1 Tracking-Lernmodus
+
+Der Tracking-Lernmodus hilft, wenn du noch kein Budget gesetzt hast. Er schaut nur auf manuelle Buchungen und erstellt daraus einen Vorschlag für ein neues Budget.
+
+Im Erststart darfst du mit aktivem Lernmodus ohne Budgetwert weitergehen. Das ist Absicht: Du kannst zuerst nur tracken und die Budgets später aus echten Daten lernen lassen. Wenn du den Lernmodus deaktivierst, verlangt der Erststart weiterhin mindestens einen Budgetwert.
+
+Wichtig: Der Lernmodus und die normale Budget-Vorschlagslogik sind getrennt.
+
+- Ohne Budget im gewählten Jahr: Lernmodus darf ein Startbudget vorschlagen.
+- Mit Budget im gewählten Jahr: Lernmodus ist beendet, normale Vorschläge übernehmen.
+- Ein Vorschlag ändert nichts automatisch.
+- Beim Übernehmen musst du die Budgetart bestätigen.
+
+Im Vorschlagsdialog kannst du einen Lernvorschlag per Rechtsklick steuern:
+
+- **Weiter beobachten**: Vorschlag für den aktuellen Monat ausblenden.
+- **Ignorieren**: Lernvorschlag für diese Kategorie beenden.
+- **Als unregelmäßig / Rückstellung markieren**: gut für Franchise, Selbstbehalt, Reparaturen oder seltene Jahreskosten.
+- **Lernstatus zurücksetzen**: Kategorie wieder normal lernen lassen.
+
+Empfehlung: Bei schwankendem Einkommen eher vorsichtig budgetieren. Bei unregelmäßigen Kosten lieber einen Monats-Topf/Rückstellung verwenden statt eine starre Fixkostenbuchung.
+
+In der Übersicht erkennst du neue Lernbudgets am Symbol **🆕**. Das unterscheidet Startbudgets klar von echten Defizit-Warnungen (**📉**) und Überschuss-/Senkungsvorschlägen (**📈**).
+
+## 5.2 Jahreswechsel mit Lernmodus
+
+Beim Kopieren eines Jahres prüft die App zusätzlich Kategorien, die im Quelljahr getrackt wurden, aber noch kein Budget hatten. Diese erscheinen als mögliche Startbudgets für das neue Jahr. Übernimm sie nur, wenn die Kategorie auch im neuen Jahr geplant werden soll.

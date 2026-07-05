@@ -1,15 +1,15 @@
-# Open Tasks — BudgetManager v2.1.3
+# Open Tasks — BudgetManager v2.2.6
 
-Stand: 1. Juli 2026
+Stand: 3. Juli 2026
 
 Diese Liste enthält nur noch Aufgaben, die außerhalb des Source-Pakets durch GitHub Actions oder manuelle Plattform-Smokes bestätigt werden müssen. Lokale Release-Gates sind im Source-Paket grün.
 
 ## Vor finalem Public Release prüfen
 
-- GitHub Actions für Tag `v2.1.0` vollständig grün laufen lassen.
+- GitHub Actions für Tag `v2.2.6` vollständig grün laufen lassen.
 - Windows-EXE starten und ersten Dialog prüfen.
 - Linux-Binary starten und ersten Dialog prüfen.
-- Windows-Installer `BudgetManager_Setup_2.1.0.exe` installieren und Update-Modus prüfen.
+- Windows-Installer `BudgetManager_Setup_2.2.6.exe` installieren und Update-Modus prüfen.
 - Portable-ZIP unter Windows testen: `start-windows.cmd`, stabile `BudgetManager.exe`, Daten in `./data/`.
 - Portable-ZIP unter Linux testen: `start-linux.sh`, stabile `BudgetManager`, Daten in `./data/`.
 - `latest.json` im GitHub Release prüfen: alle Assets vorhanden, SHA256-Werte gefüllt, keine `PUT_SHA256_HERE`.
@@ -44,14 +44,19 @@ pytest tests/ -v
 
 ## Nach Release
 
-- GitHub-Tag eindeutig setzen: `v2.1.0`.
+- GitHub-Tag eindeutig setzen: `v2.2.6`.
 - Nicht mehrere Release-Tags auf denselben alten Commit zeigen lassen.
 - Release-Assets prüfen:
-  - `BudgetManager-v2.1.0-portable-windows.zip`
-  - `BudgetManager-v2.1.0-portable-linux.zip`
-  - `BudgetManager-v2.1.0-windows.exe`
-  - `BudgetManager-v2.1.0-linux`
-  - `BudgetManager_Setup_2.1.0.exe`
-  - `BudgetManager_Setup_2.1.0.zip`
+  - `BudgetManager-v2.2.6-portable-windows.zip`
+  - `BudgetManager-v2.2.6-portable-linux.zip`
+  - `BudgetManager-v2.2.6-windows.exe`
+  - `BudgetManager-v2.2.6-linux`
+  - `BudgetManager_Setup_2.2.6.exe`
+  - `BudgetManager_Setup_2.2.6.zip`
   - `latest.json`
   - `SHA256SUMS.txt`
+
+## Umgesetzt in v2.2.6 (aus KILLCRITIC v2.2.0)
+
+- ✅ Tag-Filter in der Übersicht (Filter-Combo wirkt zentral auf KPIs, Diagramme und Listen).
+- ✅ Express-Modus im Setup-Assistenten (Standard-Kategorien + Lernmodus, optionale Schritte übersprungen).

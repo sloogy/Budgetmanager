@@ -506,6 +506,22 @@ def main() -> int:
                     if wiz.exec() == StartupWizard.Accepted and wiz.result:
                         active_user = wiz.result.user
                         db_key = wiz.result.db_key
+                        if getattr(wiz, "imported_existing_database", False):
+                            # Die Settings-Instanz wurde vor dem Wizard geladen.
+                            # Nach einem erfolgreichen Import muss auch dieses
+                            # Objekt aktualisiert werden, sonst plant main.py im
+                            # selben Start trotzdem wieder den Setup-Assistenten.
+                            try:
+                                settings.set("show_onboarding", False)
+                                settings.set("setup_completed", True)
+                                settings.set("auto_generate_budget_warnings", bool(settings.get("auto_generate_budget_warnings", True)))
+                                settings.set("tracking_budget_learning_enabled", bool(settings.get("tracking_budget_learning_enabled", True)))
+                                settings.set("tracking_budget_learning_show_in_report", bool(settings.get("tracking_budget_learning_show_in_report", True)))
+                            except Exception as _import_settings_exc:
+                                logging.getLogger(__name__).warning(
+                                    "Import-Settings konnten im Startlauf nicht fixiert werden: %s",
+                                    _import_settings_exc,
+                                )
                         try:
                             encrypted_session = EncryptedSession.open_with_key(
                                 str(active_user.db_path), db_key, active_user.salt

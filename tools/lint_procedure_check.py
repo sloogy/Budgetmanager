@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -69,11 +70,21 @@ def _is_excluded_path(path: Path) -> bool:
     )
 
 
+def _iter_project_paths(pattern: str) -> Iterable[Path]:
+    """Iteriert nur durch Projektdateien und betritt lokale venvs nie."""
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        current = Path(dirpath)
+        dirnames[:] = [
+            dirname for dirname in dirnames if not _is_excluded_path(current / dirname)
+        ]
+        for filename in filenames:
+            path = current / filename
+            if path.match(pattern) and not _is_excluded_path(path):
+                yield path
+
+
 def _python_files() -> Iterable[Path]:
-    for path in ROOT.rglob("*.py"):
-        if _is_excluded_path(path):
-            continue
-        yield path
+    yield from _iter_project_paths("*.py")
 
 
 def _line_col(text: str, lineno: int, col: int) -> str:
@@ -105,12 +116,20 @@ def check_versions() -> list[str]:
 
 def check_generated_artifacts() -> list[str]:
     errors: list[str] = []
-    for name in EXCLUDED_DIRS - {".git"}:
-        for path in ROOT.rglob(name):
-            if path.is_dir() and not _is_excluded_path(path):
+    generated_dir_names = EXCLUDED_DIRS - {".git"}
+
+    for dirpath, dirnames, _filenames in os.walk(ROOT):
+        current = Path(dirpath)
+        dirnames[:] = [
+            dirname for dirname in dirnames if not _is_excluded_path(current / dirname)
+        ]
+        for dirname in dirnames:
+            if dirname in generated_dir_names:
+                path = current / dirname
                 errors.append(
                     f"generiertes Verzeichnis im Release-Baum: {path.relative_to(ROOT)}"
                 )
+
     for pattern in GENERATED_FILE_PATTERNS:
         for path in ROOT.glob(pattern):
             if path.is_file() and not _is_excluded_path(path):
@@ -120,10 +139,33 @@ def check_generated_artifacts() -> list[str]:
     return errors
 
 
+def _dev_black_pin() -> str | None:
+    for line in _read(ROOT / "requirements-dev.txt").splitlines():
+        stripped = line.strip()
+        if stripped.startswith("black=="):
+            return stripped.split("==", 1)[1].split("#", 1)[0].strip()
+    return None
+
+
 def check_workflow() -> list[str]:
     errors: list[str] = []
     workflow_path = ROOT / ".github" / "workflows" / "build.yml"
     workflow = _read(workflow_path)
+
+    # Eine zweite, harte Black-Version im Workflow ist ein Release-Risiko:
+    # requirements-dev.txt ist die zentrale Quelle. Ein abweichendes
+    # force-reinstall kann GitHub Actions brechen, obwohl lokale Checks grün sind.
+    if "--force-reinstall" in workflow and "black==" in workflow:
+        errors.append(
+            "GitHub-Workflow darf Black nicht separat per --force-reinstall pinnen; "
+            "requirements-dev.txt ist die zentrale Dev-Tool-Quelle"
+        )
+    black_pin = _dev_black_pin()
+    if black_pin and f"black=={black_pin}" not in _read(ROOT / "requirements-dev.txt"):
+        errors.append(
+            "requirements-dev.txt Black-Pin konnte nicht sauber gelesen werden"
+        )
+
     required_snippets = [
         "python tools/sync_version.py --check",
         "python tools/verify_qt_translations.py",

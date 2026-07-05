@@ -16,9 +16,10 @@ from PySide6.QtWidgets import (
 from model.favorites_model import FavoritesModel
 from model.savings_goals_model import SavingsGoalsModel, STATUS_SAVING, STATUS_RELEASED
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
+from model.pot_reserve_model import PotReserveModel
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from model.date_ranges import month_bounds
-from utils.i18n import display_typ, tr
+from utils.i18n import display_typ, tr, trf
 from settings import Settings
 from utils.money import format_money
 from utils.icons import get_icon
@@ -158,10 +159,28 @@ class CockpitTab(QWidget):
         self.btn_customize.setToolTip(tr("cockpit.customize_tip"))
         self.btn_customize.clicked.connect(self._show_customize_menu)
         header.addWidget(self.btn_customize)
+        self.btn_month_close = QPushButton(tr("cockpit.month_close"))
+        self.btn_month_close.setToolTip(tr("help.month_close"))
+        self.btn_month_close.clicked.connect(self._open_month_close)
+        header.addWidget(self.btn_month_close)
         self.btn_refresh = QPushButton(tr("cockpit.refresh"))
         self.btn_refresh.clicked.connect(self.refresh)
         header.addWidget(self.btn_refresh)
         self.body_layout.addLayout(header)
+
+        # v2.2.0: Ampel-Monatsstatus – eine Zeile, sofort verständlich.
+        self.lbl_month_status = QLabel("")
+        self.lbl_month_status.setStyleSheet("font-size: 15px; font-weight: 600;")
+        self.lbl_month_status.setToolTip(tr("status.month_tooltip"))
+        self.body_layout.addWidget(self.lbl_month_status)
+
+        # v2.2.3 (Führung): dynamische "Nächste Schritte" – beantwortet
+        # DIE Einsteigerfrage "Und was mache ich jetzt?" mit max. 3 konkreten,
+        # aus den echten Daten abgeleiteten Handlungen.
+        self.lbl_next_steps = QLabel("")
+        self.lbl_next_steps.setWordWrap(True)
+        self.lbl_next_steps.setStyleSheet("font-size: 12px;")
+        self.body_layout.addWidget(self.lbl_next_steps)
 
         # KPIs
         self.kpi_panel = QWidget()
@@ -170,7 +189,9 @@ class CockpitTab(QWidget):
         self.card_income = _Card(display_typ(TYP_INCOME), "–")
         self.card_expenses = _Card(display_typ(TYP_EXPENSES), "–")
         self.card_savings = _Card(display_typ(TYP_SAVINGS), "–")
-        self.card_balance = _Card(tr("cockpit.month_feeling"), "–")
+        self.card_balance = _Card(tr("cockpit.free_amount"), "–")
+        self.card_balance.setToolTip(tr("month_close.free_amount_tip"))
+        self.card_savings.setToolTip(tr("help.savings"))
         # 2x2 statt 4 nebeneinander: deutlich robuster bei Windows 125/150 %,
         # kleinen Notebook-Displays und portabler Nutzung an fremden Monitoren.
         for i, card in enumerate([self.card_income, self.card_expenses, self.card_savings, self.card_balance]):
@@ -255,6 +276,29 @@ class CockpitTab(QWidget):
         self._apply_panel_order()
         self._apply_panel_visibility()
 
+    def _open_month_close(self) -> None:
+        """Öffnet den Monatsabschluss-Assistenten.
+
+        Vormonate haben Vorrang: wenn z. B. Juni noch offen ist und heute
+        bereits Juli ist, öffnet der Button Juni statt stumpf den laufenden
+        Monat. Das hält Monatsabschluss, Carryover und Vorschläge chronologisch
+        sauber.
+        """
+        try:
+            from datetime import date as _date
+
+            from model.month_close_model import MonthCloseModel
+            from views.month_close_dialog import MonthCloseDialog
+
+            today = _date.today()
+            suggested = MonthCloseModel(self.conn).suggested_month_to_close(today)
+            target_year, target_month = suggested or (today.year, today.month)
+            dlg = MonthCloseDialog(self.conn, target_year, target_month, self)
+            dlg.exec()
+            self.refresh()
+        except Exception as e:
+            logger.warning("month close dialog: %s", e)
+
     def _section(self, title: str) -> QFrame:
         frame = QFrame()
         frame.setFrameShape(QFrame.StyledPanel)
@@ -319,7 +363,54 @@ class CockpitTab(QWidget):
         self._refresh_budget_warnings(y, m)
         self._refresh_missing(y, m)
         self._refresh_recent()
+        self._refresh_next_steps(y, m)
         self._apply_panel_visibility()
+
+    def _refresh_next_steps(self, y: int, m: int) -> None:
+        """v2.2.3 (Führung): bis zu 3 konkrete nächste Handlungen ableiten."""
+        steps: list[str] = []
+        try:
+            start, end = month_bounds(y, m)
+            n_book = int(self.conn.execute(
+                "SELECT COUNT(*) FROM tracking WHERE date >= ? AND date < ?",
+                (start, end),
+            ).fetchone()[0])
+            if n_book == 0:
+                # Empty State: klarer Startpunkt statt leerer Flächen.
+                steps.append(tr("cockpit.next_first_booking"))
+
+            n_missing = int(getattr(self, "_missing_count", 0) or 0)
+            if n_missing > 0:
+                steps.append(trf("cockpit.next_missing_fix", n=n_missing))
+
+            from datetime import date as _date
+
+            from model.month_close_model import MonthCloseModel
+
+            today = _date.today()
+            month_close_model = MonthCloseModel(self.conn)
+            open_past_months = month_close_model.list_open_months_before(y, m, limit=12)
+            if open_past_months:
+                oy, om = open_past_months[0]
+                steps.append(
+                    trf(
+                        "cockpit.next_past_month_close",
+                        month=tr(f"month.{om}"),
+                        year=oy,
+                        n_more=max(0, len(open_past_months) - 1),
+                    )
+                )
+            elif today.day >= 25 and not month_close_model.is_closed(y, m):
+                steps.append(tr("cockpit.next_month_close"))
+        except Exception as e:
+            logger.debug("next steps: %s", e)
+
+        if not steps:
+            self.lbl_next_steps.setText(tr("cockpit.next_all_good"))
+        else:
+            self.lbl_next_steps.setText(
+                tr("cockpit.next_steps_title") + " " + "  ·  ".join(steps[:3])
+            )
 
     # ── Refresh helpers ──────────────────────────────────────────
     def _sum_budget_actual(self, y: int, m: int, typ: str, category: str | None = None) -> tuple[float, float]:
@@ -347,6 +438,18 @@ class CockpitTab(QWidget):
         rest = income_a - exp_a - sav_a
         hint = tr("cockpit.balance_positive") if rest >= 0 else tr("cockpit.balance_warning")
         self.card_balance.set_values(format_money(rest), hint)
+
+        # v2.2.0: Ampel-Monatsstatus (identische Logik wie in der Übersicht).
+        try:
+            from model.month_status import compute_month_status
+
+            st = compute_month_status(income_a, exp_a, exp_b, sav_a)
+            self.lbl_month_status.setText(
+                f"{st.icon} {tr(st.text_key)} – "
+                f"{tr('cockpit.free_amount')}: {format_money(st.free_amount)}"
+            )
+        except Exception as e:
+            logger.debug("month status: %s", e)
 
     def _set_table_rows(self, table: QTableWidget, rows: Iterable[Iterable[str]], empty_text: str) -> None:
         rows = list(rows)
@@ -393,7 +496,18 @@ class CockpitTab(QWidget):
     def _refresh_favorites(self, y: int, m: int) -> None:
         favs = FavoritesModel(self.conn).list_all()[:12]
         rows = []
+        pot_model = PotReserveModel(self.conn)
+        try:
+            co_start = int(self.settings.get("carryover_start_month", 1) or 1)
+            co_year_raw = int(self.settings.get("carryover_start_year", 0) or 0)
+            co_year = co_year_raw if co_year_raw > 0 else y
+        except Exception:
+            co_start, co_year = 1, y
         for typ, cat in favs:
+            pot = pot_model.status(y, m, typ, cat, start_month=co_start, start_year=co_year)
+            if pot is not None:
+                rows.append([display_typ(typ), cat, format_money(pot.cap), format_money(pot.spent), format_money(pot.rest)])
+                continue
             b, a = self._sum_budget_actual(y, m, typ, cat)
             # Für Einnahmen ist Rest = Ist-Budget; für Ausgaben/Ersparnisse Budget-Ist.
             rest = (a - b) if typ == TYP_INCOME else (b - a)
@@ -477,28 +591,110 @@ class CockpitTab(QWidget):
         try:
             if self._warnings_model_ext is None:
                 self._warnings_model_ext = BudgetWarningsModelExtended(self.conn)
-            excs = self._warnings_model_ext.check_warnings_extended(y, m, lookback_months=6)
+            try:
+                from settings import Settings
+                lookback = int(Settings().get("budget_suggestion_months", 3) or 3)
+            except Exception:
+                lookback = 3
+            excs = self._warnings_model_ext.check_warnings_extended(y, m, lookback_months=lookback)
         except Exception as e:
             logger.debug("budget_warnings: %s", e)
             excs = []
 
         excs = sorted(excs, key=lambda e: float(getattr(e, "percent_used", 0.0) or 0.0), reverse=True)
         rows = []
+        seen_keys: set[tuple[str, str]] = set()
         for exc in excs[:10]:
             pct = float(getattr(exc, "percent_used", 0.0) or 0.0)
             cnt = int(getattr(exc, "exceed_count", 0) or 0)
             auslastung = f"{pct:.0f}%" + (f" ({cnt}×)" if cnt > 1 else "")
             sug = getattr(exc, "suggestion", None)
             empfehlung = format_money(float(sug)) if sug else "—"
+            _typ = str(getattr(exc, "typ", ""))
+            _cat = str(getattr(exc, "category", ""))
+            seen_keys.add((_typ, _cat))
             rows.append([
-                display_typ(getattr(exc, "typ", "")),
-                str(getattr(exc, "category", "")),
+                display_typ(_typ),
+                _cat,
                 format_money(float(getattr(exc, "budget", 0.0) or 0.0)),
                 format_money(float(getattr(exc, "spent", 0.0) or 0.0)),
                 auslastung,
                 empfehlung,
             ])
+        # Tracking-only/Lernmodus und POT-Rückstellungen zusätzlich sichtbar machen.
+        # BudgetWarningsModel arbeitet primär schwellenbasiert; Kategorien ohne
+        # Budget oder POTs mit Jahres-/Topfrest müssen trotzdem im Cockpit melden.
+        if len(rows) < 10:
+            try:
+                from model.budget_overview_model import BudgetOverviewModel
+                overview = BudgetOverviewModel(self.conn)
+                learn = overview.get_tracking_budget_suggestions(
+                    year=y, current_month=m, show_in_report=True
+                )
+                for sug in learn:
+                    key = (str(getattr(sug, "typ", "")), str(getattr(sug, "category", "")))
+                    if key in seen_keys or not key[1]:
+                        continue
+                    spent = self._year_to_date_spent(y, m, key[0], key[1])
+                    rows.append([
+                        display_typ(key[0]), key[1], format_money(0.0), format_money(spent),
+                        tr("cockpit.learning_suggestion"), format_money(float(getattr(sug, "suggested_amount", 0.0) or 0.0)),
+                    ])
+                    seen_keys.add(key)
+                    if len(rows) >= 10:
+                        break
+            except Exception as exc:
+                logger.debug("cockpit learning warnings: %s", exc)
+
+        if len(rows) < 10:
+            try:
+                pot_model = PotReserveModel(self.conn)
+                try:
+                    co_start = int(self.settings.get("carryover_start_month", 1) or 1)
+                    co_year_raw = int(self.settings.get("carryover_start_year", 0) or 0)
+                    co_year = co_year_raw if co_year_raw > 0 else y
+                except Exception:
+                    co_start, co_year = 1, y
+                cats = self.conn.execute(
+                    "SELECT typ, name FROM categories WHERE typ=? ORDER BY name",
+                    (TYP_EXPENSES,),
+                ).fetchall()
+                for typ, cat in cats:
+                    key = (str(typ), str(cat))
+                    if key in seen_keys:
+                        continue
+                    st = pot_model.status(y, m, key[0], key[1], start_month=co_start, start_year=co_year)
+                    if st is None:
+                        continue
+                    if not (st.is_overdrawn or (not st.has_budget and st.spent > 0.01)):
+                        continue
+                    rows.append([
+                        display_typ(key[0]), key[1], format_money(st.cap), format_money(st.spent),
+                        tr("cockpit.pot_overdrawn") if st.has_budget else tr("cockpit.budget_missing"),
+                        tr("cockpit.set_budget"),
+                    ])
+                    seen_keys.add(key)
+                    if len(rows) >= 10:
+                        break
+            except Exception as exc:
+                logger.debug("cockpit pot warnings: %s", exc)
+
         self._set_table_rows(self.tbl_budget_warnings, rows, tr("cockpit.empty_budget_warnings"))
+
+    def _year_to_date_spent(self, y: int, m: int, typ: str, category: str) -> float:
+        """Summe Jan..Monat für Cockpit-Hinweise ohne Budget."""
+        try:
+            last_day = __import__('calendar').monthrange(int(y), int(m))[1]
+            start = f"{int(y):04d}-01-01"
+            end = f"{int(y):04d}-{int(m):02d}-{last_day:02d}"
+            row = self.conn.execute(
+                "SELECT COALESCE(SUM(amount),0) FROM tracking WHERE typ=? AND category=? AND date>=? AND date<=?",
+                (typ, category, start, end),
+            ).fetchone()
+            val = float(row[0] if row and row[0] is not None else 0.0)
+            return abs(val) if typ != TYP_INCOME else val
+        except Exception:
+            return 0.0
 
     def _refresh_missing(self, y: int, m: int) -> None:
         rows = []
@@ -536,30 +732,30 @@ class CockpitTab(QWidget):
             ).fetchall()
         }
         EPS = 1e-6
+        open_count = 0
+        # v2.2.4 (Führung/Stabilität): Fälligkeit je Position berücksichtigen –
+        # im laufenden Monat gilt eine Position erst ab ihrem Soll-Tag als
+        # offen (siehe model/fixed_cost_due, dort regressionsgesichert).
+        from model.fixed_cost_due import is_open_this_month
+
         for typ, name, is_fix, is_recurring, day in self.conn.execute(sql).fetchall():
-            is_fix = bool(is_fix); is_recurring = bool(is_recurring)
             budget = budgets.get((str(typ), str(name)), 0.0)
             booked = booked_totals.get((str(typ), str(name)), 0.0)
-
-            both_flags = is_fix and is_recurring
-            open_item = False
-            rest = 0.0
-            if both_flags:
-                # fixer Monatsbetrag: offen, solange nichts gebucht
-                if abs(booked) < EPS:
-                    open_item = True
-                    rest = budget
-            else:
-                # fix XOR wiederkehrend: offen, solange Budget im Monat nicht erreicht
-                if budget > EPS and abs(booked) < abs(budget) - EPS:
-                    open_item = True
-                    rest = budget - booked
-
+            open_item, rest = is_open_this_month(
+                is_fix=bool(is_fix),
+                is_recurring=bool(is_recurring),
+                budget=budget,
+                booked=booked,
+                due_day=day,
+                year=y,
+                month=m,
+            )
             if open_item:
-                rows.append([display_typ(typ), name, str(day or 1), format_money(rest), tr("cockpit.doubleclick_book")])
-            if len(rows) >= 10:
-                break
+                open_count += 1
+                if len(rows) < 10:
+                    rows.append([display_typ(typ), name, str(day or 1), format_money(rest), tr("cockpit.doubleclick_book")])
         self._set_table_rows(self.tbl_missing, rows, tr("cockpit.empty_missing"))
+        self._missing_count = open_count
 
     def _refresh_recent(self) -> None:
         rows = []

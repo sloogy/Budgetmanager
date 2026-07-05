@@ -148,8 +148,21 @@ class BudgetSuggestionEngine:
         if months_back <= 0:
             return None
 
-        # Aktuelles Budget im Zielmonat
+        # Aktuelles/Ziel-Budget bestimmen.
+        #
+        # KILLCRITIC v2.2.5: In der Praxis wird der Vorschlagsdialog oft im
+        # aktuellen Monat geöffnet, während die auswertbaren Daten aus bereits
+        # abgeschlossenen Vormonaten stammen. Wenn der Zielmonat selbst noch kein
+        # Budget hat (z.B. Juli leer, Jan-Jun budgetiert+gebucht), darf die
+        # Forecast-Engine nicht mit ``None`` abbrechen. Sonst sieht der Nutzer
+        # trotz mehrerer Monate über Budget keinen Vorschlag.
+        #
+        # Darum: erst Budget im Zielmonat nehmen; falls leer, die letzte positive
+        # Budgetbasis vor dem Zielmonat verwenden. Die Abweichungsfenster unten
+        # bleiben unverändert und prüfen weiterhin echte historische Monate.
         current_budget = self._get_budget_amount(year, month, typ, category)
+        if current_budget is None or current_budget <= 0:
+            current_budget = self._get_latest_budget_before(year, month, typ, category)
         if current_budget is None or current_budget <= 0:
             return None
 
@@ -182,9 +195,14 @@ class BudgetSuggestionEngine:
         )
 
         # ── Startmonat für die Analyse bestimmen ──
-        # Bei use_current_month=False starten wir einen Monat VOR dem Zielmonat,
-        # damit der (ggf. unvollständige) aktuelle Monat nicht einfliesst.
-        if use_current_month:
+        # Bei use_current_month=False darf nur der wirklich laufende/zukünftige
+        # Zielmonat übersprungen werden. Ein bereits abgeschlossener Zielmonat
+        # (z.B. im Juli rückwirkend Juni prüfen) muss in die Analyse einfliessen,
+        # sonst verschwinden genau die Praxisfälle "mehrere Monate über Budget".
+        today = date.today()
+        target_is_past_month = (int(year), int(month)) < (today.year, today.month)
+        target_has_real_booking = self._get_spent_amount(year, month, typ, category) > 0
+        if use_current_month or (target_is_past_month and target_has_real_booking):
             analysis_year, analysis_month = year, month
         else:
             analysis_year, analysis_month = self._prev_month(year, month)
@@ -555,7 +573,13 @@ class BudgetSuggestionEngine:
         # lumpy bezogen – nur in einzelnen Monaten. Unterscheidungssignal:
         # Buchungs-Regelmässigkeit. Ein einzelner Null-Monat (Ferien o.ä.) darf
         # eine sonst monatliche Kategorie nicht in die Topf-Inflation zurückkippen.
-        regular_monthly = active_months >= max(2, len(months) - 1)
+        # KILLCRITIC v2.2.5: Bei kurzen Fenstern (3 Monate) darf eine
+        # Franchise/POT-Kategorie mit 2 aktiven Monaten + 1 Nullmonat nicht als
+        # normale Monatsausgabe fehlklassifiziert werden. Sonst wird gegen
+        # Budget×Monate geprüft und ein überzogener Topf bleibt stumm. Erst
+        # nahezu durchgehend aktive Reihen ab mindestens 3 Buchungsmonaten
+        # gelten als laufende Monatsausgabe.
+        regular_monthly = active_months >= max(3, len(months) - 1)
 
         if regular_monthly:
             # Pro-Monat-Vergleich: Fenster-Verbrauch gegen Fenster-Budget (Summe
@@ -756,6 +780,23 @@ class BudgetSuggestionEngine:
             return float(row[0])
         except Exception:
             return None
+
+    def _get_latest_budget_before(
+        self, year: int, month: int, typ: str, category: str, max_scan: int = 24
+    ) -> Optional[float]:
+        """Letzte positive Budgetbasis vor dem Zielmonat.
+
+        Wird nur als Basis für Vorschläge genutzt, wenn der Zielmonat selbst
+        noch kein Budget hat. Damit können mehrere abgeschlossene Monate trotz
+        leerem aktuellem Monat einen sinnvollen Vorschlag erzeugen.
+        """
+        base = date(int(year), max(1, min(12, int(month or 1))), 1)
+        for i in range(1, max(1, int(max_scan)) + 1):
+            d = self._subtract_months(base, i)
+            amount = self._get_budget_amount(d.year, d.month, typ, category)
+            if amount is not None and float(amount) > 0:
+                return float(amount)
+        return None
 
     def _get_spent_amount(
         self, year: int, month: int, typ: str, category: str

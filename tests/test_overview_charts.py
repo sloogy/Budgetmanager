@@ -132,3 +132,29 @@ def test_aggregate_top_bookings_skips_empty_category():
     top = aggregate_top_bookings(rows)
     cats = [cat for (_t, cat), _v in top]
     assert "" not in cats and "X" in cats
+
+
+def test_aggregate_category_amounts_limits_and_groups_other():
+    from model.overview_aggregation import aggregate_category_amounts
+
+    rows = [
+        _Row(TYP_EXPENSES, "Miete", -1500.0),
+        _Row(TYP_EXPENSES, "Essen", -420.0),
+        _Row(TYP_EXPENSES, "ÖV", -120.0),
+        _Row(TYP_EXPENSES, "Kaffee", -30.0),
+        _Row(TYP_INCOME, "Lohn", 5000.0),
+    ]
+    ranked = aggregate_category_amounts(rows, TYP_EXPENSES, top_n=2, other_label="Übrige")
+    assert ranked == [("Miete", 1500.0), ("Essen", 420.0), ("Übrige", 150.0)]
+
+
+def test_overview_keeps_main_donut_but_removes_misleading_neighbor_pies():
+    src = (ROOT / "views" / "tabs" / "overview_kpi_panel.py").read_text(encoding="utf-8")
+    # Der bewährte Haupt-Donut bleibt als Plan/Ist-Status erhalten.
+    assert "chart_overview_donut.create_nested_donut" in src
+    # Die danebenliegenden/verwirrenden Verteilungs-Pies bleiben ersetzt.
+    assert "chart_categories.create_horizontal_bar_chart" in src
+    assert "chart_types.create_horizontal_bar_chart" in src
+    assert "chart_categories.create_pie_chart" not in src
+    assert "chart_types.create_pie_chart" not in src
+    assert "overview.explain.plan_actual" in src

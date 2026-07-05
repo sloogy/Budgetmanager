@@ -52,6 +52,7 @@ class UndoRedoModel:
             "savings_goals",
             "recurring_transactions",
             "suggestion_accepted",
+            "tracking_learning_state",
             "fixcost_tracking",
             "system_flags",
             "undo_stack",
@@ -535,6 +536,18 @@ class UndoRedoModel:
             )
             self.conn.execute(
                 "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
+                (typ, old_name),
+            )
+        # v2.2.6 (KILLCRITIC): Muss denselben Lernzustand-Umzug spiegeln wie
+        # CategoryModel.rename_and_cascade. Sonst würde Undo/Redo eines Renames
+        # den Lernzustand inkonsistent zum Rest der umbenannten Referenzen lassen.
+        if self._table_exists("tracking_learning_state"):
+            self.conn.execute(
+                "UPDATE OR IGNORE tracking_learning_state SET category=? WHERE typ=? AND category=?",
+                (new_name, typ, old_name),
+            )
+            self.conn.execute(
+                "DELETE FROM tracking_learning_state WHERE typ=? AND category=?",
                 (typ, old_name),
             )
         if typ == TYP_SAVINGS and self._table_exists("savings_goals"):

@@ -153,15 +153,12 @@ class BudgetWarningsModelExtended:
         Returns:
             Liste von BudgetExceedance-Objekten mit Vorschlägen
         """
-        try:
-            from settings import Settings
-
-            if not bool(Settings().get("warn_budget_overrun", False)):
-                self._auto_generated = False
-                return []
-        except Exception:
-            # Bei Settings-Problemen lieber fail-open, damit manuelle Warnprüfungen nicht verschwinden.
-            pass
+        # WICHTIG: ``warn_budget_overrun`` steuert nur passive/automatische
+        # Start- oder Banner-Hinweise. Die manuell geöffnete Funktion
+        # "Budgetwarnungen/Budgetvorschläge" darf dadurch NICHT leer bleiben.
+        # Nach einem Restore können Settings-Defaults sonst die komplette
+        # Warn-/Vorschlagslogik scheinbar deaktivieren, obwohl Budget und
+        # Trackingdaten vorhanden sind.
 
         # Explizit gespeicherte Warnungen holen
         warnings = self.get_warnings(year, month)
@@ -177,26 +174,27 @@ class BudgetWarningsModelExtended:
             except Exception:
                 auto_gen = True
             if auto_gen:
-                cur = self.conn.execute(
-                    """
-                    SELECT DISTINCT typ, category
-                    FROM budget
-                    WHERE year = ? AND month = ? AND COALESCE(amount, 0) > 0
-                    """,
-                    (year, month),
+                # KILLCRITIC v2.2.5 Nachaudit:
+                # Nicht nur den Zielmonat scannen. Wenn der Nutzer im Juli
+                # Vorschläge öffnet, Juli aber noch kein Budget hat, müssen
+                # Kategorien aus der letzten bekannten Budgetbasis trotzdem als
+                # temporäre Warn-/Vorschlagskandidaten auftauchen. Sonst bleibt
+                # das Cockpit-Warnpanel leer, obwohl die Engine intern z. B.
+                # Jan-Jun als dauerhaft über Budget erkennt.
+                candidate_keys = self._budget_candidate_keys_before_or_at(
+                    year, month, lookback_months
                 )
-                rows = cur.fetchall()
                 warnings = [
                     BudgetWarning(
                         id=0,
                         year=year,
                         month=month,
-                        typ=r[0],
-                        category=r[1],
+                        typ=t,
+                        category=c,
                         threshold_percent=100,
                         enabled=True,
                     )
-                    for r in rows
+                    for t, c in sorted(candidate_keys)
                 ]
                 self._auto_generated = bool(warnings)
         exceeded = []
@@ -214,18 +212,15 @@ class BudgetWarningsModelExtended:
             sign_ratio = 0.7
 
         for warn in warnings:
-            # Budget abrufen
-            cur = self.conn.execute(
-                """
-                SELECT amount FROM budget
-                WHERE year = ? AND month = ? AND typ = ? AND category = ?
-                """,
-                (year, month, warn.typ, warn.category),
+            # Budget abrufen: Zielmonat bevorzugen, sonst letzte positive
+            # Budgetbasis <= Zielmonat. Das hält Warnungen konsistent mit der
+            # Vorschlagsengine und verhindert leere Warnpanels bei leerem
+            # aktuellem Monat.
+            budget = self._effective_budget_amount(
+                year, month, warn.typ, warn.category, lookback_months
             )
-            budget_row = cur.fetchone()
-            if not budget_row or budget_row[0] <= 0:
+            if budget <= 0:
                 continue
-            budget = float(budget_row[0])
 
             # Ausgaben abrufen (nur für den Monat)
             start_date, end_date = month_bounds(year, month)
@@ -290,31 +285,90 @@ class BudgetWarningsModelExtended:
 
         return exceeded
 
+    def _budget_candidate_keys_before_or_at(
+        self, year: int, month: int, lookback_months: int
+    ) -> set[tuple[str, str]]:
+        """Budget-Kandidaten aus Zielmonat oder letzter bekannter Planbasis.
+
+        Für Warnungen/Vorschläge muss ein leerer Zielmonat nicht bedeuten, dass
+        keine Kategorien geprüft werden. Wir betrachten die letzten N*3 Monate,
+        analog zur Forecast-Engine, und sammeln Kategorien mit positivem Budget.
+        """
+        keys: set[tuple[str, str]] = set()
+        base = date(int(year), max(1, min(12, int(month or 1))), 1)
+        max_scan = max(1, int(lookback_months or 3)) * 3
+        for i in range(max_scan):
+            d = self._subtract_months(base, i)
+            rows = self.conn.execute(
+                """
+                SELECT DISTINCT typ, category
+                FROM budget
+                WHERE year = ? AND month = ? AND COALESCE(amount, 0) > 0
+                """,
+                (d.year, d.month),
+            ).fetchall()
+            for row in rows:
+                keys.add((str(row[0]), str(row[1])))
+        return keys
+
+    def _effective_budget_amount(
+        self, year: int, month: int, typ: str, category: str, lookback_months: int
+    ) -> float:
+        """Budget im Zielmonat, sonst letzte positive Budgetbasis <= Zielmonat."""
+        base = date(int(year), max(1, min(12, int(month or 1))), 1)
+        max_scan = max(1, int(lookback_months or 3)) * 3
+        for i in range(max_scan):
+            d = self._subtract_months(base, i)
+            row = self.conn.execute(
+                """
+                SELECT amount FROM budget
+                WHERE year = ? AND month = ? AND typ = ? AND category = ?
+                """,
+                (d.year, d.month, typ, category),
+            ).fetchone()
+            try:
+                amount = float(row[0] if row else 0.0)
+            except Exception:
+                amount = 0.0
+            if amount > 0:
+                return amount
+        return 0.0
+
     def _get_exceed_count(
         self, typ: str, category: str, year: int, month: int, lookback_months: int
     ) -> int:
-        """
-        Zählt wie oft das Budget in den letzten N Monaten überschritten wurde
+        """Zählt Überschreitungen in den letzten N echten Budgetmonaten.
+
+        Ein leerer Zielmonat darf die Historie nicht verkürzen. Beispiel:
+        Im Juli ist noch kein Budget gesetzt, aber April-Juni waren über Budget.
+        Dann müssen bei ``lookback_months=3`` auch genau April, Mai und Juni
+        gezählt werden – nicht Juli leer + Juni + Mai.
         """
         count = 0
+        checked_budget_months = 0
         current_date = date(year, month, 1)
+        max_scan = max(1, int(lookback_months or 3)) * 3
 
-        for i in range(lookback_months):
+        for i in range(max_scan):
+            if checked_budget_months >= int(lookback_months or 3):
+                break
             check_date = self._subtract_months(current_date, i)
             check_year = check_date.year
             check_month = check_date.month
 
-            # Budget holen
             cur = self.conn.execute(
                 "SELECT amount FROM budget WHERE year = ? AND month = ? AND typ = ? AND category = ?",
                 (check_year, check_month, typ, category),
             )
             budget_row = cur.fetchone()
-            if not budget_row or budget_row[0] <= 0:
+            try:
+                budget = float(budget_row[0] if budget_row else 0.0)
+            except Exception:
+                budget = 0.0
+            if budget <= 0:
                 continue
-            budget = float(budget_row[0])
 
-            # Ausgaben holen
+            checked_budget_months += 1
             start, end = month_bounds(check_year, check_month)
 
             cur = self.conn.execute(
@@ -412,7 +466,18 @@ class BudgetWarningsModelExtended:
         """Gibt alle (typ, category)-Paare zurück, die in diesem Monat bereits angenommen wurden."""
         try:
             rows = self.conn.execute(
-                "SELECT typ, category FROM suggestion_accepted WHERE year=? AND month=?",
+                """
+                SELECT sa.typ, sa.category
+                FROM suggestion_accepted sa
+                WHERE sa.year=? AND sa.month=?
+                  AND EXISTS (
+                      SELECT 1 FROM budget b
+                      WHERE b.year = sa.year
+                        AND b.typ = sa.typ
+                        AND b.category = sa.category
+                        AND COALESCE(b.amount, 0) > 0
+                  )
+                """,
                 (year, month),
             ).fetchall()
             return {(r[0], r[1]) for r in rows}

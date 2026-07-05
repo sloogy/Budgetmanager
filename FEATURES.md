@@ -1,11 +1,55 @@
-## Neu in v2.1.3
+## Neu in v2.2.6
+
+- **Konsistente Umbenennung:** Beim Umbenennen oder Umhaengen einer Kategorie folgt jetzt auch der Lernmodus-Zustand (beobachten/ignoriert/vertagt) sauber mit – keine Karteileichen, keine ungewollt wieder auftauchenden Lernvorschlaege.
+- **Robusteres Aufraeumen:** Beim Loeschen einer Buchung werden zugehoerige Tag-Verknuepfungen zusaetzlich explizit entfernt.
+
+## Neu in v2.2.6
+
+- **Bessere Erststart-Fuehrung:** Im Assistenten blaettert die **Enter-Taste** weiter; Willkommen und Anleitung erklaeren Cockpit, Ampel, Naechste Schritte und die zwei Einrichtungswege.
+- **Neues Hilfe-Thema Monatsabschluss:** Ueberschuss sichern, Defizit decken – verstaendlich erklaert.
+
+## Neu in v2.2.4
+
+- **Ehrlicher Fixkosten-Check:** Offene Fixkosten erscheinen im Cockpit erst ab ihrem Fälligkeitstag – kein Fehlalarm mehr am Monatsanfang.
+
+## Neu in v2.2.3
+
+- **Geführtes Cockpit:** „👉 Nächste Schritte" sagt dir konkret, was jetzt ansteht – erste Buchung, offene Fixkosten oder Monatsabschluss.
+
+## Neu in v2.2.2
+
+- **Tag-Filter in der Übersicht:** Kennzahlen, Diagramme und Listen nach einem Tag filtern.
+- **Express-Setup:** Ein Klick – Standard-Kategorien, Lernmodus an, sofort loslegen; Budgets entstehen später aus dem Tracking.
+
+## Neu in v2.2.1
+
+- **Reset repariert:** Setup-Reset führt wirklich aus; Teilreset heisst jetzt "Nur Budgets zurücksetzen" und lässt Kategorien + Buchungen unangetastet.
+- **Fehler sichtbar:** Der Daten-Hub meldet Probleme direkt im Fenster statt nur im Log.
+- **Vorschläge erklärt:** Tooltip zeigt je Vorschlag Warum + Wirkung; Lernvorschläge mit 🆕 markiert.
+- **Tracking-Feinschliff:** Kurzlabel mit Pfad-Tooltip, Auswahl-Zwang bei mehrdeutiger Suche, Undo-Hinweis nach jeder Buchung.
+
+## Neu in v2.2.0
+
+- **Cockpit als Startseite** mit Ampel-Monatsstatus (🟢🟡🔴) und Karte "Frei verfügbar".
+- **Monatsabschluss-Assistent:** Überschuss in Ersparnis sichern oder Defizit aus Ersparnis decken – geführt, per Klick, nie automatisch; Fixkosten werden nie zur Kürzung vorgeschlagen.
+- **Schnelleres Tracking:** je Konto wird die zuletzt gebuchte Kategorie vorgeschlagen.
+- **Übersicht vereinfacht:** 4 klare Reiter (Plan vs. Ist, Kategorien, Verlauf, Top-Buchungen) plus Ampel.
+- **Mehr Hilfe im Programm:** Tooltips zu Budgettopf, Ersparnissen, Monatsabschluss.
+
+## Neu in v2.1.7
+
+- **Tracking-Lernmodus:** Kategorien ohne Jahresbudget erhalten aus manuellem Tracking eigene, setzbare Budget-Vorschläge (1. Monat beobachten, ab 2 Monaten Hochrechnung, ab 3 Monaten stabil – Schwellen einstellbar). Die normale Vorschlagslogik bleibt unverändert.
+- **Stabile Tabellenbreiten:** Einstellungs-/Theme-Änderungen setzen Spaltenbreiten und Resize-Modi nicht mehr zurück (Wurzelfix + feste Breiten in Budget-/Tracking-Tab und Vorschlagsdialog).
+- **Besser lesbare Übersicht-Diagramme:** Der bewährte Plan/Ist-Donut bleibt erhalten; der verwirrende Kreis daneben wurde durch einen Konto-Vergleich als Balken ersetzt. Kategorien und Top-Buchungen werden als Ranking-Balken angezeigt; Bilanz rechnet Ersparnisse als gebundenen Einkommenstopf.
+
+## Aus v2.1.3
 
 - Budget-Anpassungsvorschlag korrigiert: als Fix (ohne Wiederkehrend) markierte, aber regelmässig monatlich gebuchte Kategorien (z.B. Lebensmittel) werden nicht mehr wie ein Jahrestopf aufsummiert und dadurch überhöht vorgeschlagen. Echte Rückstellungen/Franchise bleiben unverändert.
 
 # BudgetManager
 
 
-## Neu in v2.1.0
+## Neu in v2.1.7
 
 - 13. Monatslohn mit Auszahlungsmonat und Betrag.
 - Jahreswechsel-Prüfliste für Fixkosten, wiederkehrende Kosten, Pot- und inkrementelle Kategorien.
@@ -20,7 +64,7 @@
 
 - Final-Release-Härtung für Update-Dialog, Frozen-CLI und portable ZIP-Struktur.
 - Stabile Startdateien im Portable-ZIP: `BudgetManager.exe` und `BudgetManager`.
-- Doku-/Help-/Manifest-Versionen synchron auf v2.1.0.
+- Doku-/Help-/Manifest-Versionen synchron auf v2.1.7.
 - Zusätzliche dynamische Dialogtexte über i18n statt harter deutscher Strings.
 - Konto-Hub für Konto, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
 - Frei wählbarer Datenordner mit optionaler sicherer Datenübernahme.
@@ -31,7 +75,7 @@
 ## Cockpit-Startseite
 
 Das Cockpit fasst die wichtigsten Punkte zusammen: Monatsstatus, Favoriten, aktive Sparziele, Budget-Ampel, offene Monatsbuchungen und letzte 10 Buchungen. Es ist bewusst kompakt und frei gestaltbar: Bereiche lassen sich im Cockpit oder unter `Ansicht → Anzeigen` ein-/ausblenden. Auch Hauptreiter können ausgeblendet werden, damit Einsteiger nicht von zu vielen Tabs erschlagen werden.
-## v2.1.0 — Feature-Übersicht
+## v2.1.7 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
@@ -104,7 +148,7 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
   - Fix ohne Wiederholung = variable Rückstellung/Kostenblock, Betrag editierbar.
   - Wiederkehrend ohne Fix = variable wiederkehrende Buchung, Betrag editierbar.
 - Fix-only und recurring-only werden erst abgeschlossen, wenn der Monatsbudgetbetrag erreicht ist.
-- Tracker-Picker gruppiert Kategorien übersichtlicher: Favoriten, häufig manuell gebucht, normale Buchungen, variable Fix-/Wiederkehrend-Gruppen und echte Fixkosten.
+- Tracker-Picker gruppiert Kategorien übersichtlicher: Favoriten, häufig manuell gebucht, normale Buchungen, variable Fix-/Wiederkehrend-Gruppen und echte Fixkosten. Parent-Kategorien mit Kindern werden im Tracking ausgeblendet; Unterkategorien erscheinen kurz als `Miete` statt `Wohnen › Miete`.
 - Fixkosten-Forecast geschützt: 0-Monate senken Fixkosten nicht allein; echte wiederholte Buchungen bleiben auswertbar.
 - Installer-/Erststart-Abfrage für Sprache, Währung und bevorzugten Buchungstag bleibt korrekt verdrahtet.
 - Robustes Settings-Laden mit Default-Merge für Teil-JSONs.
@@ -133,11 +177,14 @@ pytest tests/ -v
 
 ## Übersicht: zusätzliche sinnvolle Graphen
 
+- Plan/Ist-Donut: Außen Einnahmen, Mitte Ausgaben, innen Ersparnisse; je Ring gebucht, offen oder über Budget.
+- Kategorien-Ranking: größte Ausgaben-Kategorien als horizontale Balken.
+- Konto-Vergleich: Einnahmen, Ausgaben und Ersparnisse als Balken statt als irreführender Kreis daneben.
 - Monatsverlauf: Ausgaben Budget vs. gebucht.
 - Monatsbilanz: echte Bilanz vs. geplante Bilanz.
-- Top-Buchungen: größte Buchungen im gewählten Zeitraum.
+- Top-Buchungen: größte zusammengefasste Kategorien/Buchungen im gewählten Zeitraum.
 
-Ziel: Ausreißer und Trends erkennen, ohne die Übersicht zu überladen.
+Ziel: Ausreißer und Trends erkennen, ohne die Übersicht zu überladen oder falsche Kuchenanteile zu zeigen.
 
 ### Sparziele im Workflow
 
@@ -154,3 +201,15 @@ Best Practice: Sparziel zuerst **freigeben**, dann die Entnahme buchen und das Z
 ### Sicherer Start
 
 Auto-Speichern und Auto-Backup sind beim ersten Start aktiv.
+
+### v2.1.7 integrierter Lernmodus
+
+- Erststart-Blocker behoben: Bei aktivem Lernmodus kann der Budget-Schritt ohne Budgetwert abgeschlossen werden; ohne Lernmodus bleibt die Mindestprüfung aktiv.
+- Übersichts-Banner korrigiert: Neue Lernbudgets zeigen **🆕** statt Defizit-Symbol.
+- Schema-Version bleibt auf der Lernstatus-Migration (`CURRENT_VERSION >= 15`) und wird per Regression abgesichert.
+- 2.1.6 bleibt die Code-Basis für die saubere Budgetart-Erkennung.
+- 2.1.5 liefert wieder die fehlende Persistenz für Lernstatus-Aktionen.
+- Lernstatus wird in `tracking_learning_state` gespeichert und bei Kategorie-Rename/-Delete mitgeführt.
+- Rechtsklick im Budgetvorschlagsdialog: weiter beobachten, ignorieren, unregelmäßig markieren, zurücksetzen.
+- Jahreswechsel-Prüfliste zeigt auch Kategorien, die nur getrackt wurden und daraus ein Startbudget fürs neue Jahr erhalten können.
+- Automatisches Ausblenden nach langer stabiler Lernphase ist optional und standardmäßig aus.

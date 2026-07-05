@@ -29,43 +29,99 @@ HELP_TOPICS = [
         "title": {"de": "Einstieg", "en": "Getting started", "fr": "Premiers pas"},
         "body": {
             "de": (
-                "# Einstieg\n\n"
-                "BudgetManager ist **portabel**: Programm und Daten liegen im selben Ordner "
-                "(`data/`). Mehrere Kopien des Ordners = mehrere getrennte Budgets.\n\n"
-                "**Empfohlene Reihenfolge:**\n\n"
-                "1. **Kategorien** anlegen oder Vorlage übernehmen (Kategorie-Manager via **Strg+K** oder im **Budget**-Tab).\n"
+                "# Willkommen bei BudgetManager\n\n"
+                "BudgetManager hilft dir, den \u00dcberblick \u00fcber Einnahmen, Ausgaben und "
+                "Ersparnisse zu behalten. Er ist **portabel**: Programm und Daten liegen "
+                "im selben Ordner (`data/`). Mehrere Kopien = mehrere getrennte Budgets.\n\n"
+                "## Womit du startest: das Cockpit\n\n"
+                "Beim Start landest du auf dem **Cockpit** \u2013 deiner Startseite. Ganz oben "
+                "eine **Ampel** f\u00fcr den Monat:\n\n"
+                "- Gr\u00fcn \u2013 alles im Plan.\n"
+                "- Gelb \u2013 es wird knapp (nahe am Budget).\n"
+                "- Rot \u2013 \u00fcber Plan (Budget \u00fcberschritten oder mehr ausgegeben als eingenommen).\n\n"
+                "Darunter steht **N\u00e4chste Schritte** \u2013 konkrete Vorschl\u00e4ge (erste Buchung, "
+                "offene Fixkosten, Monatsabschluss). Wenn du nicht weiterwei\u00dft: dort steht, was zu tun ist.\n\n"
+                "## Zwei Wege, um loszulegen\n\n"
+                "**Weg A \u2013 Sofort tracken (empfohlen f\u00fcr den Anfang):** Nutze die "
+                "**Express-Einrichtung** im Setup-Assistenten. Sie legt Standard-Kategorien an und "
+                "aktiviert den **Lernmodus** \u2013 du buchst deine Ausgaben, das Programm schl\u00e4gt nach "
+                "einigen Wochen passende Budgets vor. Kein Budget-Planen n\u00f6tig, bevor du startest.\n\n"
+                "**Weg B \u2013 Budgets selbst planen:**\n\n"
+                "1. **Kategorien** anlegen oder Vorlage \u00fcbernehmen (**Strg+K** oder im **Budget**-Tab).\n"
                 "2. **Budget** je Monat eintragen (Tab *Budget*). Leere Felder bleiben 0.\n"
-                "3. **Buchungen** erfassen (Tab *Buchungen*) – manuell oder über *Fixkosten buchen*.\n"
-                "4. In der **Übersicht** Soll/Ist und Auffälligkeiten prüfen.\n\n"
-                "Der **Setup-Assistent** (*Hilfe → Erste Schritte*) führt durch diese Schritte. "
-                "Beim allerersten Start wird zudem dein **Datenbank-/Restore-Key** angezeigt – "
-                "siehe Thema *Datenbank & Schlüssel*."
+                "3. **Buchungen** erfassen (Tab *Buchungen*) \u2013 manuell oder \u00fcber *Fixkosten buchen*.\n"
+                "4. In der **\u00dcbersicht** Soll/Ist pr\u00fcfen.\n\n"
+                "## Am Monatsende\n\n"
+                "Der **Monatsabschluss** (Knopf oben rechts im Cockpit) rechnet Einnahmen \u2212 Ausgaben "
+                "\u2212 Ersparnisse und hilft, einen \u00dcberschuss zu sichern oder ein Defizit zu decken "
+                "\u2013 siehe Thema *Monatsabschluss*.\n\n"
+                "Der **Setup-Assistent** (*Hilfe \u2192 Erste Schritte*) f\u00fchrt jederzeit erneut durch "
+                "diese Schritte. Tipp: Mit der **Enter-Taste** springst du zur n\u00e4chsten Seite.\n\n"
+                "Beim allerersten Start wird dein **Datenbank-/Restore-Key** angezeigt \u2013 gut aufbewahren, "
+                "siehe *Datenbank & Schl\u00fcssel*."
             ),
             "en": (
-                "# Getting started\n\n"
-                "BudgetManager is **portable**: program and data live in the same folder "
-                "(`data/`). Several copies of the folder = several separate budgets.\n\n"
-                "**Recommended order:**\n\n"
-                "1. Create **categories** or accept the template (category manager via **Ctrl+K** or in the **Budget** tab).\n"
+                "# Welcome to BudgetManager\n\n"
+                "BudgetManager helps you track income, expenses and savings. It is **portable**: "
+                "program and data live in the same folder (`data/`). Several copies = several "
+                "separate budgets.\n\n"
+                "## Where you start: the cockpit\n\n"
+                "On launch you land on the **cockpit** \u2013 your start page. At the top a "
+                "**traffic light** rates the month:\n\n"
+                "- Green \u2013 on track.\n"
+                "- Yellow \u2013 getting tight (close to budget).\n"
+                "- Red \u2013 over plan (budget exceeded or spent more than earned).\n\n"
+                "Below, **Next steps** suggests what to do (first booking, open fixed costs, "
+                "month-end close). Whenever you're unsure, it tells you what's next.\n\n"
+                "## Two ways to get going\n\n"
+                "**Path A \u2013 Track right away (recommended at first):** use **Express setup** in "
+                "the assistant. It creates default categories and enables **learning mode** \u2013 book "
+                "your expenses and the app suggests matching budgets after a few weeks. No planning "
+                "needed before you start.\n\n"
+                "**Path B \u2013 Plan budgets yourself:**\n\n"
+                "1. Create **categories** or accept the template (**Ctrl+K** or in the **Budget** tab).\n"
                 "2. Enter the **budget** per month (*Budget* tab). Empty fields stay 0.\n"
-                "3. Record **transactions** (*Tracking* tab) – manually or via *Book fixed costs*.\n"
-                "4. Check planned/actual and anomalies in the **Overview**.\n\n"
-                "The **Setup assistant** (*Help → Getting started*) walks you through these steps. "
-                "On the very first start your **database/restore key** is also shown – see "
+                "3. Record **transactions** (*Tracking* tab) \u2013 manually or via *Book fixed costs*.\n"
+                "4. Check planned/actual in the **Overview**.\n\n"
+                "## At month-end\n\n"
+                "The **month-end close** (button top right in the cockpit) computes income \u2212 expenses "
+                "\u2212 savings and helps secure a surplus or cover a deficit \u2013 see *Month-end close*.\n\n"
+                "The **setup assistant** (*Help \u2192 Getting started*) walks you through these steps "
+                "again anytime. Tip: press **Enter** to move to the next page.\n\n"
+                "On the very first start your **database/restore key** is shown \u2013 keep it safe, see "
                 "*Database & key*."
             ),
             "fr": (
-                "# Premiers pas\n\n"
-                "BudgetManager est **portable** : programme et données sont dans le même dossier "
-                "(`data/`). Plusieurs copies = plusieurs budgets séparés.\n\n"
-                "**Ordre conseillé :**\n\n"
-                "1. Créez des **catégories** ou reprenez le modèle (gestionnaire via **Ctrl+K** ou dans l'onglet **Budget**).\n"
+                "# Bienvenue dans BudgetManager\n\n"
+                "BudgetManager vous aide \u00e0 suivre revenus, d\u00e9penses et \u00e9pargne. Il est "
+                "**portable** : programme et donn\u00e9es sont dans le m\u00eame dossier (`data/`). "
+                "Plusieurs copies = plusieurs budgets s\u00e9par\u00e9s.\n\n"
+                "## Point de d\u00e9part : le cockpit\n\n"
+                "Au d\u00e9marrage, vous arrivez sur le **cockpit** \u2013 votre page d'accueil. En haut, "
+                "un **feu tricolore** \u00e9value le mois :\n\n"
+                "- Vert \u2013 dans le plan.\n"
+                "- Jaune \u2013 \u00e7a devient juste (proche du budget).\n"
+                "- Rouge \u2013 au-dessus du plan (budget d\u00e9pass\u00e9 ou plus d\u00e9pens\u00e9 que gagn\u00e9).\n\n"
+                "En dessous, **Prochaines \u00e9tapes** propose quoi faire (premi\u00e8re \u00e9criture, charges "
+                "fixes ouvertes, cl\u00f4ture du mois). En cas de doute, c'est l\u00e0 que \u00e7a se dit.\n\n"
+                "## Deux fa\u00e7ons de d\u00e9marrer\n\n"
+                "**Voie A \u2013 Suivre tout de suite (conseill\u00e9 au d\u00e9but) :** utilisez la "
+                "**configuration express** de l'assistant. Elle cr\u00e9e les cat\u00e9gories standard et "
+                "active le **mode apprentissage** \u2013 enregistrez vos d\u00e9penses et l'appli proposera "
+                "des budgets adapt\u00e9s apr\u00e8s quelques semaines. Aucune planification avant de commencer.\n\n"
+                "**Voie B \u2013 Planifier vous-m\u00eame les budgets :**\n\n"
+                "1. Cr\u00e9ez des **cat\u00e9gories** ou reprenez le mod\u00e8le (**Ctrl+K** ou onglet **Budget**).\n"
                 "2. Saisissez le **budget** par mois (onglet *Budget*). Champs vides = 0.\n"
-                "3. Enregistrez des **opérations** (onglet *Suivi*) – manuellement ou via *Saisir les charges fixes*.\n"
-                "4. Vérifiez prévu/réel et anomalies dans l'**Aperçu**.\n\n"
-                "L'**assistant** (*Aide → Premiers pas*) guide ces étapes. Au tout premier "
-                "démarrage, votre **clé de base/restauration** s'affiche aussi – voir "
-                "*Base de données & clé*."
+                "3. Enregistrez des **op\u00e9rations** (onglet *Suivi*) \u2013 manuellement ou via *Saisir les charges fixes*.\n"
+                "4. V\u00e9rifiez pr\u00e9vu/r\u00e9el dans l'**Aper\u00e7u**.\n\n"
+                "## En fin de mois\n\n"
+                "La **cl\u00f4ture du mois** (bouton en haut \u00e0 droite du cockpit) calcule revenus \u2212 "
+                "d\u00e9penses \u2212 \u00e9pargne et aide \u00e0 s\u00e9curiser un exc\u00e9dent ou couvrir un d\u00e9ficit "
+                "\u2013 voir *Cl\u00f4ture du mois*.\n\n"
+                "L'**assistant** (*Aide \u2192 Premiers pas*) reprend ces \u00e9tapes \u00e0 tout moment. "
+                "Astuce : appuyez sur **Entr\u00e9e** pour passer \u00e0 la page suivante.\n\n"
+                "Au tout premier d\u00e9marrage, votre **cl\u00e9 de base/restauration** s'affiche \u2013 "
+                "conservez-la, voir *Base de donn\u00e9es & cl\u00e9*."
             ),
         },
     },
@@ -258,6 +314,84 @@ HELP_TOPICS = [
             "fr": "# Cockpit / accueil\n\nUn onglet d'accueil compact avec indicateurs, favoris, objectifs actifs, alertes budget, écritures mensuelles manquantes et dernières opérations. Les panneaux et onglets peuvent être masqués via Affichage → Afficher.",
         },
     },
+    # \u2500\u2500 Monatsabschluss \u2500\u2500
+    {
+        "id": "monatsabschluss",
+        "icon": "\ud83d\udcc5",
+        "title": {
+            "de": "Monatsabschluss",
+            "en": "Month-end close",
+            "fr": "Cl\u00f4ture du mois",
+        },
+        "body": {
+            "de": (
+                "# Monatsabschluss\n\n"
+                "Der Assistent (Knopf **Monatsabschluss\u2026** oben rechts im Cockpit) schlie\u00dft "
+                "einen Monat sauber ab. Er rechnet:\n\n"
+                "**Einnahmen \u2212 Ausgaben \u2212 Ersparnisse = frei verf\u00fcgbar**\n\n"
+                "## \u00dcberschuss\n"
+                "Bleibt Geld \u00fcbrig, schl\u00e4gt der Assistent vor, den Rest in eine **Ersparnis** zu "
+                "buchen (bevorzugt das aktivste offene Sparziel). Betrag und Ziel sind \u00e4nderbar. "
+                "So verschwindet der \u00dcberschuss nicht unbemerkt im n\u00e4chsten Monat.\n\n"
+                "## Defizit\n"
+                "Fehlt Geld, kannst du das Loch aus einer **Ersparnis mit Guthaben** decken "
+                "(Entnahme). Zus\u00e4tzlich zeigt der Assistent rein informativ, welche **variablen** "
+                "Budgets im n\u00e4chsten Monat Spielraum h\u00e4tten.\n\n"
+                "> **Wichtig:** Fixkosten und wiederkehrende Kategorien werden **nie** zur K\u00fcrzung "
+                "vorgeschlagen \u2013 Miete oder Versicherung k\u00fcrzt man nicht am Monatsende weg.\n\n"
+                "## Ampel & N\u00e4chste Schritte\n"
+                "Die **Ampel** oben im Cockpit und in der \u00dcbersicht nutzt dieselbe Rechnung: "
+                "Rot bei \u00fcberschrittenem Budget oder negativem Rest, Gelb wenn es knapp wird, sonst "
+                "Gr\u00fcn. **N\u00e4chste Schritte** erinnert dich ab dem 25. an den Abschluss.\n\n"
+                "Es wird nichts automatisch gebucht \u2013 jede Buchung best\u00e4tigst du selbst, und "
+                "alles l\u00e4sst sich per **R\u00fcckg\u00e4ngig** widerrufen."
+            ),
+            "en": (
+                "# Month-end close\n\n"
+                "The assistant (button **Month-end close\u2026** top right in the cockpit) closes a "
+                "month cleanly. It computes:\n\n"
+                "**Income \u2212 expenses \u2212 savings = freely available**\n\n"
+                "## Surplus\n"
+                "If money is left, the assistant suggests booking the remainder into a **savings** "
+                "category (preferring the most active open goal). Amount and target are editable, so "
+                "the surplus doesn't quietly vanish next month.\n\n"
+                "## Deficit\n"
+                "If money is missing, you can cover the gap from a **savings category with funds** "
+                "(withdrawal). The assistant also shows, for information only, which **variable** "
+                "budgets have room next month.\n\n"
+                "> **Important:** fixed and recurring categories are **never** suggested for cuts \u2013 "
+                "you don't trim rent or insurance at month-end.\n\n"
+                "## Traffic light & next steps\n"
+                "The **traffic light** in the cockpit and overview uses the same calculation: red for "
+                "an exceeded budget or negative remainder, yellow when it gets tight, otherwise green. "
+                "**Next steps** reminds you of the close from the 25th.\n\n"
+                "Nothing is booked automatically \u2013 you confirm each booking, and everything can be "
+                "**undone**."
+            ),
+            "fr": (
+                "# Cl\u00f4ture du mois\n\n"
+                "L'assistant (bouton **Cl\u00f4ture du mois\u2026** en haut \u00e0 droite du cockpit) cl\u00f4ture "
+                "un mois proprement. Il calcule :\n\n"
+                "**Revenus \u2212 d\u00e9penses \u2212 \u00e9pargne = librement disponible**\n\n"
+                "## Exc\u00e9dent\n"
+                "S'il reste de l'argent, l'assistant propose de verser le reste dans une **\u00e9pargne** "
+                "(de pr\u00e9f\u00e9rence l'objectif ouvert le plus actif). Montant et objectif modifiables, "
+                "pour que l'exc\u00e9dent ne disparaisse pas le mois suivant.\n\n"
+                "## D\u00e9ficit\n"
+                "S'il manque de l'argent, vous pouvez combler l'\u00e9cart depuis une **\u00e9pargne avec "
+                "des fonds** (retrait). L'assistant montre aussi, \u00e0 titre informatif, quels budgets "
+                "**variables** auraient de la marge le mois prochain.\n\n"
+                "> **Important :** les cat\u00e9gories fixes et r\u00e9currentes ne sont **jamais** propos\u00e9es "
+                "\u00e0 la r\u00e9duction \u2013 on ne rogne pas le loyer ou l'assurance en fin de mois.\n\n"
+                "## Feu tricolore & prochaines \u00e9tapes\n"
+                "Le **feu tricolore** du cockpit et de l'aper\u00e7u utilise le m\u00eame calcul : rouge si "
+                "budget d\u00e9pass\u00e9 ou reste n\u00e9gatif, jaune quand \u00e7a devient juste, sinon vert. "
+                "**Prochaines \u00e9tapes** vous rappelle la cl\u00f4ture d\u00e8s le 25.\n\n"
+                "Rien n'est comptabilis\u00e9 automatiquement \u2013 vous confirmez chaque \u00e9criture, et tout "
+                "peut \u00eatre **annul\u00e9**."
+            ),
+        },
+    },
     # ── Buchungen ───────────────────────────────────────────────
     {
         "id": "buchungen",
@@ -444,8 +578,9 @@ HELP_TOPICS = [
                 "- **Kennzahlen (KPI):** Summen für Einnahmen, Ausgaben, Saldo.\n"
                 "- **Soll/Ist je Kategorie:** Budget gegen tatsächlich Gebuchtes, inkl. Abweichung.\n"
                 "- **Sparziele:** Fortschritt deiner Ziele (siehe *Sparziele*).\n"
-                "- **Diagramme:** Verteilung/Verlauf; ohne Daten erscheint ein Hinweis statt leerer "
-                "Fläche.\n"
+                "- **Diagramme:** Plan/Ist-Donut, Kategorien-Ranking, Konto-Vergleich als Balken, "
+                "Monatsverlauf, Monatsbilanz und Top-Buchungen. Der gute Donut bleibt; "
+                "verwirrende Nebenkreise werden vermieden.\n"
                 "- **Filter/Suche** rechts: Zeitraum, Kategorie, Betragsgrenzen, Freitext.\n\n"
                 "Über die Übersicht erreichst du auch das **Verwalten** der Sparziele."
             ),
@@ -455,7 +590,9 @@ HELP_TOPICS = [
                 "- **KPIs:** totals for income, expenses, balance.\n"
                 "- **Planned/actual per category:** budget vs. actually booked, incl. deviation.\n"
                 "- **Savings goals:** progress of your goals (see *Savings goals*).\n"
-                "- **Charts:** distribution/trend; with no data a hint appears instead of a blank area.\n"
+                "- **Charts:** plan/actual donut, category ranking, account comparison as bars, "
+                "monthly trend, monthly balance and top bookings. The useful donut stays; "
+                "confusing neighboring pies are avoided.\n"
                 "- **Filter/search** on the right: period, category, amount limits, free text.\n\n"
                 "From the overview you also reach **Manage** for savings goals."
             ),
@@ -465,7 +602,9 @@ HELP_TOPICS = [
                 "- **Indicateurs (KPI) :** totaux revenus, dépenses, solde.\n"
                 "- **Prévu/réel par catégorie :** budget vs. saisi, écart inclus.\n"
                 "- **Objectifs d'épargne :** progression (voir *Objectifs d'épargne*).\n"
-                "- **Graphiques :** répartition/évolution ; sans données, une indication s'affiche.\n"
+                "- **Graphiques :** donut prévu/réalisé, classement des catégories, comparaison "
+                "des comptes en barres, évolution mensuelle, solde mensuel et top écritures. "
+                "Le donut utile reste ; les camemberts voisins confus sont évités.\n"
                 "- **Filtre/recherche** à droite : période, catégorie, limites de montant, texte libre.\n\n"
                 "Depuis l'aperçu, vous accédez aussi à **Gérer** les objectifs."
             ),
@@ -564,7 +703,9 @@ HELP_TOPICS = [
                 "Blick zu behalten.\n\n"
                 "**So geht's:** Eine Kategorie als Favorit markieren/lösen (Pin-Aktion). Ist noch "
                 "nichts angepinnt, ist der Favoriten-Bereich leer. Favoriten werden beim Umbenennen/"
-                "Löschen von Kategorien korrekt mitgeführt."
+                "Löschen von Kategorien korrekt mitgeführt.\n\n"
+                "**Abgrenzung zu Tags:** Ein Favorit ist ein Schnellzugriff auf eine Kategorie. "
+                "Er ist kein Auswertungs-Schlagwort und wird nicht einzelnen Buchungen zugewiesen."
             ),
             "en": (
                 "# Favorites – what are they for?\n\n"
@@ -576,7 +717,9 @@ HELP_TOPICS = [
                 "- Ideal for keeping your key items (e.g. groceries, fuel, rent) in view.\n\n"
                 "**How:** mark/unmark a category as favorite (pin action). If nothing is pinned, the "
                 "favorites area is empty. Favorites are carried correctly when categories are "
-                "renamed/deleted."
+                "renamed/deleted.\n\n"
+                "**Difference from tags:** a favorite is a shortcut to a category. It is not an "
+                "analysis label and is not assigned to individual transactions."
             ),
             "fr": (
                 "# Favoris – à quoi ça sert ?\n\n"
@@ -587,7 +730,9 @@ HELP_TOPICS = [
                 "– sans faire défiler toute la liste.\n"
                 "- Idéal pour garder vos postes clés (courses, carburant, loyer) à l'œil.\n\n"
                 "**Comment :** marquez/retirez une catégorie en favori (épingle). Sans favori, la zone "
-                "est vide. Les favoris suivent les renommages/suppressions."
+                "est vide. Les favoris suivent les renommages/suppressions.\n\n"
+                "**Différence avec les étiquettes :** un favori est un raccourci vers une catégorie. "
+                "Ce n’est pas un libellé d’analyse et il n’est pas attribué aux opérations."
             ),
         },
     },
@@ -606,7 +751,9 @@ HELP_TOPICS = [
                 "- Über die Tag-Verwaltung behältst du den Überblick; es werden nur Tags angezeigt, zu "
                 "denen es Buchungen gibt.\n\n"
                 "Tags ersetzen keine Kategorien – sie ergänzen sie für Auswertungen, die sich nicht in "
-                "die Kategoriestruktur pressen lassen."
+                "die Kategoriestruktur pressen lassen.\n\n"
+                "**Wichtig:** In der App gibt es zusätzlich den **Fälligkeitstag** einer Kategorie "
+                "(1–31). Das ist der Buchungstag im Monat und nicht dasselbe wie ein Tag/Label."
             ),
             "en": (
                 "# Tags / labels\n\n"
@@ -616,7 +763,9 @@ HELP_TOPICS = [
                 "- This lets you analyse spending **by theme, not only by category**.\n"
                 "- The tag manager keeps the overview; only tags that have bookings are shown.\n\n"
                 "Tags don't replace categories – they complement them for analyses that don't fit the "
-                "category tree."
+                "category tree.\n\n"
+                "**Important:** the app also has a category **due day** (1–31). That is the booking "
+                "day in the month and is not the same as a tag/label."
             ),
             "fr": (
                 "# Étiquettes\n\n"
@@ -627,7 +776,9 @@ HELP_TOPICS = [
                 "- Le gestionnaire d'étiquettes garde la vue ; seules celles ayant des écritures "
                 "s'affichent.\n\n"
                 "Les étiquettes ne remplacent pas les catégories – elles les complètent pour des "
-                "analyses hors de l'arbre."
+                "analyses hors de l'arbre.\n\n"
+                "**Important :** l’app possède aussi un **jour d’échéance** de catégorie (1–31). "
+                "C’est le jour de comptabilisation mensuel, pas une étiquette."
             ),
         },
     },

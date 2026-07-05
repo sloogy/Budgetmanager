@@ -1,3 +1,191 @@
+# v2.2.6 – KILLCRITIC: Lernzustand folgt Rename/Reassign, robusteres Tag-Aufräumen
+
+X10THINK-KILLCRITIC auf Basis des releasefähigen v2.2.5-Stands: 100 randomisierte Invarianten-Loops (10 Themen × 10 Loops) über die echten Modelle plus vollständige Tiefenlese von Fälligkeits-, POT-, Vorschlags-/Lernmodus-, Undo/Redo-, Sparziel- und Reset-Logik. Ergebnis: ein echter Cascade-Bug behoben, eine Datenintegritäts-Härtung ergänzt; alle strikt getrennten Kernpfade (normale Vorschlagsengine ↔ Lernmodus, POT ↔ laufende Monatsausgabe) blieben nachweislich unberührt.
+
+- **FIX (Datenkonsistenz) – Tracking-Lernzustand verwaiste beim Umbenennen/Umhängen:** `tracking_learning_state` ist die achte namensreferenzierende Tabelle (gekeyt auf `typ`+`category`), aber Rename und Reassign führten sie – anders als der bereits korrekte Delete-Pfad – nicht mit. Folge: Nach einem Rename ging die Nutzerentscheidung (beobachten/ignoriert/vertagt/beendet) verloren, die Kategorie tauchte unter dem neuen Namen wieder im Lernmodus auf, und die alte Zeile blieb als Leiche stehen. **Neu:** `CategoryModel.rename_and_cascade`, `CategoryModel._move_category_text_references` (Reassign) und `UndoRedoModel._rename_cascade` ziehen den Lernzustand jetzt konsistent mit (`UPDATE OR IGNORE` + `DELETE`, konfliktfrei bei bereits belegtem Zielnamen). `tracking_learning_state` wurde dazu in die Undo-Whitelist aufgenommen.
+- **HÄRTUNG (Defense-in-Depth) – Tag-Verknüpfungen beim Buchungs-Löschen:** `TrackingModel.delete` räumt `entry_tags` jetzt zusätzlich explizit auf, statt sich allein auf die FK-Regel `ON DELETE CASCADE` zu verlassen. Produktiv (mit `PRAGMA foreign_keys=ON`) war das Verhalten bereits korrekt; auf ohne das Pragma geöffneten Verbindungen entstehen so keine verwaisten Tag-Links mehr – analog zum Kategorie-Delete.
+- **Nachgewiesen unberührt:** Strikte Trennung Vorschlagsengine ↔ Lernmodus (Lernmodus feuert weiterhin ausschließlich ohne positives Jahresbudget), POT-Topf-Cap = höchster Budgetwert (nicht Summe), POT-vs-laufende-Ausgabe-Heuristik (3-Monatsfenster: 2 aktive Monate bleiben Topf), Sparziel-Vorzeichenlogik bei Undo+Redo, Data-Start-Boundary.
+- **i18n:** de/en/fr je 2285 Keys, Parität gewahrt (keine Key-Änderung nötig).
+- **Neue Regression:** `tests/test_release_226_learning_state_cascade.py` (5 Tests: Rename zieht Lernzustand mit, Undo/Redo konsistent, Reassign ohne Waisen, Konflikt bei belegtem Zielnamen ohne Crash, Delete räumt weiterhin auf).
+
+Gates: compileall, sync --check (2.2.6), i18n-Audit (de=en=fr, 2285 Keys, 0 Fehler), DAU-Erststart, Release-Logik-Audit 100/0, Deep-Logic-Audit 500/3500/0, Lint, pytest headless (362 passed, 2 skipped), zusätzlich KILLCRITIC-Invarianten-Harness 100 Loops / 0 Findings. GUI-Smoke, PyInstaller und Inno Setup in der Build-/CI-Umgebung.
+
+
+# v2.2.5 – Erststart-Führung: Enter bewegt vorwärts, Willkommen & Anleitung ausgebaut
+
+Führungs-Release auf Basis des KILLCRITIC-verifizierten v2.2.4-Stands. Behebt den gemeldeten Enter-Fehler im Erststart und baut Willkommen und Anleitung inhaltlich deutlich aus.
+
+- **FIX (Führung) – Enter-Taste im Setup-Assistenten wirkungslos:** Auf der Willkommensseite (ohne fokussiertes Eingabefeld) tat die **Enter-Taste** nichts, weil „Weiter" kein Default-Button war – Einsteiger mussten zur Maus greifen. **Neu:** Ein `keyPressEvent` bildet Enter/Return auf „Weiter" bzw. auf der letzten Seite „Fertig" ab; „Weiter"/„Fertig" sind Default-Buttons und werden bei jedem Seitenwechsel neu fokussiert. In mehrzeiligen Textfeldern (QTextEdit/QPlainTextEdit) bleibt Enter ein Zeilenumbruch, Modifier (Shift/Strg/Alt) werden durchgelassen, und „Zurück" feuert nie versehentlich per Enter.
+- **NEU – Willkommen ausgebaut:** Die erste Assistent-Seite begrüßt jetzt richtig und erklärt die **zwei Wege** (⚡ Express: sofort tracken, Budgets später aus dem Lernmodus / geführt: Kategorien→Budget→Buchung Schritt für Schritt) samt Enter-Tipp – dreisprachig.
+- **NEU – Anleitung ausgebaut:** Das Hilfe-Thema **Einstieg** ist von einer kurzen Reihenfolge zu einem echten Willkommen gewachsen: Cockpit als Startseite, **Ampel** (🟢🟡🔴), **👉 Nächste Schritte**, beide Einrichtungswege, Monatsende-Hinweis und Enter-Tipp. Neu hinzugekommen ist ein eigenes Hilfe-Thema **Monatsabschluss** (Überschuss sichern, Defizit aus Ersparnissen decken, Ampel-Zusammenhang, und die Kernregel „Fixkosten werden nie zur Kürzung vorgeschlagen") – alles in de/en/fr.
+- **Historie geschützt:** Der v2.2.3-KILLCRITIC-Bericht wurde vom Versions-Sweep ausgenommen.
+- **i18n:** Willkommenstexte in de/en/fr aufgewertet (Werte, keine Key-Änderung); Parität gewahrt (2277 Keys).
+- **Neue Regression:** `tests/test_release_225_onboarding_enter.py` (5 Tests: Enter-Navigation inkl. Textfeld-Ausnahme und Default-Buttons, ausgebautes Einstiegsthema dreisprachig, neues Monatsabschluss-Thema mit Fixkosten-Regel, alle Hilfethemen dreisprachig, Willkommenstexte mit beiden Wegen).
+
+Gates: compileall, sync --check (2.2.5), i18n-Audit (de=en=fr, 2277 Keys, 0 Fehler), DAU-Erststart, Release-Logik-Audit 100, Deep-Logic-Audit 500/3500, Lint, pytest headless. GUI-Smoke (Enter blättert durch den Assistenten, Willkommen/Anleitung lesbar), Qt-Translation-Verify, PyInstaller und Inno Setup in der Build-/CI-Umgebung.
+
+
+# v2.2.4 – Fixkosten-Check respektiert den Fälligkeitstag
+
+Stabilisierungs- und Führungs-Release auf Basis des KILLCRITIC-geprüften v2.2.3-Stands (dort drei Fixes übernommen: fehlender `trf`-Import im Cockpit – ein echter Release-Blocker bei offenen Fixkosten –, vollständige Zählung offener Positionen statt nur der 10 Tabellenzeilen, und ein an den echten Button angepasster Empty-State-Text).
+
+- **FIX (Stabilität/Führung) – Fixkosten galten vor Fälligkeit fälschlich als „fehlt":** Der Cockpit-Check „offene Fixkosten/wiederkehrende Buchungen" markierte jede noch nicht gebuchte Position sofort als offen – auch am Monatsanfang, obwohl der Soll-Buchungstag (z.B. 25.) noch nicht erreicht war. Am 3. des Monats meldete das Cockpit so jede Miete als fehlend und trieb die „Nächste Schritte"-Zahl unnötig hoch. **Neu:** Im laufenden Monat gilt eine Position erst ab ihrem Fälligkeitstag als offen; vergangene Monate bleiben unverändert (Fälligkeit längst überschritten). Bereits gebuchte oder budgetlich erfüllte Positionen zählen wie bisher nicht.
+- **Sauber gekapselt:** Die Fälligkeitslogik liegt jetzt Qt-frei in `model/fixed_cost_due.py` (`is_open_this_month`) und ist damit regressionsgesichert; das Cockpit nutzt sie, statt die Bedingung inline zu führen.
+- **Historie geschützt:** Der v2.2.3-KILLCRITIC-Bericht wurde vom Versions-Sweep ausgenommen.
+- **Neue Regression:** `tests/test_release_224_fixed_cost_due.py` (7 Tests: vor/nach Fälligkeit im laufenden Monat, vergangener Monat immer fällig, bereits gebucht, XOR-Wiederkehrend mit Teilbuchung, kein Budget/keine Flags, Cockpit-Verdrahtung).
+
+Gates: compileall, sync --check (2.2.4), i18n-Audit (de=en=fr, 2277 Keys), DAU-Erststart, Release-Logik-Audit 100, Deep-Logic-Audit 500/3500, Lint, pytest headless. GUI-Smoke, Qt-Translation-Verify, PyInstaller und Inno Setup in der Build-/CI-Umgebung.
+
+
+# v2.2.3 – Geführtes Cockpit: „Nächste Schritte“
+
+Stabilisierungs- und Führungs-Release auf Basis des RECURRING_DAY_DEFAULT-Fixstands (Fälligkeitstag-Fix über 7 Pfade verifiziert, alle Gates grün).
+
+- **NEU – „Nächste Schritte" im Cockpit:** Direkt unter der Ampel beantwortet eine dynamische Zeile die Einsteigerfrage „Und was mache ich jetzt?" mit bis zu 3 konkreten, aus echten Daten abgeleiteten Handlungen: Empty State ohne Buchungen („erste Buchung über ➕ Buchung erfassen"), offene Fixkosten/wiederkehrende Buchungen mit Anzahl (gespeist aus der bestehenden Fixkosten-Prüfung), Monatsabschluss-Hinweis ab dem 25. (nur solange der Monat nicht abgeschlossen ist). Ist nichts zu tun: „✅ Alles erledigt". Fehler in der Ableitung können die Anzeige nie brechen (defensiv gekapselt).
+- **Stabilität:** Vollständige Gate-Battery auf dem Fix-Stand erneut grün; der Fälligkeitstag-Fix (recurring_preferred_day statt DB-Default 1 auf allen Kategorie-Pfaden) ist mit eigenen Regressionen übernommen.
+- **Historie geschützt:** Beide v2.2.2-Audit-Berichte vom Versions-Sweep ausgenommen.
+- **i18n:** 5 neue Keys, de/en/fr je **2278 Keys**, Parität geprüft.
+- **Regression:** +1 statischer Test (Verdrahtung, Datenquellen, alle Keys).
+
+Gates: compileall, sync --check, i18n-Audit (2278), DAU, Logik-Audit 100, Deep 500/3500, Lint, pytest headless. GUI-Smoke/Qt-Translate/PyInstaller/Inno in der Build-Umgebung.
+
+
+# v2.2.2 – KILLCRITIC Nachhärtung Tag-Filter/Favoriten-Begriffe
+
+- **FIX – Übersicht Tag-Filter vollständig zentralisiert:** Die Tag-Combo in der Übersichts-Kopfzeile löst jetzt sofort einen Refresh aus. KPIs, Diagramme, Budgetübersicht, Kategoriebaum, Budget-Tabelle und Transaktionsliste nutzen dieselbe `tag_id`-Filterbasis über `TrackingModel.get_entries_in_range(..., tag_id=...)`.
+- **FIX – Ist-Werte bei aktivem Tag-Filter:** Budgets bleiben planseitig unverändert, Ist-Werte zeigen nur Buchungen mit dem gewählten Tag. Damit ist die Tooltip-Aussage „Budgets tragen keine Tags“ korrekt umgesetzt.
+- **UX – Begriffsklärung:** Die rechte Übersichts-Seitenleiste beschriftet den Filter jetzt als „Tags“ statt missverständlich „Tag“/Kalendertag. In-App-Hilfe und Wissensdatenbank erklären Favorit vs. Tag/Label vs. Fälligkeitstag.
+- **Regressionen:** `tests/test_release_221_reset_and_ux.py` schützt die Verdrahtung des zentralen Filters und prüft `TrackingModel.get_entries_in_range(..., tag_id=...)` funktional.
+- **Release-Gates:** `compileall`, Versions-Sync, i18n-Audit, DAU-Erststart, Release-Logik-Audit 100, Deep-Logic-Audit 500/3500, Lint und `pytest` headless grün.
+
+# v2.2.2 – Tag-Filter in der Übersicht, Express-Setup
+
+Setzt die beiden in v2.2.1 dokumentierten offenen Punkte um; Basis ist der KILLCRITIC-geprüfte FIXED-Stand (Black-Pin-Fix im CI-Workflow übernommen, alle Gates grün, Grenzfall-Stichproben Dezember-Abschluss/Doppel-Abschluss/Null-Betrag sauber).
+
+- **NEU – Tag-Filter in der Übersicht:** Neue Filter-Combo („🏷 Alle Tags" + alle vorhandenen Tags) in der Übersichts-Filterleiste. Der Filter greift **zentral** auf die geladenen Buchungen und wirkt damit konsistent auf KPIs, alle Diagramm-Reiter und Listen. Auswahl bleibt beim Aktualisieren erhalten. Budgets tragen keine Tags – der Tooltip erklärt, dass bei aktivem Filter die Ist-Sicht des Tags gezeigt wird.
+- **NEU – Express-Setup:** Button „⚡ Express-Einrichtung (nur das Nötigste)" auf der ersten Assistent-Seite: legt Standard-Kategorien an (nur falls noch keine existieren, über die gemeinsame `insert_default_categories`-Routine), aktiviert den Tracking-Lernmodus (der Budget-Schritt gilt damit als erfüllt – Budgets entstehen später aus echten Buchungen), markiert alle optionalen Schritte als erledigt und springt zur Abschluss-Seite. Sicherheitsabfrage vorab; alles bleibt später in den Einstellungen änderbar. Der sicherheitskritische Konto-/Verschlüsselungs-Wizard ist nicht betroffen.
+- **Historie geschützt:** Der v2.2.1-Audit-Bericht wurde vom Versions-Sweep ausgenommen und unverändert wiederhergestellt; docs/open-tasks.md markiert die beiden Punkte als umgesetzt.
+- **i18n:** 5 neue Keys, de/en/fr je **2273 Keys**, Parität geprüft.
+- **Regressionen erweitert:** `tests/test_release_221_reset_and_ux.py` +3 Tests (Tag-Filter-Verdrahtung inkl. zentraler Row-Filterung, Express-Pfad inkl. Lernmodus-Aktivierung und Sprung zur Abschluss-Seite, i18n-Parität der neuen Keys).
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (2273 Keys), DAU-Erststart, Release-Logik-Audit 100, Deep-Logic-Audit 500/3500, Lint, `pytest` headless. GUI-Smoke (Tag-Filter live, Express-Durchlauf auf leerer und gefüllter DB), Qt-Translation-Verify, PyInstaller/Inno in der Build-/CI-Umgebung.
+
+
+# v2.2.1 – Reset-Fixes, sichtbare Hub-Fehler, erklärte Vorschläge, Tracking-Feinschliff
+
+Setzt die offenen Punkte aus dem v2.1.7-Release-Bericht (1–6) und die verbliebenen KILLCRITIC-Punkte aus v2.2.0 um.
+
+- **FIX (Bericht 1) – Setup-Reset führt jetzt wirklich aus:** Die Reset-Bestätigung im Setup-Assistenten öffnete bisher nur den DB-Verwaltungsdialog – der bestätigte Reset passierte NICHT. Jetzt wird `reset_database()` direkt ausgeführt (mit automatischem Backup), das Ergebnis angezeigt und der Setup-Fortschritt neu bewertet; Fehler erscheinen als Dialog.
+- **FIX (Bericht 2+3) – Teilreset sauber definiert und zentralisiert:** `keep_user_data=True` löschte bisher Budget UND Kategorien, liess aber Buchungen stehen – Tracking und Nebentabellen referenzierten gelöschte Kategorien. **Neue Semantik: „Nur Budgets zurücksetzen"** – Kategorien und Buchungen bleiben; geleert werden Budgets plus budgetbezogene Nebentabellen (`budget_warnings`, `suggestion_accepted`, `tracking_learning_state`). Neuer Key `database.msg.reset_budget_only`; Radio-Beschriftung präzisiert (de/en/fr). Vollreset weiterhin dynamisch über `sqlite_master` (inkl. Lernstatus), `system_flags` geschützt – per Regression abgesichert.
+- **FIX (Bericht 4) – Tracking-Tabelle mit Kurzlabel:** Kategorie-Spalte zeigt den Namen, voller Pfad „Parent › Kind" als Tooltip.
+- **FIX (Bericht 5) – Schnelleingabe erzwingt Auswahl bei Mehrdeutigkeit:** Passt der Suchtext auf mehrere Kategorien ohne explizite Dropdown-Auswahl, stoppt das Speichern mit Hinweis (Trefferzahl) und das Dropdown öffnet sich – kein stiller Erst-Treffer mehr.
+- **FIX (Bericht 6) – Daten-Hub zeigt Fehler sichtbar:** Rote Fehlerzeile im Hub plus Warn-Dialog bei fehlgeschlagenen Aktionen (Speicherort, Backup/Restore/DB) und unvollständigem Laden.
+- **NEU (KILLCRITIC) – Vorschläge erklären sich („Warum?"):** Tooltip je Vorschlagszeile mit Rechenweg aus vorhandenen Engine-Daten (Monate, Ø-Abweichung, alt → neu); Lernvorschläge erklären, dass ein NEUES Budget entsteht und die Budgetart bestätigt wird. 🆕-Kennzeichnung trennt Lern- von Anpassungsvorschlägen.
+- **NEU (KILLCRITIC) – Undo-Hinweis:** Nach jeder Schnellerfassungs-Buchung zeigt die Statuszeile 6 Sekunden „…gebucht – rückgängig mit Ctrl+Z".
+- **Offen dokumentiert (geplant 2.2.2):** Tag-Filter in der Übersicht und Express-Setup (docs/open-tasks.md) – bewusst nicht halbgar eingebaut.
+- **i18n:** 10 neue Keys + 1 präzisierter Text, de/en/fr je **2268 Keys**, Parität geprüft.
+- **Neue Regression:** `tests/test_release_221_reset_and_ux.py` (9 Tests: Teilreset erhält Kategorien/Buchungen/Ersparnisse und leert Nebentabellen, Vollreset schützt system_flags, Setup-Direktausführung, Kurzlabel+Tooltip, Mehrdeutigkeits-Zwang, Hub-Fehleranzeige, Warum-Tooltips + 🆕).
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (2268 Keys), DAU-Erststart, Release-Logik-Audit 100, Deep-Logic-Audit 500/3500, Lint, `pytest` headless. GUI-Smoke, Qt-Translation-Verify, PyInstaller/Inno in der Build-Umgebung.
+
+
+# v2.2.0 – Cockpit-Start, Ampelstatus, Monatsabschluss-Assistent, vereinfachte Übersicht
+
+Usability-Release nach Schwächenanalyse: Das Programm beantwortet jetzt beim Start sofort die Kernfrage "Wie stehe ich diesen Monat da?" und führt am Monatsende durch Überschuss/Defizit.
+
+- **NEU – Cockpit als Startseite:** Das Programm startet immer auf dem Cockpit (Einstellung `start_on_cockpit`, Standard an), unabhängig vom zuletzt offenen Reiter. Das Cockpit zeigt jetzt zusätzlich eine **Ampel-Statuszeile** (🟢 im Plan / 🟡 knapp / 🔴 über Plan) und die KPI-Karte **"Frei verfügbar"** (Einnahmen − Ausgaben − Ersparnisse; vorher missverständlich "Monatsgefühl"). Warnungen, letzte Buchungen, offene Fixkosten und Sparziele waren bereits vorhanden.
+- **NEU – Ampel-Monatsstatus (eine Logik überall):** `model/month_status.py` bewertet den Monat einheitlich für Cockpit und Übersicht: Rot bei Budget-Überschreitung oder negativem frei verfügbarem Rest; Gelb ab 90% des Ausgaben-Budgets oder Rest < 5% der Einnahmen; sonst Grün. Tooltip erklärt die Regeln.
+- **NEU – Monatsabschluss-Assistent:** Cockpit-Button "Monatsabschluss…" öffnet einen geführten Dialog (`views/month_close_dialog.py`, Logik Qt-frei in `model/month_close_model.py`): Zusammenfassung Einnahmen − Ausgaben − Ersparnisse; **Überschuss** auf Klick in eine Ersparnis buchen (Vorschlag: offenes Sparziel mit grösstem Restbedarf, Betrag/Ziel änderbar, Buchung am Monatsletzten); **Defizit** auf Klick aus einer Ersparnis **mit Guthaben** decken (Entnahme als negative Ersparnis-Buchung). Zusätzlich reine Info, welche **variablen** Budgets im Folgemonat Spielraum bieten – **Fixkosten und wiederkehrende Kategorien werden nie zur Kürzung vorgeschlagen** (per Regression abgesichert). Abschluss-Vermerk in `system_flags`; alle Buchungen sind normale Tracking-Einträge und per Undo widerrufbar. Nichts geschieht automatisch.
+- **NEU – Tracking merkt letzte Auswahl je Konto:** Schnellerfassung und Buchungsdialog schlagen beim Öffnen die zuletzt gebuchte Kategorie des gewählten Kontos vor (`tracking_last_category`). Kategorie-Suche, Favoriten-zuerst-Sortierung und gruppierter Picker waren bereits vorhanden – täglich Wiederkehrendes ist damit ein Zwei-Klick-Vorgang.
+- **Übersicht endgültig vereinfacht:** 4 statt 6 Diagramm-Reiter in klarer Lese-Reihenfolge: 1. Plan vs. Ist, 2. Kategorien-Ranking, 3. **Verlauf** (Monats-Ausgaben + Monatsbilanz untereinander, zusammengelegt), 4. Top-Buchungen. Der Konto-Vergleichs-Reiter entfiel (identische Aussage wie Plan vs. Ist). Ampel-Statuszeile über den KPI-Karten. Die v2.1.7-Lesbarkeitsverbesserungen (Balken statt Donut, Erklärtexte je Reiter) bleiben erhalten.
+- **Hilfe direkt im Programm:** Neue erklärende Tooltips an den Begriffen **Budgettopf** (Prognose-Modus im Kategorie-Manager), **Ersparnisse** und **Monatsabschluss** (Cockpit-Karte, Abschluss-Dialog) sowie an der Ampel. Fixkosten, Wiederkehrend, Fälligkeitstag und Lernmodus hatten bereits Tooltips.
+- **i18n:** 52 neue Keys (Status, Cockpit, Hilfe, Monatsabschluss) – de/en/fr je **2259 Keys**, Parität geprüft.
+- **Neue Regression:** `tests/test_release_220_cockpit_monthclose.py` (14 Tests: Ampel-Grenzfälle, Überschuss-/Defizit-Fluss inkl. Monatsletzter-Buchung, Sparziel-Priorität, nur gedeckte Ersparnisse als Quelle, Fixkosten-Ausschluss, UI-Verdrahtung statisch).
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (de=en=fr, 2259 Keys), DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, Lint-Prozedur, `pytest` headless. PySide6-GUI-Smoke (Cockpit-Start, Ampel, Monatsabschluss beide Pfade, letzte-Kategorie-Vorauswahl, 4 Übersichts-Reiter), Qt-Translation-Verify, PyInstaller und Inno Setup laufen in der Build-/CI-Umgebung.
+
+
+# v2.1.7 – Lernmodus-Integration finalisiert, Erststart- und Banner-Blocker behoben
+
+## 2.1.7 - 2026-07-02
+
+### Übersicht-Diagramme lesbarer gemacht
+
+- **Plan/Ist statt Donut:** Der Hauptgraph zeigt Budget und gebuchte Beträge je Konto als Balkenvergleich. Das ist für Monatskontrolle verständlicher als verschachtelte Donuts.
+- **Kategorien als Ranking:** Ausgaben-Kategorien werden als horizontale Balken mit Top-8 + „Übrige“ angezeigt, nicht mehr als schwer lesbarer großer Kreis.
+- **Konto-Vergleich statt Schein-Verteilung:** Einnahmen, Ausgaben und Ersparnisse werden nicht mehr als Kuchenanteile dargestellt, weil sie keine Anteile desselben Topfs sind.
+- **Erklärtexte direkt im Diagramm-Tab:** Jeder Graph erklärt nun kurz, wie er zu lesen ist.
+- **Wiki/Handbuch erweitert:** README, FEATURES, User-Guides, In-App-Hilfe und HTML-Wiki beschreiben die neue Logik.
+
+### Added
+- Separater Lernmodus finalisiert: Startbudgets aus Tracking nur für Kategorien ohne positives Jahresbudget.
+- Budgetart-Erkennung und Bestätigung beim Übernehmen von Lernvorschlägen.
+- Lernmodus-Optionen im Erststart-Assistenten und in den Einstellungen.
+- Jahreswechsel-Prüfliste zeigt Tracking-only-Kategorien als Startbudget fürs neue Jahr.
+
+### Changed
+- Lernvorschläge verwenden `direction="initial"` und bleiben damit fachlich von Defizit-/Überschuss-Vorschlägen getrennt.
+- Konservative Rundung: Einkommen abrunden, Ausgaben/Ersparnisse aufrunden.
+
+### Fixed
+- Offene Lernphasen beim Jahreswechsel werden nicht durch zukünftige Nullmonate verfälscht.
+
+
+Konsolidierter Release aus zwei v2.1.4-Ständen. Macht den Nur-Tracking-Workflow rund (nur Einkommen/Fixkosten budgetiert, alles Weitere wird erst getrackt) und behebt die zwei sichtbaren UI-Fehler an der Wurzel.
+
+- **NEU – Separater Tracking-Lernmodus:** Kategorien, die im **gesamten Jahr** kein Budget > 0 haben, aber manuell getrackt werden, erhalten eigene Budget-Vorschläge – bewusst **getrennt** von der normalen Budget-Vorschlagsengine (`get_tracking_budget_suggestions` in `model/budget_overview_model.py`, ergänzt NACH der Engine, ohne deren Logik zu berühren). Stufen: 1. Monat beobachten → ab Vorschlags-Schwelle (Standard 2 Monate) Hochrechnung/Vorschlag → ab Stabilitäts-Schwelle (Standard 3 Monate) stabiler Vorschlag. Betrag = Median (ausreisserrobust), nur manuelle Buchungen (`tracking.source`), laufender Monat optional taggenau hochgerechnet. Sobald irgendwo im Jahr ein Budget gesetzt ist, greift wieder ausschliesslich die normale Anpassungslogik.
+- **Einstellbar:** Neue Optionen unter Einstellungen → Budget-Übersicht: Lernmodus an/aus, „Vorschlag ab X Monaten", „stabil ab X Monaten", „laufenden Monat hochrechnen".
+- **Budget-Vorschlagsdialog:** Lernvorschläge erscheinen als „neu" (i18n) statt Prozentwert; DB-Typ wird sprachunabhängig über `Qt.UserRole` transportiert (Anwenden bricht in en/fr nicht mehr); stabile feste Spaltenbreiten.
+- **BUG-FIX – Tabellenbreiten „springen" nach Einstellungsänderungen (Wurzelursache):** `utils/table_autosize.py` setzte bei jeder Theme-/Schriftanwendung die Standard-**Spaltenbreite** aller Tabellen zurück (Default-Section-Size auf dem Horizontal-Header ≙ Spaltenbreite, nicht Header-Höhe) und zwang alle Resize-Modi global auf Interactive. Jetzt wird nur noch die Zeilenhöhe angepasst. Ergänzend behalten Budget-, Tracking- und Vorschlagsdialog-Tabellen feste Spaltenbreiten.
+- **BUG-FIX – Diagramme Theme-fremd/abgeschnitten:** `QChart` ignoriert Qt-Stylesheets; Hintergrund blieb weiss, Titel/Achsen/Pie-Aussenlabels schwarz (im dunklen Theme teils unlesbar), Margins=0 schnitt Aussenlabels ab. `CompactChart` rendert jetzt transparent, färbt nach jedem Serienaufbau Titel, Legende, Achsen und Slice-Labels über `ui_colors`, 4px-Margins.
+- **Übersicht inhaltlich korrigiert:** Donut zeigt Über-Budget-Anteile als eigene Slice; Bilanz und Monatsbilanz-Verlauf rechnen Einkommen − Ausgaben − Ersparnisse (Ersparnisse binden den Einkommenstopf).
+- **i18n:** Neue Keys `suggestion.suggestion_tracking_projection`, `suggestion.suggestion_tracking_stable`, `budget_adjustment.new_budget_label` sowie die Lernmodus-Einstellungstexte – de/en/fr jetzt je **2183 Keys** (Parität geprüft, Einfügereihenfolge erhalten). Die Lernmodus-Meldung ist nicht mehr hardcoded deutsch.
+- **Neue Regressionen:** `tests/test_tracking_budget_learning.py` (Lernstufen, Jahres-Budget-Sperre, manuelle-Buchungen-Filter) und `tests/test_release_214_ui_fixes_static.py` (Horizontal-Header bleibt unangetastet, Theme-Anwendung in allen Chart-Buildern, i18n-Keys + Parität, keine hardcodierten Lernmodus-Texte).
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (de=en=fr, 2183 Keys), DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, Lint-Prozedur, `pytest` headless. PySide6-GUI-Smoke (Lernvorschlag nach 2 getrackten Monaten, Budget setzen → normale Logik übernimmt, Tabellenbreiten nach Einstellungsänderung, Diagramme dunkel/hell), Qt-Translation-Verify, PyInstaller und Inno Setup müssen weiter in der Build-/CI-Umgebung laufen.
+
+### Fixed (Release-Blocker aus dem 2.1.5/2.1.6-Vergleich)
+- **Erststart blockiert nicht mehr bei aktivem Lernmodus:** Der Budget-Ausfüllschritt des Setup-Assistenten verlangte weiterhin mindestens einen Budgetwert > 0 – im Widerspruch zum Lernmodus-Ziel „erst tracken, Budget später lernen". Jetzt gilt der Schritt auch als erledigt, wenn die Lernmodus-Checkbox aktiv ist (eigener Hinweistext `setup.budget_learning_skip_ok`, de/en/fr); das Umschalten der Checkbox aktualisiert die Freigabe sofort. Mit deaktiviertem Lernmodus bleibt die harte Mindestdaten-Prüfung unverändert.
+- **Banner-Symbol für neue Lernbudgets:** `initial`-Vorschläge erhielten im Übersichts-Banner das Defizit-Symbol 📉. Neue Budgets sind kein Defizit – sie zeigen jetzt 🆕. (Die Dialog-Sortierung behandelte `initial` bereits korrekt an erster Stelle; `is_chronic_deficit` matcht weiterhin nur echte Defizite.)
+- **Schema-Version bestätigt nicht rückläufig:** `CURRENT_VERSION = 15` mit idempotenter v14→v15-Migration (`tracking_learning_state`) ist enthalten; per Regression abgesichert (`test_schema_version_not_regressed`).
+- **CHANGELOG-Struktur repariert:** Der 2.1.7-Eintrag war in den 2.1.4-Block gerutscht; die vollständigen 2.1.5- und 2.1.4-Einträge fehlten und wurden aus dem verifizierten 2.1.5-Release wiederhergestellt.
+- **Neue Regression:** `tests/test_release_217_blocker_fixes_static.py` (Erststart-Freigabe, Banner-Symbol, i18n-Key + Parität, Schema-Version).
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (de=en=fr, 2208 Keys), DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, Lint-Prozedur, `pytest` headless. PySide6-GUI-Smoke (Erststart mit/ohne Lernmodus, Banner-Anzeige, Budgetart-Dialog), Qt-Translation-Verify, PyInstaller und Inno Setup laufen weiter in der Build-/CI-Umgebung.
+
+
+# v2.1.5 – Lernmodus-Ausbau: Budgetart-Erkennung, Berichtsaktionen, Jahresend-Auswertung
+
+Setzt die Lernmodus-Spezifikation vollständig um. Basis ist der konsolidierte v2.1.4-Stand; die parallel erstellte „UNIFIED"-Variante wurde verworfen (sie enthielt wieder den Engine-Bootstrap statt des separaten Lernmodus und verletzte damit die zentrale Regel: Kategorien ohne Budget ausschliesslich Lernmodus, Kategorien mit Budget ausschliesslich normale Vorschlagslogik).
+
+- **NEU – Budgetart-Erkennung („Erkannt als"):** Jeder Lernvorschlag klassifiziert die Kategorie: *fix, wiederholend* (nahezu konstante Beträge, z.B. Miete), *wiederholende schwankende Einnahme* (z.B. Stundenlohn – Vorschlag konservativ als **Minimum** der beobachteten Monate, abgerundet), *variabler wiederholender Topf* (z.B. Essen – Median) oder *unregelmässig* (Null-Lücken zwischen Buchungen, z.B. Franchise – **kein** Monatsbudget-Vorschlag, sondern Empfehlung Jahres-/inkrementelles Budget mit Richtwert). Die Erkennung steht in der Berichtsmeldung.
+- **NEU – Budgetart beim Übernehmen bestätigen:** Beim Übernehmen eines Lernvorschlags öffnet sich ein Bestätigungsdialog mit wählbarer Budgetart (Fix+wiederholend, Fix+inkrementell, nur wiederholend, variabler Topf, Ersparnis-Topf, schwankendes Einkommen, einmalig/unregelmässig – vorbelegt aus der Erkennung) und änderbarem Betrag. Erst die Bestätigung erzeugt das Budget und setzt die Kategorie-Flags (`is_fix`, `is_recurring`, `forecast_mode`); Abbruch überspringt die Kategorie.
+- **NEU – Berichtsaktionen (Kontextmenü auf Lernvorschlags-Zeilen):** *Weiter beobachten* (stellt den Vorschlag bis Monatsende zurück), *Ignorieren* (beendet den Lernmodus für die Kategorie manuell), *Als unregelmässig markieren*, *Lernstatus zurücksetzen*. Persistiert in der neuen Tabelle `tracking_learning_state` (Migration **v14→v15**, idempotent); Kategorie-Umbenennen/-Löschen kaskadiert über die bestehende Textreferenz-Mechanik (jetzt 8 abhängige Tabellen).
+- **NEU – Automatisch beenden (Einstellung, Standard aus):** Vergehen nach der Stabilitätsphase zwei weitere aktive Monate ohne Übernahme, endet der Lernmodus für die Kategorie automatisch (Status `ended`, im Bericht zurücksetzbar). Zusätzlich neue Einstellung „Lernvorschläge im Vorschlagsbericht anzeigen".
+- **NEU – Jahresend-Auswertung:** Der Jahreswechsel-Dialog zeigt Kategorien, die im Quelljahr getrackt wurden, aber nie ein Budget hatten, mit Startbudget-Vorschlägen fürs neue Jahr (`get_year_end_learning_suggestions`). Budgets werden nicht automatisch gesetzt; Übernahme läuft über den Vorschlagsbericht. Kategorien mit Budget laufen unverändert über Jahreskopie + normale Anpassungslogik.
+- **Erststart:** Der Lernmodus ist ab dem ersten Start aktiv (Standard an) und in den Optionen vollständig konfigurierbar; der sicherheitskritische Startup-Wizard bleibt bewusst unangetastet.
+- **i18n:** 25 neue Keys (Erkennungsarten, Berichtsaktionen, Budgetart-Dialog, Einstellungen, Jahresend-Hinweis) – de/en/fr je **2208 Keys**, Parität geprüft.
+- **Neue Regression:** `tests/test_tracking_learning_v215.py` (12 Tests: alle vier Erkennungsarten inkl. Spec-Beispiele Miete/Lohn/Essen/Franchise, konservatives Einnahmen-Minimum, alle vier Berichtsaktionen, Auto-Ende mit Persistenz, Berichtsschalter, Jahresend-Auswertung, Kaskaden-Abdeckung, Migrations-Idempotenz).
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (de=en=fr, 2208 Keys), DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, Lint-Prozedur, `pytest` headless. PySide6-GUI-Smoke (Kontextmenü-Aktionen, Budgetart-Dialog beim Übernehmen, Jahreswechsel-Hinweis, Einstellungen), Qt-Translation-Verify, PyInstaller und Inno Setup müssen weiter in der Build-/CI-Umgebung laufen.
+
+
+# v2.1.4 – Tracking-Lernmodus, stabile Tabellenbreiten, Theme-konforme Diagramme
+
+Konsolidierter Release aus zwei v2.1.4-Ständen. Macht den Nur-Tracking-Workflow rund (nur Einkommen/Fixkosten budgetiert, alles Weitere wird erst getrackt) und behebt die zwei sichtbaren UI-Fehler an der Wurzel.
+
+- **NEU – Separater Tracking-Lernmodus:** Kategorien, die im **gesamten Jahr** kein Budget > 0 haben, aber manuell getrackt werden, erhalten eigene Budget-Vorschläge – bewusst **getrennt** von der normalen Budget-Vorschlagsengine (`get_tracking_budget_suggestions` in `model/budget_overview_model.py`, ergänzt NACH der Engine, ohne deren Logik zu berühren). Stufen: 1. Monat beobachten → ab Vorschlags-Schwelle (Standard 2 Monate) Hochrechnung/Vorschlag → ab Stabilitäts-Schwelle (Standard 3 Monate) stabiler Vorschlag. Betrag = Median (ausreisserrobust), nur manuelle Buchungen (`tracking.source`), laufender Monat optional taggenau hochgerechnet. Sobald irgendwo im Jahr ein Budget gesetzt ist, greift wieder ausschliesslich die normale Anpassungslogik.
+- **Einstellbar:** Neue Optionen unter Einstellungen → Budget-Übersicht: Lernmodus an/aus, „Vorschlag ab X Monaten", „stabil ab X Monaten", „laufenden Monat hochrechnen".
+- **Budget-Vorschlagsdialog:** Lernvorschläge erscheinen als „neu" (i18n) statt Prozentwert; DB-Typ wird sprachunabhängig über `Qt.UserRole` transportiert (Anwenden bricht in en/fr nicht mehr); stabile feste Spaltenbreiten.
+- **BUG-FIX – Tabellenbreiten „springen" nach Einstellungsänderungen (Wurzelursache):** `utils/table_autosize.py` setzte bei jeder Theme-/Schriftanwendung die Standard-**Spaltenbreite** aller Tabellen zurück (Default-Section-Size auf dem Horizontal-Header ≙ Spaltenbreite, nicht Header-Höhe) und zwang alle Resize-Modi global auf Interactive. Jetzt wird nur noch die Zeilenhöhe angepasst. Ergänzend behalten Budget-, Tracking- und Vorschlagsdialog-Tabellen feste Spaltenbreiten.
+- **BUG-FIX – Diagramme Theme-fremd/abgeschnitten:** `QChart` ignoriert Qt-Stylesheets; Hintergrund blieb weiss, Titel/Achsen/Pie-Aussenlabels schwarz (im dunklen Theme teils unlesbar), Margins=0 schnitt Aussenlabels ab. `CompactChart` rendert jetzt transparent, färbt nach jedem Serienaufbau Titel, Legende, Achsen und Slice-Labels über `ui_colors`, 4px-Margins.
+- **Übersicht inhaltlich korrigiert:** Donut zeigt Über-Budget-Anteile als eigene Slice; Bilanz und Monatsbilanz-Verlauf rechnen Einkommen − Ausgaben − Ersparnisse (Ersparnisse binden den Einkommenstopf).
+- **i18n:** Neue Keys `suggestion.suggestion_tracking_projection`, `suggestion.suggestion_tracking_stable`, `budget_adjustment.new_budget_label` sowie die Lernmodus-Einstellungstexte – de/en/fr jetzt je **2183 Keys** (Parität geprüft, Einfügereihenfolge erhalten). Die Lernmodus-Meldung ist nicht mehr hardcoded deutsch.
+- **Neue Regressionen:** `tests/test_tracking_budget_learning.py` (Lernstufen, Jahres-Budget-Sperre, manuelle-Buchungen-Filter) und `tests/test_release_214_ui_fixes_static.py` (Horizontal-Header bleibt unangetastet, Theme-Anwendung in allen Chart-Buildern, i18n-Keys + Parität, keine hardcodierten Lernmodus-Texte).
+
+Validierte Gates: `compileall`, `sync_version.py --check`, i18n-Audit (de=en=fr, 2183 Keys), DAU-Erststart, Release-Logik-Audit 100 Loops, Deep-Logic-Audit 500 Loops / 3500 Checks, Lint-Prozedur, `pytest` headless. PySide6-GUI-Smoke (Lernvorschlag nach 2 getrackten Monaten, Budget setzen → normale Logik übernimmt, Tabellenbreiten nach Einstellungsänderung, Diagramme dunkel/hell), Qt-Translation-Verify, PyInstaller und Inno Setup müssen weiter in der Build-/CI-Umgebung laufen.
+
+
 # v2.1.3 – Budget-Vorschlag: Fehlklassifizierte Monatsausgaben nicht mehr aufblähen
 
 Korrigiert einen Fehler im Budget-Anpassungsvorschlag: Eine als **Fix ohne Wiederkehrend** markierte Kategorie wird per Default als Pot/Rückstellung behandelt. Die Pot-Logik verglich jedoch die **Summe mehrerer Monate Ist** gegen **ein einzelnes Monatsbudget**, was bei regelmässigen Monatsausgaben absurde Vorschläge erzeugte (z.B. Lebensmittel mit Budget 400/Monat → Vorschlag 1230).
@@ -182,6 +370,7 @@ Hinweis: Der Startup-Update-Check selbst lädt nichts herunter und war von der f
 ### v2.0.20 – Schnelleingabe mit Suche + Dropdown
 - **Usability-Fix:** Die Schnelleingabe nutzt für Kategorien jetzt ein klares Suchfeld plus ein echtes Dropdown-Menü. Tippen filtert die Kategorien live, das Dropdown zeigt nur passende Kategorien des gewählten Kontotyps.
 - Das Dropdown bleibt gruppiert: Favoriten, häufig manuell gebucht, normale Buchungen, variable Fix-/Wiederholungs-Kategorien und echte Fixkosten. Leere Gruppen werden bei aktiver Suche ausgeblendet.
+- Parent-Kategorien mit Kindern werden im Tracking nicht mehr als buchbare Zeile angezeigt; Unterkategorien erscheinen kurz als `Miete` statt `Wohnen › Miete`.
 - Nach einer Dropdown-Auswahl wird der echte Datenbankname der Kategorie gespeichert. Kopfzeilen, Favoritenstern und Baum-Pfade bleiben reine Anzeige und werden nicht als Kategorie übernommen.
 - Beim Kontotypwechsel wird die Suche zurückgesetzt, damit keine alte Ausgaben-Suche versehentlich Einkommen oder Ersparnisse leerfiltert.
 - Regressionstests erweitert: Suche filtert Gruppen korrekt, Kindnamen/Pfade werden gefunden, nicht-editierbare Dropdowns verwenden nur echte `itemData()`.

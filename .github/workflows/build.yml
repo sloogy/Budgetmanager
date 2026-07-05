@@ -38,7 +38,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements-build.txt
           python -m pip install -r requirements-dev.txt
-          python -m pip install --force-reinstall "black==26.5.1"
 
       - name: Install Qt offscreen dependencies (Linux)
         if: runner.os == 'Linux'
@@ -92,7 +91,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: ${{ matrix.pyinstaller_output }}/**
+          path: ${{ matrix.pyinstaller_output }}
           if-no-files-found: error
 
   installer:
@@ -185,14 +184,7 @@ jobs:
           VERSION="${TAG#v}"
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
-          python tools/build_release_assets.py \
-            --version "${VERSION}" \
-            --release-tag "${TAG}" \
-            --base-url "${BASE}" \
-            --windows-build-dir artifacts/windows \
-            --linux-build-dir artifacts/linux \
-            --out-dir release_assets \
-            --require-installer
+          python tools/build_release_assets.py             --version "${VERSION}"             --release-tag "${TAG}"             --base-url "${BASE}"             --windows-build-dir artifacts/windows             --linux-build-dir artifacts/linux             --out-dir release_assets             --require-installer
 
           echo "Release assets:"
           ls -lah release_assets
@@ -212,7 +204,9 @@ jobs:
           assert assets['windows']['url'].endswith('-portable-windows.zip'), assets['windows']
           assert assets['linux']['url'].endswith('-portable-linux.zip'), assets['linux']
           assert assets['windows_installer']['type'] == 'installer', assets['windows_installer']
-          assert assets['windows_installer_zip']['type'] == 'installer-zip'
+          assert assets['windows_installer_zip']['type'] == 'installer-zip', assets['windows_installer_zip']
+          assert 'direct_windows_exe' not in assets
+          assert 'direct_linux_binary' not in assets
           assert Path('release_assets/SHA256SUMS.txt').is_file()
 
           with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-windows.zip'))) as zf:

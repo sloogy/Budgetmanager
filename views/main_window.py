@@ -148,6 +148,12 @@ class MainWindow(QMainWindow):
         self.settings = Settings()
         self._startup_update_proc: QProcess | None = None
         self._startup_update_prompt_shown = False
+        # Qt/PySide Crashschutz: Voll-Refreshes werden nach Dialog-/Menüaktionen
+        # verzögert ausgeführt. Direktes Rebuild von QTableWidget-Inhalten im
+        # QAction-/Dialog-Stack kann unter PySide6/Qt6 native Shiboken-Abbrüche
+        # auslösen, obwohl Python selbst keine Exception wirft.
+        self._refresh_all_tabs_pending = False
+        self._refresh_all_tabs_running = False
         
         # Undo/Redo
         self.undo_redo = UndoRedoModel(conn)
@@ -261,6 +267,16 @@ class MainWindow(QMainWindow):
         
         # Fenster-Geometrie und -Status wiederherstellen
         self._restore_window_state()
+
+        # v2.2.0: Cockpit als Startseite – unabhängig vom zuletzt offenen Tab
+        # startet das Programm auf dem Cockpit (abschaltbar via Einstellung).
+        try:
+            if bool(self.settings.get("start_on_cockpit", True)):
+                idx = self.tabs.indexOf(self.cockpit_tab)
+                if idx >= 0:
+                    self.tabs.setCurrentIndex(idx)
+        except Exception as e:
+            logger.debug("start_on_cockpit: %s", e)
         
         # Menü erstellen
         self._create_menu()
@@ -1273,6 +1289,41 @@ class MainWindow(QMainWindow):
                 except Exception:
                     self.settings.set("budget_suggestion_months", 3)
 
+            # Separater Lernmodus: Budget aus reinem Tracking vorschlagen.
+            # Diese Werte werden bewusst unabhängig vom normalen Budgettracker gespeichert.
+            if "tracking_budget_learning_enabled" in new_settings:
+                self.settings.set(
+                    "tracking_budget_learning_enabled",
+                    bool(new_settings.get("tracking_budget_learning_enabled", True)),
+                )
+            if "tracking_budget_learning_proposal_months" in new_settings:
+                try:
+                    v = int(new_settings.get("tracking_budget_learning_proposal_months") or 2)
+                except Exception:
+                    v = 2
+                self.settings.set("tracking_budget_learning_proposal_months", max(1, min(12, v)))
+            if "tracking_budget_learning_stable_months" in new_settings:
+                try:
+                    v = int(new_settings.get("tracking_budget_learning_stable_months") or 3)
+                except Exception:
+                    v = 3
+                self.settings.set("tracking_budget_learning_stable_months", max(1, min(12, v)))
+            if "tracking_budget_learning_include_current_month_projection" in new_settings:
+                self.settings.set(
+                    "tracking_budget_learning_include_current_month_projection",
+                    bool(new_settings.get("tracking_budget_learning_include_current_month_projection", True)),
+                )
+            if "tracking_budget_learning_show_in_report" in new_settings:
+                self.settings.set(
+                    "tracking_budget_learning_show_in_report",
+                    bool(new_settings.get("tracking_budget_learning_show_in_report", True)),
+                )
+            if "tracking_budget_learning_auto_end" in new_settings:
+                self.settings.set(
+                    "tracking_budget_learning_auto_end",
+                    bool(new_settings.get("tracking_budget_learning_auto_end", False)),
+                )
+
             if "budget_overview_drag_drop" in new_settings:
                 enabled = bool(new_settings.get("budget_overview_drag_drop", True))
                 self.settings.set("budget_overview_drag_drop", enabled)
@@ -1379,7 +1430,7 @@ class MainWindow(QMainWindow):
 
             # Nach dem Speichern: Views neu laden, damit Änderungen (z.B.
             # Warnhinweise, Tab-Sichtbarkeit, Dichte, etc.) sofort wirken.
-            self._refresh_all_tabs()
+            self._schedule_refresh_all_tabs(reason="settings saved")
             
             # Theme anwenden (Profile werden automatisch geladen)
             self._apply_theme()
@@ -1987,12 +2038,12 @@ class MainWindow(QMainWindow):
 
     def _undo_global(self) -> None:
         if self.undo_redo.undo():
-            self._refresh_all_tabs()
+            self._schedule_refresh_all_tabs(reason="undo")
         self._update_undo_redo_actions()
 
     def _redo_global(self) -> None:
         if self.undo_redo.redo():
-            self._refresh_all_tabs()
+            self._schedule_refresh_all_tabs(reason="redo")
         self._update_undo_redo_actions()
 
     def _set_current_year(self):
@@ -2492,7 +2543,7 @@ class MainWindow(QMainWindow):
         if getattr(dialog, "db_changed", False) and not getattr(dialog, "exit_requested", False):
             if encrypted_session is None:
                 try:
-                    self._refresh_all_tabs()
+                    self._schedule_refresh_all_tabs(reason="restore dialog changed DB")
                     self.statusBar().showMessage(tr("database.msg.restore_success"), 5000)
                 except Exception as e:
                     logger.warning("Tab-Refresh nach Restore fehlgeschlagen: %s", e)
@@ -2526,7 +2577,7 @@ class MainWindow(QMainWindow):
                     encrypted_session.save()
                 except Exception as _e:
                     logger.warning("encrypted_session.save nach DB-Reset fehlgeschlagen: %s", _e)
-            self._refresh_all_tabs()
+            self._schedule_refresh_all_tabs(reason="database management changed DB")
             self.statusBar().showMessage(tr("lbl.datenbankaenderungen_uebernommen"), 3000)
     
     def _show_category_manager(self):
@@ -2535,7 +2586,7 @@ class MainWindow(QMainWindow):
         dialog.categories_changed.connect(self._refresh_current_tab)
         dialog.exec()
         # Nach Schließen: Alle Tabs aktualisieren
-        self._refresh_all_tabs()
+        self._schedule_refresh_all_tabs(reason="category manager closed")
 
     def _show_tags_manager(self):
         """Öffnet den Tags-Manager (v2.4.0)"""
@@ -2605,8 +2656,15 @@ class MainWindow(QMainWindow):
         try:
             if month is None and hasattr(self.overview_tab, 'month_combo'):
                 idx = int(self.overview_tab.month_combo.currentIndex())
-                # idx==0 ist "Gesamt" → dann nehmen wir den aktuellen Monat
-                month = date.today().month if idx == 0 else idx
+                # idx==0 ist "Gesamt": aktuelles Jahr → heutiger Monat,
+                # vergangene/andere Jahre → Dezember. Sonst fragt Extras →
+                # Budgetwarnungen im Jahr 2025 fälschlich Juli statt das ganze
+                # abgeschlossene Jahr ab.
+                if idx == 0:
+                    selected_year = int(year) if year is not None else date.today().year
+                    month = date.today().month if selected_year == date.today().year else 12
+                else:
+                    month = idx
         except Exception:
             month = None
 
@@ -2642,6 +2700,11 @@ class MainWindow(QMainWindow):
 
         dlg = BudgetAdjustmentDialog(self, warnings_model, budget_model, year, month)
         dlg.exec()
+        # Nicht synchron im QAction-/Dialog-Stack refreshen: budget_tab.load() baut
+        # die QTableWidget-Zeilen neu auf. Wird das direkt nach einem Menü-Klick
+        # oder Dialog-Exec gemacht, kann Qt6/Shiboken beim Zerstören alter
+        # Zellobjekte nativ aborten. Deshalb immer in den nächsten Event-Loop-Tick.
+        self._schedule_refresh_all_tabs(reason="budget warnings dialog closed")
 
     def _check_budget_warnings_from_overview(self):
         """Öffnet Budgetwarner mit Jahr/Monat aus der Übersicht."""
@@ -2656,7 +2719,11 @@ class MainWindow(QMainWindow):
         try:
             if hasattr(self.overview_tab, 'month_combo'):
                 idx = int(self.overview_tab.month_combo.currentIndex())
-                month = date.today().month if idx == 0 else idx
+                if idx == 0:
+                    selected_year = int(year) if year is not None else date.today().year
+                    month = date.today().month if selected_year == date.today().year else 12
+                else:
+                    month = idx
         except Exception:
             month = None
         self._check_budget_warnings(year=year, month=month)
@@ -2752,12 +2819,42 @@ class MainWindow(QMainWindow):
         dialog = UpdateDialog(self)
         dialog.exec()
 
+    def _schedule_refresh_all_tabs(self, *, reason: str = "", delay_ms: int = 0) -> None:
+        """Plant einen kompletten Tab-Refresh stabil im Qt-Eventloop.
+
+        Hintergrund: Nach Budgetwarnungs-/Vorschlagsdialogen und QAction-Menüs ist
+        Qt noch mitten im Signal-/Menü-Stack. Ein synchrones `budget_tab.load()`
+        löscht dann QTableWidgetItems/Editoren (`setRowCount(0)`) und kann unter
+        PySide6/Qt6 nativ in Shiboken aborten. Der verzögerte Refresh läuft erst,
+        wenn Dialog/Menu vollständig abgebaut sind.
+        """
+        if getattr(self, "_refresh_all_tabs_pending", False):
+            return
+        self._refresh_all_tabs_pending = True
+
+        def _run() -> None:
+            self._refresh_all_tabs_pending = False
+            if getattr(self, "_is_closing", False):
+                return
+            self._refresh_all_tabs()
+
+        try:
+            logger.debug("Voll-Refresh geplant (%s).", reason)
+            QTimer.singleShot(max(0, int(delay_ms)), _run)
+        except Exception:
+            self._refresh_all_tabs_pending = False
+            self._refresh_all_tabs()
+
     def _refresh_all_tabs(self):
         """Aktualisiert alle Tabs nach Änderungen.
 
         Wichtig: Tabs implementieren nicht einheitlich `load()`.
         Für Stabilität bevorzugen wir `refresh()` und fallen auf `load()` zurück.
         """
+        if getattr(self, "_refresh_all_tabs_running", False):
+            self._schedule_refresh_all_tabs(reason="reentrant refresh skipped", delay_ms=0)
+            return
+        self._refresh_all_tabs_running = True
         try:
             for tab in [self.budget_tab, self.categories_tab, self.tracking_tab, self.overview_tab]:
                 self._refresh_tab_widget(tab)
@@ -2765,6 +2862,8 @@ class MainWindow(QMainWindow):
             # Refresh darf nie die UI killen, aber wir wollen wenigstens eine Spur im Terminal.
             import traceback
             traceback.print_exc()
+        finally:
+            self._refresh_all_tabs_running = False
     
     def _toggle_fullscreen(self, checked):
         """Toggle Vollbildmodus (F11)"""

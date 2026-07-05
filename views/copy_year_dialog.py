@@ -129,10 +129,15 @@ class CopyYearDialog(QDialog):
         btns.addWidget(self.btn_ok)
         btns.addWidget(self.btn_cancel)
 
+        self.learning_info = QLabel("")
+        self.learning_info.setWordWrap(True)
+        self.learning_info.setVisible(False)
+
         root = QVBoxLayout()
         root.addLayout(form)
         root.addWidget(info)
         root.addWidget(self.review)
+        root.addWidget(self.learning_info)
         root.addLayout(btns)
         self.setLayout(root)
 
@@ -153,6 +158,30 @@ class CopyYearDialog(QDialog):
         except Exception as exc:
             logger.warning("Jahreswechsel-Prüfliste konnte nicht geladen werden: %s", exc)
             self._review_rows = []
+
+        try:
+            from model.budget_overview_model import BudgetOverviewModel
+
+            learning = BudgetOverviewModel(self.conn).get_year_end_learning_suggestions(
+                int(self.src.value()),
+                types=([typ] if typ else None),
+            )
+            if learning:
+                cats = ", ".join(s.category for s in learning[:8])
+                if len(learning) > 8:
+                    cats += " …"
+                self.learning_info.setText(
+                    tr("copy.learning_year_end_hint").format(
+                        count=len(learning),
+                        cats=cats,
+                    )
+                )
+                self.learning_info.setVisible(True)
+            else:
+                self.learning_info.setVisible(False)
+        except Exception as exc:
+            logger.debug("Lernmodus-Jahresauswertung: %s", exc)
+            self.learning_info.setVisible(False)
 
         self.review.setRowCount(len(self._review_rows))
         for row_idx, row in enumerate(self._review_rows):

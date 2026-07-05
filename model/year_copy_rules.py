@@ -15,6 +15,7 @@ from model.category_forecast_mode import (
     FORECAST_MODE_POT,
     effective_forecast_mode,
 )
+from model.budget_learning import budget_kind_profile
 from model.typ_constants import is_income
 
 
@@ -187,6 +188,53 @@ def list_year_copy_review_rows(
                 suggested_months=tuple(suggested),
             )
         )
+    # Ergänzung Jahresende: Kategorien ohne Budget, aber mit Tracking, werden als
+    # mögliche Startbudgets fürs Zieljahr sichtbar. Die normale Kopierlogik für
+    # bestehende Budgets bleibt davon getrennt.
+    existing = {(row.typ, row.category) for row in result}
+    try:
+        from model.budget_overview_model import BudgetOverviewModel
+
+        learning_types = [typ] if typ else None
+        max_month_row = conn.execute(
+            "SELECT MAX(CAST(substr(date, 6, 2) AS INTEGER)) FROM tracking WHERE date>=? AND date<?",
+            (f"{int(src_year):04d}-01-01", f"{int(src_year) + 1:04d}-01-01"),
+        ).fetchone()
+        max_tracked_month = int((max_month_row[0] if max_month_row else 0) or 0)
+        learning_current_month = max(1, min(12, max_tracked_month or 12))
+        learning_suggestions = BudgetOverviewModel(
+            conn
+        ).get_tracking_budget_suggestions(
+            year=int(src_year),
+            current_month=learning_current_month,
+            types=learning_types,
+            include_current_month_projection=False,
+        )
+        for sug in learning_suggestions:
+            key = (sug.typ, sug.category)
+            if key in existing:
+                continue
+            profile = budget_kind_profile(getattr(sug, "budget_kind", ""))
+            monthly = _month_actuals(conn, int(src_year), sug.typ, sug.category)
+            annual = float(sug.suggested_amount or 0.0) * 12.0
+            result.append(
+                YearCopyReviewRow(
+                    typ=sug.typ,
+                    category=sug.category,
+                    is_fix=profile.is_fix,
+                    is_recurring=profile.is_recurring,
+                    forecast_mode=profile.forecast_mode,
+                    budget_total=annual,
+                    actual_total=sum(monthly),
+                    suggested_months=tuple([float(sug.suggested_amount or 0.0)] * 12),
+                )
+            )
+            existing.add(key)
+    except Exception:
+        # Jahreskopie darf nie daran scheitern, dass Lernvorschläge nicht
+        # berechnet werden können. Dann bleiben nur die klassischen Review-Zeilen.
+        pass
+
     return result
 
 

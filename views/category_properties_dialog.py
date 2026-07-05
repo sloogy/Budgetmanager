@@ -102,6 +102,7 @@ class CategoryPropertiesDialog(QDialog):
         day_layout.addWidget(QLabel(tr("dlg.faelligkeitstag_1")))
         self.day_spin = QSpinBox()
         self.day_spin.setRange(1, 31)
+        self.day_spin.setValue(CategoryModel.preferred_recurring_day())
         self.day_spin.setSuffix(tr("categories.day_suffix"))
         self.day_spin.setToolTip(tr("tip.due_day"))
         day_layout.addWidget(self.day_spin)
@@ -163,13 +164,19 @@ class CategoryPropertiesDialog(QDialog):
         
         self.chk_fix.setChecked(self.category.is_fix)
         self.chk_recurring.setChecked(self.category.is_recurring)
-        self.day_spin.setValue(self.category.recurring_day)
+        self.day_spin.setValue(
+            int(self.category.recurring_day)
+            if self.category.is_recurring
+            else CategoryModel.preferred_recurring_day()
+        )
         self.day_spin.setEnabled(self.category.is_recurring)
         idx = self.forecast_mode.findData(getattr(self.category, "forecast_mode", FORECAST_MODE_AUTO))
         self.forecast_mode.setCurrentIndex(idx if idx >= 0 else 0)
     
     def _on_recurring_toggled(self, checked: bool) -> None:
         self.day_spin.setEnabled(checked)
+        if checked and not self.category.is_recurring:
+            self.day_spin.setValue(CategoryModel.preferred_recurring_day())
     
     def _on_day_changed(self, value: int) -> None:
         # Wenn Tag geändert wird, Wiederkehrend automatisch aktivieren
@@ -302,6 +309,7 @@ class BulkCategoryEditDialog(QDialog):
         self.day_check = QCheckBox(tr("dlg.faelligkeitstag_setzen"))
         self.day_spin = QSpinBox()
         self.day_spin.setRange(1, 31)
+        self.day_spin.setValue(CategoryModel.preferred_recurring_day())
         self.day_spin.setSuffix(tr("categories.day_suffix"))
         self.day_spin.setEnabled(False)
         day_layout.addWidget(self.day_check)

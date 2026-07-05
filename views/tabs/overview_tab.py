@@ -220,6 +220,7 @@ class OverviewTab(QWidget):
             self.conn, self.track, self.categories, self.tags, parent=self
         )
         self.right_panel.filters_reset.connect(self.refresh_data)
+        self.right_panel.filters_changed.connect(self._delayed_refresh)
         self.right_panel.typ_filter_changed.connect(self._delayed_refresh)
 
         self.main_splitter.addWidget(left)
@@ -256,7 +257,14 @@ class OverviewTab(QWidget):
         self.range_combo = QComboBox()
         self.range_combo.addItems(_range_items())
         self.range_combo.setMinimumWidth(140)
+
+        # v2.2.2 (open-tasks): Tag-Filter – wirkt auf KPIs, Diagramme und
+        # Listen (Budgets tragen keine Tags; Hinweis erscheint bei Aktivierung).
+        self.tag_filter_combo = QComboBox()
+        self.tag_filter_combo.setMinimumWidth(130)
+        self.tag_filter_combo.setToolTip(tr("overview.tag_filter_tip"))
         layout.addWidget(self.range_combo)
+        layout.addWidget(self.tag_filter_combo)
 
         layout.addWidget(QLabel(tr("lbl.year")))
         self.year_combo = QComboBox()
@@ -296,6 +304,7 @@ class OverviewTab(QWidget):
         self.year_combo.currentIndexChanged.connect(self._delayed_refresh)
         self.month_combo.currentIndexChanged.connect(self._delayed_refresh)
         self.month_combo.currentIndexChanged.connect(self._sync_month_window_enabled)
+        self.tag_filter_combo.currentIndexChanged.connect(self._delayed_refresh)
 
         # Budget-Tabs Wechsel → neu laden
         for tab_widget in (self.budget_tabs, self.kpi_panel.chart_tabs):
@@ -349,6 +358,17 @@ class OverviewTab(QWidget):
         self._sync_month_window_enabled()
 
         today = date.today()
+        if idx == 0:
+            try:
+                d_from, d_to = self._get_date_range()
+                self.right_panel.date_from.blockSignals(True)
+                self.right_panel.date_to.blockSignals(True)
+                self.right_panel.date_from.setDate(_to_qdate(d_from))
+                self.right_panel.date_to.setDate(_to_qdate(d_to))
+                self.right_panel.date_from.blockSignals(False)
+                self.right_panel.date_to.blockSignals(False)
+            except Exception:
+                pass
         if idx == 1:
             self.right_panel.date_from.setDate(_to_qdate(today - timedelta(days=7)))
             self.right_panel.date_to.setDate(_to_qdate(today))
@@ -394,10 +414,20 @@ class OverviewTab(QWidget):
         month_idx = self.month_combo.currentIndex()
         range_idx = self.range_combo.currentIndex()
 
-        # Tracking-Rows einmal laden (gemeinsam genutzt)
+        # v2.2.2: Tag-Filter zentral anwenden. Budgets tragen keine Tags –
+        # bei aktivem Filter zeigen KPIs/Diagramme/Listen die Ist-Sicht des Tags.
         try:
-            rows = self.track.get_entries_in_range(date_from, date_to)
+            tag_id = self.tag_filter_combo.currentData()
         except Exception:
+            tag_id = None
+
+        # Tracking-Rows einmal laden (gemeinsam genutzt). Der optionale Tag-Filter
+        # läuft im TrackingModel über entry_tags, damit alle Panels dieselbe Basis
+        # verwenden und kein Panel versehentlich ungefilterte Buchungen nachlädt.
+        try:
+            rows = self.track.get_entries_in_range(date_from, date_to, tag_id=tag_id)
+        except Exception as e:
+            logger.warning("tracking rows load: %s", e)
             rows = []
 
         # Budget-Summen für Progress-Bars
@@ -412,21 +442,21 @@ class OverviewTab(QWidget):
 
         # ── Budget-Panel ──
         try:
-            self.budget_panel.refresh_budget_overview(year, month_idx, self._cat_caches)
+            self.budget_panel.refresh_budget_overview(year, month_idx, self._cat_caches, tag_id=tag_id)
         except Exception as e:
             logger.warning("budget_panel overview: %s", e)
 
         try:
             typ_filter_display = self.right_panel.typ_combo.currentText()
             self.budget_panel.refresh_tabular(
-                date_from, date_to, self._cat_caches, typ_filter_display, range_idx
+                date_from, date_to, self._cat_caches, typ_filter_display, range_idx, tag_id=tag_id
             )
         except Exception as e:
             logger.warning("budget_panel tabular: %s", e)
 
         try:
             self.budget_panel.refresh_budget_table(
-                date_from, date_to, year, month_idx, range_idx, self.track
+                date_from, date_to, year, month_idx, range_idx, self.track, tag_id=tag_id
             )
         except Exception as e:
             logger.warning("budget_panel table: %s", e)
@@ -440,7 +470,7 @@ class OverviewTab(QWidget):
         # ── Rechtes Panel (Transaktionen) ──
         try:
             cat_tree = self._build_cat_tree()
-            self.right_panel.load(date_from, date_to, cat_tree=cat_tree)
+            self.right_panel.load(date_from, date_to, cat_tree=cat_tree, tag_id=tag_id)
         except Exception as e:
             logger.warning("right_panel load: %s", e)
 
@@ -485,6 +515,21 @@ class OverviewTab(QWidget):
 
     def _load_tags(self) -> None:
         tags = self.tags.get_all_tags()
+        # v2.2.2: Filter-Combo befüllen, aktuelle Auswahl erhalten.
+        try:
+            cur = self.tag_filter_combo.currentData()
+            self.tag_filter_combo.blockSignals(True)
+            self.tag_filter_combo.clear()
+            self.tag_filter_combo.addItem(tr("overview.tag_filter_all"), None)
+            for t in tags:
+                self.tag_filter_combo.addItem(f"🏷 {t['name']}", int(t["id"]))
+            if cur is not None:
+                idx = self.tag_filter_combo.findData(cur)
+                if idx >= 0:
+                    self.tag_filter_combo.setCurrentIndex(idx)
+            self.tag_filter_combo.blockSignals(False)
+        except Exception as e:
+            logger.debug("tag filter combo: %s", e)
         tag_map = {tag["name"]: tag["id"] for tag in tags}
         self._tag_name_to_id = tag_map
         self.right_panel.update_tags(tag_map)
@@ -643,20 +688,38 @@ class OverviewTab(QWidget):
         try:
             from model.budget_warnings_model_extended import BudgetWarningsModelExtended
             from views.budget_adjustment_dialog import BudgetAdjustmentDialog
+
             warnings_model = BudgetWarningsModelExtended(self.conn)
             min_months = int(self.settings.get("budget_suggestion_months", 3) or 3)
-            exceedances = warnings_model.check_warnings_extended(
-                year, current_month, lookback_months=min_months
-            )
-            if not exceedances:
-                QMessageBox.information(
-                    self, tr("msg.budget_suggestions"),
-                    trf("overview.no_suggestions", year=year, month=f"{current_month:02d}")
-                )
-                return
+
+            # KILLCRITIC v2.2.5: NICHT mehr nur klassische Budgetwarnungen als
+            # Türsteher verwenden. Lernvorschläge, Null-Bilanz-Vorschläge und
+            # reine Forecast-Anpassungen sind oft keine aktuelle Budgetwarnung.
+            # Genau dadurch wirkte der Button "Vorschläge" nach Restore kaputt:
+            # das Banner konnte Vorschläge kennen, der Button meldete aber
+            # "keine Vorschläge". Der Dialog selbst nutzt BudgetOverviewModel
+            # als Primärquelle und zeigt bei echtem Leerstand sauber "alles grün".
             budget_model = BudgetModel(self.conn)
             dlg = BudgetAdjustmentDialog(self, warnings_model, budget_model, year, current_month)
             dlg.exec()
+
+            # Wenn im Dialog ein Lern-/Forecast-Vorschlag übernommen wurde, muss
+            # die Übersicht sofort neu laden. Sonst ist das Budget in der DB zwar
+            # geschrieben, der Nutzer sieht aber weiter den alten Zustand und
+            # glaubt, die Übernahme habe nicht funktioniert.
+            if getattr(dlg, "data_changed", False):
+                try:
+                    self.refresh_data()
+                except Exception as refresh_exc:
+                    logger.debug("refresh after budget suggestion dialog: %s", refresh_exc)
+                try:
+                    win = self.window()
+                    if win is not None and hasattr(win, "_schedule_refresh_all_tabs"):
+                        win._schedule_refresh_all_tabs(reason="overview suggestions applied")
+                    elif win is not None and hasattr(win, "_refresh_all_tabs"):
+                        QTimer.singleShot(0, win._refresh_all_tabs)
+                except Exception as refresh_all_exc:
+                    logger.debug("refresh all after budget suggestion dialog: %s", refresh_all_exc)
         except Exception as e:
             logger.warning("_show_budget_suggestions_dialog: %s", e)
 

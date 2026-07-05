@@ -8,7 +8,7 @@ from pathlib import Path
 from datetime import datetime
 
 # Aktuelle Schema-Version
-CURRENT_VERSION = 14
+CURRENT_VERSION = 15
 
 
 def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -176,6 +176,13 @@ def migrate_all(
     if old_version < 14:
         _migrate_v13_to_v14(conn)
         migrations_applied.append("v13→v14: Performance-Indizes für Cockpit/Tracking")
+
+    # Version 14 → 15: Tracking-Lernmodus-Status
+    if old_version < 15:
+        _migrate_v14_to_v15(conn)
+        migrations_applied.append(
+            "v14→v15: Tracking-Lernmodus-Status (tracking_learning_state)"
+        )
 
     # Version setzen
     if migrations_applied:
@@ -688,4 +695,25 @@ def _migrate_v13_to_v14(conn: sqlite3.Connection) -> None:
             conn.execute(stmt)
         except Exception as e:
             logger.debug("Performance-Index konnte nicht erstellt werden: %s", e)
+    conn.commit()
+
+
+def _migrate_v14_to_v15(conn: sqlite3.Connection) -> None:
+    """Migration v14 → v15: Statusverwaltung für den Tracking-Lernmodus.
+
+    Speichert Nutzerentscheidungen aus dem Budgetvorschlagsbericht getrennt
+    von Budgetwerten. Dadurch kann der Nutzer Lernvorschläge zurückstellen,
+    ignorieren oder bewusst als unregelmäßige Rückstellung markieren, ohne die
+    normale Budget-Vorschlagslogik zu beeinflussen.
+    """
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS tracking_learning_state(
+            typ TEXT NOT NULL,
+            category TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'watch',
+            snooze_until TEXT,
+            changed_at TEXT,
+            PRIMARY KEY(typ, category)
+        );
+        """)
     conn.commit()

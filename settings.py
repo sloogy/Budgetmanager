@@ -83,6 +83,31 @@ class Settings:
             "budget_zero_balance_rule": False,
             # Was mit regelmässigem Überschuss passieren soll: savings | carryover
             "budget_surplus_strategy": "savings",
+            # Lernmodus: Kategorien, die nur getrackt werden und noch im ganzen
+            # Jahr kein Budget haben, können separat als neues Budget
+            # vorgeschlagen werden. Diese Logik greift NICHT in die normale
+            # Budget-Anpassungslogik ein.
+            "tracking_budget_learning_enabled": True,
+            # 1. Monat beobachten, ab 2. Monat sanft hochrechnen/vorschlagen.
+            "tracking_budget_learning_proposal_months": 2,
+            # Ab diesem Wert gilt ein Lernvorschlag als stabil genug für eine
+            # Vorauswahl im Dialog. Der Nutzer entscheidet weiterhin selbst.
+            "tracking_budget_learning_stable_months": 3,
+            # Laufenden Monat optional auf Monatsende hochrechnen, wenn bereits
+            # Buchungen vorhanden sind.
+            "tracking_budget_learning_include_current_month_projection": True,
+            # Lernvorschläge im Budgetvorschlagsbericht anzeigen.
+            "tracking_budget_learning_show_in_report": True,
+            # v2.2.0: Cockpit ist die Startseite; Tracking merkt sich je Konto
+            # (Typ) die zuletzt gebuchte Kategorie.
+            "start_on_cockpit": True,
+            "tracking_last_category": {},
+            # Optionales automatisches Ausblenden nach langer stabiler Lernphase
+            # ohne Übernahme. Ein positives Jahresbudget beendet den Lernmodus
+            # unabhängig davon immer über die Kernregel.
+            "tracking_budget_learning_auto_end": False,
+            # Vorschläge benutzerfreundlich runden.
+            "tracking_budget_learning_round_to": 10,
             # Budgetwarnungen: automatisch aus Budget generieren wenn keine gespeicherten Regeln.
             # True = Nutzer sieht Warnungen ohne explizite Konfiguration (empfohlen).
             # False = Nur explizit angelegte Warnungen werden angezeigt.

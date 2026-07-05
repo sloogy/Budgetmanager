@@ -418,9 +418,8 @@ class CategoriesTab(QWidget):
                 for it in editable:
                     cat_id = int(it.data(self.COL_NAME, self.ROLE_ID))
                     if target:
-                        pref = int(self.settings.get("recurring_preferred_day", 25) or 0)
-                        if pref > 0 and not (it.text(self.COL_DAY) or "").strip():
-                            pref = max(1, min(31, pref))
+                        if not (it.text(self.COL_DAY) or "").strip():
+                            pref = CategoryModel.preferred_recurring_day()
                             self.model.update_flags(cat_id, is_recurring=True, recurring_day=pref)
                             it.setText(self.COL_DAY, str(pref))
                         else:
@@ -665,7 +664,7 @@ class CategoriesTab(QWidget):
         self._mass_day_mode.addItems([tr("tab_ui.nicht_aendern"), tr('auto.views_tabs_categories_tab.656_tag_setzen_c7df7554')])
         self._mass_day = QSpinBox()
         self._mass_day.setRange(1, 31)
-        self._mass_day.setValue(1)
+        self._mass_day.setValue(CategoryModel.preferred_recurring_day())
         self._mass_day.setEnabled(False)
         self._mass_day_mode.currentIndexChanged.connect(lambda i: self._mass_day.setEnabled(i == 1))
         day_row.addWidget(self._mass_day_mode, 1)

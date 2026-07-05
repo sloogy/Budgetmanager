@@ -505,5 +505,12 @@ def test_version_info_starts_with_current_release_notes():
     assert text.startswith(f"Budgetmanager Version {app_info.APP_VERSION}")
     first_body = text.split("\n\n", 2)[1]
     assert app_info.APP_VERSION in first_body
-    # Sentinel auf den aktuellen Release-Block (aktueller Release-Block: Budget-Vorschlag-Fix).
-    assert "BUDGET-VORSCHLAG" in first_body
+    # v2.2.0: Sentinel generalisiert (war release-spezifisch "BUDGET-VORSCHLAG").
+    # Der erste Block muss ein GROSSBUCHSTABEN-Titel mit Trennlinie sein, der
+    # die aktuelle Version trägt – so bleibt der Check bei jedem Release gültig.
+    title_line = first_body.splitlines()[0]
+    assert app_info.APP_VERSION in title_line
+    assert (
+        title_line == title_line.upper()
+    ), "Release-Titel muss in Grossbuchstaben stehen"
+    assert "----" in first_body, "Release-Titel braucht eine Trennlinie"

@@ -37,6 +37,7 @@ _DEFAULT_TYPE_COLORS: Dict[str, str] = {
 _DEFAULTS = {
     "type_colors": dict(_DEFAULT_TYPE_COLORS),
     "negative": "#e74c3c",
+    "positive": "#27ae60",
     "ok": "#27ae60",
     "warning": "#f39c12",
     "danger": "#e74c3c",
@@ -74,6 +75,7 @@ class UIColors:
 
     # Semantische Farben
     negative: str = "#e74c3c"
+    positive: str = "#27ae60"
     ok: str = "#27ae60"
     warning: str = "#f39c12"
     danger: str = "#e74c3c"
@@ -232,6 +234,7 @@ def _build_from_theme_manager(tm) -> UIColors:
     return UIColors(
         type_colors=tc or dict(_DEFAULT_TYPE_COLORS),
         negative=neg,
+        positive=tc.get(_TI, "#27ae60"),
         ok=tc.get(_TI, "#27ae60"),
         warning="#f39c12",
         danger=neg,
@@ -307,7 +310,12 @@ def ui_colors(widget: Optional[QWidget] = None) -> UIColors:
     if widget is None:
         return UIColors()
 
-    # Widget-Hierarchie hochgehen zum MainWindow
+    # Widget-Hierarchie hochgehen zum MainWindow. Manche Panels werden in
+    # Tests/Frühinitialisierung noch nicht als QWidget mit window() gesehen;
+    # das ist kein Fehler und soll kein Log-Spam erzeugen.
+    if not hasattr(widget, "window"):
+        return UIColors()
+
     try:
         main = widget.window()
         tm = getattr(main, "theme_manager", None)

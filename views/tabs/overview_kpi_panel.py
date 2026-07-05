@@ -5,9 +5,9 @@ Extrahiert aus overview_tab.py (v1.0.5 – Patch C: Aufspaltung).
 Verantwortlich für:
 - 4 KPI-Cards (Einkommen, Ausgaben, Bilanz, Ersparnisse)
 - 3 Progress-Bars (Budget vs. Ist)
-- Diagramm-Tab mit Drill-Down (Nested Donut + Bar Chart)
-- Kategorien-Pie-Chart
-- Typ-Verteilungs-Chart
+- Diagramm-Tab mit bewährtem Plan/Ist-Donut, Balken-Rankings und Verlaufsgrafiken
+- Kategorien-Ranking als Balkendiagramm
+- Konto-Vergleich als Balkendiagramm statt verwirrender Neben-Donut
 - Sinnvolle Zusatzgraphen: Monatsverlauf, Monatsbilanz, Top-Buchungen
 
 Schnittstelle zu OverviewTab:
@@ -65,6 +65,12 @@ class OverviewKpiPanel(QWidget):
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(8)
 
+        # v2.2.0: Ampel-Monatsstatus – gleiche Logik wie im Cockpit.
+        self.lbl_month_status = QLabel("")
+        self.lbl_month_status.setStyleSheet("font-size: 14px; font-weight: 600;")
+        self.lbl_month_status.setToolTip(tr("status.month_tooltip"))
+        layout.addWidget(self.lbl_month_status)
+
         # ── KPI Cards ──
         self.kpi_widget = QWidget()
         kpi_layout = QHBoxLayout(self.kpi_widget)
@@ -96,23 +102,40 @@ class OverviewKpiPanel(QWidget):
 
         # ── Chart Tabs ──
         self.chart_tabs = QTabWidget()
+        # v2.2.0 (Vereinfachung): 4 statt 6 Reiter in klarer Reihenfolge –
+        # 1. Plan vs. Ist ("Wo stehe ich?"), 2. Kategorien-Ranking,
+        # 3. Verlauf (Ausgaben + Bilanz untereinander), 4. Top-Buchungen.
+        # Der Konto-Vergleichs-Reiter entfiel: gleiche Aussage wie Plan/Ist.
         self.chart_tabs.addTab(self._build_donut_tab(),        tr("tab.chart_overview"))
-        self.chart_tabs.addTab(self._build_cat_tab(),          tr("overview.subtab.categories"))
-        self.chart_tabs.addTab(self._build_typ_tab(),          tr("overview.subtab.distribution"))
-        self.chart_tabs.addTab(self._build_monthly_trend_tab(), tr("overview.subtab.monthly_trend"))
-        self.chart_tabs.addTab(self._build_balance_trend_tab(), tr("overview.subtab.balance_trend"))
+        self.chart_tabs.addTab(self._build_cat_tab(),          tr("overview.subtab.category_ranking"))
+        self.chart_tabs.addTab(self._build_trend_tab(),        tr("overview.subtab.trend"))
         self.chart_tabs.addTab(self._build_top_bookings_tab(),  tr("overview.subtab.top_bookings"))
+        # chart_types bleibt als (nicht eingehängtes) Widget bestehen, damit
+        # die Befüllung in refresh_charts unverändert funktioniert; der eigene
+        # Reiter entfiel in v2.2.0 (redundant zu Plan vs. Ist).
+        self._hidden_typ_tab = self._build_typ_tab()
+        self._hidden_typ_tab.setVisible(False)
         layout.addWidget(self.chart_tabs)
         layout.addStretch()
 
+
+    def _chart_help_label(self, key: str) -> QLabel:
+        """Kleiner Erklärungstext direkt über dem Diagramm."""
+        lbl = QLabel(tr(key))
+        lbl.setWordWrap(True)
+        lbl.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        lbl.setStyleSheet(f"color: {ui_colors(self).text_dim}; padding: 4px 6px;")
+        return lbl
+
     def _build_donut_tab(self) -> QWidget:
-        """Nested-Donut mit Drill-Down Stacked-Widget."""
+        """Bewährter Plan/Ist-Donut mit Drill-Down-Container."""
         self.chart_overview_stack = QStackedWidget()
 
-        # Page 0: Nested Donut
+        # Page 0: Plan/Ist-Balken
         p0 = QWidget()
         p0l = QVBoxLayout(p0)
         p0l.setContentsMargins(0, 0, 0, 0)
+        p0l.addWidget(self._chart_help_label("overview.explain.plan_actual"))
         self.chart_overview_donut = CompactChart()
         self.chart_overview_donut.setMinimumHeight(280)
         self.chart_overview_donut.setMaximumHeight(420)
@@ -155,7 +178,10 @@ class OverviewKpiPanel(QWidget):
         w = QWidget()
         l = QVBoxLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(self._chart_help_label("overview.explain.categories"))
         self.chart_categories = CompactChart()
+        self.chart_categories.setMinimumHeight(320)
+        self.chart_categories.setMaximumHeight(520)
         self.chart_categories.slice_clicked.connect(self.chart_category_clicked)
         l.addWidget(self.chart_categories)
         return w
@@ -164,17 +190,39 @@ class OverviewKpiPanel(QWidget):
         w = QWidget()
         l = QVBoxLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(self._chart_help_label("overview.explain.account_flow"))
         self.chart_types = CompactChart()
+        self.chart_types.setMinimumHeight(260)
+        self.chart_types.setMaximumHeight(420)
         self.chart_types.slice_clicked.connect(
             lambda s: self.chart_type_clicked.emit(db_typ_from_display(s) if s else "")
         )
         l.addWidget(self.chart_types)
         return w
 
+    def _build_trend_tab(self) -> QWidget:
+        """v2.2.0: Monats-Ausgaben und Monatsbilanz in EINEM Verlaufs-Reiter."""
+        from PySide6.QtWidgets import QScrollArea
+
+        inner = QWidget()
+        l = QVBoxLayout(inner)
+        l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(self._build_monthly_trend_tab())
+        l.addWidget(self._build_balance_trend_tab())
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setWidget(inner)
+        outer = QWidget()
+        ol = QVBoxLayout(outer)
+        ol.setContentsMargins(0, 0, 0, 0)
+        ol.addWidget(scroll)
+        return outer
+
     def _build_monthly_trend_tab(self) -> QWidget:
         w = QWidget()
         l = QVBoxLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(self._chart_help_label("overview.explain.monthly_trend"))
         self.chart_monthly_expenses = CompactChart()
         self.chart_monthly_expenses.setMinimumHeight(260)
         self.chart_monthly_expenses.setMaximumHeight(420)
@@ -186,6 +234,7 @@ class OverviewKpiPanel(QWidget):
         w = QWidget()
         l = QVBoxLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(self._chart_help_label("overview.explain.balance_trend"))
         self.chart_monthly_balance = CompactChart()
         self.chart_monthly_balance.setMinimumHeight(260)
         self.chart_monthly_balance.setMaximumHeight(420)
@@ -197,9 +246,10 @@ class OverviewKpiPanel(QWidget):
         w = QWidget()
         l = QVBoxLayout(w)
         l.setContentsMargins(0, 0, 0, 0)
+        l.addWidget(self._chart_help_label("overview.explain.top_bookings"))
         self.chart_top_bookings = CompactChart()
-        self.chart_top_bookings.setMinimumHeight(260)
-        self.chart_top_bookings.setMaximumHeight(420)
+        self.chart_top_bookings.setMinimumHeight(320)
+        self.chart_top_bookings.setMaximumHeight(520)
         self.chart_top_bookings.setToolTip(tr("overview.tip.top_bookings"))
         l.addWidget(self.chart_top_bookings)
         return w
@@ -212,7 +262,10 @@ class OverviewKpiPanel(QWidget):
         total_income   = sum(r.amount for r in rows if _norm(r.typ) == TYP_INCOME)
         total_expenses = sum(abs(r.amount) for r in rows if _norm(r.typ) == TYP_EXPENSES)
         total_savings  = sum(r.amount for r in rows if _norm(r.typ) == TYP_SAVINGS)
-        balance = total_income - total_expenses
+        # Bilanz im BudgetManager-Sinn: Einkommen minus Ausgaben minus Ersparnisse.
+        # Ersparnisse sind zwar positiv fürs Vermögen, blockieren aber den freien
+        # Einkommenstopf des Monats und müssen deshalb in der freien Bilanz raus.
+        balance = total_income - total_expenses - total_savings
 
         self.card_income.update_value(format_chf(total_income))
         self.card_expenses.update_value(format_chf(total_expenses))
@@ -286,7 +339,7 @@ class OverviewKpiPanel(QWidget):
 
         # Budget-Daten — bereichsbezogen.
         # Wird budget_sums (über die Monate des gewählten Zeitraums summiert)
-        # übergeben, nutzen wir das. So passt das Donut-Budget zum tatsächlich
+        # übergeben, nutzen wir das. So passt das Diagramm-Budget zum tatsächlich
         # gewählten Zeitraum (auch bei rollierenden Bereichen wie 7/30/90 Tagen)
         # und ist konsistent mit der KPI-Leiste. Fallback: alte month_idx-Logik.
         income_budget = expense_budget = savings_budget = 0.0
@@ -307,95 +360,99 @@ class OverviewKpiPanel(QWidget):
             except Exception as e:
                 logger.debug("budget_sum: %s", e)
 
-        income_open  = max(0, income_budget  - income_actual)
-        expense_open = max(0, expense_budget - expense_actual)
-        savings_open = max(0, savings_budget - savings_actual)
-
+        # Plan/Ist-Donut bleibt bewusst erhalten: Er zeigt pro Konto den
+        # Status zum jeweiligen Budget (gebucht/offen/über Budget). Der
+        # verwirrende zweite Kreis daneben wurde dagegen durch Balken ersetzt.
         ring_data = []
 
-        # Ring 1 (aussen): Einkommen
-        eink_slices = []
-        if income_actual > 0:
-            eink_slices.append({
-                "label": f"{tr('lbl.gebucht')}: {format_chf(income_actual)}", "value": income_actual,
-                "color": _cc.budget_chart_colors(TYP_INCOME)["gebucht"], "raw_label": TYP_INCOME,
-            })
-        if income_open > 0:
-            eink_slices.append({
-                "label": f"{tr('lbl.offen')}: {format_chf(income_open)}", "value": income_open,
-                "color": _cc.budget_chart_colors(TYP_INCOME)["offen"], "raw_label": TYP_INCOME,
-            })
-        if eink_slices:
-            ring_data.append({"label": tr("kpi.income"), "slices": eink_slices, "pie_size": 0.92, "hole_size": 0.68})
+        def _ring(label: str, typ_key: str, budget: float, actual: float, pie_size: float, hole_size: float) -> None:
+            colors = _cc.budget_chart_colors(typ_key)
+            booked = min(max(actual, 0.0), max(budget, 0.0)) if budget > 0 else max(actual, 0.0)
+            open_amount = max(0.0, budget - actual)
+            over_amount = max(0.0, actual - budget) if budget > 0 else 0.0
+            slices = []
+            if booked > 0:
+                slices.append({
+                    "label": f"{label} · {tr('lbl.gebucht')}: {format_chf(booked)}",
+                    "value": booked,
+                    "color": colors["gebucht"],
+                    "raw_label": typ_key,
+                })
+            if open_amount > 0:
+                slices.append({
+                    "label": f"{label} · {tr('lbl.offen')}: {format_chf(open_amount)}",
+                    "value": open_amount,
+                    "color": colors["offen"],
+                    "raw_label": typ_key,
+                })
+            if over_amount > 0:
+                slices.append({
+                    "label": f"{label} · {tr('chart.over_budget')}: {format_chf(over_amount)}",
+                    "value": over_amount,
+                    "color": _cc.negative,
+                    "raw_label": typ_key,
+                })
+            if slices:
+                ring_data.append({"label": label, "slices": slices, "pie_size": pie_size, "hole_size": hole_size})
 
-        # Ring 2 (mitte): Ausgaben
-        ausg_slices = []
-        if expense_actual > 0:
-            eink_ref = max(income_actual, income_budget, 1)
-            pct_spent = (expense_actual / eink_ref) * 100
-            ausg_slices.append({
-                "label": f"{tr('lbl.gebucht')}: {format_chf(expense_actual)} ({pct_spent:.0f}%)", "value": expense_actual,
-                "color": _cc.budget_chart_colors(TYP_EXPENSES)["gebucht"], "raw_label": TYP_EXPENSES,
-            })
-        if expense_open > 0:
-            ausg_slices.append({
-                "label": f"{tr('lbl.offen')}: {format_chf(expense_open)}", "value": expense_open,
-                "color": _cc.budget_chart_colors(TYP_EXPENSES)["offen"], "raw_label": TYP_EXPENSES,
-            })
-        if ausg_slices:
-            ring_data.append({"label": tr("kpi.expenses"), "slices": ausg_slices, "pie_size": 0.65, "hole_size": 0.42})
-
-        # Ring 3 (innen): Ersparnisse
-        spar_slices = []
-        if savings_actual > 0:
-            spar_slices.append({
-                "label": f"{tr('lbl.gebucht')}: {format_chf(savings_actual)}", "value": savings_actual,
-                "color": _cc.budget_chart_colors(TYP_SAVINGS)["gebucht"], "raw_label": TYP_SAVINGS,
-            })
-        if savings_open > 0:
-            spar_slices.append({
-                "label": f"{tr('lbl.offen')}: {format_chf(savings_open)}", "value": savings_open,
-                "color": _cc.budget_chart_colors(TYP_SAVINGS)["offen"], "raw_label": TYP_SAVINGS,
-            })
-        if spar_slices:
-            ring_data.append({"label": display_typ(TYP_SAVINGS), "slices": spar_slices, "pie_size": 0.39, "hole_size": 0.18})
+        _ring(tr("kpi.income"), TYP_INCOME, income_budget, income_actual, 0.92, 0.68)
+        _ring(tr("kpi.expenses"), TYP_EXPENSES, expense_budget, expense_actual, 0.65, 0.42)
+        _ring(display_typ(TYP_SAVINGS), TYP_SAVINGS, savings_budget, savings_actual, 0.39, 0.18)
 
         self.chart_overview_donut.create_nested_donut(ring_data)
 
-        # Kategorien-Pie (Ausgaben) – farblich am Kontotyp orientiert.
-        # Einnahmen=grün, Ausgaben=rot, Ersparnisse=blau. Da dieser Tab
-        # Ausgaben zeigt, bleiben alle Ausgaben-Kategorien konsistent rot.
-        cat_data: dict[str, float] = {}
-        cat_colors: dict[str, str] = {}
-        for r in rows:
-            if _norm(r.typ) == TYP_EXPENSES:
-                cat_data[r.category] = cat_data.get(r.category, 0) + abs(r.amount)
-                cat_colors[r.category] = _cc.type_color(TYP_EXPENSES)
-        self.chart_categories.create_pie_chart(
-            cat_data,
-            tr("tab_ui.ausgaben_nach_kategorie"),
-            color_map=cat_colors,
+        # Kategorien-Ranking (Ausgaben): Balken statt Kreisdiagramm.
+        # Das ist bei vielen Kategorien deutlich leichter zu lesen und vermeidet
+        # die falsche Interpretation, dass alle Kategorien immer ein sauberer
+        # Anteil eines festen Kuchens seien.
+        from model.overview_aggregation import aggregate_category_amounts
+
+        category_items = aggregate_category_amounts(
+            rows,
+            TYP_EXPENSES,
+            top_n=8,
+            other_label=tr("tab_ui.other_categories"),
+        )
+        self.chart_categories.create_horizontal_bar_chart(
+            bars=[
+                {
+                    "label": cat if len(cat) <= 34 else cat[:33] + "…",
+                    "value": total,
+                    "color": _cc.type_color(TYP_EXPENSES),
+                }
+                for cat, total in category_items
+            ],
+            title=tr("chart.top_expense_categories"),
         )
 
-        # Typ-Verteilung – Display-Keys damit chart_types.slice_clicked
-        # einen übersetzten String emittiert den db_typ_from_display() versteht
-        typ_data = {
-            display_typ(TYP_INCOME):   income_actual,
-            display_typ(TYP_EXPENSES): expense_actual,
-            display_typ(TYP_SAVINGS):  savings_actual,
-        }
-        type_colors = {
-            display_typ(TYP_INCOME):   _cc.budget_chart_colors(TYP_INCOME)["gebucht"],
-            display_typ(TYP_EXPENSES): _cc.budget_chart_colors(TYP_EXPENSES)["gebucht"],
-            display_typ(TYP_SAVINGS):  _cc.budget_chart_colors(TYP_SAVINGS)["gebucht"],
-        }
-        self.chart_types.create_pie_chart(
-            {k: v for k, v in typ_data.items() if v > 0},
-            tr("tab_ui.verteilung_nach_typ"),
-            color_map=type_colors,
+        # Konto-Vergleich: keine Verteilung als Kreis. Einnahmen, Ausgaben und
+        # Ersparnisse sind keine Anteile desselben Topfs; als Balken ist der
+        # Vergleich verständlicher und weniger irreführend.
+        account_flow_bars = [
+            {"label": display_typ(TYP_INCOME), "value": income_actual, "color": _cc.type_color(TYP_INCOME)},
+            {"label": display_typ(TYP_EXPENSES), "value": expense_actual, "color": _cc.type_color(TYP_EXPENSES)},
+            {"label": display_typ(TYP_SAVINGS), "value": savings_actual, "color": _cc.type_color(TYP_SAVINGS)},
+        ]
+        self.chart_types.create_horizontal_bar_chart(
+            bars=account_flow_bars,
+            title=tr("chart.account_flow_actual"),
         )
 
         # Sinnvolle Zusatzgraphen: Verlauf statt weitere Kreisdiagramme.
+        # v2.2.0: Ampel-Monatsstatus aktualisieren.
+        try:
+            from model.month_status import compute_month_status
+
+            st = compute_month_status(
+                income_actual, expense_actual, expense_budget, savings_actual
+            )
+            self.lbl_month_status.setText(
+                f"{st.icon} {tr(st.text_key)} – "
+                f"{tr('cockpit.free_amount')}: {format_chf(st.free_amount)}"
+            )
+        except Exception as e:
+            logger.debug("month status: %s", e)
+
         self._refresh_monthly_trend_charts(rows, year, month_idx, date_from, date_to)
 
         # Drill-Down Daten für spätere Nutzung cachen
@@ -423,10 +480,12 @@ class OverviewKpiPanel(QWidget):
         for y, m in pairs:
             inc_actual = self._monthly_amount("tracking", y, m, TYP_INCOME)
             exp_actual = self._monthly_amount("tracking", y, m, TYP_EXPENSES)
+            sav_actual = self._monthly_amount("tracking", y, m, TYP_SAVINGS)
             inc_budget = self._monthly_amount("budget", y, m, TYP_INCOME)
             exp_budget = self._monthly_amount("budget", y, m, TYP_EXPENSES)
-            balance_actual.append(inc_actual - exp_actual)
-            balance_budget.append(inc_budget - exp_budget)
+            sav_budget = self._monthly_amount("budget", y, m, TYP_SAVINGS)
+            balance_actual.append(inc_actual - exp_actual - sav_actual)
+            balance_budget.append(inc_budget - exp_budget - sav_budget)
 
         self.chart_monthly_balance.create_line_chart(
             labels,
@@ -450,7 +509,7 @@ class OverviewKpiPanel(QWidget):
                 "color": c.type_color(typ_db),
             })
 
-        self.chart_top_bookings.create_colored_bar_chart(
+        self.chart_top_bookings.create_horizontal_bar_chart(
             bars=top_bars,
             title=tr("chart.top_bookings_by_amount"),
         )
@@ -458,7 +517,7 @@ class OverviewKpiPanel(QWidget):
     # ── Drill-Down ──────────────────────────────────────────────────────────
 
     def _on_donut_clicked(self, typ_name: str) -> None:
-        """Klick im Donut → Drill-Down für diesen Typ."""
+        """Alter Drill-Down-Einstieg für typbasierte Detailansichten."""
         if not typ_name:
             return
 

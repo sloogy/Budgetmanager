@@ -6,6 +6,7 @@ Entfernt nur generierbare Laufzeit-/Testartefakte, keine Quell- oder Doku-Dateie
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 
@@ -46,12 +47,26 @@ def clean(root: Path = ROOT) -> list[str]:
                 path.unlink()
                 removed.append(str(path.relative_to(root)))
 
-    for path in sorted(root.rglob("*"), reverse=True):
-        if _is_local_environment(path, root):
+    for dirpath, dirnames, _filenames in os.walk(root):
+        current = Path(dirpath)
+        rel_parts = current.relative_to(root).parts
+        if any(part.startswith(EXCLUDED_DIR_PREFIXES) for part in rel_parts):
+            dirnames[:] = []
             continue
-        if path.is_dir() and path.name in DIR_NAMES:
-            shutil.rmtree(path)
-            removed.append(str(path.relative_to(root)) + "/")
+
+        dirnames[:] = [
+            dirname
+            for dirname in dirnames
+            if not dirname.startswith(EXCLUDED_DIR_PREFIXES)
+        ]
+
+        for dirname in list(dirnames):
+            if dirname not in DIR_NAMES:
+                continue
+            target = current / dirname
+            shutil.rmtree(target)
+            removed.append(str(target.relative_to(root)) + "/")
+            dirnames.remove(dirname)
 
     backups = root / "data" / "backups"
     backups.mkdir(parents=True, exist_ok=True)

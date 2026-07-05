@@ -71,6 +71,7 @@ class CategoryModel:
             "suggestion_accepted",
             "system_flags",
             "tracking",
+            "tracking_learning_state",
         }
     )
     _CATEGORY_TEXT_REFERENCE_TABLES = frozenset(
@@ -80,6 +81,7 @@ class CategoryModel:
             "budget_warnings",
             "recurring_transactions",
             "suggestion_accepted",
+            "tracking_learning_state",
         }
     )
 
@@ -87,6 +89,46 @@ class CategoryModel:
         self.conn = conn
         # Undo/Redo (global)
         self.undo = UndoRedoModel(conn)
+
+    @staticmethod
+    def preferred_recurring_day(default: int = 25) -> int:
+        """Liefert den global eingestellten Standard-Fälligkeitstag.
+
+        Der Wert kommt aus Einstellungen → Verhalten → bevorzugter
+        Buchungstag. Er wird verwendet, wenn eine Kategorie neu als
+        wiederkehrend angelegt oder von nicht-wiederkehrend auf
+        wiederkehrend umgeschaltet wird.
+
+        0 bedeutet in den Einstellungen "kein bevorzugter Tag"; für die
+        Datenbank wird dann sicher auf 1 zurückgefallen, weil
+        ``categories.recurring_day`` einen gültigen Tag 1..31 erwartet.
+        """
+        try:
+            from settings import Settings
+
+            day = int(Settings().get("recurring_preferred_day", default) or 0)
+        except Exception:
+            day = int(default or 25)
+        if day < 1 or day > 31:
+            return 1
+        return day
+
+    @classmethod
+    def _normalized_recurring_day(
+        cls,
+        recurring_day: int | None,
+        *,
+        use_preferred_when_missing: bool = False,
+    ) -> int:
+        if recurring_day is None:
+            return cls.preferred_recurring_day() if use_preferred_when_missing else 1
+        try:
+            day = int(recurring_day)
+        except Exception:
+            day = 0
+        if day < 1 or day > 31:
+            return cls.preferred_recurring_day() if use_preferred_when_missing else 1
+        return max(1, min(31, day))
 
     def ensure_defaults(self) -> None:
         # Prüfe ob Defaults bereits geladen wurden
@@ -346,7 +388,7 @@ class CategoryModel:
 
         Liefert eine flache Liste aus Kopfzeilen und Einträgen:
             ("header", <Gruppentitel>, None)
-            ("item",   <Anzeigelabel inkl. Baum-Pfad>, <echter Kategoriename>)
+            ("item",   <kurzer Anzeigetext>, <echter Kategoriename>)
 
         Best-Practice für den Tracker:
         1. Favoriten stehen immer ganz oben.
@@ -357,26 +399,33 @@ class CategoryModel:
            unteren Gruppen, damit Alltagsbuchungen nicht von Monatsautomatiken
            verdrängt werden.
 
-        Kategorien erscheinen genau einmal. Unterkategorien behalten ihren
-        Eltern-Pfad (z.B. "Wohnen › Miete").
+        Kategorien erscheinen genau einmal. Parent-Kategorien mit Kindern werden
+        im Tracking nicht als eigene buchbare Zeile angezeigt. Unterkategorien
+        werden bewusst kurz angezeigt, z.B. "Miete" statt "Wohnen › Miete".
         """
         items = self.list(typ)
         if not items:
             return []
         by_name = {c.name: c for c in items}
 
-        # Baum-Pfade + Baum-Reihenfolge
+        # Baum-Pfade bleiben nur intern für eine stabile Reihenfolge erhalten.
+        # Im Tracking selbst soll die Auswahl kurz bleiben: Unterkategorien werden
+        # als Blattname angezeigt ("Miete"), nicht als Breadcrumb ("Wohnen › Miete").
         path_by_name: dict[str, str] = {}
         nodes = self.build_tree(items)
         tree_pos: dict[str, int] = {}
+        parent_names_with_children: set[str] = set()
 
         def walk(children: List[dict], parent_path: str | None = None) -> None:
             for n in children:
                 c: Category = n["cat"]
+                child_nodes = n.get("children", []) or []
+                if child_nodes:
+                    parent_names_with_children.add(c.name)
                 path = c.name if not parent_path else f"{parent_path} › {c.name}"
                 path_by_name[c.name] = path
                 tree_pos[c.name] = len(tree_pos)
-                walk(n.get("children", []) or [], path)
+                walk(child_nodes, path)
 
         walk(nodes)
 
@@ -385,7 +434,11 @@ class CategoryModel:
                 "SELECT category FROM favorites WHERE typ=? ORDER BY sort_order, category COLLATE NOCASE",
                 (typ,),
             ).fetchall()
-            fav_order = [str(r[0]) for r in fav_rows if str(r[0]) in by_name]
+            fav_order = [
+                str(r[0])
+                for r in fav_rows
+                if str(r[0]) in by_name and str(r[0]) not in parent_names_with_children
+            ]
         except Exception as e:
             logger.debug("Favoriten für gruppierten Picker: %s", e)
             fav_order = []
@@ -427,6 +480,10 @@ class CategoryModel:
         real_fixcosts: List[str] = []
 
         for c in items:
+            # Parent-Kategorien mit Unterkategorien sind Struktur-/Summenzeilen.
+            # Im Tracking sollen sie nicht vor den Unterkategorien auftauchen.
+            if c.name in parent_names_with_children:
+                continue
             if c.name in fav_set:
                 continue
             is_fix = bool(c.is_fix)
@@ -469,7 +526,7 @@ class CategoryModel:
                 return
             out.append(("header", _tr(title_key, default_title), None))
             for n in names:
-                label = path_by_name.get(n, n)
+                label = n
                 if favorite:
                     label = f"★ {label}"
                 out.append(("item", label, n))
@@ -597,18 +654,16 @@ class CategoryModel:
         name: str,
         is_fix: bool,
         is_recurring: bool,
-        recurring_day: int = 1,
+        recurring_day: int | None = None,
         *,
         parent_id: int | None = None,
         funded_by_category_id: int | None = None,
         sort_order: int = 0,
         forecast_mode: str = FORECAST_MODE_AUTO,
     ) -> None:
-        day = int(recurring_day) if recurring_day else 1
-        if day < 1:
-            day = 1
-        if day > 31:
-            day = 31
+        day = self._normalized_recurring_day(
+            recurring_day, use_preferred_when_missing=bool(is_recurring)
+        )
         cols = self._cols("categories")
         if (
             "parent_id" in cols
@@ -663,7 +718,7 @@ class CategoryModel:
         name: str,
         is_fix: bool = False,
         is_recurring: bool = False,
-        recurring_day: int = 1,
+        recurring_day: int | None = None,
         *,
         parent_id: int | None = None,
         funded_by_category_id: int | None = None,
@@ -671,8 +726,9 @@ class CategoryModel:
         forecast_mode: str = FORECAST_MODE_AUTO,
     ) -> int:
         """Legt eine neue Kategorie an und liefert die ID zurück."""
-        day = int(recurring_day) if recurring_day else 1
-        day = max(1, min(31, day))
+        day = self._normalized_recurring_day(
+            recurring_day, use_preferred_when_missing=bool(is_recurring)
+        )
         cols = self._cols("categories")
         if (
             "parent_id" in cols
@@ -739,8 +795,16 @@ class CategoryModel:
         if is_recurring is not None:
             fields.append("is_recurring=?")
             params.append(int(is_recurring))
+
+        if recurring_day is None and is_recurring is True:
+            was_recurring = bool(old["is_recurring"]) if old else False
+            if not was_recurring:
+                recurring_day = self.preferred_recurring_day()
+
         if recurring_day is not None:
-            day = max(1, min(31, int(recurring_day)))
+            day = self._normalized_recurring_day(
+                recurring_day, use_preferred_when_missing=bool(is_recurring)
+            )
             fields.append("recurring_day=?")
             params.append(day)
         if forecast_mode is not None:
@@ -912,6 +976,19 @@ class CategoryModel:
                     "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
                     (typ, old_name),
                 )
+            # v2.2.6 (KILLCRITIC): Der Tracking-Lernzustand ist per (typ, category)
+            # gekeyt. Ohne diese Zeile verwaist die Nutzerentscheidung
+            # (watch/ignored/snooze/ended) nach einem Rename unter dem alten Namen
+            # und die Kategorie taucht unter dem neuen Namen wieder im Lernmodus auf.
+            if self._table_exists("tracking_learning_state"):
+                self.conn.execute(
+                    "UPDATE OR IGNORE tracking_learning_state SET category=? WHERE typ=? AND category=?",
+                    (new_name, typ, old_name),
+                )
+                self.conn.execute(
+                    "DELETE FROM tracking_learning_state WHERE typ=? AND category=?",
+                    (typ, old_name),
+                )
             if typ == TYP_SAVINGS and self._table_exists("savings_goals"):
                 self.conn.execute(
                     "UPDATE savings_goals SET category=? WHERE category=?",
@@ -996,6 +1073,19 @@ class CategoryModel:
             )
             self.conn.execute(
                 "DELETE FROM suggestion_accepted WHERE typ=? AND category=?",
+                (typ, old_name),
+            )
+        # v2.2.6 (KILLCRITIC): Lernzustand beim Umhängen mitnehmen. Das Ziel hat
+        # ggf. bereits einen eigenen Lernzustand – dann bleibt dessen Zustand
+        # erhalten (UPDATE OR IGNORE) und die Quelle wird entfernt, statt zu
+        # verwaisen.
+        if self._table_exists("tracking_learning_state"):
+            self.conn.execute(
+                "UPDATE OR IGNORE tracking_learning_state SET category=? WHERE typ=? AND category=?",
+                (target_name, typ, old_name),
+            )
+            self.conn.execute(
+                "DELETE FROM tracking_learning_state WHERE typ=? AND category=?",
                 (typ, old_name),
             )
         if typ == TYP_SAVINGS and self._table_exists("savings_goals"):

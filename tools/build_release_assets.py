@@ -118,11 +118,7 @@ def _copy_file(src: Path, dst: Path, executable: bool = False) -> None:
 
 
 def _copy_bundle_contents(src_dir: Path, dst_dir: Path) -> None:
-    """Kopiert einen PyInstaller-onedir-Bundle-Ordner in ein portables ZIP-Arbeitsverzeichnis.
-
-    Installer-Artefakte werden bewusst ausgeschlossen, weil der Manifest-Job
-    Windows-Bundle und Setup-EXE im selben artifacts/windows-Ordner sammelt.
-    """
+    """Kopiert einen PyInstaller-onedir-Bundle-Ordner ins portable Arbeitsverzeichnis."""
     dst_dir.mkdir(parents=True, exist_ok=True)
     excluded_names = {
         "BudgetManager_Setup.exe",
@@ -225,6 +221,8 @@ def _create_portable_windows_zip(
     target_exe = work / WINDOWS_CANONICAL_EXE
     if not target_exe.is_file():
         _die(f"Windows-Bundle ohne stabilen Startnamen: {target_exe}")
+    if not (work / "_internal").is_dir():
+        _die("Windows-Bundle ohne _internal/ ist kein onedir-Build")
 
     (work / "data" / "backups").mkdir(parents=True, exist_ok=True)
     (work / "data" / ".keep").touch()
@@ -247,6 +245,8 @@ def _create_portable_linux_zip(out_dir: Path, version: str, linux_binary: Path) 
     target_binary = work / LINUX_CANONICAL_BINARY
     if not target_binary.is_file():
         _die(f"Linux-Bundle ohne stabilen Startnamen: {target_binary}")
+    if not (work / "_internal").is_dir():
+        _die("Linux-Bundle ohne _internal/ ist kein onedir-Build")
     try:
         mode = os.stat(target_binary).st_mode
         os.chmod(target_binary, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -314,8 +314,6 @@ def _write_latest_json(
     base_url: str,
     portable_windows_zip: Path,
     portable_linux_zip: Path,
-    direct_windows_exe: Path,
-    direct_linux_binary: Path,
     installer_exe: Path | None,
     installer_zip: Path | None,
 ) -> Path:
@@ -328,8 +326,6 @@ def _write_latest_json(
         "portable_linux_zip": _asset(base_url, portable_linux_zip, "portable-zip"),
         # Kompatibilitaets-Fallback: Windows zeigt auf das Windows-ZIP.
         "portable_zip": _asset(base_url, portable_windows_zip, "portable-zip"),
-        "direct_windows_exe": _asset(base_url, direct_windows_exe, "exe"),
-        "direct_linux_binary": _asset(base_url, direct_linux_binary, "binary"),
     }
     if installer_exe is not None:
         # Muss exakt "installer" bleiben: updater.check_update behandelt nur
@@ -400,11 +396,6 @@ def main() -> int:
     if args.require_installer and installer_source is None:
         _die(f"Windows-Installer wurde nicht gefunden in: {args.windows_build_dir}")
 
-    direct_windows_exe = out_dir / f"BudgetManager-v{version}-windows.exe"
-    direct_linux_binary = out_dir / f"BudgetManager-v{version}-linux"
-    _copy_file(windows_exe, direct_windows_exe, executable=False)
-    _copy_file(linux_binary, direct_linux_binary, executable=True)
-
     portable_windows_zip = _create_portable_windows_zip(out_dir, version, windows_exe)
     portable_linux_zip = _create_portable_linux_zip(out_dir, version, linux_binary)
 
@@ -422,15 +413,11 @@ def main() -> int:
         args.base_url,
         portable_windows_zip,
         portable_linux_zip,
-        direct_windows_exe,
-        direct_linux_binary,
         installer_exe,
         installer_zip,
     )
 
     files_for_sums = [
-        direct_windows_exe,
-        direct_linux_binary,
         portable_windows_zip,
         portable_linux_zip,
         latest,

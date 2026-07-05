@@ -62,6 +62,8 @@ class OverviewRightPanel(QWidget):
 
     # Emittiert wenn Typ-Filter geändert – OverviewTab kann darauf reagieren
     typ_filter_changed = Signal(str)
+    # Emittiert wenn irgendein Seitenfilter geändert wurde
+    filters_changed = Signal()
     # Emittiert wenn Filter zurückgesetzt
     filters_reset = Signal()
 
@@ -78,6 +80,7 @@ class OverviewRightPanel(QWidget):
         self._tag_name_to_id: dict[str, int] = {}
         self._cat_tree: dict[str, dict] = {}
         self._setup_ui()
+        self._connect_filter_signals()
 
     # ── Aufbau ──────────────────────────────────────────────────────────────
 
@@ -130,7 +133,7 @@ class OverviewRightPanel(QWidget):
         form.addWidget(self.category_combo, 3, 1)
 
         # Tag
-        form.addWidget(QLabel(tr("lbl.day")), 4, 0)
+        form.addWidget(QLabel(tr("header.tags")), 4, 0)
         self.tag_combo = QComboBox()
         self.tag_combo.addItem(tr("tracking.filter.all_tags"))
         form.addWidget(self.tag_combo, 4, 1)
@@ -220,25 +223,56 @@ class OverviewRightPanel(QWidget):
         self.only_recurring.setChecked(False)
         self.limit_spin.setValue(50)
         self.filters_reset.emit()
+        self.filters_changed.emit()
+
+    def _connect_filter_signals(self) -> None:
+        """Sorgt dafür, dass die Seitenfilter wirklich wirken.
+
+        Vorher waren nur Typ und Reset verdrahtet. Kategorie, Tag, Suche,
+        Betrag, Datum, Flags und Limit änderten zwar die UI, luden aber keine
+        Daten neu – dadurch wirkte der Filter in der Übersicht funktionslos.
+        """
+        self.date_from.dateChanged.connect(lambda *_: self.filters_changed.emit())
+        self.date_to.dateChanged.connect(lambda *_: self.filters_changed.emit())
+        self.category_combo.currentIndexChanged.connect(lambda *_: self.filters_changed.emit())
+        self.tag_combo.currentIndexChanged.connect(lambda *_: self.filters_changed.emit())
+        self.search_edit.textChanged.connect(lambda *_: self.filters_changed.emit())
+        self.min_amount.textChanged.connect(lambda *_: self.filters_changed.emit())
+        self.max_amount.textChanged.connect(lambda *_: self.filters_changed.emit())
+        self.only_fix.toggled.connect(lambda *_: self.filters_changed.emit())
+        self.only_recurring.toggled.connect(lambda *_: self.filters_changed.emit())
+        self.limit_spin.valueChanged.connect(lambda *_: self.filters_changed.emit())
 
     def update_categories(self, typ_filter: str, cat_names: list[str]) -> None:
-        """Kategorien-Dropdown aktualisieren (wird vom OverviewTab gerufen)."""
+        """Kategorien-Dropdown aktualisieren und aktive Auswahl erhalten."""
         from PySide6.QtCore import QSignalBlocker
+        previous = self.category_combo.currentText()
         with QSignalBlocker(self.category_combo):
             self.category_combo.clear()
-            self.category_combo.addItem(tr("tracking.filter.all_categories"))
+            all_text = tr("tracking.filter.all_categories")
+            self.category_combo.addItem(all_text)
             for name in cat_names:
                 self.category_combo.addItem(name)
+            if previous and previous != all_text:
+                idx = self.category_combo.findText(previous)
+                if idx >= 0:
+                    self.category_combo.setCurrentIndex(idx)
 
     def update_tags(self, tag_map: dict[str, int]) -> None:
-        """Tag-Dropdown aktualisieren."""
+        """Tag-Dropdown aktualisieren und aktive Auswahl erhalten."""
         from PySide6.QtCore import QSignalBlocker
+        previous = self.tag_combo.currentText()
         self._tag_name_to_id = tag_map
         with QSignalBlocker(self.tag_combo):
             self.tag_combo.clear()
-            self.tag_combo.addItem(tr("tracking.filter.all_tags"))
+            all_text = tr("tracking.filter.all_tags")
+            self.tag_combo.addItem(all_text)
             for name in tag_map:
                 self.tag_combo.addItem(name)
+            if previous and previous != all_text:
+                idx = self.tag_combo.findText(previous)
+                if idx >= 0:
+                    self.tag_combo.setCurrentIndex(idx)
 
     def set_typ(self, typ_db_or_display: str) -> None:
         """Typ-Filter setzen (z.B. vom KPI-Card-Klick).
@@ -260,11 +294,18 @@ class OverviewRightPanel(QWidget):
 
     # ── Daten laden ─────────────────────────────────────────────────────────
 
-    def load(self, date_from: date, date_to: date,
-             cat_tree: dict | None = None) -> None:
+    def load(
+        self,
+        date_from: date,
+        date_to: date,
+        cat_tree: dict | None = None,
+        tag_id: int | None = None,
+    ) -> None:
         """Transaktionen laden und filtern.
-        
+
         cat_tree: dict {(typ, cat): set_of_descendants} für Hierarchie-Filter.
+        tag_id: zentraler Tag-Filter aus der Übersichts-Kopfzeile; der lokale
+            Tag-Filter in der Seitenleiste kann zusätzlich weiter eingrenzen.
         """
         if cat_tree:
             self._cat_tree = cat_tree
@@ -289,7 +330,20 @@ class OverviewRightPanel(QWidget):
         only_rec = self.only_recurring.isChecked()
         limit = self.limit_spin.value()
 
-        rows = self.track.get_entries_in_range(date_from, date_to)
+        # Datumsfelder im Filter-Tab sind ein zusätzlicher lokaler Filter für
+        # die Transaktionsliste. Sie werden von OverviewTab mit dem globalen
+        # Zeitraum synchronisiert, können aber enger gesetzt werden.
+        try:
+            local_from = self.date_from.date().toPython()
+            local_to = self.date_to.date().toPython()
+            if local_from > date_from:
+                date_from = local_from
+            if local_to < date_to:
+                date_to = local_to
+        except Exception:
+            pass
+
+        rows = self.track.get_entries_in_range(date_from, date_to, tag_id=tag_id)
 
         filtered = []
         for r in rows:
