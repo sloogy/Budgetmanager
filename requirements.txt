@@ -10,9 +10,9 @@ idna==3.19
 openpyxl==3.1.5
 packaging==26.3
 pycparser==3.0
-pyside6==6.10.3
-pyside6-addons==6.10.3
-pyside6-essentials==6.10.3
+pyside6==6.11.1
+pyside6-addons==6.11.1
+pyside6-essentials==6.11.1
 requests==2.34.2
-shiboken6==6.10.3
+shiboken6==6.11.1
 urllib3==2.7.0
