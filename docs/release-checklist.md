@@ -1,4 +1,4 @@
-# Release-Checkliste — BudgetManager v2.2.60
+# Release-Checkliste — BudgetManager v2.2.61
 
 ## Lokal prüfen
 
@@ -32,6 +32,12 @@ durch einen Tag `v*` gestartet und erledigt die gesamte Veröffentlichung:
 4. `latest.json`, `SHA256SUMS.txt` und SBOM.
 5. Upload aller Dateien in den GitHub-Release.
 
+Für nicht-kommerzielle Vorab-Releases darf `latest.json` ohne
+`latest.json.sig` veröffentlicht werden. Der signaturpflichtige In-App-Updater
+nimmt ein solches Manifest bewusst nicht an; Installer und portable Pakete
+bleiben manuell nutzbar. Vor einer regulären Veröffentlichung werden Manifest-
+und Authenticode-Signierung als verpflichtende Gates aktiviert.
+
 Die umfangreichen Enterprise-, Security- und Usability-Audits bleiben als lokale
 Werkzeuge erhalten, einschließlich des 10.000er Enterprise-Audits, starten aber
 keine eigenen GitHub-Workflows mehr.
@@ -51,10 +57,10 @@ keine eigenen GitHub-Workflows mehr.
 ```bash
 git status
 git add .
-git commit -m "Release v2.2.60"
+git commit -m "Release v2.2.61"
 git push origin main
-git tag -a v2.2.60 -m "BudgetManager v2.2.60"
-git push origin v2.2.60
+git tag -a v2.2.61 -m "BudgetManager v2.2.61"
+git push origin v2.2.61
 ```
 
 ## Nach GitHub Actions

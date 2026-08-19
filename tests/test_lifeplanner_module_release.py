@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.serialization import (
     NoEncryption,
     PrivateFormat,
 )
+from app_info import APP_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,7 +29,7 @@ def test_signed_dual_platform_builder_emits_checksum(tmp_path, monkeypatch) -> N
     runtime = tmp_path / "dist" / "BudgetManager"
     runtime.mkdir(parents=True)
     (runtime / "BudgetManager.exe").write_bytes(b"MZ-test")
-    output = tmp_path / "budgetmanager_2.2.60_Windows_x86_64.lpmodule"
+    output = tmp_path / f"budgetmanager_{APP_VERSION}_Windows_x86_64.lpmodule"
     monkeypatch.setenv("LIFEPLANNER_UPDATE_PRIVATE_KEY_B64", _private_key_b64())
     subprocess.run(
         [
@@ -54,7 +55,7 @@ def test_signed_dual_platform_builder_emits_checksum(tmp_path, monkeypatch) -> N
         metadata = json.loads(archive.read("component.json"))
     assert metadata["id"] == "budgetmanager"
     assert metadata["platforms"] == ["windows-x86_64"]
-    assert metadata["version"] == "2.2.60"
+    assert metadata["version"] == APP_VERSION
 
 
 def test_budgetmanager_tag_does_not_publish_lifeplanner_module_assets() -> None:

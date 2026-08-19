@@ -159,8 +159,9 @@ def test_sbom_contains_runtime_hashes(tmp_path):
 def test_release_pipeline_contains_the_required_core_build_contract():
     workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
     required = [
-        "python -m pip install -r requirements-build.txt",
-        "python -m pip install -r requirements-dev.txt",
+        "python tools/verify_hashed_lock.py",
+        "python -m pip install --require-hashes -r requirements-build.lock",
+        "python -m pip install --require-hashes -r requirements-dev.lock",
         "python -m black --check model/",
         "python -m mypy model/",
         "python -m pytest tests/ -v -ra --tb=short",

@@ -1,8 +1,8 @@
-# BudgetManager v2.2.60 — Feature-Übersicht
+# BudgetManager v2.2.61 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-## Freie Cockpit-Anordnung in v2.2.60
+## Freie Cockpit-Anordnung (seit v2.2.60)
 
 - Manuelles Layout über die gesamte Kachel-Kopfzeile oder den Griff `≡`.
 - Zwei gleich breite Zielspalten ab 720 Pixel Breite.

@@ -32,6 +32,7 @@ def test_app_icon_assets_and_build_config_are_wired():
     assert "ExpandConstant('{param:DATA_DIR|}')" in iss
     assert "ShouldSkipPage(PageID: Integer)" in iss
     assert "PreviousDataDir := ExistingDataDirFromMarker" in iss
+    assert 'Type: files; Name: "{app}\\installation.json"' in iss
 
 
 def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset():
@@ -48,6 +49,10 @@ def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset()
     assert "BudgetManager-windows" in workflow
     assert "BudgetManager-linux" in workflow
     assert ".lpmodule" not in workflow
+    assert "Test silent install, app start and uninstall" in workflow
+    assert "/VERYSILENT" in workflow
+    assert "--release-self-test" in workflow
+    assert "unins000.exe" in workflow
     builder = (ROOT / "tools" / "build_release_assets.py").read_text(encoding="utf-8")
     assert "BudgetManager_Setup_{version}.exe" in builder
     assert "BudgetManager_Setup_{version}.zip" in builder

@@ -100,10 +100,14 @@ def _locale(lang: str) -> dict:
 
 def _python_files() -> list[Path]:
     skip = {"tests", "tools", "build", "dist", "__pycache__"}
+    environment_prefixes = (".venv", "venv")
     return [
         p
         for p in ROOT.rglob("*.py")
-        if not any(part in skip for part in p.relative_to(ROOT).parts)
+        if not any(
+            part in skip or part.startswith(environment_prefixes)
+            for part in p.relative_to(ROOT).parts
+        )
     ]
 
 

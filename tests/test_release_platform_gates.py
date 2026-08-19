@@ -35,6 +35,9 @@ def test_single_workflow_builds_windows_linux_installer_and_release() -> None:
         "BudgetManager-linux",
         "pyinstaller BudgetManager.spec --noconfirm --clean",
         "Build Windows installer",
+        "Test silent install, app start and uninstall",
+        "--release-self-test",
+        "unins000.exe",
         "choco install innosetup",
         "BudgetManager_Setup.exe",
         "tools/build_release_assets.py",
@@ -48,6 +51,9 @@ def test_single_workflow_builds_windows_linux_installer_and_release() -> None:
 def test_single_workflow_runs_core_quality_checks_before_build() -> None:
     workflow = _workflow()
     for marker in (
+        "python tools/verify_hashed_lock.py",
+        "python -m pip install --require-hashes -r requirements-build.lock",
+        "python -m pip install --require-hashes -r requirements-dev.lock",
         "python tools/sync_version.py --check",
         "python tools/verify_qt_translations.py",
         "python -m compileall -q .",

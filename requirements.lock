@@ -1,4 +1,4 @@
-# Stand: v2.2.60 / 19. August 2026
+# Stand: v2.2.61 / 19. August 2026
 # BudgetManager — Release-Lockfile (Runtime)
 # Vollständig transitiv gepinnt; SHA-256-Hashes für die unterstützten
 # Release-Ziele: Linux x86_64 und Windows x86_64, Python 3.12/3.13.
@@ -36,30 +36,30 @@ idna==3.18 \
 openpyxl==3.1.5 \
     --hash=sha256:5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2
 
-packaging==26.2 \
-    --hash=sha256:5fc45236b9446107ff2415ce77c807cee2862cb6fac22b8a73826d0693b0980e
+packaging==26.3 \
+    --hash=sha256:d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c
 
 pycparser==3.0 \
     --hash=sha256:b727414169a36b7d524c1c3e31839a521725078d7b2ff038656844266160a992
 
-PySide6==6.10.3 \
-    --hash=sha256:36a12f000622e77ef0d98597d2640ae8775954ed900b578eacb6c9fca6cf78fb \
-    --hash=sha256:c7847e4ae7b1aef1aad822ca7f175c2100c4f9f3af679125cbbdf2b364b32007
+PySide6==6.11.1 \
+    --hash=sha256:0968877ab1fb4ef3587a284da6fe05e8647ada56a6a3750b6395188e01f4aba6 \
+    --hash=sha256:b1fc521ba2bb5109425ab8add06bddbdd524abcad06cfa012cc39a22a189feb2
 
-PySide6_Addons==6.10.3 \
-    --hash=sha256:a9a53a824ba8429953345c89a2dd5dc65d1f1d7e88b6cf1b975a6ef4f4d9760f \
-    --hash=sha256:b465b38d1ec3476a9197441fe6a62a1fac97c45a8094f11c2d7e318aee1e3fb3
+PySide6_Addons==6.11.1 \
+    --hash=sha256:0d13c4dfd671b050a48e4f8d8ddc724b7248f9c0437e7fc47fdf316278572923 \
+    --hash=sha256:8e6c65fbd73a512d6f72cda8d8277444a85a34dc99dd1dae9c21d35b8671bb1f
 
-PySide6_Essentials==6.10.3 \
-    --hash=sha256:051a70e2df79cf1c012a208ad82a98e8de23ca7fe3b0f3344d07152d15705b59 \
-    --hash=sha256:5fb32b48010f513335a2166ac3df279c5996fb96402fd91a4875fc717fe55de0
+PySide6_Essentials==6.11.1 \
+    --hash=sha256:63311bd48e32c584599ab04b9ef7c324082374cd2c9fa533f978fb893bb47e40 \
+    --hash=sha256:e3ef7027b41e4e55fadb56e3b3257dc8ee92154b639fe67fc4c8e05e9d976c60
 
 requests==2.34.2 \
     --hash=sha256:2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0
 
-shiboken6==6.10.3 \
-    --hash=sha256:38261c88e87a1c32d1302b642b755470d2369c78af3c7d7d9e95d631f79b556c \
-    --hash=sha256:99e8ac3319a2c93a4a8f8bb4512d71a9d43bc9f226f094a80a728d6dcc3e4826
+shiboken6==6.11.1 \
+    --hash=sha256:9a8bccfafc8805254cabcfa1edfaf55cd52889f4998c91ad0d9a4433fb1bcdbe \
+    --hash=sha256:c2c6863aa80ec18c0f82cea3417837b279cdc60024ac17123461dc9042577df7
 
 urllib3==2.7.0 \
     --hash=sha256:9fb4c81ebbb1ce9531cce37674bbc6f1360472bc18ca9a553ede278ef7276897

@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.2.60
+# 💰 BudgetManager v2.2.61
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.2.60-blue)
+![Version](https://img.shields.io/badge/version-2.2.61-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -35,6 +35,12 @@ Alternativ:
 ```
 
 ---
+
+## Neu in v2.2.61
+
+- **QtCharts-Lebensdauer:** Ersetzte Übersichtsdiagramme bleiben bis zum nativen Qt-`destroyed`-Signal referenziert und werden erst im Event-Loop sicher freigegeben.
+- **Installer-E2E:** Der Windows-Releasejob prüft Silent-Install, Start der installierten App, Release-Selbsttest und Silent-Uninstall.
+- **Reproduzierbare CI:** Build und Tests installieren die gehashten Linux-/Windows-Lockfiles; virtuelle Umgebungen werden von statischen Quellcode-Audits ausgeschlossen.
 
 ## Neu in v2.2.60
 
@@ -278,7 +284,7 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.2.60"
+APP_VERSION = "2.2.61"
 APP_RELEASE_DATE = "19. August 2026"
 ```
 
@@ -317,12 +323,12 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.2.60 \
-  --release-tag v2.2.60 \
+  --version 2.2.61 \
+  --release-tag v2.2.61 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.2.60-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.2.60-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.60 \
+  --windows-zip dist/BudgetManager-v2.2.61-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.2.61-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.61 \
   --out latest.json
 ```
 

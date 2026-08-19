@@ -1,4 +1,8 @@
-## Neu in v2.2.60
+## Neu in v2.2.61
+
+- Sicherer QtCharts-Lebenszyklus beim Aktualisieren aller Übersichtsdiagramme.
+- Geprüfter Windows-Installer mit Silent-Install, App-Start und Silent-Uninstall.
+- Versionssynchrone Hash-Lockfiles für PySide6 6.11.1 und die Releasewerkzeuge.
 
 - Kacheln im Cockpit lassen sich im manuellen Modus über die gesamte Kopfzeile oder den Griff `≡` verschieben.
 - Zwei gleich breite Zielspalten bleiben bereits ab 720 px verfügbar; dadurch funktioniert das Umordnen auch in normalen Fenstergrössen.

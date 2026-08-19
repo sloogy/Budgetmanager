@@ -8,6 +8,7 @@ Diese Tests halten die daraus behobenen Punkte fest.
 from __future__ import annotations
 
 import json
+import importlib.util
 import re
 import subprocess
 import sys
@@ -34,6 +35,25 @@ def test_audit_tool_reports_no_findings():
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert "findings=0" in result.stdout
+
+
+def test_audit_source_scan_ignores_virtual_environments(monkeypatch, tmp_path):
+    """Fremde Paketquellen und Jinja-Templates sind kein Projektcode."""
+    module_path = ROOT / "tools/dau_enterprise_audit.py"
+    spec = importlib.util.spec_from_file_location("dau_enterprise_audit", module_path)
+    assert spec is not None and spec.loader is not None
+    audit = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(audit)
+
+    project_file = tmp_path / "model" / "valid.py"
+    project_file.parent.mkdir()
+    project_file.write_text("VALUE = 1\n", encoding="utf-8")
+    template = tmp_path / ".venv" / "site-packages" / "template.py"
+    template.parent.mkdir(parents=True)
+    template.write_text("{% if feature %}\n", encoding="utf-8")
+
+    monkeypatch.setattr(audit, "ROOT", tmp_path)
+    assert audit._python_files() == [project_file]
 
 
 def test_login_and_account_dialogs_have_no_hardcoded_colors():

@@ -1,5 +1,12 @@
-Budgetmanager Version 2.2.60
+Budgetmanager Version 2.2.61
 Datum: 19. August 2026
+
+QTCHARTS + INSTALLER HOTFIX 2.2.61
+-------------------------------------------------------------
+- Ersetzte Overview-Charts bleiben bis zum Qt-destroyed-Signal sicher referenziert.
+- DAU-Audit überspringt virtuelle Umgebungen und deren Fremdquellen.
+- Windows-Setup durchläuft Silent-Install, App-Selbsttest und Silent-Uninstall in CI.
+- Installationsmarker wird entfernt; der gewählte Nutzerdatenordner bleibt erhalten.
 
 ENTERPRISE AUDIT FIXED 2.2.60
 -------------------------------------------------------------

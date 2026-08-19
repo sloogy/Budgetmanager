@@ -59,20 +59,57 @@ def parse_lock(path: Path) -> tuple[dict[str, tuple[str, set[str]]], list[str]]:
     return packages, errors
 
 
-def direct_names(path: Path) -> set[str]:
-    result: set[str] = set()
+def direct_pins(path: Path, seen: set[Path] | None = None) -> dict[str, str]:
+    """Liest direkte Pins einschließlich rekursiver ``-r``-Includes."""
+    resolved = path.resolve()
+    visited = seen if seen is not None else set()
+    if resolved in visited:
+        return {}
+    visited.add(resolved)
+
+    result: dict[str, str] = {}
     for raw in path.read_text(encoding="utf-8").splitlines():
-        match = PIN_RE.match(raw.strip())
+        line = raw.strip()
+        if line.startswith("-r ") or line.startswith("--requirement "):
+            included = line.split(maxsplit=1)[1]
+            for name, version in direct_pins(path.parent / included, visited).items():
+                current = result.get(name)
+                if current is not None and current != version:
+                    raise ValueError(
+                        f"widersprüchliche direkte Pins für {name}: {current}, {version}"
+                    )
+                result[name] = version
+            continue
+        match = PIN_RE.match(line)
         if match:
-            result.add(match.group(1).lower().replace("_", "-"))
+            name = match.group(1).lower().replace("_", "-")
+            version = match.group(2)
+            current = result.get(name)
+            if current is not None and current != version:
+                raise ValueError(
+                    f"widersprüchliche direkte Pins für {name}: {current}, {version}"
+                )
+            result[name] = version
     return result
 
 
 def validate(lock: Path, direct: Path | None = None) -> list[str]:
     packages, errors = parse_lock(lock)
     if direct:
-        missing = sorted(direct_names(direct) - set(packages))
+        try:
+            expected = direct_pins(direct)
+        except (OSError, ValueError) as exc:
+            errors.append(f"{direct}: direkte Pins konnten nicht gelesen werden: {exc}")
+            return errors
+        missing = sorted(set(expected) - set(packages))
         errors.extend(f"{lock}: direkte Abhängigkeit fehlt: {name}" for name in missing)
+        for name in sorted(set(expected) & set(packages)):
+            actual_version = packages[name][0]
+            if actual_version != expected[name]:
+                errors.append(
+                    f"{lock}: direkter Pin {name} ist {actual_version}, "
+                    f"erwartet {expected[name]}"
+                )
     return errors
 
 

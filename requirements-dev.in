@@ -6,3 +6,4 @@ mypy==1.15.0
 pip-audit==2.10.1
 bandit==1.9.4
 pip-tools==7.5.2
+mistune==3.3.4

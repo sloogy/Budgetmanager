@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.61 – 19. August 2026
+
+### QtCharts- und Release-Hotfix
+- Ersetzte Übersichtsdiagramme bleiben bis zu ihrem nativen Qt-`destroyed`-Signal als starke Python-Referenz erhalten und werden verzögert freigegeben. Das schließt den verbliebenen Shiboken-Lebensdauerpfad beim Refresh.
+- Ein Regressionstest schützt alle sechs Diagrammaufbaupfade; ein realer QtCharts-Stresstest steht für Zielsystemprüfungen bereit.
+- Der DAU-Enterprise-Audit ignoriert virtuelle Umgebungen zuverlässig und analysiert keine PySide6-/Jinja-Fremdquellen mehr als Projektcode.
+- Der Windows-Releasejob installiert das erzeugte Setup nun unbeaufsichtigt, startet die tatsächlich installierte Anwendung mit ihrem Release-Selbsttest und deinstalliert sie anschließend wieder.
+- Die Deinstallation entfernt den Installationsmarker, lässt den gewählten Nutzerdatenordner jedoch bewusst bestehen.
+- Installer, portable Windows-/Linux-Pakete, Manifest und Prüfsummen bleiben Bestandteile desselben taggesteuerten Releaseworkflows.
+
 ## 2.2.60 – 19. August 2026
 
 ### Finale Release-Härtung

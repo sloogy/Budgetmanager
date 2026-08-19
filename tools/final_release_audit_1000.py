@@ -863,7 +863,7 @@ def main() -> int:
         ROOT / f"FINAL_RELEASE_AUDIT_1000_MATRIX_v{APP_VERSION.replace('.', '_')}.csv"
     )
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
-        w = csv.writer(fh)
+        w = csv.writer(fh, lineterminator="\n")
         w.writerow(["loop", "domain", "checks", "status", "detail"])
         w.writerows(rows)
     print(f"CSV: {csv_path}")

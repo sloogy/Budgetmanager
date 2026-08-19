@@ -29,7 +29,7 @@ def test_module_manifest_matches_budgetmanager_version():
     manifest = json.loads((root / "module.json").read_text(encoding="utf-8"))
     assert manifest["schema"] == "lifeplanner.module.v1"
     assert manifest["id"] == "budgetmanager"
-    assert manifest["version"] == APP_VERSION == "2.2.60"
+    assert manifest["version"] == APP_VERSION
     assert manifest["environment"]["BUDGETMANAGER_DATA_DIR"] == "{module_data_dir}"
     assert manifest["environment"]["LIFEPLANNER_BRIDGE_DIR"] == "{bridge_dir}"
 

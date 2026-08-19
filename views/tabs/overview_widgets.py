@@ -198,6 +198,11 @@ class CompactChart(QChartView):
         self.setRenderHint(QPainter.Antialiasing)
         self.setMinimumHeight(180)
         self.setMaximumHeight(300)
+        # Native QtCharts-Lebensdauer: ein sichtbarer QChart wird beim Refresh
+        # nicht synchron zerlegt. Der ersetzte Chart bleibt bis zum
+        # ``destroyed``-Signal referenziert, damit Shiboken ihn nicht vor Qt
+        # freigibt, während noch Paint-/Layout-Ereignisse laufen.
+        self._retired_charts: dict[int, QChart] = {}
         self.setStyleSheet("background: transparent; border: none;")
         self._chart = self._new_chart()
         self.setChart(self._chart)
@@ -217,6 +222,19 @@ class CompactChart(QChartView):
         # deshalb das aktive Theme durchscheinen.
         chart.setBackgroundVisible(False)
         return chart
+
+    def _forget_retired_chart(self, key: int) -> None:
+        """Gibt die Python-Referenz erst nach der C++-Zerstörung frei."""
+        self._retired_charts.pop(key, None)
+
+    def _retire_chart(self, chart: QChart) -> None:
+        """Entsorgt einen ersetzten Chart am sicheren Event-Loop-Punkt."""
+        key = id(chart)
+        self._retired_charts[key] = chart
+        chart.destroyed.connect(
+            lambda _obj=None, retired_key=key: self._forget_retired_chart(retired_key)
+        )
+        chart.deleteLater()
 
     def _apply_theme_colors(self) -> None:
         """Färbt Titel, Legende, Achsen und Slice-Labels nach dem UI-Theme.
@@ -272,7 +290,7 @@ class CompactChart(QChartView):
         new_chart.legend().setVisible(bool(keep_legend))
         self._chart = new_chart
         self.setChart(new_chart)
-        old_chart.deleteLater()
+        self._retire_chart(old_chart)
 
     def _emit_slice_clicked(self, sl: QPieSlice) -> None:
         self.slice_clicked.emit(str(sl.property("raw_label") or ""))

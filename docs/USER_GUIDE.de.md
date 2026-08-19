@@ -1,6 +1,6 @@
-# BudgetManager 2.2.60 – Benutzerhandbuch
+# BudgetManager 2.2.61 – Benutzerhandbuch
 
-Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.2.60. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
+Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.2.61. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
 
 ## Erststart in vier Schritten
 

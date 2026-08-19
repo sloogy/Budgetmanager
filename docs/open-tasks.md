@@ -1,10 +1,10 @@
-# Offene Release-Aufgaben — BudgetManager v2.2.60
+# Offene Release-Aufgaben — BudgetManager v2.2.61
 
 Stand: 5. August 2026
 
 ## Source-Code-Status
 
-Alle im lokalen Quellcode-Audit gefundenen technischen Findings wurden behoben. Versionsabgleich, Hash-Lockfiles, Syntax, Architektur, Übersetzungen, Handbuch, DAU-E2E, Funktionsregressionen und interne Release-Audits sind auf v2.2.60 grün. Vor einer öffentlichen Binärfreigabe müssen die externen GitHub-Gates für Bandit, pip-audit, Black, Mypy sowie die echten Qt-Laufzeittests unter Fedora/Wayland und Windows grün sein.
+Alle im lokalen Quellcode-Audit gefundenen technischen Findings wurden behoben. Versionsabgleich, Hash-Lockfiles, Syntax, Architektur, Übersetzungen, Handbuch, DAU-E2E, Funktionsregressionen und interne Release-Audits werden für v2.2.61 neu geprüft. Vor einer regulären Binärfreigabe müssen zusätzlich Signierung sowie die externen GitHub-Gates unter Fedora/Wayland und Windows grün sein.
 
 ## Einmalige externe Vertrauensanker
 
@@ -19,7 +19,7 @@ Anleitung: `docs/release-signing.md`.
 
 ## Vor der finalen öffentlichen Freigabe
 
-- Tag `v2.2.60` erstellen und alle GitHub-Actions-Gates grün abschliessen lassen.
+- Tag `v2.2.61` erstellen und den einzigen GitHub-Actions-Releaseworkflow grün abschliessen lassen.
 - Online-`pip-audit` im Dependency-Workflow prüfen.
 - GitHub Build-Provenance/Attestation prüfen.
 - Authenticode-Signatur von `BudgetManager.exe` und Installer prüfen.

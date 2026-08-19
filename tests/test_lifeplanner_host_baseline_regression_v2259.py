@@ -4,6 +4,7 @@ from pathlib import Path
 
 from model import app_paths
 from model.lifeplanner_import_service import default_bridge_dir
+from app_info import APP_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -12,7 +13,7 @@ def test_manifest_and_host_paths(monkeypatch, tmp_path):
     manifest = json.loads((ROOT / "module.json").read_text(encoding="utf-8"))
     assert manifest["schema"] == "lifeplanner.module.v1"
     assert manifest["id"] == "budgetmanager"
-    assert manifest["version"] == "2.2.60"
+    assert manifest["version"] == APP_VERSION
     monkeypatch.setenv("BUDGETMANAGER_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(tmp_path / "bridge"))
     assert app_paths.data_dir() == (tmp_path / "data").resolve()

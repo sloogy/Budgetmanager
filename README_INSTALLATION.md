@@ -1,7 +1,7 @@
-# 📦 BudgetManager v2.2.60 — Installation, Start & Update
+# 📦 BudgetManager v2.2.61 — Installation, Start & Update
 
 
-## Cockpit-Hinweis v2.2.60
+## Diagramm-Hinweis v2.2.61
 
 Für eine eigene Kachelanordnung oben im Cockpit **Kacheln frei anordnen** aktivieren. Danach die Kachel an ihrer gesamten Kopfzeile oder am Griff `≡` nach oben, unten oder in die andere Spalte ziehen. Die Anordnung wird automatisch gespeichert.
 
@@ -13,28 +13,38 @@ BM_DISABLE_COCKPIT_CHARTS=1 ./run.sh
 
 Budget, Buchungen, Kategorien, Übersicht und Backups bleiben dabei nutzbar. Der Schalter verändert keine Daten und kann beim nächsten normalen Start einfach weggelassen werden.
 
-## Hinweis zu v2.2.60
+Auch die Übersichtsdiagramme werden beim Aktualisieren atomar ausgetauscht und
+verzögert freigegeben. Das verhindert eine native QtCharts-/Shiboken-Freigabe
+während laufender Paint- oder Layout-Ereignisse.
 
-Diese README gehört zur gehärteten Release-Version v2.2.60. Sie enthält zusätzlich den Einfach-/Erweitert-Modus, XLSX-/PDF-Berichte, erweiterte Diagnose- und visuelle Plattformprüfungen sowie die atomare Restore-Kopie. Designprofile bleiben vollständig über den DesignManager steuerbar. Die zentrale Versionsquelle ist `app_info.py`.
+## Hinweis zu v2.2.61
+
+Diese README gehört zur gehärteten Vorab-Release-Version v2.2.61. Sie enthält zusätzlich den Einfach-/Erweitert-Modus, XLSX-/PDF-Berichte, erweiterte Diagnose- und visuelle Plattformprüfungen sowie die atomare Restore-Kopie. Designprofile bleiben vollständig über den DesignManager steuerbar. Die zentrale Versionsquelle ist `app_info.py`.
 
 ## Windows: empfohlener Download
 
 Für Windows gibt es im GitHub Release mehrere Dateien:
 
-- `BudgetManager_Setup_2.2.60.zip` — empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren.
-- `BudgetManager_Setup_2.2.60.exe` — direkter Installer.
-- `BudgetManager-v2.2.60-portable-windows.zip` — portable Windows-Version ohne Installation.
-- `BudgetManager-v2.2.60-windows.exe` — direkte Einzel-EXE für Standalone-Nutzung.
+- `BudgetManager_Setup_2.2.61.zip` — empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren.
+- `BudgetManager_Setup_2.2.61.exe` — direkter Installer.
+- `BudgetManager-v2.2.61-portable-windows.zip` — portable Windows-Version ohne Installation.
+- `BudgetManager-v2.2.61-portable-linux.zip` — portable Linux-Version.
+- `latest.json` — Manifest für die veröffentlichten Pakete.
 - `SHA256SUMS.txt` — Prüfsummen zur Kontrolle.
 
-Der Windows-Installer und die enthaltene EXE werden im Release-Workflow mit Authenticode signiert. SmartScreen kann bei einer neuen Signatur bis zum Aufbau von Reputation trotzdem warnen; SHA-256, Signatur und Build-Attestation müssen dann geprüft werden.
+Dieser nicht-kommerzielle Vorab-Release ist noch nicht mit Authenticode oder
+einer `latest.json.sig` signiert. Windows SmartScreen kann deshalb warnen; die
+SHA-256-Prüfsummen müssen vor dem Start kontrolliert werden. Der
+signaturpflichtige In-App-Updater bleibt bis zur regulär signierten
+Veröffentlichung bewusst deaktiviert, die Pakete können manuell installiert
+oder gestartet werden.
 
 ### Prüfsumme unter Windows prüfen
 
 PowerShell im Download-Ordner öffnen:
 
 ```powershell
-Get-FileHash .\BudgetManager_Setup_2.2.60.exe -Algorithm SHA256
+Get-FileHash .\BudgetManager_Setup_2.2.61.exe -Algorithm SHA256
 ```
 
 Den angezeigten Hash mit `SHA256SUMS.txt` vergleichen.
@@ -42,15 +52,15 @@ Den angezeigten Hash mit `SHA256SUMS.txt` vergleichen.
 Falls Windows die Datei nach dem Download blockiert:
 
 ```powershell
-Unblock-File .\BudgetManager_Setup_2.2.60.exe
+Unblock-File .\BudgetManager_Setup_2.2.61.exe
 ```
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.2.60.zip` herunterladen.
+1. `BudgetManager_Setup_2.2.61.zip` herunterladen.
 2. ZIP entpacken.
 3. Optional: SHA256 gegen `SHA256SUMS.txt` prüfen.
-4. `BudgetManager_Setup_2.2.60.exe` starten.
+4. `BudgetManager_Setup_2.2.61.exe` starten.
 5. Datenverzeichnis wählen.
 6. Sprache, Währung und bevorzugten Buchungstag auswählen.
 7. BudgetManager starten.
@@ -59,7 +69,7 @@ Der Installer schreibt `installation.json` in den Programmordner und nutzt den g
 
 ## Windows Portable
 
-1. `BudgetManager-v2.2.60-portable-windows.zip` herunterladen.
+1. `BudgetManager-v2.2.61-portable-windows.zip` herunterladen.
 2. ZIP in einen normalen Benutzerordner entpacken, zum Beispiel `Dokumente\BudgetManager` oder auf einen USB-Stick.
 3. `start-windows.cmd` oder `BudgetManager.exe` starten.
 
@@ -86,7 +96,7 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-Für Releases gibt es zusätzlich `BudgetManager-v2.2.60-portable-linux.zip`. Darin startet Linux über `./start-linux.sh`; die Binary heißt stabil `BudgetManager`.
+Für Releases gibt es zusätzlich `BudgetManager-v2.2.61-portable-linux.zip`. Darin startet Linux über `./start-linux.sh`; die Binary heißt stabil `BudgetManager`.
 
 ## Update aus der App
 

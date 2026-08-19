@@ -226,8 +226,9 @@ def check_workflow() -> list[str]:
     required_snippets = [
         "tags:\n      - 'v*'",
         "permissions:\n  contents: write",
-        "python -m pip install -r requirements-build.txt",
-        "python -m pip install -r requirements-dev.txt",
+        "python tools/verify_hashed_lock.py",
+        "python -m pip install --require-hashes -r requirements-build.lock",
+        "python -m pip install --require-hashes -r requirements-dev.lock",
         "python tools/sync_version.py --check",
         "python tools/verify_qt_translations.py",
         "python -m compileall -q .",
@@ -240,6 +241,8 @@ def check_workflow() -> list[str]:
         "windows-latest",
         "ubuntu-latest",
         "Build Windows installer",
+        "Test silent install, app start and uninstall",
+        "--release-self-test",
         "tools/build_release_assets.py",
         "Verify updater manifest stays updater-safe",
         "softprops/action-gh-release@v2",
@@ -314,6 +317,16 @@ def check_required_regression_tests() -> list[str]:
             "test_current_source_has_zero_medium_and_high_findings",
             "test_any_medium_finding_blocks_release",
             "bandit_release_gate.py",
+        ],
+        "tests/test_release_2261_overview_chart_lifetime.py": [
+            "test_overview_refresh_never_calls_remove_all_series",
+            "test_retired_chart_uses_deferred_cpp_deletion_and_strong_reference",
+            "self._retired_charts[key] = chart",
+            "chart.deleteLater()",
+        ],
+        "tests/test_release_2261_dependency_locks.py": [
+            "test_release_locks_match_all_direct_and_included_pins",
+            "test_lock_validator_rejects_direct_version_drift",
         ],
     }
     for rel, markers in required_tests.items():

@@ -37,8 +37,9 @@ jobs:
         shell: bash
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements-build.txt
-          python -m pip install -r requirements-dev.txt
+          python tools/verify_hashed_lock.py
+          python -m pip install --require-hashes -r requirements-build.lock
+          python -m pip install --require-hashes -r requirements-dev.lock
 
       - name: Install Qt offscreen dependencies (Linux)
         if: runner.os == 'Linux'
@@ -140,6 +141,55 @@ jobs:
           $setup = Get-ChildItem -Path . -Filter "BudgetManager_Setup_*.exe" -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $setup) { throw "Installer-EXE wurde nicht erzeugt." }
           Copy-Item -Force $setup.FullName "BudgetManager_Setup.exe"
+
+      - name: Test silent install, app start and uninstall
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $installDir = Join-Path $env:RUNNER_TEMP "BudgetManager-Smoke-App"
+          $dataDir = Join-Path $env:RUNNER_TEMP "BudgetManager-Smoke-Data"
+          $setup = (Resolve-Path "BudgetManager_Setup.exe").Path
+
+          & $setup /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installDir" "/DATA_DIR=$dataDir" /LANG=english
+          if ($LASTEXITCODE -ne 0) {
+            throw "Silent-Installation fehlgeschlagen (Exitcode $LASTEXITCODE)."
+          }
+
+          $appExe = Join-Path $installDir "BudgetManager.exe"
+          $markerPath = Join-Path $installDir "installation.json"
+          $settingsPath = Join-Path $dataDir "budgetmanager_settings.json"
+          foreach ($required in @($appExe, $markerPath, $settingsPath)) {
+            if (-not (Test-Path $required)) {
+              throw "Installer-Smoke-Test: erwartete Datei fehlt: $required"
+            }
+          }
+
+          $marker = Get-Content -Raw $markerPath | ConvertFrom-Json
+          $expectedVersion = "${{ github.ref_name }}" -replace '^v', ''
+          if ($marker.version -ne $expectedVersion) {
+            throw "Installierte Version $($marker.version) passt nicht zu $expectedVersion."
+          }
+
+          $env:QT_QPA_PLATFORM = "offscreen"
+          & $appExe --release-self-test
+          if ($LASTEXITCODE -ne 0) {
+            throw "Starttest der installierten App fehlgeschlagen (Exitcode $LASTEXITCODE)."
+          }
+
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          if (-not (Test-Path $uninstaller)) {
+            throw "Uninstaller fehlt: $uninstaller"
+          }
+          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+          if ($LASTEXITCODE -ne 0) {
+            throw "Silent-Deinstallation fehlgeschlagen (Exitcode $LASTEXITCODE)."
+          }
+          if (Test-Path $appExe) {
+            throw "BudgetManager.exe ist nach der Deinstallation noch vorhanden."
+          }
+          if (-not (Test-Path $settingsPath)) {
+            throw "Die Deinstallation hat den gewählten Nutzerdatenordner entfernt."
+          }
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4

@@ -11,7 +11,7 @@
 ; - PyInstaller onedir-Build im dist\BudgetManager\ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "2.2.60"
+#define MyAppVersion "2.2.61"
 #define MyAppPublisher "Christian"
 #define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"
@@ -88,7 +88,9 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\{#MyAppName}"; Fil
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [UninstallDelete]
-; Bewusst kein Löschen von Nutzerdaten: Der gewählte Datenordner bleibt erhalten.
+; Der Installationsmarker gehört zum Programm, nicht zu den Nutzerdaten.
+Type: files; Name: "{app}\installation.json"
+; Bewusst kein Löschen des gewählten Datenordners: Nutzerdaten bleiben erhalten.
 
 [Code]
 var
