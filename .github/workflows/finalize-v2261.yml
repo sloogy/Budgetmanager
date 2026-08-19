@@ -6,6 +6,10 @@ on:
       - main
     paths:
       - '.github/release-finalize-v2261.trigger'
+  pull_request_target:
+    types: [opened]
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -13,6 +17,7 @@ permissions:
 
 jobs:
   finalize:
+    if: github.event_name == 'push' || (github.event.pull_request.head.ref == 'release-trigger-v2261-finalize' && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout main
