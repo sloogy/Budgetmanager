@@ -8,8 +8,12 @@ Startlogik:
   2+ Auth-User:     → User-Auswahl + PW/PIN
   Quick + Auth:     → Quick als grosser Button, Auth-Login darunter
 """
+
 from __future__ import annotations
+from utils.accessibility import configure_dialog_tab_order
+from utils.notifications import show_info, show_warning
 import logging
+
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
@@ -18,24 +22,44 @@ from typing import Optional
 from PySide6.QtCore import Qt, QSize, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
-    QPushButton, QComboBox, QMessageBox, QFrame, QStackedWidget,
-    QWidget, QFormLayout, QRadioButton, QButtonGroup, QSpinBox,
-    QTextEdit, QCheckBox, QGroupBox, QSizePolicy
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QComboBox,
+    QMessageBox,
+    QFrame,
+    QStackedWidget,
+    QWidget,
+    QFormLayout,
+    QRadioButton,
+    QButtonGroup,
+    QSpinBox,
+    QTextEdit,
+    QCheckBox,
+    QGroupBox,
+    QSizePolicy,
 )
 
 from model.user_model import (
-    UserModel, User,
-    SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD,
+    UserModel,
+    User,
+    SECURITY_QUICK,
+    SECURITY_PIN,
+    SECURITY_PASSWORD,
 )
+from model.user_model import PIN_MIN_LENGTH, PIN_MAX_LENGTH, PASSWORD_MIN_LENGTH
 from utils.icons import get_icon
-from views.ui_colors import ui_colors
+from views.ui_colors import themed, ui_colors
 from utils.i18n import tr, trf, display_typ, db_typ_from_display, display_security_label
 
 
 @dataclass
 class LoginResult:
     """Ergebnis des Login-Dialogs."""
+
     user: User
     db_key: bytes
 
@@ -44,11 +68,13 @@ class LoginResult:
 # Benutzer-Erstellen-Wizard
 # ═════════════════════════════════════════════════════════════════
 
+
 class CreateUserWizard(QDialog):
     """Wizard zum Erstellen eines neuen Benutzers."""
 
-    def __init__(self, parent=None, *, user_model: UserModel,
-                 is_first_user: bool = False):
+    def __init__(
+        self, parent=None, *, user_model: UserModel, is_first_user: bool = False
+    ):
         super().__init__(parent)
         self.user_model = user_model
         self.is_first_user = is_first_user
@@ -67,14 +93,18 @@ class CreateUserWizard(QDialog):
         # Header
         h = QLabel(tr("create_user.title"))
         h.setAlignment(Qt.AlignCenter)
-        hf = QFont(); hf.setPointSize(16); hf.setBold(True)
+        hf = QFont()
+        hf.setPointSize(16)
+        hf.setBold(True)
         h.setFont(hf)
         layout.addWidget(h)
 
         if is_first_user:
             info = QLabel(tr("create_user.first_user_info"))
             info.setAlignment(Qt.AlignCenter)
-            info.setStyleSheet(f"color: {ui_colors(self).text_dim}; margin-bottom: 8px;")
+            info.setStyleSheet(
+                f"color: {ui_colors(self).text_dim}; margin-bottom: 8px;"
+            )
             layout.addWidget(info)
 
         self._add_separator(layout)
@@ -119,12 +149,12 @@ class CreateUserWizard(QDialog):
 
         self.edt_secret = QLineEdit()
         self.edt_secret.setStyleSheet("padding: 6px;")
-        self.lbl_secret = QLabel(tr('create_user.pin_label'))
+        self.lbl_secret = QLabel(tr("create_user.pin_label"))
         sf_layout.addRow(self.lbl_secret, self.edt_secret)
 
         self.edt_secret2 = QLineEdit()
         self.edt_secret2.setStyleSheet("padding: 6px;")
-        self.lbl_secret2 = QLabel(tr('create_user.repeat_label'))
+        self.lbl_secret2 = QLabel(tr("create_user.repeat_label"))
         sf_layout.addRow(self.lbl_secret2, self.edt_secret2)
 
         layout.addWidget(self.secret_frame)
@@ -133,7 +163,9 @@ class CreateUserWizard(QDialog):
         # Warn-Label
         self.lbl_warn = QLabel()
         self.lbl_warn.setWordWrap(True)
-        self.lbl_warn.setStyleSheet(f"color: {ui_colors(self).negative}; font-size: 11px; padding: 5px;")
+        self.lbl_warn.setStyleSheet(
+            f"color: {ui_colors(self).negative}; font-size: 11px; padding: 5px;"
+        )
         layout.addWidget(self.lbl_warn)
         self.lbl_warn.setVisible(False)
 
@@ -149,13 +181,18 @@ class CreateUserWizard(QDialog):
         btn_layout.addStretch()
 
         self.btn_create = QPushButton(tr("create_user.btn_create"))
-        self.btn_create.setStyleSheet("""
+        self.btn_create.setStyleSheet(
+            themed(
+                self,
+                """
             QPushButton {
-                padding: 10px 24px; background: #27ae60; color: white;
+                padding: 10px 24px; background: %(positive)s; color: %(selection_text)s;
                 border: none; border-radius: 5px; font-weight: bold; font-size: 13px;
             }
-            QPushButton:hover { background: #219a52; }
-        """)
+            QPushButton:hover { background: %(positive_hover)s; }
+        """,
+            )
+        )
         self.btn_create.clicked.connect(self._on_create)
         btn_layout.addWidget(self.btn_create)
 
@@ -164,9 +201,11 @@ class CreateUserWizard(QDialog):
         # Signals
         self.btn_group.buttonToggled.connect(self._on_security_changed)
         self._on_security_changed()
+        configure_dialog_tab_order(self)
 
     def _add_separator(self, layout):
-        line = QFrame(); line.setFrameShape(QFrame.HLine)
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
         line.setStyleSheet(f"color: {ui_colors(self).border};")
         layout.addWidget(line)
 
@@ -182,7 +221,9 @@ class CreateUserWizard(QDialog):
             self.edt_secret.setMaxLength(8)
             self.lbl_secret2.setText(tr("create_user.pin_repeat_label"))
             self.edt_secret2.setEchoMode(QLineEdit.Password)
-            self.edt_secret2.setPlaceholderText(tr("create_user.pin_repeat_placeholder"))
+            self.edt_secret2.setPlaceholderText(
+                tr("create_user.pin_repeat_placeholder")
+            )
             self.edt_secret2.setMaxLength(8)
             self.lbl_warn.setText(tr("account.pin_oder_restorekey_verlieren"))
             self.lbl_warn.setVisible(True)
@@ -193,19 +234,23 @@ class CreateUserWizard(QDialog):
             self.edt_secret.setMaxLength(128)
             self.lbl_secret2.setText(tr("create_user.repeat_label"))
             self.edt_secret2.setEchoMode(QLineEdit.Password)
-            self.edt_secret2.setPlaceholderText(tr("create_user.password_repeat_placeholder"))
+            self.edt_secret2.setPlaceholderText(
+                tr("create_user.password_repeat_placeholder")
+            )
             self.edt_secret2.setMaxLength(128)
             self.lbl_warn.setText(tr("account.passwort_oder_restorekey_verlieren"))
             self.lbl_warn.setVisible(True)
         else:
             self.lbl_warn.setText(tr("account.schuetzt_vor_versehenneugier_nicht"))
-            self.lbl_warn.setStyleSheet(f"color: {ui_colors(self).text_dim}; font-size: 11px; padding: 5px;")
+            self.lbl_warn.setStyleSheet(
+                f"color: {ui_colors(self).text_dim}; font-size: 11px; padding: 5px;"
+            )
             self.lbl_warn.setVisible(True)
 
     def _on_create(self):
         name = self.edt_name.text().strip()
         if not name:
-            QMessageBox.warning(self, tr("msg.info"), tr("account.bitte_einen_namen_eingeben"))
+            show_warning(self, tr("msg.info"), tr("account.bitte_einen_namen_eingeben"))
             return
 
         if self.rb_quick.isChecked():
@@ -214,20 +259,28 @@ class CreateUserWizard(QDialog):
         elif self.rb_pin.isChecked():
             security = SECURITY_PIN
             secret = self.edt_secret.text()
-            if not secret.isdigit() or not (4 <= len(secret) <= 8):
-                QMessageBox.warning(self, tr("msg.info"), tr("account.pin_length"))
+            if not secret.isdigit() or not (
+                PIN_MIN_LENGTH <= len(secret) <= PIN_MAX_LENGTH
+            ):
+                show_warning(self, tr("msg.info"), tr("account.pin_length"))
                 return
             if secret != self.edt_secret2.text():
-                QMessageBox.warning(self, tr("msg.info"), tr("account.pins_stimmen_nicht_ueberein"))
+                show_warning(
+                    self, tr("msg.info"), tr("account.pins_stimmen_nicht_ueberein")
+                )
                 return
         else:
             security = SECURITY_PASSWORD
             secret = self.edt_secret.text()
-            if len(secret) < 4:
-                QMessageBox.warning(self, tr("msg.info"), tr("account.password_min_length"))
+            if len(secret) < PASSWORD_MIN_LENGTH:
+                show_warning(self, tr("msg.info"), tr("account.password_min_length"))
                 return
             if secret != self.edt_secret2.text():
-                QMessageBox.warning(self, tr("msg.info"), tr("account.passwoerter_stimmen_nicht_ueberein"))
+                show_warning(
+                    self,
+                    tr("msg.info"),
+                    tr("account.passwoerter_stimmen_nicht_ueberein"),
+                )
                 return
 
         try:
@@ -254,9 +307,7 @@ class CreateUserWizard(QDialog):
         layout = QVBoxLayout(dlg)
 
         c = ui_colors(dlg)
-        layout.addWidget(QLabel(
-            trf("dlg.restore_key_intro", color=c.negative)
-        ))
+        layout.addWidget(QLabel(trf("dlg.restore_key_intro", color=c.negative)))
 
         key_box = QTextEdit()
         key_box.setPlainText(key)
@@ -270,9 +321,7 @@ class CreateUserWizard(QDialog):
         key_box.selectAll()
         layout.addWidget(key_box)
 
-        layout.addWidget(QLabel(
-            tr("dlg.restore_key_copy_note")
-        ))
+        layout.addWidget(QLabel(tr("dlg.restore_key_copy_note")))
 
         chk = QCheckBox(tr("chk.restore_key_noted"))
         chk.setStyleSheet("font-weight: bold; margin-top: 10px;")
@@ -280,18 +329,22 @@ class CreateUserWizard(QDialog):
 
         btn_ok = QPushButton(tr("btn.continue"))
         btn_ok.setEnabled(False)
-        btn_ok.setStyleSheet(f"""
+        btn_ok.setStyleSheet(
+            f"""
             QPushButton {{ padding: 10px; background: {c.ok}; color: white;
                            border: none; border-radius: 5px; font-weight: bold; }}
             QPushButton:hover {{ background: {c.ok}; opacity: 0.9; }}
             QPushButton:disabled {{ background: {c.border}; color: {c.text_dim}; }}
-        """)
+        """
+        )
         chk.toggled.connect(btn_ok.setEnabled)
         btn_ok.clicked.connect(dlg.accept)
         layout.addWidget(btn_ok)
 
         if dlg.exec() == QDialog.Accepted:
-            self.user_model._users[self._created_user.username].restore_key_offered = True
+            self.user_model._users[self._created_user.username].restore_key_offered = (
+                True
+            )
             self.user_model._save()
             self.accept()
 
@@ -308,6 +361,7 @@ class CreateUserWizard(QDialog):
 # Restore-Key Dialog
 # ═════════════════════════════════════════════════════════════════
 
+
 class RestoreKeyDialog(QDialog):
     """Dialog zur Eingabe des Restore-Keys."""
 
@@ -321,7 +375,13 @@ class RestoreKeyDialog(QDialog):
         self.setMinimumSize(460, 220)
         layout = QVBoxLayout(self)
 
-        layout.addWidget(QLabel(trf("account.restorekey_fuer_buserdisplay_nameb", name=user.display_name)))
+        layout.addWidget(
+            QLabel(
+                trf(
+                    "account.restorekey_fuer_buserdisplay_nameb", name=user.display_name
+                )
+            )
+        )
 
         self.edt_key = QLineEdit()
         self.edt_key.setPlaceholderText("XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX")
@@ -337,20 +397,26 @@ class RestoreKeyDialog(QDialog):
         btn_layout.addStretch()
 
         btn_ok = QPushButton(tr("account.entschluesseln"))
-        btn_ok.setStyleSheet("""
-            QPushButton { padding: 8px 20px; background: #e67e22; color: white;
+        btn_ok.setStyleSheet(
+            themed(
+                self,
+                """
+            QPushButton { padding: 8px 20px; background: %(warning)s; color: %(selection_text)s;
                           border: none; border-radius: 5px; font-weight: bold; }
-            QPushButton:hover { background: #d35400; }
-        """)
+            QPushButton:hover { background: %(warning_hover)s; }
+        """,
+            )
+        )
         btn_ok.clicked.connect(self._on_restore)
         btn_layout.addWidget(btn_ok)
 
         layout.addLayout(btn_layout)
+        configure_dialog_tab_order(self)
 
     def _on_restore(self):
         key_text = self.edt_key.text().strip()
         if not key_text:
-            QMessageBox.warning(self, tr("msg.info"), tr("account.bitte_restorekey_eingeben"))
+            show_warning(self, tr("msg.info"), tr("account.bitte_restorekey_eingeben"))
             return
 
         db_key = self.user_model.authenticate_restore(self.user.username, key_text)
@@ -358,7 +424,7 @@ class RestoreKeyDialog(QDialog):
             self._db_key = db_key
             self.accept()
         else:
-            QMessageBox.warning(self, tr("msg.info"), tr("account.ungueltiger_restorekey"))
+            show_warning(self, tr("msg.info"), tr("account.ungueltiger_restorekey"))
 
     @property
     def db_key(self) -> bytes | None:
@@ -368,6 +434,7 @@ class RestoreKeyDialog(QDialog):
 # ═════════════════════════════════════════════════════════════════
 # Haupt-Login-Dialog
 # ═════════════════════════════════════════════════════════════════
+
 
 class LoginDialog(QDialog):
     """Haupt-Login-Dialog mit smartem Verhalten je nach Benutzerkonfiguration."""
@@ -386,15 +453,21 @@ class LoginDialog(QDialog):
         main_layout.setContentsMargins(30, 20, 30, 20)
 
         # Header
-        header = QLabel(tr('auto.views_login_dialog.390_budgetmanager_b7a0d9a3'))
+        header = QLabel(tr("auto.views_login_dialog.390_budgetmanager_b7a0d9a3"))
         header.setAlignment(Qt.AlignCenter)
-        hf = QFont(); hf.setPointSize(18); hf.setBold(True)
+        hf = QFont()
+        hf.setPointSize(18)
+        hf.setBold(True)
         header.setFont(hf)
         main_layout.addWidget(header)
 
-        sub = QLabel(tr('auto.views_login_dialog.396_deine_finanzen_deine_kontrolle_46d15e4b'))
+        sub = QLabel(
+            tr("auto.views_login_dialog.396_deine_finanzen_deine_kontrolle_46d15e4b")
+        )
         sub.setAlignment(Qt.AlignCenter)
-        sub.setStyleSheet(f"color: {ui_colors(self).text_dim}; font-size: 11px; margin-bottom: 5px;")
+        sub.setStyleSheet(
+            f"color: {ui_colors(self).text_dim}; font-size: 11px; margin-bottom: 5px;"
+        )
         main_layout.addWidget(sub)
 
         self._add_separator(main_layout)
@@ -416,7 +489,7 @@ class LoginDialog(QDialog):
 
         foot.addStretch()
 
-        btn_manage = QPushButton(tr('auto.views_login_dialog.420_verwalten_a32436b5'))
+        btn_manage = QPushButton(tr("auto.views_login_dialog.420_verwalten_a32436b5"))
         btn_manage.setIcon(get_icon("⚙️"))
         btn_manage.setFlat(True)
         btn_manage.setStyleSheet(f"color: {ui_colors(self).text_dim}; font-size: 11px;")
@@ -433,9 +506,11 @@ class LoginDialog(QDialog):
 
         # Build UI based on current users
         self._build_content()
+        configure_dialog_tab_order(self)
 
     def _add_separator(self, layout):
-        line = QFrame(); line.setFrameShape(QFrame.HLine)
+        line = QFrame()
+        line.setFrameShape(QFrame.HLine)
         line.setStyleSheet(f"color: {ui_colors(self).border};")
         layout.addWidget(line)
 
@@ -468,19 +543,28 @@ class LoginDialog(QDialog):
     # ── Fall 0: Keine Benutzer ───────────────────
     def _build_no_users(self):
         lbl = QLabel(
-            tr('auto.views_login_dialog.472_noch_kein_benutzer_eingerichtet_ers_0a15a1a4')
+            tr(
+                "auto.views_login_dialog.472_noch_kein_benutzer_eingerichtet_ers_0a15a1a4"
+            )
         )
         lbl.setWordWrap(True)
         lbl.setAlignment(Qt.AlignCenter)
-        lbl.setStyleSheet(f"font-size: 12px; padding: 20px; color: {ui_colors(self).text_dim};")
+        lbl.setStyleSheet(
+            f"font-size: 12px; padding: 20px; color: {ui_colors(self).text_dim};"
+        )
         self.content.addWidget(lbl)
 
         btn = QPushButton(tr("dlg.login_create_user"))
-        btn.setStyleSheet("""
-            QPushButton { padding: 12px; background: #2196F3; color: white;
+        btn.setStyleSheet(
+            themed(
+                self,
+                """
+            QPushButton { padding: 12px; background: %(accent)s; color: %(selection_text)s;
                           border: none; border-radius: 5px; font-size: 14px; font-weight: bold; }
-            QPushButton:hover { background: #1976D2; }
-        """)
+            QPushButton:hover { background: %(accent_hover)s; }
+        """,
+            )
+        )
         btn.clicked.connect(self._on_first_user)
         self.content.addWidget(btn)
 
@@ -488,19 +572,26 @@ class LoginDialog(QDialog):
     def _build_single_user(self, user: User):
         name_lbl = QLabel(f"{user.security_icon} {user.display_name}")
         name_lbl.setAlignment(Qt.AlignCenter)
-        nf = QFont(); nf.setPointSize(14); nf.setBold(True)
+        nf = QFont()
+        nf.setPointSize(14)
+        nf.setBold(True)
         name_lbl.setFont(nf)
         self.content.addWidget(name_lbl)
         self.content.addSpacing(10)
 
         if user.is_quick:
-            btn = QPushButton(tr('auto.views_login_dialog.499_starten_00906f67'))
+            btn = QPushButton(tr("auto.views_login_dialog.499_starten_00906f67"))
             btn.setIcon(get_icon("⚡"))
-            btn.setStyleSheet("""
-                QPushButton { padding: 14px; background: #27ae60; color: white;
+            btn.setStyleSheet(
+                themed(
+                    self,
+                    """
+                QPushButton { padding: 14px; background: %(positive)s; color: %(selection_text)s;
                               border: none; border-radius: 5px; font-size: 15px; font-weight: bold; }
-                QPushButton:hover { background: #219a52; }
-            """)
+                QPushButton:hover { background: %(positive_hover)s; }
+            """,
+                )
+            )
             btn.clicked.connect(lambda: self._login_quick(user))
             self.content.addWidget(btn)
         else:
@@ -508,28 +599,43 @@ class LoginDialog(QDialog):
             self.content.addWidget(QLabel(prompt))
             self.edt_single = QLineEdit()
             self.edt_single.setEchoMode(QLineEdit.Password)
-            ph = tr("create_user.pin_placeholder") if user.is_pin else tr("login.password_placeholder")
+            ph = (
+                tr("create_user.pin_placeholder")
+                if user.is_pin
+                else tr("login.password_placeholder")
+            )
             self.edt_single.setPlaceholderText(ph)
             self.edt_single.setStyleSheet("padding: 10px; font-size: 13px;")
-            self.edt_single.returnPressed.connect(lambda: self._login_auth(user, self.edt_single))
+            self.edt_single.returnPressed.connect(
+                lambda: self._login_auth(user, self.edt_single)
+            )
             self.content.addWidget(self.edt_single)
 
             self.content.addSpacing(8)
-            btn = QPushButton(tr('auto.views_login_dialog.520_anmelden_e04d6ff2'))
+            btn = QPushButton(tr("auto.views_login_dialog.520_anmelden_e04d6ff2"))
             btn.setIcon(get_icon("🔓"))
-            btn.setStyleSheet("""
-                QPushButton { padding: 10px; background: #2196F3; color: white;
+            btn.setStyleSheet(
+                themed(
+                    self,
+                    """
+                QPushButton { padding: 10px; background: %(accent)s; color: %(selection_text)s;
                               border: none; border-radius: 5px; font-size: 14px; font-weight: bold; }
-                QPushButton:hover { background: #1976D2; }
-            """)
+                QPushButton:hover { background: %(accent_hover)s; }
+            """,
+                )
+            )
             btn.clicked.connect(lambda: self._login_auth(user, self.edt_single))
             self.content.addWidget(btn)
 
             # Restore-Key Link
-            btn_restore = QPushButton(tr('auto.views_login_dialog.531_restore_key_verwenden_3cecdcdd'))
+            btn_restore = QPushButton(
+                tr("auto.views_login_dialog.531_restore_key_verwenden_3cecdcdd")
+            )
             btn_restore.setIcon(get_icon("🔑"))
             btn_restore.setFlat(True)
-            btn_restore.setStyleSheet(f"color: {ui_colors(self).warning}; font-size: 11px;")
+            btn_restore.setStyleSheet(
+                f"color: {ui_colors(self).warning}; font-size: 11px;"
+            )
             btn_restore.clicked.connect(lambda: self._on_restore(user))
             self.content.addWidget(btn_restore)
 
@@ -550,7 +656,7 @@ class LoginDialog(QDialog):
         sf_layout = QVBoxLayout(self.multi_secret_frame)
         sf_layout.setContentsMargins(0, 0, 0, 0)
 
-        self.lbl_multi_prompt = QLabel(tr('create_user.password_label'))
+        self.lbl_multi_prompt = QLabel(tr("create_user.password_label"))
         sf_layout.addWidget(self.lbl_multi_prompt)
 
         self.edt_multi = QLineEdit()
@@ -563,21 +669,32 @@ class LoginDialog(QDialog):
 
         self.content.addSpacing(8)
 
-        self.btn_multi_login = QPushButton(tr('auto.views_login_dialog.568_anmelden_2adc1609'))
+        self.btn_multi_login = QPushButton(
+            tr("auto.views_login_dialog.568_anmelden_2adc1609")
+        )
         self.btn_multi_login.setIcon(get_icon("🔓"))
-        self.btn_multi_login.setStyleSheet("""
-            QPushButton { padding: 10px; background: #2196F3; color: white;
+        self.btn_multi_login.setStyleSheet(
+            themed(
+                self,
+                """
+            QPushButton { padding: 10px; background: %(accent)s; color: %(selection_text)s;
                           border: none; border-radius: 5px; font-size: 14px; font-weight: bold; }
-            QPushButton:hover { background: #1976D2; }
-        """)
+            QPushButton:hover { background: %(accent_hover)s; }
+        """,
+            )
+        )
         self.btn_multi_login.clicked.connect(self._on_multi_login)
         self.content.addWidget(self.btn_multi_login)
 
         # Restore-Key Link
-        self.btn_multi_restore = QPushButton(tr('auto.views_login_dialog.579_restore_key_verwenden_3077a331'))
+        self.btn_multi_restore = QPushButton(
+            tr("auto.views_login_dialog.579_restore_key_verwenden_3077a331")
+        )
         self.btn_multi_restore.setIcon(get_icon("🔑"))
         self.btn_multi_restore.setFlat(True)
-        self.btn_multi_restore.setStyleSheet(f"color: {ui_colors(self).warning}; font-size: 11px;")
+        self.btn_multi_restore.setStyleSheet(
+            f"color: {ui_colors(self).warning}; font-size: 11px;"
+        )
         self.btn_multi_restore.clicked.connect(self._on_multi_restore)
         self.content.addWidget(self.btn_multi_restore)
 
@@ -585,7 +702,7 @@ class LoginDialog(QDialog):
         self._on_user_selection_changed()
 
     def _on_user_selection_changed(self):
-        if not hasattr(self, 'cmb_users'):
+        if not hasattr(self, "cmb_users"):
             return
         username = self.cmb_users.currentData()
         user = self.user_model.get(username)
@@ -594,16 +711,28 @@ class LoginDialog(QDialog):
 
         if user.is_quick:
             self.multi_secret_frame.setVisible(False)
-            self.btn_multi_login.setText(tr('auto.views_login_dialog.599_starten_3071b86d'))
+            self.btn_multi_login.setText(
+                tr("auto.views_login_dialog.599_starten_3071b86d")
+            )
             self.btn_multi_login.setIcon(get_icon("⚡"))
             self.btn_multi_restore.setVisible(False)
         else:
             self.multi_secret_frame.setVisible(True)
-            self.lbl_multi_prompt.setText(tr("create_user.pin_label") if user.is_pin else tr("create_user.password_label"))
-            ph = tr("create_user.pin_placeholder") if user.is_pin else tr("login.password_placeholder")
+            self.lbl_multi_prompt.setText(
+                tr("create_user.pin_label")
+                if user.is_pin
+                else tr("create_user.password_label")
+            )
+            ph = (
+                tr("create_user.pin_placeholder")
+                if user.is_pin
+                else tr("login.password_placeholder")
+            )
             self.edt_multi.setPlaceholderText(ph)
             self.edt_multi.clear()
-            self.btn_multi_login.setText(tr('auto.views_login_dialog.608_anmelden_da7d6295'))
+            self.btn_multi_login.setText(
+                tr("auto.views_login_dialog.608_anmelden_da7d6295")
+            )
             self.btn_multi_login.setIcon(get_icon("🔓"))
             self.btn_multi_restore.setVisible(True)
 
@@ -613,11 +742,16 @@ class LoginDialog(QDialog):
         for u in quick_users:
             btn = QPushButton(u.display_name)
             btn.setIcon(get_icon("⚡"))
-            btn.setStyleSheet("""
-                QPushButton { padding: 14px; background: #27ae60; color: white;
+            btn.setStyleSheet(
+                themed(
+                    self,
+                    """
+                QPushButton { padding: 14px; background: %(positive)s; color: %(selection_text)s;
                               border: none; border-radius: 5px; font-size: 14px; font-weight: bold; }
-                QPushButton:hover { background: #219a52; }
-            """)
+                QPushButton:hover { background: %(positive_hover)s; }
+            """,
+                )
+            )
             btn.clicked.connect(lambda checked, user=u: self._login_quick(user))
             self.content.addWidget(btn)
 
@@ -637,16 +771,23 @@ class LoginDialog(QDialog):
             self.edt_mixed = QLineEdit()
             self.edt_mixed.setEchoMode(QLineEdit.Password)
             self.edt_mixed.setStyleSheet("padding: 8px;")
-            self.edt_mixed.returnPressed.connect(lambda: self._login_auth(u, self.edt_mixed))
+            self.edt_mixed.returnPressed.connect(
+                lambda: self._login_auth(u, self.edt_mixed)
+            )
             self.content.addWidget(self.edt_mixed)
 
-            btn = QPushButton(tr('auto.views_login_dialog.645_anmelden_08c3b10b'))
+            btn = QPushButton(tr("auto.views_login_dialog.645_anmelden_08c3b10b"))
             btn.setIcon(get_icon("🔓"))
-            btn.setStyleSheet("""
-                QPushButton { padding: 8px; background: #2196F3; color: white;
+            btn.setStyleSheet(
+                themed(
+                    self,
+                    """
+                QPushButton { padding: 8px; background: %(accent)s; color: %(selection_text)s;
                               border: none; border-radius: 5px; font-weight: bold; }
-                QPushButton:hover { background: #1976D2; }
-            """)
+                QPushButton:hover { background: %(accent_hover)s; }
+            """,
+                )
+            )
             btn.clicked.connect(lambda: self._login_auth(u, self.edt_mixed))
             self.content.addWidget(btn)
         else:
@@ -661,13 +802,18 @@ class LoginDialog(QDialog):
             self.result = LoginResult(user=user, db_key=db_key)
             self.accept()
         else:
-            QMessageBox.critical(self, tr("msg.error"), tr("account.quick_login_failed"))
+            QMessageBox.critical(
+                self, tr("msg.error"), tr("account.quick_login_failed")
+            )
 
     def _login_auth(self, user: User, edt: QLineEdit):
         secret = edt.text()
         if not secret:
-            QMessageBox.warning(self, tr('dlg.hinweis'),
-                                "PIN eingeben." if user.is_pin else "Passwort eingeben.")
+            show_warning(
+                self,
+                tr("dlg.hinweis"),
+                "PIN eingeben." if user.is_pin else "Passwort eingeben.",
+            )
             return
 
         db_key = self.user_model.authenticate(user.username, secret)
@@ -675,13 +821,16 @@ class LoginDialog(QDialog):
             self.result = LoginResult(user=user, db_key=db_key)
             self.accept()
         else:
-            QMessageBox.warning(self, tr("msg.login_failed"),
-                                "Falsche PIN." if user.is_pin else "Falsches Passwort.")
+            show_warning(
+                self,
+                tr("msg.login_failed"),
+                "Falsche PIN." if user.is_pin else "Falsches Passwort.",
+            )
             edt.clear()
             edt.setFocus()
 
     def _on_multi_login(self):
-        if not hasattr(self, 'cmb_users'):
+        if not hasattr(self, "cmb_users"):
             return
         username = self.cmb_users.currentData()
         user = self.user_model.get(username)
@@ -700,7 +849,7 @@ class LoginDialog(QDialog):
             self.accept()
 
     def _on_multi_restore(self):
-        if not hasattr(self, 'cmb_users'):
+        if not hasattr(self, "cmb_users"):
             return
         username = self.cmb_users.currentData()
         user = self.user_model.get(username)
@@ -726,7 +875,11 @@ class LoginDialog(QDialog):
         """Zeigt Sicherheits-Checkliste / Benutzerverwaltung."""
         report = self.user_model.get_security_report()
         if not report:
-            QMessageBox.information(self, tr('auto.views_login_dialog.731_info_c75cf25d'), tr("account.keine_benutzer_vorhanden"))
+            show_info(
+                self,
+                tr("auto.views_login_dialog.731_info_c75cf25d"),
+                tr("account.keine_benutzer_vorhanden"),
+            )
             return
 
         lines = [f"<b>{tr('security.checklist_title')}</b><br>"]
@@ -734,7 +887,9 @@ class LoginDialog(QDialog):
             icon = r["security_icon"]
             name = r["display_name"]
             mode = display_security_label(r.get("security", ""))
-            protect = "✅" if r["needs_auth"] else f"❌ ({tr('security.no_loss_protection')})"
+            protect = (
+                "✅" if r["needs_auth"] else f"❌ ({tr('security.no_loss_protection')})"
+            )
             restore = "✅" if r["restore_offered"] else "—"
             db = "✅" if r["db_exists"] else "❌"
             upgrade = "✅"
@@ -754,7 +909,9 @@ class LoginDialog(QDialog):
         msg.setTextFormat(Qt.RichText)
         msg.setText("<br>".join(lines))
 
-        btn_delete = msg.addButton(tr("account.benutzer_loeschen"), QMessageBox.DestructiveRole)
+        btn_delete = msg.addButton(
+            tr("account.benutzer_loeschen"), QMessageBox.DestructiveRole
+        )
         msg.addButton(QMessageBox.Close)
         msg.exec()
 
@@ -767,9 +924,15 @@ class LoginDialog(QDialog):
             return
 
         from PySide6.QtWidgets import QInputDialog
+
         names = [f"{u.security_icon} {u.display_name} ({u.username})" for u in users]
         choice, ok = QInputDialog.getItem(
-            self, tr("msg.delete_user"), tr("account.welchen_benutzer_loeschen"), names, 0, False
+            self,
+            tr("msg.delete_user"),
+            tr("account.welchen_benutzer_loeschen"),
+            names,
+            0,
+            False,
         )
         if not ok:
             return
@@ -778,12 +941,21 @@ class LoginDialog(QDialog):
         user = users[idx]
 
         reply = QMessageBox.warning(
-            self, tr("msg.delete_user"),
-            trf("account.msg.delete_user_confirm", name=user.display_name, db=user.db_filename),
-            QMessageBox.Yes | QMessageBox.No
+            self,
+            tr("msg.delete_user"),
+            trf(
+                "account.msg.delete_user_confirm",
+                name=user.display_name,
+                db=user.db_filename,
+            ),
+            QMessageBox.Yes | QMessageBox.No,
         )
         if reply == QMessageBox.Yes:
             self.user_model.delete_user(user.username, delete_db=True)
-            QMessageBox.information(self, tr("account.geloescht"), trf("account.userdisplay_name_wurde_geloescht", name=user.display_name))
+            show_info(
+                self,
+                tr("account.geloescht"),
+                trf("account.userdisplay_name_wurde_geloescht", name=user.display_name),
+            )
             self.user_model = UserModel()
             self._build_content()

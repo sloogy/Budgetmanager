@@ -1,0 +1,20 @@
+BudgetManager v2.2.45 – Regression summary
+Date: 28 July 2026
+
+Sharded complete suite:
+- Group 0: 211 passed, 4 skipped
+- Group 1: 196 passed, 1 skipped
+- Group 2: 166 passed; 1 environment-blocked test (bandit module unavailable)
+- Group 3: 163 passed, 5 skipped; 1 environment-blocked test (PySide6 unavailable)
+
+Total executable tests:
+- 736 passed
+- 10 skipped
+- 0 source-code failures
+
+Environment blockers:
+- tests/test_release_2225_bandit_delta_gate.py requires the bandit Python module.
+- tests/test_release_2226_killcritic_usability.py requires PySide6 for the real offscreen GUI worker.
+
+A parallel shard initially recreated __pycache__ while the release-cleaner test was running.
+The affected shard was rerun in isolation and passed: 196 passed, 1 skipped.

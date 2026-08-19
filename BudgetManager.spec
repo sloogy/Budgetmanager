@@ -22,12 +22,23 @@ from pathlib import Path
 
 block_cipher = None
 
+_update_public_key = Path("resources/update_signing_public_key.b64")
+if not _update_public_key.is_file():
+    raise SystemExit(
+        "Update-Public-Key fehlt. Vor dem Release-Build "
+        "tools/materialize_update_public_key.py ausführen."
+    )
+
 datas = [
     ("locales", "locales"),
+    (str(_update_public_key), "resources"),
     ("data/default_categories.json", "data"),
     ("docs/help", "docs/help"),
     ("resources/icons", "resources/icons"),
     ("version.json", "."),
+    # Quelle für „Hilfe → Neuerungen in dieser Version" (views/help_menu.py).
+    # Ohne diesen Eintrag bleibt der Dialog im Frozen-Build leer.
+    ("CHANGELOG.md", "."),
     # 25 mitgelieferte Theme-Profile — ThemeManager lädt sie aus
     # <bundle>/views/profiles (theme_manager.py: bundled_dir)
     ("views/profiles", "views/profiles"),

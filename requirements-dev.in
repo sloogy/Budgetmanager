@@ -1,0 +1,8 @@
+-r requirements.in
+pytest==9.0.2
+pytest-cov==7.0.0
+black==25.1.0
+mypy==1.15.0
+pip-audit==2.10.1
+bandit==1.9.4
+pip-tools==7.5.2

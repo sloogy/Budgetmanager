@@ -1,4 +1,4 @@
-# Paketübersicht — BudgetManager v2.2.6
+# Paketübersicht — BudgetManager v2.2.60
 
 Diese Übersicht beschreibt den aktuellen Release-Quellbaum. Alte Arbeits-, Analyse- und Zwischenstandsberichte sind nicht Bestandteil des Release-Pakets.
 
@@ -40,5 +40,5 @@ docs/                           aktive technische Dokumentation und Hilfe
 - Keine AI-Arbeitsordner.
 - Keine lokalen Nutzer-Settings.
 - Keine Python-Cache-Ordner.
-- Keine alten Merge-, Analyse- oder Bugfix-Berichte als aktive Dokumentation.
-- Release-Dateien, aktive Dokumentation und Manifest-Beispiele sind auf `v2.2.6` synchronisiert.
+- Historische Merge-, Analyse- und Bugfix-Berichte liegen ausschließlich unter `docs/archive/release-evidence/`.
+- Release-Dateien, aktive Dokumentation und Manifest-Beispiele sind auf `v2.2.60` synchronisiert.

@@ -187,6 +187,17 @@ def suspend_after_commit_autosave(conn: sqlite3.Connection):
 
 # ── Konstanten ──────────────────────────────────────────────────
 
+
+def _secure_file(path) -> None:
+    """0600 auf sensible Dateien. Lazy-Import haelt crypto.py abhaengigkeitsarm."""
+    try:
+        from model.file_permissions import secure_file
+
+        secure_file(path)
+    except Exception:  # pragma: no cover - nie fatal
+        pass
+
+
 PBKDF2_ITERATIONS = 600_000  # OWASP-2023-Empfehlung (PBKDF2-HMAC-SHA256)
 LEGACY_PBKDF2_ITERATIONS = (200_000,)
 SALT_LENGTH = 16
@@ -363,13 +374,35 @@ def _legacy_hash_password(password: str, salt: bytes, iterations: int) -> str:
     return raw.hex()
 
 
+def _is_comparable_stored_hash(stored_hash: object) -> bool:
+    """True, wenn ``stored_hash`` sicher mit ``hmac.compare_digest`` (str/str)
+    vergleichbar ist.
+
+    v2.2.30 (Deep-Audit Befund 2): Ein von Hand editierter oder korrupter
+    ``pw_hash`` in users.json (z. B. Nicht-ASCII) liess ``compare_digest``
+    mit ``TypeError`` abstürzen statt die Anmeldung abzulehnen. Beide
+    gültigen Formate (domain-getrennt und legacy) sind Hex-Strings, also
+    reines ASCII; alles andere ist per Definition kein gültiger Hash und
+    wird fail-closed als ``False`` behandelt.
+    """
+    if not isinstance(stored_hash, str) or not stored_hash:
+        return False
+    try:
+        stored_hash.encode("ascii")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def is_legacy_password_hash(password: str, salt: bytes, stored_hash: str) -> bool:
     """True, wenn ``stored_hash`` im alten, key-aequivalenten Format vorliegt.
 
     Wird beim Login genutzt, um betroffene Accounts (auch solche bereits bei
     600k Runden) auf das sichere Hash-Format zu migrieren.
+    Korrupte ``stored_hash``-Werte (Nicht-ASCII, falscher Typ) gelten
+    fail-closed als "kein Legacy-Hash" statt eine Exception auszulösen.
     """
-    if not stored_hash:
+    if not _is_comparable_stored_hash(stored_hash):
         return False
     for iterations in (PBKDF2_ITERATIONS, *LEGACY_PBKDF2_ITERATIONS):
         if hmac.compare_digest(
@@ -384,7 +417,11 @@ def verify_password(password: str, salt: bytes, stored_hash: str) -> bool:
 
     Akzeptiert das neue domain-getrennte Format und – fuer Bestandskonten –
     die alten key-aequivalenten Hashes (beide PBKDF2-Rundenzahlen).
+    Korrupte oder nicht vergleichbare ``stored_hash``-Werte werden
+    fail-closed abgelehnt statt eine Exception auszulösen.
     """
+    if not _is_comparable_stored_hash(stored_hash):
+        return False
     if hmac.compare_digest(hash_password(password, salt), stored_hash):
         return True
     return is_legacy_password_hash(password, salt, stored_hash)
@@ -431,7 +468,11 @@ def encrypt_db_to_file(
             f.write(encrypted)
             f.flush()
             os.fsync(f.fileno())
+        # SICHERHEIT (v2.2.11): Rechte vor dem Umbenennen setzen, damit die
+        # verschluesselte DB nie kurzzeitig world-readable auf der Platte liegt.
+        _secure_file(tmp_path)
         os.replace(str(tmp_path), str(enc_path))
+        _secure_file(enc_path)
     except Exception:
         if tmp_path.exists():
             tmp_path.unlink(missing_ok=True)

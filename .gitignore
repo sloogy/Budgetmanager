@@ -45,7 +45,8 @@ dist/
 Thumbs.db
 
 # --- Backups / Exports ---
-data/backups/
+data/backups/*
+!data/backups/.gitkeep
 data/diagnostics/
 *.bmr
 

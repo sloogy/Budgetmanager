@@ -1,4 +1,5 @@
 """Tiefe Release-Regressionen für fachliche Logikverknüpfungen."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,9 +23,12 @@ def test_type_suggestions_respect_zero_balance_rule_static():
     """Gesamt-Ersparnisse dürfen die Null-Bilanz-Regel nicht umgehen."""
     src = (ROOT / "model" / "budget_overview_model.py").read_text()
     fn_start = src.index("    def get_type_suggestions")
-    fn_end = src.index("    # ------------------------------------------------------------------\n    # Hilfsmethoden", fn_start)
+    fn_end = src.index(
+        "    # ------------------------------------------------------------------\n    # Hilfsmethoden",
+        fn_start,
+    )
     body = src[fn_start:fn_end]
 
     assert "budget_zero_balance_rule" in body
     assert "zero_balance_enabled and typ == TYP_SAVINGS" in body
-    assert "direction == \"surplus\"" in body
+    assert 'direction == "surplus"' in body

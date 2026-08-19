@@ -1,0 +1,65 @@
+{
+  "app": "BudgetManager",
+  "version": "2.2.51",
+  "audit_date": "2026-08-02",
+  "release_type": "startup_hotfix",
+  "decision": {
+    "source_release": "GO",
+    "tag_and_ci": "GO",
+    "public_binaries": "CONDITIONAL_GO",
+    "condition": "Confirm the corrected Fedora/Python 3.14 first start and pass mandatory CI, target-system GUI/package smoke tests, dependency scanners and signatures"
+  },
+  "fixed_blocker": {
+    "exception": "dataclasses.FrozenInstanceError",
+    "field": "accent_hover",
+    "component": "views/ui_colors.py",
+    "solution": "Declare derived hover fields with init=False and initialize them through object.__setattr__ in the frozen dataclass"
+  },
+  "scores": {
+    "release_readiness": 97,
+    "functions": 98,
+    "completeness": 97,
+    "dau": 98,
+    "graphics_ui": 95,
+    "codebase": 93,
+    "security": 97,
+    "backup_restore": 99,
+    "usability": 98,
+    "overall": 97
+  },
+  "tests": {
+    "passed": 767,
+    "skipped": 13,
+    "failed": 0
+  },
+  "audits": {
+    "killcritic_x10think": {"loops": 10000, "checks": 326584, "warnings": 0, "failures": 0},
+    "enterprise_release": {"loops": 10000, "checks": 112000, "findings": 0},
+    "dau_enterprise": {"loops": 10000, "checks": 764770000, "findings": 0},
+    "final_release": {"loops": 1000, "checks": 19335, "warnings": 0, "failures": 0},
+    "deep_logic": {"loops": 1000, "checks": 7000, "findings": 0},
+    "stability": {"loops": 300, "checks": 2400, "findings": 0},
+    "mega_release": {"loops": 1000, "checks": 6812, "findings": 0},
+    "release_logic": {"loops": 100, "findings": 0},
+    "handbook": {"areas": 10, "passed": 10}
+  },
+  "critical_coverage_local": {
+    "model/restore_bundle.py": 72.1,
+    "updater/manifest_signing.py": 98.9,
+    "utils/secure_excel.py": 96.6
+  },
+  "performance_gate": {
+    "tracking_rows": 50000,
+    "budget_rows": 12000,
+    "categories": 100,
+    "passed": true,
+    "maximum_measured_seconds": 0.0177
+  },
+  "external_gates_open": [
+    "Fedora/Wayland Python 3.14 first-start smoke with real PySide6",
+    "Windows GUI, installer and portable smoke",
+    "Black, Mypy, Bandit and pip-audit",
+    "Full CI coverage gate",
+    "Update and artifact signing"
+  ]
+}

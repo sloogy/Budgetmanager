@@ -26,6 +26,7 @@ Exit Codes
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import os
 import re
@@ -54,9 +55,10 @@ OK_LITERAL_PATTERNS = [
     re.compile(r"^#[0-9A-Fa-f]{3,8}$"),
     re.compile(r"^[a-z_][a-z0-9_]*$"),  # interne Datenkeys wie is_fix
     re.compile(r"^[%dmyYHMS.:%\- /]+$"),  # Datumsformate
-    re.compile(r"^[Xx-]+$"),            # Masken/Placeholder ohne Sprache
-    re.compile(r"^<\/?[a-z][a-z0-9]*>$"), # HTML-Trenner wie <br>
+    re.compile(r"^[Xx-]+$"),  # Masken/Placeholder ohne Sprache
+    re.compile(r"^<\/?[a-z][a-z0-9]*>$"),  # HTML-Trenner wie <br>
 ]
+
 
 def _looks_user_text_literal(s: str) -> bool:
     t = str(s or "").strip()
@@ -67,9 +69,12 @@ def _looks_user_text_literal(s: str) -> bool:
     # F-Strings wie "{icon} {name}" enthalten im Quelltext Buchstaben,
     # aber keinen festen user-visible Text. Erst Platzhalter entfernen.
     without_placeholders = re.sub(r"\{[^{}]+\}", "", t).strip()
-    if not without_placeholders or not re.search(r"[A-Za-zÄÖÜäöüßÉéÈèÀàÇç]", without_placeholders):
+    if not without_placeholders or not re.search(
+        r"[A-Za-zÄÖÜäöüßÉéÈèÀàÇç]", without_placeholders
+    ):
         return False
     return True
+
 
 IGNORE_PATH_PARTS = {
     "__pycache__",
@@ -82,10 +87,9 @@ IGNORE_PATH_PARTS = {
     "locales",  # JSON selbst nicht als Code scannen
     "docs",
     "installer",
-    "updater",
     "tests",
-    "_attic",
     "tools",
+    "_attic",
 }
 
 
@@ -136,7 +140,9 @@ GERMAN_RESIDUAL_RE = re.compile(
 )
 
 
-def _find_german_residual_values(values: Dict[str, str], referenced: Set[str]) -> Dict[str, str]:
+def _find_german_residual_values(
+    values: Dict[str, str], referenced: Set[str]
+) -> Dict[str, str]:
     findings: Dict[str, str] = {}
     for key in sorted(referenced):
         if "language_select_dialog" in key:
@@ -175,8 +181,44 @@ def _iter_py_files(root: Path) -> Iterable[Path]:
         yield p
 
 
-def _extract_tr_keys_from_code(text: str) -> Set[str]:
-    return {m.group(1).strip() for m in TR_CALL_RE.finditer(text)}
+def _extract_referenced_locale_keys(text: str, locale_keys: Set[str]) -> Set[str]:
+    """Findet direkte und dynamisch zusammengesetzte Locale-Key-Referenzen.
+
+    Neben tr()/trf()-Literalen werden alle Stringkonstanten, f-String-Präfixe
+    und Formatvorlagen berücksichtigt. Das vermeidet die früheren hunderten
+    False-Positives bei Tabellen-, Defaultkategorie- und Dialog-Keyfamilien.
+    """
+    referenced = {m.group(1).strip() for m in TR_CALL_RE.finditer(text)}
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return referenced
+    for node in ast.walk(tree):
+        values: list[str] = []
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            values.append(node.value.strip())
+        elif isinstance(node, ast.JoinedStr):
+            prefix_parts: list[str] = []
+            for value in node.values:
+                if isinstance(value, ast.Constant) and isinstance(value.value, str):
+                    prefix_parts.append(value.value)
+                else:
+                    break
+            if prefix_parts:
+                values.append("".join(prefix_parts).strip())
+        for value in values:
+            if value in locale_keys:
+                referenced.add(value)
+            prefixes = [value]
+            for marker in ("{", "%"):
+                if marker in value:
+                    prefixes.append(value.split(marker, 1)[0])
+            for prefix in prefixes:
+                if prefix and (prefix.endswith(".") or prefix != value):
+                    referenced.update(
+                        key for key in locale_keys if key.startswith(prefix)
+                    )
+    return referenced
 
 
 def _find_hardcoded_ui_strings(py_path: Path) -> List[HardcodedFinding]:
@@ -213,7 +255,9 @@ def _write_report(path: Path, content: str) -> None:
 def main(argv: List[str]) -> int:
     ap = argparse.ArgumentParser(description="BudgetManager i18n Audit")
     ap.add_argument("--root", default=".", help="Projekt-Root (Default: .)")
-    ap.add_argument("--locales", default="locales", help="Locales-Ordner (Default: locales)")
+    ap.add_argument(
+        "--locales", default="locales", help="Locales-Ordner (Default: locales)"
+    )
     ap.add_argument(
         "--lang",
         action="append",
@@ -221,7 +265,9 @@ def main(argv: List[str]) -> int:
         help="Sprache(n) prüfen (Default: --lang de --lang en)",
     )
     ap.add_argument("--out", default="", help="Optional: Report-Datei schreiben")
-    ap.add_argument("--max-hardcoded", type=int, default=80, help="Max. Hardcoded-Zeilen im Output")
+    ap.add_argument(
+        "--max-hardcoded", type=int, default=80, help="Max. Hardcoded-Zeilen im Output"
+    )
     args = ap.parse_args(argv)
 
     root = Path(args.root).resolve()
@@ -243,16 +289,21 @@ def main(argv: List[str]) -> int:
         print(f"[FATAL] {e}")
         return 2
 
+    base_lang = langs[0]
+    base = locale_keys[base_lang]
+
     # Extract referenced keys + hardcoded strings
     referenced: Set[str] = set()
     hardcoded: List[HardcodedFinding] = []
     for py in _iter_py_files(root):
         txt = py.read_text(encoding="utf-8", errors="replace")
-        referenced |= _extract_tr_keys_from_code(txt)
+        referenced |= _extract_referenced_locale_keys(txt, base)
         hardcoded.extend(_find_hardcoded_ui_strings(py))
 
-    base_lang = langs[0]
-    base = locale_keys[base_lang]
+    # Nicht-Python-Ressourcen können Locale-Keys deklarativ referenzieren.
+    for resource in (root / "data").rglob("*.json"):
+        raw = resource.read_text(encoding="utf-8", errors="replace")
+        referenced.update(key for key in base if key in raw)
 
     missing_by_lang: Dict[str, Set[str]] = {}
     extra_by_lang: Dict[str, Set[str]] = {}
@@ -278,7 +329,9 @@ def main(argv: List[str]) -> int:
             out_lines.append(f"  - {k}")
         out_lines.append("")
     else:
-        out_lines.append(f"[OK] Alle referenzierten Keys existieren in {base_lang}.json")
+        out_lines.append(
+            f"[OK] Alle referenzierten Keys existieren in {base_lang}.json"
+        )
         out_lines.append("")
 
     for lang in langs[1:]:
@@ -286,7 +339,9 @@ def main(argv: List[str]) -> int:
         extra = extra_by_lang.get(lang, set())
 
         if miss:
-            out_lines.append(f"[WARN] {len(miss)} Key(s) fehlen in {lang}.json (gegenüber {base_lang}.json):")
+            out_lines.append(
+                f"[WARN] {len(miss)} Key(s) fehlen in {lang}.json (gegenüber {base_lang}.json):"
+            )
             for k in sorted(miss)[:200]:
                 out_lines.append(f"  - {k}")
             if len(miss) > 200:
@@ -297,7 +352,9 @@ def main(argv: List[str]) -> int:
             out_lines.append("")
 
         if extra:
-            out_lines.append(f"[INFO] {len(extra)} extra Key(s) in {lang}.json (nicht in {base_lang}.json):")
+            out_lines.append(
+                f"[INFO] {len(extra)} extra Key(s) in {lang}.json (nicht in {base_lang}.json):"
+            )
             for k in sorted(extra)[:80]:
                 out_lines.append(f"  - {k}")
             if len(extra) > 80:
@@ -319,12 +376,14 @@ def main(argv: List[str]) -> int:
                 out_lines.append(f"  ... (+{len(residual)-120} weitere)")
             out_lines.append("")
         else:
-            out_lines.append(f"[OK] Keine deutschen Restübersetzungen in referenzierten {lang}.json-Werten")
+            out_lines.append(
+                f"[OK] Keine deutschen Restübersetzungen in referenzierten {lang}.json-Werten"
+            )
             out_lines.append("")
 
     if unused_in_base:
         out_lines.append(
-            f"[INFO] {len(unused_in_base)} Key(s) in {base_lang}.json wirken ungenutzt (kein tr()/trf() Treffer):"
+            f"[ERROR] {len(unused_in_base)} Key(s) in {base_lang}.json wirken ungenutzt (keine statische oder dynamische Referenz):"
         )
         for k in sorted(unused_in_base)[:200]:
             out_lines.append(f"  - {k}")
@@ -336,7 +395,9 @@ def main(argv: List[str]) -> int:
         out_lines.append("")
 
     if hardcoded:
-        out_lines.append(f"[WARN] {len(hardcoded)} verdächtige hardcoded UI-Strings gefunden (Heuristik):")
+        out_lines.append(
+            f"[WARN] {len(hardcoded)} verdächtige hardcoded UI-Strings gefunden (Heuristik):"
+        )
         for f in hardcoded[: args.max_hardcoded]:
             rel = f.file.relative_to(root)
             out_lines.append(f"  - {rel}:{f.line_no}: {f.line}")
@@ -351,7 +412,11 @@ def main(argv: List[str]) -> int:
     print(report)
 
     if args.out:
-        out_path = (root / args.out).resolve() if not os.path.isabs(args.out) else Path(args.out)
+        out_path = (
+            (root / args.out).resolve()
+            if not os.path.isabs(args.out)
+            else Path(args.out)
+        )
         _write_report(out_path, report)
         print(f"\nReport geschrieben nach: {out_path}")
 
@@ -360,6 +425,7 @@ def main(argv: List[str]) -> int:
         or any(missing_by_lang.get(l) for l in langs[1:])
         or any(german_residual_by_lang.get(l) for l in langs[1:])
         or bool(hardcoded)
+        or bool(unused_in_base)
     )
     return 1 if problems else 0
 

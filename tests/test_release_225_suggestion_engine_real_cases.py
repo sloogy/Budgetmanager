@@ -8,6 +8,7 @@ Abgedeckt:
 - Ein leerer aktueller Monat darf Lernvorschläge nicht künstlich als
   inkrementell/lumpy klassifizieren oder den Betrag senken.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -21,7 +22,9 @@ sys.path.insert(0, str(ROOT))
 
 from model.budget_learning import KIND_FIXED_RECURRING  # noqa: E402
 from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
-from model.budget_warnings_model_extended import BudgetWarningsModelExtended  # noqa: E402
+from model.budget_warnings_model_extended import (
+    BudgetWarningsModelExtended,
+)  # noqa: E402
 from model.budget_suggestion_engine import BudgetSuggestionEngine  # noqa: E402
 from model.migrations import migrate_all  # noqa: E402
 from model.typ_constants import TYP_EXPENSES  # noqa: E402
@@ -36,14 +39,22 @@ def conn() -> sqlite3.Connection:
     c.close()
 
 
-def _add_category(conn: sqlite3.Connection, name: str, *, is_fix: bool = False, is_recurring: bool = False) -> None:
+def _add_category(
+    conn: sqlite3.Connection,
+    name: str,
+    *,
+    is_fix: bool = False,
+    is_recurring: bool = False,
+) -> None:
     conn.execute(
         "INSERT INTO categories(typ, name, is_fix, is_recurring, recurring_day) VALUES(?,?,?,?,1)",
         (TYP_EXPENSES, name, 1 if is_fix else 0, 1 if is_recurring else 0),
     )
 
 
-def _set_budget(conn: sqlite3.Connection, name: str, months: list[int], amount: float) -> None:
+def _set_budget(
+    conn: sqlite3.Connection, name: str, months: list[int], amount: float
+) -> None:
     for month in months:
         conn.execute(
             "INSERT INTO budget(year, month, typ, category, amount) VALUES(?,?,?,?,?)",
@@ -51,14 +62,23 @@ def _set_budget(conn: sqlite3.Connection, name: str, months: list[int], amount: 
         )
 
 
-def _book(conn: sqlite3.Connection, name: str, month: int, amount: float, *, source: str = "manual") -> None:
+def _book(
+    conn: sqlite3.Connection,
+    name: str,
+    month: int,
+    amount: float,
+    *,
+    source: str = "manual",
+) -> None:
     conn.execute(
         "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
         (f"2026-{month:02d}-15", TYP_EXPENSES, name, amount, "test", source),
     )
 
 
-def test_overbudget_months_suggest_even_when_target_month_has_no_budget(conn: sqlite3.Connection) -> None:
+def test_overbudget_months_suggest_even_when_target_month_has_no_budget(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, "Nahrungsmittel")
     _set_budget(conn, "Nahrungsmittel", [1, 2, 3, 4, 5, 6], 400.0)
     for month in [1, 2, 3, 4, 5, 6]:
@@ -81,7 +101,9 @@ def test_overbudget_months_suggest_even_when_target_month_has_no_budget(conn: sq
     assert res.suggested_budget > 400.0
 
 
-def test_overview_suggestions_include_overbudget_without_target_month_budget(conn: sqlite3.Connection) -> None:
+def test_overview_suggestions_include_overbudget_without_target_month_budget(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, "Nahrungsmittel")
     _set_budget(conn, "Nahrungsmittel", [1, 2, 3, 4, 5, 6], 400.0)
     for month in [1, 2, 3, 4, 5, 6]:
@@ -94,10 +116,14 @@ def test_overview_suggestions_include_overbudget_without_target_month_budget(con
         min_consecutive_months=3,
     )
 
-    assert any(row.category == "Nahrungsmittel" and row.suggested_amount > 400 for row in rows)
+    assert any(
+        row.category == "Nahrungsmittel" and row.suggested_amount > 400 for row in rows
+    )
 
 
-def test_learning_uses_auto_booked_fixed_costs_after_restore(conn: sqlite3.Connection) -> None:
+def test_learning_uses_auto_booked_fixed_costs_after_restore(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, "Miete", is_fix=True, is_recurring=True)
     for month in [1, 2, 3]:
         _book(conn, "Miete", month, 1000.0, source="auto")
@@ -118,7 +144,9 @@ def test_learning_uses_auto_booked_fixed_costs_after_restore(conn: sqlite3.Conne
     assert rows[0].suggested_amount == 1000.0
 
 
-def test_learning_does_not_treat_empty_current_month_as_zero_gap(conn: sqlite3.Connection) -> None:
+def test_learning_does_not_treat_empty_current_month_as_zero_gap(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, "Abo", is_fix=True, is_recurring=True)
     for month in [1, 2, 3, 4, 5, 6]:
         _book(conn, "Abo", month, 100.0, source="auto")
@@ -141,7 +169,9 @@ def test_learning_does_not_treat_empty_current_month_as_zero_gap(conn: sqlite3.C
     assert "07/2026" not in rows[0].tracking_data
 
 
-def _set_income_budget(conn: sqlite3.Connection, months: list[int], amount: float) -> None:
+def _set_income_budget(
+    conn: sqlite3.Connection, months: list[int], amount: float
+) -> None:
     for month in months:
         conn.execute(
             "INSERT INTO budget(year, month, typ, category, amount) VALUES(?,?,?,?,?)",
@@ -149,7 +179,9 @@ def _set_income_budget(conn: sqlite3.Connection, months: list[int], amount: floa
         )
 
 
-def _set_savings_budget(conn: sqlite3.Connection, months: list[int], amount: float) -> None:
+def _set_savings_budget(
+    conn: sqlite3.Connection, months: list[int], amount: float
+) -> None:
     for month in months:
         conn.execute(
             "INSERT INTO categories(typ, name, is_fix, is_recurring, recurring_day) VALUES('Ersparnisse','Notgroschen',0,0,1) "
@@ -161,7 +193,9 @@ def _set_savings_budget(conn: sqlite3.Connection, months: list[int], amount: flo
         )
 
 
-def test_type_suggestion_uses_latest_budget_basis_when_target_month_empty(conn: sqlite3.Connection) -> None:
+def test_type_suggestion_uses_latest_budget_basis_when_target_month_empty(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, "Nahrungsmittel")
     _set_budget(conn, "Nahrungsmittel", [1, 2, 3, 4, 5, 6], 400.0)
     for month in [1, 2, 3, 4, 5, 6]:
@@ -174,10 +208,17 @@ def test_type_suggestion_uses_latest_budget_basis_when_target_month_empty(conn: 
         min_consecutive_months=3,
     )
 
-    assert any(row.typ == TYP_EXPENSES and row.category == "(Gesamt)" and row.suggested_amount > 400 for row in rows)
+    assert any(
+        row.typ == TYP_EXPENSES
+        and row.category == "(Gesamt)"
+        and row.suggested_amount > 400
+        for row in rows
+    )
 
 
-def test_zero_balance_suggestion_uses_latest_budget_basis_when_target_month_empty(conn: sqlite3.Connection) -> None:
+def test_zero_balance_suggestion_uses_latest_budget_basis_when_target_month_empty(
+    conn: sqlite3.Connection,
+) -> None:
     _set_income_budget(conn, [1, 2, 3, 4, 5, 6], 5000.0)
     _set_budget(conn, "Nahrungsmittel", [1, 2, 3, 4, 5, 6], 3000.0)
     _set_savings_budget(conn, [1, 2, 3, 4, 5, 6], 500.0)
@@ -189,7 +230,14 @@ def test_zero_balance_suggestion_uses_latest_budget_basis_when_target_month_empt
         _book(conn, "Nahrungsmittel", month, 3000.0)
         conn.execute(
             "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
-            (f"2026-{month:02d}-20", "Ersparnisse", "Notgroschen", 500.0, "test", "manual"),
+            (
+                f"2026-{month:02d}-20",
+                "Ersparnisse",
+                "Notgroschen",
+                500.0,
+                "test",
+                "manual",
+            ),
         )
     conn.commit()
 
@@ -201,10 +249,17 @@ def test_zero_balance_suggestion_uses_latest_budget_basis_when_target_month_empt
         surplus_strategy="savings",
     )
 
-    assert any(row.typ == "Ersparnisse" and row.category == "Notgroschen" and row.suggested_amount > 500 for row in rows)
+    assert any(
+        row.typ == "Ersparnisse"
+        and row.category == "Notgroschen"
+        and row.suggested_amount > 500
+        for row in rows
+    )
 
 
-def test_completed_selected_month_is_included_for_warning_suggestions(conn: sqlite3.Connection) -> None:
+def test_completed_selected_month_is_included_for_warning_suggestions(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, "Nahrungsmittel")
     _set_budget(conn, "Nahrungsmittel", [4, 5, 6], 400.0)
     for month in [4, 5, 6]:
@@ -260,7 +315,14 @@ def test_budget_warning_auto_candidates_cross_year_when_january_target_is_empty(
         )
         conn.execute(
             "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
-            (f"2025-{month:02d}-15", TYP_EXPENSES, "Nahrungsmittel", 450.0, "test", "manual"),
+            (
+                f"2025-{month:02d}-15",
+                TYP_EXPENSES,
+                "Nahrungsmittel",
+                450.0,
+                "test",
+                "manual",
+            ),
         )
     conn.commit()
 

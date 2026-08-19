@@ -2,17 +2,26 @@ from __future__ import annotations
 import logging
 
 logger = logging.getLogger(__name__)
+import re
 import sqlite3
 import shutil
 from pathlib import Path
 from datetime import datetime
 
 # Aktuelle Schema-Version
-CURRENT_VERSION = 15
+CURRENT_VERSION = 18
 
 
 def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
-    """Gibt alle Spaltennamen einer Tabelle zurück"""
+    """Gibt alle Spaltennamen einer Tabelle zurück.
+
+    v2.2.25 (d1-Härtung): Der Tabellenname wird strikt als SQL-Identifier
+    validiert, bevor er das PRAGMA erreicht – alle Aufrufer sind interne
+    Migrationsschritte mit Literalnamen, der Guard schließt das Muster
+    strukturell ab (Defense-in-Depth wie category_model._safe_table).
+    """
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table):
+        return set()
     try:
         cur = conn.execute(f"PRAGMA table_info({table});")
         return {row[1] for row in cur.fetchall()}
@@ -64,7 +73,7 @@ def _create_migration_backup(db_path: str, backup_dir: str = None) -> str:
     backup_path_obj = Path(backup_dir)
     backup_path_obj.mkdir(parents=True, exist_ok=True)
 
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
     backup_name = f"budgetmanager_pre_migration_{timestamp}.bmr"
     backup_path = backup_path_obj / backup_name
 
@@ -72,17 +81,42 @@ def _create_migration_backup(db_path: str, backup_dir: str = None) -> str:
         from model.restore_bundle import create_bundle
         from app_info import APP_NAME, APP_VERSION
 
+        from model.user_model import _users_file_path
+        from model.app_paths import settings_path as _settings_path
+
+        u_path = _users_file_path()
+        s_path = _settings_path()
         create_bundle(
             source_db=Path(db_path),
             out_path=backup_path,
             app=APP_NAME,
             app_version=APP_VERSION,
             note="Pre Migration",
+            settings_path=s_path if s_path.exists() else None,
+            users_json_path=u_path if u_path.exists() else None,
         )
         return str(backup_path)
     except Exception as e:
         logger.warning("Backup vor Migration konnte nicht erstellt werden: %s", e)
         return ""
+
+
+def _migrate_v17_cleanup_orphaned_entry_tags(conn) -> None:
+    """v2.2.25 (KILLCRITIC k2): Entfernt verwaiste entry_tags-Zeilen.
+
+    Der Undo-/Redo-Loeschpfad liess bis v2.2.24 Tag-Zuordnungen geloeschter
+    Buchungen stehen (PRAGMA foreign_keys ist in SQLite per Default aus,
+    CASCADE griff daher nicht). Idempotente Bestandsbereinigung; der
+    Schreibpfad ist seit v2.2.25 symmetrisch abgesichert.
+    """
+    try:
+        conn.execute(
+            "DELETE FROM entry_tags WHERE entry_id NOT IN" " (SELECT id FROM tracking)"
+        )
+    except Exception:
+        # Tabelle kann in sehr alten Bestaenden fehlen; migrate_all legt
+        # sie in frueheren Schritten an.
+        pass
 
 
 def migrate_all(
@@ -182,6 +216,21 @@ def migrate_all(
         _migrate_v14_to_v15(conn)
         migrations_applied.append(
             "v14→v15: Tracking-Lernmodus-Status (tracking_learning_state)"
+        )
+
+    # Version 15 → 16: Tag-Aktionstexte
+    if old_version < 16:
+        _migrate_v15_to_v16(conn)
+        migrations_applied.append("v15→v16: Tag-Aktionstexte für Buchungsdetails")
+
+    if old_version < 17:
+        _migrate_v17_cleanup_orphaned_entry_tags(conn)
+        migrations_applied.append("v16→v17: verwaiste entry_tags-Zuordnungen bereinigt")
+
+    if old_version < 18:
+        _migrate_v17_to_v18(conn)
+        migrations_applied.append(
+            "v17→v18: Sparziel-Flussbestand, Teilfreigaben und Buchungsarten"
         )
 
     # Version setzen
@@ -445,6 +494,79 @@ def _migrate_v11_to_v12(conn: sqlite3.Connection) -> None:
     except Exception as e:
         logger.debug("idx_tracking_source_typ_cat konnte nicht erstellt werden: %s", e)
 
+    conn.commit()
+
+
+def _migrate_v17_to_v18(conn: sqlite3.Connection) -> None:
+    """Migration v17 → v18: Sparziele als Flussbestand.
+
+    ``current_amount`` bleibt der physisch vorhandene Bestand. Neu werden
+    Einzahlungen und Bezüge getrennt geführt. Negative Ersparnisbuchungen
+    gelten rückwärtskompatibel standardmässig als Bezug; eine ausdrücklich
+    gewählte Korrektur wird über ``tracking.savings_action`` markiert.
+    """
+    tracking_cols = _cols(conn, "tracking")
+    if "savings_action" not in tracking_cols:
+        conn.execute("ALTER TABLE tracking ADD COLUMN savings_action TEXT")
+
+    goal_cols = _cols(conn, "savings_goals")
+    if "contributed_amount" not in goal_cols:
+        conn.execute(
+            "ALTER TABLE savings_goals ADD COLUMN contributed_amount REAL NOT NULL DEFAULT 0"
+        )
+    if "withdrawn_amount" not in goal_cols:
+        conn.execute(
+            "ALTER TABLE savings_goals ADD COLUMN withdrawn_amount REAL NOT NULL DEFAULT 0"
+        )
+
+    # Bestehende Buchungen eindeutig klassifizieren. Positiv = Einzahlung,
+    # negativ = Bezug. Erst zukünftige Fehlbuchungskorrekturen erhalten bewusst
+    # ``correction`` und werden dadurch nicht als Verwendung ausgewiesen.
+    conn.execute(
+        """
+        UPDATE tracking
+        SET savings_action = CASE WHEN amount < 0 THEN 'withdrawal' ELSE 'deposit' END
+        WHERE typ = 'Ersparnisse'
+          AND (savings_action IS NULL OR TRIM(savings_action) = '')
+        """
+    )
+
+    # Flusswerte aus dem Trackingbestand rekonstruieren. Manuell erfasste alte
+    # Anfangsstände bleiben erhalten, wenn keine passende Buchung existiert.
+    conn.execute(
+        """
+        UPDATE savings_goals
+        SET contributed_amount = CASE
+                WHEN EXISTS(
+                    SELECT 1 FROM tracking t
+                    WHERE t.typ='Ersparnisse' AND t.category=savings_goals.category
+                ) THEN COALESCE((
+                    SELECT SUM(CASE
+                        WHEN COALESCE(NULLIF(t.savings_action,''),
+                             CASE WHEN t.amount < 0 THEN 'withdrawal' ELSE 'deposit' END)
+                             = 'withdrawal'
+                        THEN 0 ELSE t.amount END)
+                    FROM tracking t
+                    WHERE t.typ='Ersparnisse' AND t.category=savings_goals.category
+                ), 0)
+                ELSE current_amount
+            END,
+            withdrawn_amount = COALESCE((
+                SELECT SUM(CASE
+                    WHEN COALESCE(NULLIF(t.savings_action,''),
+                         CASE WHEN t.amount < 0 THEN 'withdrawal' ELSE 'deposit' END)
+                         = 'withdrawal'
+                    THEN ABS(t.amount) ELSE 0 END)
+                FROM tracking t
+                WHERE t.typ='Ersparnisse' AND t.category=savings_goals.category
+            ), 0)
+        """
+    )
+
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_tracking_savings_action "
+        "ON tracking(typ, category, savings_action)"
+    )
     conn.commit()
 
 
@@ -748,4 +870,18 @@ def _migrate_v14_to_v15(conn: sqlite3.Connection) -> None:
         );
         """
     )
+    conn.commit()
+
+
+def _migrate_v15_to_v16(conn: sqlite3.Connection) -> None:
+    """Migration v15 → v16: Freier Aktionstext pro Tag.
+
+    Tags können beim Anhaken Buchungsdetails vorschlagen, z. B.
+    "{datum} UBS essen". Bestehende Datenbanken bleiben kompatibel.
+    """
+    cols = _cols(conn, "tags")
+    if "action_text" not in cols:
+        conn.execute(
+            "ALTER TABLE tags ADD COLUMN action_text TEXT NOT NULL DEFAULT '';"
+        )
     conn.commit()

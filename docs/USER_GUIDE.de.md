@@ -1,115 +1,429 @@
-# BudgetManager 2.2.6 – Benutzeranleitung
+# BudgetManager 2.2.60 – Benutzerhandbuch
 
-## 1. Grundidee
+Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.2.60. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
 
-BudgetManager arbeitet lokal auf deinem Computer. Das Programm speichert Budget, Buchungen, Kategorien, Backups und Einstellungen im Datenordner. Bei der portablen Version liegt dieser Ordner neben dem Programm unter `data/`.
+## Erststart in vier Schritten
 
-Der normale Ablauf ist einfach:
+1. Sprache, Währung und Zahlenformat wählen.
+2. Konto erstellen und den Restore-Key getrennt sichern.
+3. Kategorien per Express-Einrichtung, Vorlage oder manuell vorbereiten.
+4. Erste Buchung erfassen und danach Budget oder Tracking-Lernmodus nutzen.
 
-1. Kategorien prüfen oder anlegen.
-2. Monatsbudget erfassen.
-3. Echte Buchungen im Tracking eintragen.
-4. Übersicht und Diagramme prüfen.
-5. Vor größeren Änderungen ein Backup erstellen.
+Die ausführliche Variante folgt im nächsten Kapitel.
 
-## 2. Kategorien
+## 1. Schnellstart
 
-Kategorien gehören immer zu einem Typ: Einnahmen, Ausgaben oder Ersparnisse. Unterkategorien dürfen nur innerhalb desselben Typs verschoben werden. Mit Drag & Drop kannst du Kategorien unter eine Hauptkategorie ziehen oder wieder zur Hauptkategorie machen.
+1. Sprache, Währung und Zahlenformat wählen.
+2. Konto anlegen: Quick, PIN oder Passwort.
+3. Restore-Key ausserhalb des Programmordners sichern.
+4. Express-Einrichtung verwenden oder Kategorien selbst anlegen.
+5. Entweder Budgetwerte erfassen oder mit dem Tracking-Lernmodus zuerst nur buchen.
+6. Im Cockpit die nächsten Schritte abarbeiten.
 
-Die Häkchen bedeuten:
+**Best Practice:** Für den Alltag zuerst Cockpit und Tracking nutzen. Budget, Übersicht und Kategorien nur öffnen, wenn du planen oder prüfen möchtest.
 
-- **Fixkosten**: planbare Kosten oder Rückstellungen, zum Beispiel Miete, Krankenkasse, Franchise oder Selbstbehalt.
-- **Wiederkehrend**: regelmäßig wiederkehrende Buchung.
-- **Fix + Wiederkehrend**: echte monatliche Fixkosten. Beim Buchen wird der Budgetbetrag übernommen.
-- **Fix ohne Wiederholung**: geschützte variable Rückstellung. Beim Buchen darf der Betrag angepasst werden.
-- **Wiederkehrend ohne Fix**: regelmäßige, aber variable Buchung. Beim Buchen darf der Betrag angepasst werden.
+## 2. Programmaufbau
 
-## 3. Budget
+Die linke Seitenleiste ist die Hauptnavigation:
 
-Im Budget-Tab trägst du pro Kategorie und Monat den geplanten Betrag ein. Ein Budget erzeugt noch keine Buchung. Es ist nur der Plan.
+- **Cockpit:** Monatsstatus, offene Aufgaben, Warnungen, Favoriten und letzte Buchungen.
+- **Buchungen:** echte Einnahmen, Ausgaben und Ersparnisse.
+- **Budget:** Sollwerte pro Kategorie und Monat.
+- **Sparziele:** Ziele mit festem Zielbetrag, Einzahlungen und Entnahmen.
+- **Übersicht:** Plan/Ist, Kennzahlen, Diagramme und Filter.
+- **Kategorien:** Verwaltung der Geldstruktur, sofern dieser Expertenbereich eingeblendet ist.
+- **Konto:** Datenordner, Backups und Datenbankverwaltung.
 
-Wichtige Regeln:
+Die zentrale Aktionsleiste bietet Buchung erfassen, Fix/Wiederkehrend buchen, Kategorien, Sparziele und Suche.
 
-- Leere Felder sind 0.
-- Parent-Kategorien zeigen die Summe der Kinder plus eigenen Puffer.
-- Die Gesamtzeile zeigt die Summe des sichtbaren Bereichs.
-- Ein Jahr kann aus einem bestehenden Jahr kopiert werden, wahlweise mit oder ohne Beträge.
+## 3. Kategorien und Kontotypen
 
-## 4. Tracking / Buchungen
+Jede Kategorie gehört zu einem Typ:
 
-Im Tracking erfasst du echte Geldbewegungen. Die Kategorieauswahl zeigt nur Kategorien des gewählten Typs. Favoriten und häufig manuell genutzte Kategorien erscheinen oben, automatische Fixkosten verzerren diese Reihenfolge nicht. Parent-Kategorien mit Unterkategorien werden dort nicht als eigene Buchungszeile angezeigt; Unterkategorien erscheinen kurz, z. B. **Miete** statt **Wohnen › Miete**.
+- Einnahmen
+- Ausgaben
+- Ersparnisse
 
-Der Button **Fix/Wiederkehrend buchen** erstellt bewusst die fälligen Fixkosten und wiederkehrenden Buchungen für den gewählten Monat. Es wird nichts heimlich im Hintergrund gebucht.
+Haupt- und Unterkategorien bilden eine Baumstruktur. Unterkategorien dürfen nur unter Kategorien desselben Typs verschoben werden.
 
-Für **Sparziele** (Typ Ersparnisse) kannst du einen Zielbetrag setzen und den Fortschritt verfolgen. Einzahlungen und Entnahmen werden als Buchungen erfasst; der Fortschritt kann nie unter 0 fallen oder über das Ziel hinausgehen.
+### 3.1 Kategorieeigenschaften
 
-## 5. Forecast / Budgetvorschläge
+- **Fixkosten:** planbarer oder geschützter Kostenblock.
+- **Wiederkehrend:** regelmässige Buchung.
+- **Fälligkeitstag:** Tag 1–28 oder Monatsende für fällige Buchungen.
+- **Forecast-Modus:** Auto, Normal/Flexibel, POT/Rückstellung oder Inkrementell.
+- **Favorit:** wichtige Kategorie im Cockpit/Favoriten-Dashboard.
+- **Feste Tags:** werden neuen Buchungen dieser Kategorie automatisch angeheftet.
 
-Budgetvorschläge sind Hilfen, keine automatischen Änderungen. Die App prüft nur abgeschlossene Monate und vermeidet Vorschläge bei einzelnen Ausreißern.
+### 3.2 Typische Kombinationen
 
-Logik:
+| Einstellung | Geeignet für |
+|---|---|
+| Fix + wiederkehrend | Miete, Krankenkasse, feste Abos |
+| Wiederkehrend ohne Fix | variable Stromrechnung, schwankender regelmässiger Lohn |
+| Fix ohne wiederkehrend | POT/Rückstellung wie Franchise oder Selbstbehalt |
+| Inkrementell | Jahres- oder Quartalskosten mit Teilzahlungen |
+| Normal/Flexibel | Lebensmittel, Freizeit, spontane Ausgaben |
 
-- Eine einzelne 0-Buchung ist nie allein ein Grund für eine Senkung.
-- Bei Fixkosten und wiederkehrenden Kategorien werden 0-Monate für Senkungen ignoriert.
-- Bei Fixkosten braucht es wiederholte echte Buchungen, bevor ein Vorschlag entsteht.
-- Flexible Kategorien dürfen aus wiederholten Mustern lernen, auch wenn einzelne Monate 0 enthalten.
-- Gegensätzliche Ausreißer, zum Beispiel 450 CHF und danach 350 CHF bei 400 CHF Budget, erzeugen keinen Vorschlag.
+### 3.3 Sicher umbenennen und löschen
 
-## 6. Übersicht und Diagramme
+Umbenennungen werden in Budget, Tracking, Favoriten, Tags, Warnungen, wiederkehrenden Buchungen und Sparzielen mitgezogen. Beim Löschen kannst du abhängige Daten löschen oder auf eine andere Kategorie umhängen. Budgetwerte im selben Monat werden dabei additiv zusammengeführt. Kinder einer gelöschten Hauptkategorie können eine Ebene hochgestuft werden.
 
-Die Übersicht vergleicht Plan und Ist.
+Vor grossen Strukturänderungen immer ein Backup erstellen.
 
-Diagramme erklärt:
+### 3.4 Excel-Vorlage im Setup
 
-- **Plan/Ist-Donut**: Außen Einnahmen, Mitte Ausgaben, innen Ersparnisse. Jeder Ring zeigt gebucht, offen oder über Budget. Das ist der wichtigste Monatscheck.
-- **Kategorien-Ranking**: zeigt die größten Ausgaben-Kategorien als Balken. Das ist leichter lesbar als ein großes Kreisdiagramm.
-- **Konto-Vergleich**: zeigt Einnahmen, Ausgaben und Ersparnisse als Balken. Das ersetzt den verwirrenden Kreis daneben, weil diese Werte keine Anteile desselben Topfs sind.
-- **Monatsverlauf**: zeigt die Entwicklung über Monate. Gut, um Trends zu erkennen.
-- **Monatsbilanz**: zeigt Einnahmen minus Ausgaben minus Ersparnisse pro Monat.
-- **Top-Buchungen**: fasst Kategorien zusammen und sortiert nach Betrag, damit wiederholte Lohn- oder Mietbuchungen nicht mehrfach als Einzelzeilen verwirren.
+Der Setup-Assistent kann Kategorien aus einer XLSX-Vorlage importieren. Die normale tägliche Kategorienverwaltung läuft über **Strg+K** bzw. den Kategorie-Manager.
 
-Wenn keine Daten vorhanden sind, zeigt die App einen Hinweis statt eines leeren Diagramms.
+## 4. Budget
 
-## 7. Updates
+Budgetwerte sind Sollbeträge. Sie erzeugen keine Buchungen.
 
-Über **Extras → Updates…** prüft die App auf neue Releases. Das Update-Fenster zeigt die Schritte an.
+### 4.1 Budget erfassen
 
-Updatewege:
+Du kannst einen Betrag setzen für:
 
-- **Portable Windows/Linux**: lädt das portable ZIP, ersetzt Programmdateien und lässt `data/` sowie `updates/` bestehen.
-- **Direkte Windows-EXE/Linux-Binary**: migriert alte versionierte Startdateien auf stabile Namen.
-- **Windows Installer**: lädt die neue Setup-EXE, wartet bis die App geschlossen ist und startet den Installer im Update-Modus. Der gewählte Datenordner bleibt erhalten.
+- einen einzelnen Monat,
+- alle Monate,
+- einen Monatsbereich,
+- optional nur leere Zellen.
 
-## 8. Backup und Restore-Key
+Die Budgettabelle unterstützt Jahr, Monat/Gesamt, Kontotyp und Kategoriebaum. Parent-Zeilen zeigen eigene Werte plus Kinder.
 
-Der Restore-Key ist wichtig für verschlüsselte Datenbanken und Wiederherstellung. Sichere ihn außerhalb des BudgetManager-Ordners, zum Beispiel in Bitwarden.
+### 4.2 Jahr kopieren
 
-Vor großen Änderungen: Backup erstellen. Der Datenordner und `data/backups/` werden bei Updates nicht überschrieben.
+**Jahr kopieren** bietet:
 
-## 5.1 Tracking-Lernmodus
+- Quell- und Zieljahr,
+- alle Kontotypen oder nur einen Typ,
+- Übernahme mit oder ohne Beträge,
+- Prüfliste pro Kategorie,
+- neuen Jahresbetrag pro Kategorie,
+- Prüfung von Fixkosten, Wiederholungen, POTs, inkrementellen Kategorien und Lernvorschlägen.
 
-Der Tracking-Lernmodus hilft, wenn du noch kein Budget gesetzt hast. Er schaut nur auf manuelle Buchungen und erstellt daraus einen Vorschlag für ein neues Budget.
+### 4.3 13. Monatslohn
 
-Im Erststart darfst du mit aktivem Lernmodus ohne Budgetwert weitergehen. Das ist Absicht: Du kannst zuerst nur tracken und die Budgets später aus echten Daten lernen lassen. Wenn du den Lernmodus deaktivierst, verlangt der Erststart weiterhin mindestens einen Budgetwert.
+Der Knopf **13. Lohn** erfasst einen einmaligen Einnahmenplan für genau einen Auszahlungsmonat. Verwende dafür eine eigene Kategorie, damit der normale Monatslohn und die Forecast-Logik sauber bleiben.
 
-Wichtig: Der Lernmodus und die normale Budget-Vorschlagslogik sind getrennt.
+### 4.4 Budgetwarnungen und Vorschläge
 
-- Ohne Budget im gewählten Jahr: Lernmodus darf ein Startbudget vorschlagen.
-- Mit Budget im gewählten Jahr: Lernmodus ist beendet, normale Vorschläge übernehmen.
-- Ein Vorschlag ändert nichts automatisch.
-- Beim Übernehmen musst du die Budgetart bestätigen.
+BudgetManager prüft abgeschlossene Monate und stabile Muster. Einzelne Ausreisser oder ein einzelner 0-Monat sollen keine unnötigen Änderungen erzeugen. Vorschläge werden nie automatisch übernommen.
 
-Im Vorschlagsdialog kannst du einen Lernvorschlag per Rechtsklick steuern:
+## 5. Forecast-Modi, POT und Lernmodus
 
-- **Weiter beobachten**: Vorschlag für den aktuellen Monat ausblenden.
-- **Ignorieren**: Lernvorschlag für diese Kategorie beenden.
-- **Als unregelmäßig / Rückstellung markieren**: gut für Franchise, Selbstbehalt, Reparaturen oder seltene Jahreskosten.
-- **Lernstatus zurücksetzen**: Kategorie wieder normal lernen lassen.
+## 5.1 Normal/Flexibel
 
-Empfehlung: Bei schwankendem Einkommen eher vorsichtig budgetieren. Bei unregelmäßigen Kosten lieber einen Monats-Topf/Rückstellung verwenden statt eine starre Fixkostenbuchung.
+Für variable Alltagskosten. Wiederholte Muster dürfen Erhöhungs- oder Senkungsvorschläge erzeugen.
 
-In der Übersicht erkennst du neue Lernbudgets am Symbol **🆕**. Das unterscheidet Startbudgets klar von echten Defizit-Warnungen (**📉**) und Überschuss-/Senkungsvorschlägen (**📈**).
+### 5.2 POT/Rückstellung
 
-## 5.2 Jahreswechsel mit Lernmodus
+Ein POT reserviert Budget für erwartete unregelmässige Ausgaben, zum Beispiel Franchise, Selbstbehalt, Reparaturen oder Jahresrechnungen. Cockpit und Übersicht zeigen Plan, Verbrauch und verbleibende Rückstellung. Teilverbrauch senkt das Budget nicht automatisch; erst eine Überschreitung erzeugt eine Erhöhungswarnung.
 
-Beim Kopieren eines Jahres prüft die App zusätzlich Kategorien, die im Quelljahr getrackt wurden, aber noch kein Budget hatten. Diese erscheinen als mögliche Startbudgets für das neue Jahr. Übernimm sie nur, wenn die Kategorie auch im neuen Jahr geplant werden soll.
+**POT ist kein Sparziel:** POT = erwartete Ausgabe. Sparziel = fester Zielbetrag für später verfügbares Geld.
+
+### 5.3 Inkrementell
+
+Für Kosten, die über das Jahr verteilt geplant, aber unregelmässig oder in Teilbeträgen bezahlt werden. 0-Monate sind geschützt.
+
+### 5.4 Tracking-Lernmodus
+
+Pfad: **Datei → Einstellungen → Verhalten → Budgetübersicht**.
+
+Der Lernmodus erstellt Startbudget-Vorschläge nur für Kategorien ohne positives Jahresbudget. Einstellbar sind:
+
+- Aktivierung,
+- Monate bis zum ersten Vorschlag,
+- benötigte stabile Monate,
+- Hochrechnung des laufenden Monats,
+- Anzeige im Vorschlagsbericht,
+- automatisches Ende.
+
+Im Vorschlagsdialog kannst du übernehmen, weiter beobachten, ignorieren, als unregelmässig/POT markieren oder den Lernstatus zurücksetzen.
+
+### 5.5 Soft-0-Budget
+
+Pfad: **Datei → Einstellungen → Verhalten → Budgetübersicht → Soft-0-Budget aktivieren**.
+
+Die Regel prüft:
+
+**Einnahmen − Ausgaben − Ersparnisse ≈ 0 CHF**
+
+- Überschuss: zusätzliche Ersparnis oder Übertrag vorschlagen.
+- Defizit: zuerst Ersparnisse, danach flexible Ausgaben anpassen.
+- Geschützt: Fixkosten, Wiederholungen, POTs und inkrementelle Jahreskosten.
+
+„Soft“ bedeutet: nur Vorschläge, keine automatische Änderung und keine Buchung.
+
+## 6. Tracking / Buchungen
+
+Eine Buchung enthält Datum, Typ/Konto, Kategorie, Betrag, Bemerkung und optional Tags.
+
+### 6.1 Buchung erfassen
+
+Über Cockpit, Toolbar, Tracking oder **Strg+N** öffnet sich derselbe vollständige Buchungsdialog. **Speichern und weitere hinzufügen** behält sinnvolle letzte Werte wie das Konto bei.
+
+Die Kategorieauswahl zeigt nur Kategorien des gewählten Typs. Buchbare Unterkategorien erscheinen kurz, beispielsweise **Miete** statt **Wohnen › Miete**.
+
+### 6.2 Bearbeiten, duplizieren und löschen
+
+Ausgewählte Buchungen lassen sich über Knöpfe oder Rechtsklick bearbeiten, duplizieren und löschen. Sicherheitsabfragen hängen von den Einstellungen ab.
+
+### 6.3 Fix/Wiederkehrend buchen
+
+**Strg+Umschalt+F** öffnet die Liste der fälligen Fixkosten, Wiederholungen und erwarteten Positionen für einen Monat. Es wird nur die Auswahl gebucht. Der Fälligkeitstag der Kategorie bestimmt das Datum; der Monat wird im Dialog gewählt.
+
+### 6.4 Filter
+
+Kombinierbar sind:
+
+- Typ/Konto,
+- Kategorie; Parent-Auswahl umfasst Children,
+- Tags,
+- Datum oder Zeitraum,
+- Betrag,
+- Bemerkung/Freitext.
+
+**Filter zurücksetzen** zeigt wieder alles. Die Einstellung **Filter merken** kann die Auswahl über Starts hinweg bewahren.
+
+### 6.5 Sparziel-Buchungen
+
+Eine positive Ersparnisbuchung kann ein verknüpftes Sparziel erhöhen. Bei einer negativen Buchung fragt BudgetManager, ob sie als Entnahme des Sparziels behandelt werden soll.
+
+## 7. Übersicht und Diagramme
+
+Die Übersicht bietet Jahr, Monat oder benutzerdefinierten Zeitraum. Rechts können Typ, Kategorie inklusive Unterkategorien, Tags, Bemerkung und Betragsgrenzen kombiniert werden.
+
+### 7.1 Kennzahlen und Tabellen
+
+- Einnahmen, Ausgaben, Ersparnisse und Bilanz.
+- Soll, Ist, Rest, Nutzung in Prozent und Überschreitungen.
+- Gefilterte Buchungsliste.
+- Budgetvorschläge und Lernbudgets.
+
+### 7.2 Diagramme erklärt
+
+- Plan/Ist-Donut.
+- Kategorien-Ranking.
+- Vergleich der Kontotypen.
+- Monatsverlauf.
+- Monatsbilanz.
+- Top-Buchungen.
+
+Klicks auf KPI oder Diagramme setzen passende Filter. Doppelklick auf eine Budgetzeile öffnet die Bearbeitung.
+
+## 8. Sparziele
+
+Sparziele sind eigenständige Projekt-Geldflüsse. BudgetManager trennt deshalb fünf Werte:
+
+- **Zielbetrag:** gewünschte Gesamtsumme des Projekts.
+- **Eingezahlt:** Summe der echten Einzahlungen abzüglich ausdrücklich als Korrektur gebuchter Fehlbeträge.
+- **Verwendet/Bezüge:** Geld, das aus dem Projektbestand herausgenommen wurde.
+- **Aktueller Bestand:** eingezahlt minus verwendet.
+- **Noch einzuzahlen:** Zielbetrag minus eingezahlt. Bezüge erhöhen diesen Wert nicht erneut.
+
+Beispiel Hochzeit: Ziel `50’000 CHF`, eingezahlt `30’000 CHF`, davon verwendet `15’000 CHF`. Der aktuelle Bestand ist `15’000 CHF`; noch einzuzahlen bleiben `20’000 CHF`.
+
+Workflow:
+
+1. Ziel mit Zielbetrag und optionaler Kategorie anlegen.
+2. Einzahlungen als positive Ersparnisbuchungen erfassen.
+3. Eine negative Buchung ist standardmässig ein **Bezug** und wird unter „verwendet“ ausgewiesen.
+4. War die negative Buchung nur eine Fehlbuchung, im Rückfragedialog ausdrücklich **Korrektur** wählen. Sie vermindert den Einzahlungsfortschritt, zählt aber nicht als Verwendung.
+5. Über **Teilfreigabe** einen wählbaren Betrag verfügbar machen. Das Ziel bleibt aktiv und weitere Einzahlungen bleiben möglich.
+6. Ziel erst bei endgültigem Abschluss beenden; abgeschlossene Ziele können wieder geöffnet werden.
+
+Bestand und Einzahlungsfortschritt dürfen nicht negativ werden. Einzahlungen über den Zielbetrag sowie Bezüge über den vorhandenen Bestand werden blockiert.
+
+## 9. Cockpit
+
+Das Cockpit zeigt Monatsampel, nächste Schritte, KPI, offene Fälligkeiten, Warnungen, POT-Reststände, Favoriten, Sparziele und letzte Buchungen. Über **Cockpit gestalten** blendest du Karten ein/aus und änderst ihre Reihenfolge.
+
+### 9.1 Kennzahlen und Trend
+
+Die vier Kacheln oben zeigen Einnahmen, Ausgaben, Ersparnisse und den freien Betrag. Rechts unten in jeder Kachel steht der Vergleich zum Vormonat als Pfeil mit Betrag. Die Farbe folgt der Bedeutung, nicht dem Vorzeichen: mehr Einnahmen sind grün, mehr Ausgaben rot. Im ersten Monat ohne Vorgängerdaten bleibt der Pfeil aus.
+
+### 9.2 Auswertung
+
+Der Abschnitt **Auswertung** enthält zwei Diagramme. Der Ring zeigt die Ausgaben des Monats nach Kategorie mit der Gesamtsumme in der Mitte; mehr als fünf Kategorien werden zu einem Restsegment zusammengefasst. Der Flächenverlauf daneben zeigt die kumulierten Ausgaben über den Monat — er steigt an jedem Buchungstag und macht sichtbar, ob sich die Ausgaben am Monatsanfang oder -ende ballen.
+
+### 9.3 Automatik oder fixiertes Layout
+
+Standard ist der **Automatikmodus**: Abschnitte ohne Inhalt schrumpfen auf ihre Kopfzeile und rutschen unter die gefüllten. Bekommt ein Abschnitt wieder Inhalt, kehrt er an seine gespeicherte Position zurück. Damit steht immer oben, was gerade etwas zu sagen hat.
+
+Wer eine eigene Anordnung möchte, aktiviert **Ansicht → Cockpit-Layout → Kacheln frei anordnen** oder den gleichnamigen Schalter oben im Cockpit. Danach ist die **gesamte Kopfzeile** jeder Kachel eine Drag-Zone; zusätzlich bleibt der Griff `≡` sichtbar. Linke und rechte Spalte sind unabhängige Stapel: Eine Kachel rechts kann deshalb bis ganz nach oben rücken, ohne von der Höhe einer linken Kachel blockiert zu werden. Während des Ziehens zeigt ein deutlich markierter **Ablageplatzhalter** exakt die spätere Position. Reihenfolge und Spalte werden nach jedem Loslassen sofort gespeichert. Tabellen, Buttons und Diagramme innerhalb der Kachel bleiben normal bedienbar, weil der Kachelinhalt selbst nicht als Drag-Zone dient. **Ansicht → Cockpit-Layout → Cockpit-Layout zurücksetzen** stellt Automatikmodus, Standardreihenfolge und Standardspalten wieder her.
+
+Beides gleichzeitig geht bewusst nicht: Die Automatik würde eine von Hand gezogene Anordnung beim nächsten Aktualisieren überschreiben.
+
+### 9.4 Ein oder zwei Spalten
+
+Im Automatikmodus wechselt das Cockpit ab etwa 1180 Pixel Fensterbreite auf zwei Spalten. Im manuellen Modus stehen bereits ab 720 Pixel zwei gleich breite Zielspalten bereit, damit Kacheln auch in normalen Fenstergrössen frei zwischen links und rechts verschoben werden können. Bei noch schmaleren Fenstern kann die umgebende Ansicht horizontal scrollen; die gespeicherte Anordnung bleibt erhalten.
+
+### 9.5 Aussehen anpassen
+
+Farben und Kachelform kommen vollständig aus dem aktiven Designprofil. Unter **Einstellungen → Erscheinungsbild** stehen 26 Profile zur Auswahl; eigene lassen sich dort erstellen und speichern. Für die Optik moderner Dashboards ist **Mitternacht – Violett** gedacht: fast schwarzer Hintergrund, abgesetzte Kacheln, violetter Akzent.
+
+## 10. Tags
+
+Tags sind Schlagworte zusätzlich zur Kategorie, etwa „Hochzeit“, „steuerlich relevant“ oder „Urlaub 2026“. Der Tags-Manager verwaltet Name, Farbe und optionalen Aktionstext. Feste Kategorie-Tags werden automatisch ergänzt; manuelle Tags bleiben bei einem Kategorienwechsel erhalten.
+
+## 11. Konten
+
+BudgetManager besitzt mindestens die drei Kontotypen **Einnahmen**, **Ausgaben** und **Ersparnisse**. Zusätzliche Konten können in der Konten-/Kategorienverwaltung angelegt, farblich gekennzeichnet und bei Bedarf geschlossen werden; die drei Grundtypen bleiben erhalten.
+
+Konten strukturieren den Geldfluss, Kategorien beschreiben den Zweck. Wähle beim Buchen zuerst das Konto bzw. den Typ; danach zeigt die Kategorieauswahl nur passende Kategorien. Benutzerkonten für Anmeldung und Verschlüsselung werden getrennt unter **Konto, Sicherheit und Restore-Key** erklärt.
+
+## 12. Monatsabschluss
+
+Pfad: **Cockpit → Monatsabschluss…**.
+
+Der Assistent rechnet aus echten Buchungen:
+
+**Einnahmen − Ausgaben − Ersparnisse = frei verfügbar**
+
+- Überschuss kann als Ersparnis gebucht werden.
+- Defizit kann aus vorhandenem Ersparnisguthaben gedeckt werden.
+- Hinweise für den Folgemonat nennen nur flexible Budgets, nie Fixkosten oder Wiederholungen.
+
+Das Häkchen **Monat als abgeschlossen markieren** setzt nur einen Erinnerungs-Vermerk für das Cockpit. Es sperrt weder Budget noch Buchungen. Nachträgliche Änderungen bleiben möglich; öffne den Assistenten erneut, um neu zu rechnen.
+
+## 13. Favoriten und Suche
+
+Favoriten sind Kategorien, die du häufig prüfen möchtest. Das Favoriten-Dashboard ist über **F12** oder Extras erreichbar.
+
+**Extras → Globale Suche** oder **Strg+F** durchsucht Buchungen, Budgets und Kategorien. Mindestens zwei Zeichen eingeben. Doppelklick auf ein Ergebnis springt zum passenden Bereich.
+
+## 14. Export, PDF und Drucken
+
+**Extras → Export / Strg+E** exportiert Tracking, Budget und optional Kategorien für ein Jahr oder den gesamten Zeitraum.
+
+Verfügbare Formate sind CSV mit optionalem UTF-8-BOM, tabulatorgetrenntes TXT, XLSX mit getrennten Tabellenblättern sowie ein schwarzweiss-tauglicher A4-PDF-Bericht. XLSX enthält Filter und fixierte Kopfzeilen. Eine interaktive Druckvorschau ist nicht Bestandteil des Exportdialogs.
+
+Der Export ist kein Backup; verwende `.bmr` für die Wiederherstellung.
+## 15. Benutzerkonto, Sicherheit und Restore-Key
+
+Sicherheitsstufen:
+
+- Quick: bequem, lokaler Schlüssel.
+- PIN: kurzer Zugangsschutz.
+- Passwort: stärkster normaler Schutz.
+
+Name, Geheimnis und Sicherheitsstufe lassen sich in der Kontoverwaltung ändern. Sicherheitskritische Aktionen können eine erneute Anmeldung verlangen.
+
+Der Restore-Key kann eine verschlüsselte Datenbank wieder zugänglich machen. Sichere ihn getrennt vom Backup, zum Beispiel in einem Passwortmanager und zusätzlich auf Papier. Wer Restore-Key und `.enc`-Datei besitzt, kann die Daten entschlüsseln.
+
+## 16. Datenordner, Backup und Datenbankverwaltung
+
+### 16.1 Datenordner
+
+Pfad: Reiter **Konto** oder **Datei → Einstellungen → Konto & Daten**.
+
+Du siehst den wirksamen Speicherort, kannst ihn öffnen oder einen neuen Ordner wählen. Bei einem leeren Ziel bietet BudgetManager eine kontrollierte Übernahme mit Sicherheits-Backup an. Der neue Speicherort wird nach Neustart vollständig wirksam.
+
+### 16.2 Backup und Restore
+
+Backups sind geprüfte `.bmr`-Pakete. Sie können Datenbank, Einstellungen und das zur Datenbank gehörende Benutzerkonto enthalten. Bei mehreren lokalen Konten wird nur der passende Kontoeintrag mitgesichert. Auto-Backup bietet Intervall, Anzahl aufzubewahrender Sicherungen und optionale Bereinigung.
+
+Seit v2.2.48 werden Datenbank, Einstellungen und Konto-Metadaten jeweils mit eigener SHA-256-Prüfsumme kontrolliert. Beschädigte oder nachträglich veränderte Inhalte werden abgewiesen; alte Backups können nach ausdrücklicher Bestätigung in eine vollständig geprüfte Kopie umgewandelt werden. Die Prüfsummen beweisen jedoch nicht, von wem ein Backup stammt. Vollständige Konto-Backups deshalb nur aus vertrauenswürdiger Quelle importieren. Bei einem Quick-Konto kann das Paket den lokalen Datenbankschlüssel enthalten; behandle die `.bmr`-Datei deshalb wie ein Passwort und lege sie nicht ungeschützt in öffentliche Cloud-Ordner.
+
+Vor Reset, Restore, Datenumzug und grossen Updates ein frisches externes Backup erstellen.
+
+### 16.3 Datenbankverwaltung
+
+Sie zeigt Statistiken und Migrationsstand, kann technische Altlasten bereinigen und enthält den einzigen normalen Datenbank-Reset. Reset existiert nur noch in der Datenbankverwaltung. Reset verlangt bei geschütztem Konto erneut den Benutzercode (PIN oder Passwort) und löscht Nutzdaten.
+
+Bei Source- oder portablen Starts kann der Standardordner `data/` verwendet werden. Verlasse dich bei mehreren Programmordnern auf den Pfad in der Statusleiste.
+
+## 17. Einstellungen und Design
+
+**Datei → Einstellungen** bzw. **Strg+,**.
+
+- Allgemein: Sprache, Währung, Zahlenformat, Onboarding, Startverhalten.
+- Verhalten: Auto-Speichern, Warnungen, Tracking, Fälligkeit, Lernmodus, Soft-0, Übertrag, Drag & Drop.
+- Darstellung: Hell/Dunkel, Designprofile, Schriftgrösse, Tabellendichte, Fixkosten-Hervorhebung.
+- Tastenkürzel: ändern oder zurücksetzen.
+- Konto & Daten: Datenordner, Backups, Datenbank.
+
+Seit v2.2.33 nimmt die Seitenleiste ihre Farbe aus dem BudgetManager-Profil. Ein dunkles GNOME-Systemtheme darf ein helles App-Profil nicht mehr übersteuern. Eine Sprachänderung wird vollständig nach einem Neustart angewendet.
+
+### Einfach- und Erweitert-Modus
+
+Unter **Ansicht → Bedienmodus** wechselst du jederzeit zwischen:
+
+- **Einfach:** Cockpit, Budget, Tracking und Übersicht; Kategorien und Sparziele bleiben über Dialoge bzw. nach Umschalten erreichbar.
+- **Erweitert:** zeigt alle Hauptreiter und das vollständige Standard-Cockpit.
+
+Manuell veränderte Reiter oder Cockpit-Bereiche werden als **Benutzerdefiniert** erkannt. Es werden dabei keine Daten oder Funktionen gelöscht.
+
+## 18. Tastenkürzel
+
+Wichtige Standards:
+
+| Kürzel | Funktion |
+|---|---|
+| F1 | Handbuch |
+| Strg+F1 | Kürzelübersicht |
+| Strg+N | Buchung erfassen |
+| Strg+F | Suche |
+| Strg+S | Speichern |
+| Strg+K | Kategorien |
+| Strg+T | Tags |
+| Strg+E | Export |
+| Strg+0…5 | Navigation |
+| Strg+Z / Strg+Umschalt+Z | Rückgängig/Wiederholen |
+| Strg+Umschalt+F | Fix/Wiederkehrend buchen |
+| F5 | Aktualisieren |
+| F10 / F11 | Maximieren / Vollbild |
+
+Alle Kürzel sind in den Einstellungen anpassbar.
+
+## 19. Updates
+
+**Extras → Updates** bzw. **Strg+U**. Der Update-Dialog prüft Manifest und Integrität, lädt die passende Variante und bereitet die Installation vor. Datenordner und Backups bleiben bestehen. Vor einem grossen Update ist ein zusätzliches externes Backup trotzdem sinnvoll.
+
+## 20. Fehlerdiagnose
+
+Unter **Hilfe** kannst du Anwendungslog, Crash-Log und Diagnoseordner öffnen oder einen Diagnosebericht erzeugen. Der Diagnosebericht enthält technische Informationen und Logs, aber bewusst keine Datenbank und keine Backups. Vor dem Weitergeben trotzdem prüfen.
+
+Nach einem unsauberen Programmende erscheint beim nächsten Start ein Hinweis.
+
+## 21. Typische Probleme
+
+### Rechte Seite oder Seitenleiste bleibt dunkel
+
+- App-Profil unter **Einstellungen → Darstellung** prüfen.
+- Theme einmal wechseln und zurückwechseln.
+- Version 2.2.33 oder neuer verwenden; GNOME Dark darf die Sidebar nicht mehr übersteuern.
+
+### Daten fehlen scheinbar
+
+Zeitraum und alle Filter prüfen, danach **F5**. Die Statusleiste zeigt den aktiven Datenbankpfad.
+
+### Budget erzeugt keine Buchung
+
+Das ist korrekt: Budget ist nur Plan. Buchung manuell oder über Fix/Wiederkehrend erfassen.
+
+### Kein Soft-0-Vorschlag
+
+Einnahmenbudget muss grösser als 0 CHF sein. Ausgewählten Monat, Einstellung und stabile Vormonate prüfen.
+
+### Restore funktioniert nicht
+
+Richtiges `.bmr`, aktives Konto und Restore-Key prüfen. Vor dem nächsten Versuch Sicherheitskopie behalten.
+
+## 22. Best-Practice-Routine
+
+**Täglich:** Buchungen erfassen.
+
+**Wöchentlich:** Tracking-Filter prüfen, offene Fehler korrigieren, Übersicht ansehen.
+
+**Monatlich:** Fix/Wiederkehrend buchen, Monatsabschluss prüfen, Vorschläge bewusst bewerten, Backup erstellen.
+
+**Jährlich:** Jahr kopieren, Fixkosten/POTs/inkrementelle Kategorien kontrollieren, 13. Monatslohn separat planen.
+
+## Wiki-Audit und grafische Zusammenhänge
+
+Unter **Hilfe → Zusammenhänge und Grafiken** öffnet sich eine lokale Offline-Seite mit drei Grafiken. Sie zeigt den Gesamtprozess, den Datenfluss zwischen Budget und Tracking sowie die Rückkopplung über Übersicht, Warnungen und Budgetanpassung. Das **?** rechts oben in der Menüleiste – direkt neben Minimieren/Maximieren/Schließen – öffnet das durchsuchbare In-App-Handbuch. Zusätzlich gibt es den Knopf **? Hilfe** unten links in der Seitenleiste. Beide Wege sind bewusst normaler Text statt Emoji, damit sie unter Fedora/GNOME auch ohne Emoji-Schrift sichtbar bleiben.
+
+Im Cockpit sinken leere Kacheln seit v2.2.41 automatisch ans Ende ihrer Spalte. Wer eine eigene Anordnung will, schaltet **Kacheln fixieren** ein: dann bleibt die Reihenfolge, und die Kacheln lassen sich an ihrer Kopfzeile mit der Maus ziehen — auch von einer Spalte in die andere.
+
+Das Menü **Hilfe** ist seit v2.2.38 in fünf Gruppen aufgeteilt: Nachschlagen (Handbuch, Wissensdatenbank, Visuelle Übersichten), Lernen (Tastenkürzel, Erste Schritte), **Problembehandlung** als Untermenü (Anwendungsprotokoll, Absturzprotokoll, Diagnoseordner, Diagnosebericht, Wiederherstellungsschlüssel), Version (Nach Updates suchen, Neuerungen in dieser Version) und zuletzt Über. Die Update-Prüfung stand vorher unter Extras.

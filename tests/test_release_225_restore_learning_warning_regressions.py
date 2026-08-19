@@ -1,4 +1,5 @@
 """Regressionen v2.2.5: Restore darf Warnungen/Lernen/Onboarding nicht brechen."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -10,9 +11,14 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_learning import KIND_FIXED_RECURRING, apply_learning_budget_kind  # noqa: E402
+from model.budget_learning import (
+    KIND_FIXED_RECURRING,
+    apply_learning_budget_kind,
+)  # noqa: E402
 from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
-from model.budget_warnings_model_extended import BudgetWarningsModelExtended  # noqa: E402
+from model.budget_warnings_model_extended import (
+    BudgetWarningsModelExtended,
+)  # noqa: E402
 from model.migrations import migrate_all  # noqa: E402
 from model.typ_constants import TYP_EXPENSES  # noqa: E402
 from settings import Settings  # noqa: E402
@@ -40,10 +46,19 @@ def _add_category(conn: sqlite3.Connection, typ: str, name: str) -> None:
     )
 
 
-def _book(conn: sqlite3.Connection, year: int, month: int, category: str, amount: float) -> None:
+def _book(
+    conn: sqlite3.Connection, year: int, month: int, category: str, amount: float
+) -> None:
     conn.execute(
         "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
-        (f"{year:04d}-{month:02d}-15", TYP_EXPENSES, category, amount, "test", "manual"),
+        (
+            f"{year:04d}-{month:02d}-15",
+            TYP_EXPENSES,
+            category,
+            amount,
+            "test",
+            "manual",
+        ),
     )
 
 
@@ -61,7 +76,9 @@ def test_manual_budget_warnings_are_not_disabled_by_passive_banner_setting(
     _book(conn, 2026, 7, "Lebensmittel", 150)
     conn.commit()
 
-    rows = BudgetWarningsModelExtended(conn).check_warnings_extended(2026, 7, lookback_months=3)
+    rows = BudgetWarningsModelExtended(conn).check_warnings_extended(
+        2026, 7, lookback_months=3
+    )
 
     assert len(rows) == 1
     assert rows[0].category == "Lebensmittel"
@@ -92,7 +109,9 @@ def test_tracking_learning_reopens_after_stale_ended_state_when_budget_is_empty(
     )
 
     assert [s.category for s in suggestions] == ["Hobby"]
-    assert conn.execute("SELECT COUNT(*) FROM tracking_learning_state").fetchone()[0] == 0
+    assert (
+        conn.execute("SELECT COUNT(*) FROM tracking_learning_state").fetchone()[0] == 0
+    )
 
 
 def test_accepted_suggestion_marker_does_not_hide_rows_when_budget_was_not_written(
@@ -112,7 +131,9 @@ def test_accepted_suggestion_marker_does_not_hide_rows_when_budget_was_not_writt
     )
     conn.commit()
 
-    assert BudgetWarningsModelExtended(conn).get_accepted_for_month(2026, 2) == {(TYP_EXPENSES, "Hobby")}
+    assert BudgetWarningsModelExtended(conn).get_accepted_for_month(2026, 2) == {
+        (TYP_EXPENSES, "Hobby")
+    }
 
 
 def test_learning_budget_kind_uses_preferred_recurring_day_from_settings(
@@ -130,7 +151,9 @@ def test_learning_budget_kind_uses_preferred_recurring_day_from_settings(
     assert tuple(row) == (1, 1, 25)
 
 
-def test_startup_import_marks_existing_database_and_suppresses_onboarding_static() -> None:
+def test_startup_import_marks_existing_database_and_suppresses_onboarding_static() -> (
+    None
+):
     startup = (ROOT / "views/startup_wizard.py").read_text(encoding="utf-8")
     main = (ROOT / "main.py").read_text(encoding="utf-8")
     setup = (ROOT / "views/setup_assistant_dialog.py").read_text(encoding="utf-8")

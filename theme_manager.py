@@ -240,7 +240,11 @@ class ThemeManager:
 
     def get_all_profiles(self) -> List[str]:
         # Union + builtins
-        names = set(self._bundled_index.keys()) | set(self._user_index.keys()) | set(BUILTIN_PROFILES.keys())
+        names = (
+            set(self._bundled_index.keys())
+            | set(self._user_index.keys())
+            | set(BUILTIN_PROFILES.keys())
+        )
         # Aliases NICHT extra anzeigen
         names = {n for n in names if n not in ALIASES.keys()}
         return sorted(names, key=lambda s: s.casefold())
@@ -303,7 +307,9 @@ class ThemeManager:
         ok, msg = self._validate_profile_data(data)
         if not ok:
             # Fehler auch in log schreiben
-            self._append_error_log(name, str(self.user_dir / f"{_slugify(name)}.json"), msg)
+            self._append_error_log(
+                name, str(self.user_dir / f"{_slugify(name)}.json"), msg
+            )
             return False
 
         path = self.user_dir / f"{_slugify(name)}.json"
@@ -337,7 +343,11 @@ class ThemeManager:
             self._user_index.pop(name, None)
             # wenn aktuelles Profil: fallback setzen
             if self.settings.get("active_design_profile") == name:
-                fallback = "Standard Dunkel" if self._current_mode() == "dunkel" else "Standard Hell"
+                fallback = (
+                    "Standard Dunkel"
+                    if self._current_mode() == "dunkel"
+                    else "Standard Hell"
+                )
                 self.settings.set("active_design_profile", fallback)
                 self._current_profile = None
             return True
@@ -365,7 +375,9 @@ class ThemeManager:
 
     def get_current_profile(self) -> Optional[ThemeProfile]:
         if not self._current_profile:
-            saved = (self.settings.get("active_design_profile") or "").strip() or "Standard Hell"
+            saved = (
+                self.settings.get("active_design_profile") or ""
+            ).strip() or "Standard Hell"
             # Alias ggf. auflösen
             saved = self._resolve_alias(saved)
             if not self.set_current_profile(saved):
@@ -375,7 +387,9 @@ class ThemeManager:
 
     def _current_mode(self) -> str:
         # Versuche SettingsDialog / Settings kompatibel
-        v = (self.settings.get("theme") if hasattr(self.settings, "get") else None) or "light"
+        v = (
+            self.settings.get("theme") if hasattr(self.settings, "get") else None
+        ) or "light"
         if isinstance(v, str) and v.lower() in ("dark", "dunkel"):
             return "dunkel"
         return "hell"
@@ -384,6 +398,7 @@ class ThemeManager:
         """Gibt Typfarben zurück – immer mit DB-Schlüsseln (TYP_*) als Keys."""
         p = self.get_current_profile()
         from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+
         if not p:
             return {
                 TYP_INCOME: "#2ecc71",
@@ -391,9 +406,9 @@ class ThemeManager:
                 TYP_SAVINGS: "#3498db",
             }
         return {
-            TYP_INCOME:   p.get("typ_einnahmen",   "#2ecc71"),
-            TYP_EXPENSES: p.get("typ_ausgaben",    "#e74c3c"),
-            TYP_SAVINGS:  p.get("typ_ersparnisse", "#3498db"),
+            TYP_INCOME: p.get("typ_einnahmen", "#2ecc71"),
+            TYP_EXPENSES: p.get("typ_ausgaben", "#e74c3c"),
+            TYP_SAVINGS: p.get("typ_ersparnisse", "#3498db"),
         }
 
     def get_negative_color(self) -> str:
@@ -405,7 +420,9 @@ class ThemeManager:
         """Gibt die Farbe für ok/warning/danger zurück."""
         p = self.get_current_profile()
         if not p:
-            return {"ok": "#27ae60", "warning": "#f39c12", "danger": "#e74c3c"}.get(level, "#333")
+            return {"ok": "#27ae60", "warning": "#f39c12", "danger": "#e74c3c"}.get(
+                level, "#333"
+            )
         return {
             "ok": p.get("typ_einnahmen", "#27ae60"),
             "warning": "#f39c12",
@@ -432,12 +449,19 @@ class ThemeManager:
         text = p.get("text", "#111")
         text_dim = p.get("text_gedimmt", "#666")
         accent = p.get("akzent", "#2f80ed")
+        accent_text = p.get("akzent_text", "#fff")
+        accent_panel_text = p.get("akzent_panel_text", accent)
         table_bg = p.get("tabelle_hintergrund", "#fff")
         table_alt = p.get("tabelle_alt", "#f7f9fc")
         table_header = p.get("tabelle_header", "#eef2f7")
+        table_header_text = p.get("tabelle_header_text", text)
         table_grid = p.get("tabelle_gitter", "#d6dbe3")
         sel_bg = p.get("auswahl_hintergrund", accent)
         sel_text = p.get("auswahl_text", "#fff")
+        # v2.2.33: Seitenleisten-Farbe. Der Key existiert in allen Profilen und
+        # ist im Erscheinungsmanager einstellbar, wurde aber bis v2.2.32 von
+        # keinem Widget gerendert (siehe Sidebar-Regeln unten).
+        bg_sidebar = p.get("hintergrund_seitenleiste", bg_panel)
 
         # Hover-Farben (mit intelligentem Fallback für bestehende Themes)
         hover_bg = p.get("hover_hintergrund") or self._fallback_hover(sel_bg, table_bg)
@@ -448,6 +472,10 @@ class ThemeManager:
         dropdown_sel = p.get("dropdown_selection", accent)
         dropdown_sel_text = p.get("dropdown_selection_text", "#fff")
         dropdown_border = p.get("dropdown_border", table_grid)
+        # Dashboard/KPI-Zustände stammen ebenfalls vollständig aus dem Profil.
+        border = table_grid
+        positive = p.get("typ_einnahmen", "#27ae60")
+        negative = p.get("negativ_text", p.get("typ_ausgaben", "#e74c3c"))
 
         font_size = p.get("schriftgroesse", 10)
 
@@ -455,7 +483,24 @@ class ThemeManager:
 * {{ font-size: {font_size}pt; }}
 QMainWindow, QDialog, QWidget {{ background-color: {bg_app}; color: {text}; }}
 QLabel {{ color: {text}; }}
-QPushButton {{ background-color: {accent}; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; }}
+/* ── Seitenleiste (v2.2.33) ─────────────────────────────────────────
+   Bis v2.2.32 faerbte main_window die Seitenleiste ueber palette(base)
+   usw. Der ThemeManager setzt aber ausschliesslich ein Stylesheet und
+   nie eine QPalette – palette(...) liefert daher die SYSTEM-Palette.
+   Auf einem dunklen Desktop (GNOME/KDE dark) blieb die Seitenleiste
+   deshalb dunkel, egal welches helle Profil aktiv war. Die Farben
+   gehoeren ins App-Theme, damit das gewaehlte Profil wirklich greift
+   und der im Erscheinungsmanager einstellbare Wert
+   'hintergrund_seitenleiste' endlich Wirkung hat. */
+QFrame#mainSidebar {{ background-color: {bg_sidebar}; border-right: 1px solid {table_grid}; }}
+QFrame#mainSidebar QLabel {{ background: transparent; color: {text}; }}
+QLabel#sidebarBrand {{ color: {text}; background: transparent; }}
+QLabel#sidebarVersion {{ color: {text_dim}; background: transparent; }}
+QPushButton#sidebarNavButton, QPushButton#sidebarUtilityButton {{ background: transparent; color: {text}; border: none; }}
+QPushButton#sidebarNavButton:hover, QPushButton#sidebarUtilityButton:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
+QPushButton#sidebarNavButton:checked {{ background-color: {sel_bg}; color: {sel_text}; }}
+QToolBar#unifiedActionToolbar {{ background-color: {bg_panel}; border-bottom: 1px solid {table_grid}; }}
+QPushButton {{ background-color: {accent}; color: {accent_text}; border: none; padding: 8px 16px; border-radius: 6px; }}
 QPushButton:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; border-radius: 4px; padding: 4px 8px; min-height: 22px; }}
 QComboBox {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; border-radius: 4px; padding: 4px 8px; min-height: 22px; }}
@@ -496,19 +541,50 @@ QTableWidget {{ background-color: {table_bg}; alternate-background-color: {table
 QTableWidget::item:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 QTableWidget::item:selected {{ background-color: {sel_bg}; color: {sel_text}; }}
 QTableWidget::item:selected:hover {{ background-color: {sel_bg}; color: {sel_text}; }}
-QHeaderView::section {{ background-color: {table_header}; border: 1px solid {table_grid}; padding: 6px; }}
+QHeaderView::section {{ background-color: {table_header}; color: {table_header_text}; border: 1px solid {table_grid}; padding: 6px; }}
 QGroupBox {{ background-color: {bg_panel}; border: 1px solid {table_grid}; border-radius: 8px; padding: 12px; margin-top: 12px; }}
-QGroupBox::title {{ color: {accent}; padding: 0 8px; }}
+QGroupBox::title {{ color: {accent_panel_text}; padding: 0 8px; }}
 
 QTabWidget::pane {{ border: 1px solid {table_grid}; border-radius: 10px; }}
 QTabBar::tab {{ background-color: {bg_panel}; color: {text}; padding: 8px 14px; margin: 2px; border-radius: 10px; border: 1px solid {table_grid}; }}
-QTabBar::tab:selected {{ background-color: {accent}; color: #fff; border: 1px solid {accent}; }}
+QTabBar::tab:selected {{ background-color: {accent}; color: {accent_text}; border: 1px solid {accent}; }}
 QTabBar::tab:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 
 QMenuBar {{ background-color: {bg_panel}; color: {text}; }}
-QMenuBar::item:selected {{ background-color: {accent}; color: #fff; border-radius: 6px; }}
+QMenuBar::item:selected {{ background-color: {accent}; color: {accent_text}; border-radius: 6px; }}
+/* Hilfe-'?' oben rechts in der Menueleiste (Corner-Widget).
+   Farben kommen aus dem aktiven Profil, damit der Knopf in hellen wie
+   dunklen Themes kontrastreich bleibt. Ohne diese Regel greift auf
+   manchen Desktops die generische QPushButton-/QToolButton-Palette und
+   das Zeichen verschwindet optisch in der Leiste. */
+/* v2.2.42 Kartenoptik: Kacheln bekommen Radius, Rand und Innenabstand aus
+   dem Profil. Vorher waren es schlichte QFrame-Panels ohne eigene Sprache. */
+QLabel#cockpitTitle {{ color: {text}; font-size: 22px; font-weight: 700; }}
+QLabel#cockpitSubtitle, QLabel#cockpitModeHint, QLabel#cockpitNextSteps {{ color: {text_dim}; }}
+QLabel#cockpitMonthStatus {{ color: {text}; font-size: 15px; font-weight: 600; }}
+QLabel#cockpitNextSteps {{ font-size: 12px; }}
+QFrame#cockpitSection {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: 12px; }}
+QFrame#cockpitCard {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: 12px; }}
+QLabel#cockpitCardIcon {{ background-color: {hover_bg}; color: {accent}; border-radius: 9px; font-size: 15px; padding: 6px; }}
+QLabel#cockpitCardLabel {{ color: {text_dim}; font-weight: 600; }}
+QLabel#cockpitCardValue {{ color: {text}; font-size: 26px; font-weight: 700; }}
+QLabel#cockpitCardCaption {{ color: {text_dim}; font-size: 11px; }}
+QLabel#cockpitCardTrend {{ font-weight: 700; }}
+QLabel#cockpitCardTrend[trendState="good"] {{ color: {positive}; }}
+QLabel#cockpitCardTrend[trendState="bad"] {{ color: {negative}; }}
+QLabel#cockpitSectionTitle, QLabel#cockpitInnerTitle {{ color: {text}; font-weight: 700; }}
+QLabel#cockpitSectionCount {{ color: {text_dim}; font-weight: 600; }}
+QLabel#cockpitSectionEmpty {{ color: {text_dim}; }}
+QToolButton#cockpitSectionGrip {{ color: {text_dim}; background: transparent; border: none; font-size: 14px; padding: 2px 5px; }}
+QToolButton#cockpitSectionGrip:hover {{ color: {accent}; background-color: {hover_bg}; }}
+QFrame#cockpitDropPlaceholder {{ background-color: {hover_bg}; border: 2px dashed {accent}; border-radius: 10px; min-height: 58px; }}
+QLabel#cockpitDropPlaceholderText {{ color: {accent}; font-weight: 700; background: transparent; border: none; }}
+QChartView#cockpitChartView {{ background: transparent; border: none; }}
+QToolButton#menuBarHelpButton {{ background-color: {accent}; color: {accent_text}; border: 1px solid {accent}; border-radius: 11px; font-size: 15px; font-weight: 700; min-width: 26px; min-height: 22px; padding: 0 9px; margin: 2px 8px 2px 4px; }}
+QToolButton#menuBarHelpButton:hover {{ background-color: {hover_bg}; color: {hover_text}; border: 1px solid {hover_bg}; }}
+QToolButton#menuBarHelpButton:focus {{ border: 2px solid {text}; }}
 QMenu {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; }}
-QMenu::item:selected {{ background-color: {accent}; color: #fff; }}
+QMenu::item:selected {{ background-color: {accent}; color: {accent_text}; }}
 
 QProgressBar {{ border: 1px solid {table_grid}; border-radius: 3px; text-align: center; background: {bg_panel}; color: {text}; }}
 
@@ -544,6 +620,7 @@ QStatusBar {{ background-color: {bg_panel}; color: {text_dim}; border-top: 1px s
             # UI-Colors Cache invalidieren
             try:
                 from views.ui_colors import invalidate_color_cache
+
                 invalidate_color_cache()
             except Exception as e:
                 logger.debug("invalidate_color_cache: %s", e)
@@ -564,9 +641,15 @@ QStatusBar {{ background-color: {bg_panel}; color: {text_dim}; border-top: 1px s
                 except Exception as e:
                     logger.debug("autosize_all_tables(app): %s", e)
             # Typfarben auch weiterhin in Settings schreiben
-            self.settings.set("typ_einnahmen_color", profile.get("typ_einnahmen", "#2ecc71"))
-            self.settings.set("typ_ausgaben_color", profile.get("typ_ausgaben", "#e74c3c"))
-            self.settings.set("typ_ersparnisse_color", profile.get("typ_ersparnisse", "#3498db"))
+            self.settings.set(
+                "typ_einnahmen_color", profile.get("typ_einnahmen", "#2ecc71")
+            )
+            self.settings.set(
+                "typ_ausgaben_color", profile.get("typ_ausgaben", "#e74c3c")
+            )
+            self.settings.set(
+                "typ_ersparnisse_color", profile.get("typ_ersparnisse", "#3498db")
+            )
 
     # -------------------------
     # Logging
@@ -579,9 +662,15 @@ QStatusBar {{ background-color: {bg_panel}; color: {text_dim}; border-top: 1px s
 
                 log_path = data_dir() / "theme_profile_errors.log"
             except Exception:
-                log_path = Path(__file__).resolve().parent / "data" / "theme_profile_errors.log"
+                log_path = (
+                    Path(__file__).resolve().parent
+                    / "data"
+                    / "theme_profile_errors.log"
+                )
             log_path.parent.mkdir(parents=True, exist_ok=True)
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(f"[{name}] {path}: {msg}\n")
         except Exception as e:
-            logger.debug("Theme-Profil-Fehlerlog konnte nicht geschrieben werden: %s", e)
+            logger.debug(
+                "Theme-Profil-Fehlerlog konnte nicht geschrieben werden: %s", e
+            )

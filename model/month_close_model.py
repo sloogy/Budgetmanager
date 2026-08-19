@@ -129,7 +129,7 @@ class MonthCloseModel:
             date_clause = " AND date < ?"
             params.append(f"{next_y:04d}-{next_m:02d}-01")
         rows = self.conn.execute(
-            "SELECT category, COALESCE(SUM(amount), 0) AS saldo FROM tracking "
+            "SELECT category, COALESCE(SUM(amount), 0) AS saldo FROM tracking "  # nosec B608
             "WHERE typ = ?" + date_clause + " GROUP BY category HAVING saldo > 0.005 "
             "ORDER BY saldo DESC",
             tuple(params),

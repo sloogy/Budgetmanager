@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.2.6
+# 💰 BudgetManager v2.2.60
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.2.6-blue)
+![Version](https://img.shields.io/badge/version-2.2.60-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -36,31 +36,96 @@ Alternativ:
 
 ---
 
-## Neu in v2.2.6
+## Neu in v2.2.60
 
-- Zentrale Datumsbereich-Helfer für Monats-/Jahresabfragen; doppelte `_month_bounds()`-Logik entfernt.
-- Tracking, Cockpit, Budgetübersicht, Budgetwarnungen, Vorschlagsengine und KPI-Monatswerte verwenden indexfreundliche halb-offene Datumsbereiche.
-- SQLite-Lock-Timeout konsistent auf 10 Sekunden ausgerichtet.
-- Release-Nachweise aus Fix- und Performance-Runde in `RELEASE_COMPARE_INTEGRATION_REPORT_v2_1_7.md` konsolidiert.
-- Neue Regressionstests sichern Datumsgrenzen, Timeout-Konfiguration und entfernte Logik-Dubletten ab.
+- **Verbindliche Basis:** v2.2.56 LIFEPLANNER_FIXED bleibt führend; Verbesserungen aus v2.2.58 wurden selektiv übernommen.
+- **LifePlanner-Profile:** BudgetManager nutzt die vom Host vorgegebenen, getrennten Daten- und Bridge-Ordner und bleibt gleichzeitig standalone startbar.
+- **Review-Inbox:** Neue, geänderte, abgelehnte und verwaiste FPM-/LifePlanner-Vorschläge werden nachvollziehbar verwaltet. Vor der Übernahme können Datum, Typ, Kategorie, Betrag und Beschreibung bearbeitet werden.
+- **Kein Auto-Buchen:** Externe Finanzdaten werden niemals ungeprüft als Buchung gespeichert. Fremdwährungen benötigen eine ausdrückliche Bestätigung.
+- **Bidirektionale Bridge:** FPM-Ausgaben und Sparziele können weiterhin getrennt in die Outbox geschrieben werden.
+- **Monatsstatus nach Lohn:** Der Cockpit-Zeitraum beginnt beim tatsächlichen beziehungsweise hinterlegten Lohneingang und endet am Tag vor dem nächsten Lohntag.
+- **Windows und Linux:** Der Modul-Workflow baut signierte `.lpmodule`-Pakete für beide Systeme und erzeugt zusätzliche SHA256-Dateien.
+- **Cockpit und Sparziele:** Freie Kachelspalten, Drop-Platzhalter, QtCharts-Härtung sowie Sparziel-Flussbestand mit Bezug, Korrektur und Teilfreigabe bleiben erhalten.
 
-- 13. Monatslohn im Budget-Reiter als eigene Einmaleinkommens-Kategorie erfassbar.
-- Jahreskopie zeigt Fixkosten, wiederkehrende, Pot- und inkrementelle Kategorien zur Prüfung und kann nach Vorjahresmuster verteilen.
-- Null-Bilanz-Regel verhindert widersprüchliche Ersparnis-Senkungsvorschläge.
+## Neu in v2.2.55
 
-- Final-Release-Härtung für den In-App-Updater: Frozen-Builds starten jetzt die echten `--check-update`/`--apply-update`-Pfade.
-- Portable-ZIP nutzt stabile Startdateien (`BudgetManager.exe` / `BudgetManager`), während GitHub-Assets weiterhin versioniert bleiben.
-- Windows-Update migriert alte versionierte Portable-Binaries auf den stabilen Startpunkt und startet danach die neue App.
-- Release-Dokumentation, Help-Dateien, Manifest-Vorlagen und Versionshinweise sind auf v2.2.6 synchronisiert.
-- i18n-Härtung für mehrere dynamische Dialogtexte in Budget, Tracking, Backup, Konto, Tags, Themes und Sparzielen.
-- Konto & Daten sind in einem eigenen Hub gebündelt: Konto verwalten, Speicherort, Backup/Wiederherstellung und Datenbank-Wartung.
-- Der Datenordner ist frei wählbar; beim Wechsel kann die App bestehende Nutzerdaten sicher kopieren, inklusive Sicherheits-ZIP.
-- Default-Datenbank und Default-Backups folgen dem aktiven Datenordner; explizite Sonderpfade bleiben möglich.
-- PBKDF2-Härtung mit 600 000 Iterationen; ältere Vorab-Konten werden nach erfolgreichem Login automatisch migriert.
-- Autobuchungen, Budget-Deckungswarnungen, Schnelleingabe-Suche und Budget-Mehrfachauswahl sind enthalten.
+- Die gesamte Kopfzeile einer Cockpit-Kachel dient im manuellen Modus als Drag-Zone.
+- Bereits ab 720 px stehen zwei gleich breite Zielspalten zur Verfügung.
+- Reihenfolge und Spaltenzuordnung werden nach jedem Drop gespeichert.
+- Tabellen, Buttons und Diagramme innerhalb der Kacheln bleiben normal bedienbar.
 
+## Neu in v2.2.54
 
-Diese Version ist als Release-Ready-Source-Candidate gedacht. Vor Veröffentlichung sollten zusätzlich der echte Windows-/Linux-Build und `python tools/verify_qt_translations.py <Build-Ordner>` ausgeführt werden, damit die Qt-eigenen Kontextmenüs ebenfalls DE/FR lokalisiert sind.
+- Kritischen nativen QtCharts-Absturz im Cockpit nach dem Hinzufügen von Buchungen behoben.
+- Die obere Linie des Flächendiagramms wird dauerhaft gehalten, weil `QAreaSeries` sie nicht besitzt.
+- Verlauf, Serien und Achsen werden nicht mehr bei jedem Refresh zerstört, sondern sicher in-place aktualisiert.
+- Notstart ohne Cockpit-Diagramme: `BM_DISABLE_COCKPIT_CHARTS=1 ./run.sh`.
+- Neue Regressionstests sichern Objektlebensdauer, atomare Punktaktualisierung und den Notstartschalter.
+
+## Neu in v2.2.53
+
+- Kritischen nativen Qt-/PySide6-Segfault nach Abschluss des Setup-Assistenten behoben.
+- Das verschobene Auto-Backup läuft erst nach vollständig abgeschlossenem Dialogabbau und in einem separaten Event-Loop-Schritt.
+- Parent-gebundene Timer, Referenzschutz und Abschluss-Guard verhindern Callbacks auf zerstörte Qt-Objekte und Doppelabschlüsse.
+
+## Neu in v2.2.52
+
+- Kritischen Cockpit-Startabbruch durch Python-Klassen-Comprehension behoben.
+- Dashboard-Spaltenvorgaben werden nun importstabil aus Modulkonstanten aufgebaut.
+- Neuer Regressionstest verhindert erneute `NameError`-Abbrüche beim Laden des Cockpits.
+
+## Neu in v2.2.51
+
+- Kritischen Erststart-Abbruch im Sprachwahldialog behoben (`FrozenInstanceError` in `UIColors`).
+- Berechnete Hover-Farben werden bei der unveränderlichen Farb-Dataclass jetzt korrekt und typisiert initialisiert.
+- Ein neuer Runtime-Regressionstest startet die Farbkonfiguration wirklich und schützt vor derselben Fehlerklasse.
+
+## Neu in v2.2.50
+
+- Neuer **Einfach-/Erweitert-Modus**: Der einfache Modus reduziert die Oberfläche auf Cockpit, Budget, Tracking und Übersicht; alle Funktionen bleiben im erweiterten Modus erreichbar.
+- Export erweitert um **XLSX-Arbeitsmappen** mit getrennten Tabellenblättern sowie schwarzweiss-taugliche **A4-PDF-Berichte**.
+- Diagnose-ZIPs enthalten jetzt anonymisierte Qt-/Skalierungsdaten und eine technische Datenbank-Gesundheitsprüfung, aber keine Buchungen, Namen oder Beträge.
+- Restore-Kopien bleiben auch bei vollem Datenträger, fehlenden Rechten oder Austauschfehlern atomar; der bisherige Datenbestand bleibt bis zum letzten geprüften Dateitausch erhalten.
+- CI erzeugt eindeutige Voll-Coverage-Artefakte, prüft kritische Sicherheitsmodule separat und führt einen 50’000-Buchungen-Performance-Benchmark aus.
+- Fedora-/Windows-Gates erzeugen visuelle Screenshots und weisen einfarbige, leere oder fehlerhaft skalierte Hauptansichten zurück.
+- Strengere Typprüfung für Backup, Diagnose, Update-Signatur, sicheren Excel-Import und Berichtsexport.
+
+## Neu in v2.2.49
+
+- Die Sicherheitsverbesserungen aus KILLCRITIC GREEN und ENTERPRISE RELEASE AUDITED wurden ohne Rückschritte bei lokalen Coverage-, Qt- und Bandit-Prüfungen zusammengeführt.
+- Der Erststart-Import prüft `.bmr`-Backups jetzt genauso strikt wie der normale Restore und streamt Datenbanken mit Größenlimit statt sie vollständig in den Arbeitsspeicher zu lesen.
+- Vollständige Konto-Wiederherstellungen erhalten andere lokale Konten. Nur ein exakt identisches Konto wird ersetzt; Namens- oder Datenbankkollisionen brechen sicher ab.
+- Manifest und Nutzdaten werden aus demselben geöffneten Archiv geprüft, um Austauschrennen zwischen Prüfung und Restore zu verhindern.
+- Leere optionale Dateien erhalten gültige Prüfsummen; fehlerhafte SHA-256-Felder und unvollständige Konto-Metadaten werden abgewiesen.
+- Backup-Dialoge melden jetzt den tatsächlichen Bundle-Inhalt statt lediglich vorhandene Quelldateien.
+- Neue v2.2.49-Regressionen sichern beide Restore-Wege, Mehrbenutzer-Erhalt, atomare Kopien und Kompressions-Grenzfälle ab.
+
+## Neu in v2.2.48
+
+- Backup-Integrität umfasst jetzt Datenbank, Einstellungen und das zugehörige Benutzerkonto; manipulierte oder beschädigte Zusatzdaten werden abgewiesen.
+- Konto-Backups enthalten bei mehreren lokalen Benutzern nur noch den zur gesicherten Datenbank passenden Kontoeintrag und bleiben dadurch selbstkonsistent.
+- Vollständige Konto-Wiederherstellungen streamen große Datenbanken mit harter Größenbegrenzung statt die gesamte Datei in den Arbeitsspeicher zu laden.
+- Legacy-Backups können nach ausdrücklicher Bestätigung in eine vollständig gehashte Kopie migriert werden.
+- Manipulierte ZIP-Kompressionsmethoden werden kontrolliert abgewiesen; Update-Archive dürfen keine doppelten oder plattformabhängig kollidierenden Pfade enthalten.
+- Aktive lokale Dokumentationslinks werden durch einen Regressionstest abgesichert.
+
+## Neu in v2.2.47
+
+- Die ausführlichere Cockpit-Anleitung aus der Guide-Variante wurde mit der technisch robusteren Enterprise-Version verbunden.
+- Ein eigenes In-App-Hilfethema erklärt Kennzahlen und Trendfarben, Ring- und Flächendiagramm, Automatikmodus, fixiertes Drag-and-drop, Spaltenwechsel und Designprofile.
+- Layoutmodus, Reihenfolge und Spalten bleiben atomar gespeichert; DesignManager und Theme-Wechsel werden nicht umgangen.
+- Das Enterprise-DAU-Audit erkennt jetzt auch dreistellige fest codierte Farben wie `#666`.
+
+## Neu in v2.2.43
+
+- Dashboard-Optik aus v2.2.42 und das automatische/fixierte Kachellayout aus v2.2.41 sind in einer gemeinsamen Implementierung zusammengeführt.
+- Leere Bereiche schrumpfen und wandern im Automatikmodus stabil nach unten; im fixierten Modus lassen sich Kacheln über den Griff `≡` zwischen beiden Spalten verschieben.
+- Reihenfolge, Spalten, Sichtbarkeit und Auf-/Zuklappzustand werden gespeichert; Einstellungen aus beiden Zwischenversionen werden migriert.
+- KPI-Karten, Ringdiagramm und Flächenverlauf bleiben vollständig vom aktiven DesignManager-Profil gesteuert.
+- Fehler der Dashboard-Variante behoben: fehlender KPI-Icon-Parameter, herausgefilterte Diagramm-Kachel, instabile Einspalten-Ablage und undefinierte Theme-Randfarbe.
+- Theme-Wechsel aktualisieren Cockpit-Diagramme und KPI-Trends sofort.
+
+Vollständige Anleitung: [`docs/USER_GUIDE.de.md`](docs/USER_GUIDE.de.md). In der App: **F1**.
 
 ## Wichtige Grundfunktionen
 
@@ -133,7 +198,7 @@ Details stehen im [CHANGELOG.md](CHANGELOG.md).
 - `Hilfe → Informations-Laufplan / Mindmap anzeigen…` öffnet `docs/help/mindmap.html` direkt im Browser. Diese Mindmap ist ohne Mermaid-Plugin sichtbar und kann gedruckt oder als PDF gespeichert werden.
 - `Hilfe → Restore-Key anzeigen…` zeigt den Datenbank-/Restore-Key der aktuell geöffneten Datenbank.
 
-Die Wissensdatenbank erklärt alle Kernfunktionen: Erststart, Restore-Key, Datenbank, Backup, Kategorien, Drag & Drop, Budget, Buchungen/Tracking, Fixkosten, Wiederkehrend, Übersicht, Sparziele, Favoriten, Tags, Export, Updates und typische Stolperfallen.
+Die Wissensdatenbank erklärt alle Kernfunktionen einschließlich **Soft-0-Budget / sanfter Null-Bilanz**: Erststart, Restore-Key, Datenbank, Backup, Kategorien, Drag & Drop, Budget, Buchungen/Tracking, Fixkosten, Wiederkehrend, Übersicht, Sparziele, Favoriten, Tags, Export, Updates und typische Stolperfallen.
 
 Wichtig bei Fixkosten: Das Häkchen bucht nichts automatisch im Hintergrund. Es nimmt die Kategorie in **Tracking → Fix/Wiederkehrend buchen…** auf, nutzt den Budgetbetrag des Monats, überspringt vorhandene Buchungen und schützt Fixkosten vor falschen 0-Monats-Budgetvorschlägen.
 
@@ -213,8 +278,8 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.2.6"
-APP_RELEASE_DATE = "19. Juni 2026"
+APP_VERSION = "2.2.60"
+APP_RELEASE_DATE = "19. August 2026"
 ```
 
 Vor einem Release prüfen:
@@ -252,12 +317,12 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.2.6 \
-  --release-tag v2.2.6 \
+  --version 2.2.60 \
+  --release-tag v2.2.60 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.2.6-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.2.6-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.6 \
+  --windows-zip dist/BudgetManager-v2.2.60-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.2.60-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.60 \
   --out latest.json
 ```
 
@@ -279,7 +344,7 @@ Alle Daten bleiben lokal. Standardmäßig nutzt BudgetManager den portablen Date
 - [docs/help/mindmap.html](docs/help/mindmap.html) — direkt anzeigbare Mindmap / Informations-Laufplan.
 - [FEATURES.md](FEATURES.md) — Funktionsübersicht.
 - [CHANGELOG.md](CHANGELOG.md) — Änderungen nach Version.
-- [docs/OFFENE_PUNKTE_FINAL_RELEASE.md](docs/OFFENE_PUNKTE_FINAL_RELEASE.md) — Release-Befund und Abnahmehinweise.
+- [docs/open-tasks.md](docs/open-tasks.md) — verbleibende externe Release-Schritte und Abnahmehinweise.
 
 ### Sparziele im Workflow
 
@@ -315,7 +380,7 @@ Zum Beenden alter BudgetManager-Testinstanzen bitte nicht pauschal `pkill -f "py
 
 Das Cockpit startet keine eigene BudgetManager-Instanz. Es ist ein normaler Reiter innerhalb des Hauptfensters. Der Startablauf wurde so angepasst, dass das Hauptfenster genau einmal sichtbar gemacht wird. Update-Prüfungen im Source-Modus laufen über `python -m updater.check_update` statt über ein zweites `python main.py`.
 
-## Lernmodus v2.2.6 – Entscheidungspfad
+## Lernmodus v2.2.22 – Entscheidungspfad
 
 Der Lernmodus ist für den Einstieg gedacht, wenn noch kein Budget gesetzt wurde und zuerst echte Buchungen gesammelt werden sollen. Im Erststart bedeutet das: Ist der Lernmodus aktiv, darf der Budget-Schritt ohne Budgetwert abgeschlossen werden. Ist der Lernmodus deaktiviert, bleibt die Mindestprüfung hart und es muss mindestens ein Budgetwert vorhanden sein.
 
@@ -339,3 +404,9 @@ Budgetarten im Lernmodus:
 Best Practice: Erst tracken, dann Vorschläge prüfen, niemals blind alle Vorschläge übernehmen. Gerade bei Gesundheit, Franchise und Jahresrechnungen ist ein Rückstellungsbudget meist besser als ein starrer Monatsfixbetrag.
 
 Hinweis zur Übersicht: Neue Startbudget-Vorschläge aus dem Lernmodus werden im Banner mit **🆕** angezeigt. **📉** bleibt echten Defizit-/Erhöhungswarnungen vorbehalten, **📈** steht für Überschuss-/Senkungsvorschläge.
+
+### Neu in v2.2.36
+
+- Wiki-Audit und drei grafische Offline-Erklärungen der Prozess- und Datenzusammenhänge.
+- Sichtbarer **? Hilfe**-Knopf in der Seitenleiste, Linux-/GNOME-sicher ohne Emoji-Abhängigkeit.
+- Direkter Aufruf der Wiki-Grafiken aus Hilfe-Menü und In-App-Handbuch.

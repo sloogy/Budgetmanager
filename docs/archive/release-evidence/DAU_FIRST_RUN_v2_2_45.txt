@@ -1,0 +1,43 @@
+================================================================
+DAU E2E – Erststart-Durchführung (headless)
+================================================================
+
+[0] Regionseinstellungen (DAU wählt: Deutsch, CHF, Format 'ch')
+  ✅ Format CHF/ch: "1'234.50 CHF"
+  ✅ Format EUR/eu: '1.234,50 €'
+
+[1] Konto anlegen (Quick-Modus, kein Passwort)
+  ✅ Quick-User angelegt
+  ✅ has_users() == True nach Anlage
+
+[2] DB anlegen, migrieren, Default-Kategorien laden
+  ✅ DB geöffnet
+  ✅ Default-Kategorien geladen: 44 Stück
+  ✅ Kategorien-Baum baubar (17 Wurzeln)
+  ✅ Mindestens eine Unterkategorie vorhanden (Hierarchie)
+
+[3] Budget-Werte eintragen (Setup-Schritt 'Budget')
+  ✅ Budget gesetzt für 'Geschenke': 1234.5
+
+[4] Testbuchung erfassen (Setup-Schritt 'Tracking')
+  ✅ Buchung erfasst (count=1)
+
+[5] Kategorie umbenennen (Cascade über alle Tabellen)
+  ✅ Rename-Cascade ok (budget=1, tracking=1, Reste=0)
+
+[6] Hauptkategorie mit Kindern löschen → Kinder werden hochgestuft
+  ✅ 3 Kinder zu Hauptkategorien hochgestuft
+
+[7] Integritätsprüfung – keine verwaisten Kategorie-Referenzen
+  ✅ Keine verwaisten Namens-Referenzen (gefunden: 0)
+  ✅ Keine hängenden parent_id (gefunden: 0)
+
+[8] Fehleingabe-Robustheit – inf/nan gelangen nie in die Datenbank
+  ✅ parse_money weist inf/nan/Overflow ab (5/5)
+  ✅ Gültige Beträge werden weiterhin korrekt geparst
+  ✅ Budget/Tracking/Sparziel weisen inf/nan ab (6/6)
+  ✅ Keine nicht-endlichen Beträge in der DB (gefunden: 0)
+
+================================================================
+ERGEBNIS: ALLE CHECKS BESTANDEN ✅
+================================================================

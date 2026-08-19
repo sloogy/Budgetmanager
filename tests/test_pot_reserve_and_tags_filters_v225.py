@@ -3,6 +3,8 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from model.migrations import migrate_all
 from model.pot_reserve_model import PotReserveModel
 from model.tags_model import TagsModel
@@ -10,10 +12,21 @@ from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
 
 
+_OPEN_CONNECTIONS: list[sqlite3.Connection] = []
+
+
+@pytest.fixture(autouse=True)
+def _close_connections_after_test():
+    yield
+    while _OPEN_CONNECTIONS:
+        _OPEN_CONNECTIONS.pop().close()
+
+
 def _conn():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     migrate_all(conn)
+    _OPEN_CONNECTIONS.append(conn)
     return conn
 
 
@@ -68,10 +81,14 @@ def test_pot_reserve_reports_tracking_only_without_budget():
 
 def test_tracking_add_returns_id_so_tags_are_assignable():
     conn = _conn()
-    conn.execute("INSERT INTO categories(typ, name) VALUES(?,?)", (TYP_EXPENSES, "Lebensmittel"))
+    conn.execute(
+        "INSERT INTO categories(typ, name) VALUES(?,?)", (TYP_EXPENSES, "Lebensmittel")
+    )
     tag_id = TagsModel(conn).create("Urlaub", "#abcdef")
 
-    entry_id = TrackingModel(conn).add("2026-01-05", TYP_EXPENSES, "Lebensmittel", 42.0, "Migros")
+    entry_id = TrackingModel(conn).add(
+        "2026-01-05", TYP_EXPENSES, "Lebensmittel", 42.0, "Migros"
+    )
     TagsModel(conn).set_entry_tags(entry_id, [tag_id])
 
     names = [t["name"] for t in TagsModel(conn).get_tags_for_entry(entry_id)]
@@ -79,14 +96,19 @@ def test_tracking_add_returns_id_so_tags_are_assignable():
 
 
 def test_tracking_tag_ui_is_directly_available_static():
-    tracker_dialog = Path("views/tracker_dialog.py").read_text(encoding="utf-8")
+    # v2.2.16 (K1): Bearbeiten laeuft ueber den QuickAddDialog (Edit-Modus).
+    tracker_dialog = Path("views/quick_add_dialog.py").read_text(encoding="utf-8")
     tracking_tab = Path("views/tabs/tracking_tab.py").read_text(encoding="utf-8")
+    quick_add_dialog = Path("views/quick_add_dialog.py").read_text(encoding="utf-8")
 
     assert "tag_ids" in tracker_dialog
     assert "QListWidget" in tracker_dialog
-    assert "form.addRow(tr(\"header.tags\"), self.lst_tags)" in tracker_dialog
-    assert "tr(\"header.tags\")" in tracking_tab
-    assert "self.tags_model.set_entry_tags(int(new_id), list(inp.tag_ids))" in tracking_tab
+    assert "self.lst_tags" in tracker_dialog  # Tag-Liste im (Edit-)Dialog vorhanden
+    assert 'tr("header.tags")' in quick_add_dialog
+    assert (
+        "self.tags_model.set_entry_tags(int(new_id), list(tag_ids))" in quick_add_dialog
+    )
+    assert "QuickAddDialog" in tracking_tab
 
 
 def test_overview_filter_widgets_emit_refresh_and_preserve_selection_static():
@@ -107,7 +129,10 @@ def test_overview_filter_widgets_emit_refresh_and_preserve_selection_static():
         assert widget in right_panel
     assert "previous = self.category_combo.currentText()" in right_panel
     assert "previous = self.tag_combo.currentText()" in right_panel
-    assert "self.right_panel.filters_changed.connect(self._delayed_refresh)" in overview_tab
+    assert (
+        "self.right_panel.filters_changed.connect(self._delayed_refresh)"
+        in overview_tab
+    )
 
 
 def test_franchise_pot_overrun_warns_with_two_active_months_in_three_month_window():
@@ -131,8 +156,13 @@ def test_franchise_pot_overrun_warns_with_two_active_months_in_three_month_windo
     res = BudgetSuggestionEngine(conn).compute_category_suggestion(
         TYP_EXPENSES, "Franchise", 2026, 7, months_back=3
     )
-    warnings = BudgetWarningsModelExtended(conn).check_warnings_extended(2026, 7, lookback_months=3)
+    warnings = BudgetWarningsModelExtended(conn).check_warnings_extended(
+        2026, 7, lookback_months=3
+    )
 
     assert res is not None
     assert res.suggested_budget > 750.0
-    assert any(w.category == "Franchise" and w.suggestion and w.suggestion > 750.0 for w in warnings)
+    assert any(
+        w.category == "Franchise" and w.suggestion and w.suggestion > 750.0
+        for w in warnings
+    )

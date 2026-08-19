@@ -1,0 +1,47 @@
+{
+  "app": "BudgetManager",
+  "version": "2.2.52",
+  "audit_date": "2026-08-02",
+  "release_type": "startup_scope_hotfix",
+  "decision": {
+    "source_release": "GO",
+    "tag_and_ci": "GO",
+    "public_binaries": "CONDITIONAL_GO",
+    "condition": "Pass real Fedora/PySide6 and Windows installer/portable GUI smoke tests"
+  },
+  "fixed_blocker": {
+    "exception": "NameError",
+    "name": "LEFT_COLUMN_PANELS",
+    "component": "views/tabs/cockpit_tab.py",
+    "root_cause": "A class-body dictionary comprehension could not resolve a previously assigned class attribute because comprehensions use an isolated scope",
+    "solution": "Build immutable cockpit layout defaults at module scope and assign safe copies to CockpitTab"
+  },
+  "tests": {
+    "passed": 768,
+    "skipped": 13,
+    "failed": 0,
+    "duration_seconds": 84.66
+  },
+  "audits": {
+    "final_release": {
+      "loops": 1000,
+      "checks": 19335,
+      "warnings": 0,
+      "failures": 0
+    },
+    "release_logic": {
+      "loops": 100,
+      "findings": 0
+    },
+    "dau_first_start": "PASS",
+    "i18n": "PASS",
+    "compileall": "PASS",
+    "release_lint": "PASS",
+    "version_sync": "PASS"
+  },
+  "external_gates_open": [
+    "Fedora/Wayland first-start smoke with real PySide6",
+    "Windows installer and portable GUI smoke",
+    "CI build, dependency scanning and artifact signing"
+  ]
+}

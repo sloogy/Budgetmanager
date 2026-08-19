@@ -88,7 +88,9 @@ def sync_version_json(check: bool) -> bool:
         return ok
     data["app"] = APP_NAME
     data["version"] = APP_VERSION
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    p.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return True
 
 
@@ -143,7 +145,9 @@ def sync_latest_template(rel_path: str, check: bool) -> bool:
     if check or ok:
         return ok
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(expected, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    p.write_text(
+        json.dumps(expected, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return True
 
 
@@ -154,7 +158,9 @@ def main() -> int:
         "VERSION_INFO.txt": sync_version_info_txt(check),
         "installer/budgetmanager_setup.iss": sync_installer(check),
         "latest.json.template": sync_latest_template("latest.json.template", check),
-        "docs/latest.json.template": sync_latest_template("docs/latest.json.template", check),
+        "docs/latest.json.template": sync_latest_template(
+            "docs/latest.json.template", check
+        ),
     }
     if check:
         bad = [name for name, ok in results.items() if not ok]

@@ -1,0 +1,61 @@
+{
+  "application": "Budgetmanager",
+  "version": "2.2.56",
+  "date": "2026-08-02",
+  "status": "target_system_test_required",
+  "issues_fixed": [
+    "cockpit columns were coupled by shared grid-row heights",
+    "drag and drop had no visible destination placeholder",
+    "active savings goals were not counted reliably in the cockpit",
+    "savings goals did not separate contributed, withdrawn, stock and remaining contribution",
+    "negative savings corrections were indistinguishable from project withdrawals"
+  ],
+  "fixes": [
+    "independent left and right cockpit tile stacks",
+    "visible live drop placeholder",
+    "persistent cross-column tile ordering",
+    "savings goal flow balance with target, contributed, withdrawn, stock and remaining contribution",
+    "negative savings booking defaults to withdrawal",
+    "explicit correction action for erroneous negative bookings",
+    "partial release keeps the goal active",
+    "database migration schema version 18",
+    "cockpit savings count and flow tooltip corrected"
+  ],
+  "tests": {
+    "pytest_passed": 789,
+    "pytest_skipped": 13,
+    "pytest_failed": 0,
+    "new_regression_tests_passed": 7,
+    "final_audit_loops": 1000,
+    "final_audit_checks": 19365,
+    "final_audit_warnings": 0,
+    "final_audit_failures": 0,
+    "release_logic_loops": 100,
+    "release_logic_findings": 0,
+    "i18n": "pass",
+    "syntax_compile": "pass",
+    "version_sync": "pass",
+    "release_lint": "pass",
+    "bandit": "not_run_tool_unavailable"
+  },
+  "compatibility": {
+    "database_migration_required": true,
+    "database_schema_version": 18,
+    "pre_migration_backup_retained": true,
+    "existing_tile_order_migrated": true,
+    "design_manager_retained": true
+  },
+  "example": {
+    "target": 50000,
+    "contributed": 30000,
+    "withdrawn": 15000,
+    "current_stock": 15000,
+    "remaining_contribution": 20000
+  },
+  "limitations": [
+    "real mouse drag and drop must be smoke-tested on the Fedora target system",
+    "real PySide6 rendering of the placeholder was not available in the isolated audit environment",
+    "migration should be verified once with a copy of the user's actual database",
+    "Bandit was unavailable in the isolated audit environment"
+  ]
+}

@@ -23,6 +23,8 @@ from updater.common import (
     prune_other_staging,
     write_staged_marker,
     find_staged_root,
+    staged_tree_sha256,
+    validate_staged_payload,
     write_check_result,
 )
 
@@ -30,6 +32,7 @@ from updater.common import (
 def main() -> int:
     enable_utf8_console()
     import sys
+
     gui_mode = "--gui" in sys.argv
     current = read_current_version()
     print(f"BudgetManager Updater\nAktuell: {current}")
@@ -48,25 +51,29 @@ def main() -> int:
     if not asset:
         print(f"❌ Kein Asset im Manifest für Plattform '{platform_key}'")
         print(f"   Erwartete Keys: {', '.join(preferred_keys)}")
-        write_check_result({
-            "available": False,
-            "error": f"Kein Asset für Plattform {platform_key}",
-            "current": current,
-            "remote": manifest.version,
-            "release_tag": manifest.release_tag,
-            "asset_keys_tried": preferred_keys,
-        })
+        write_check_result(
+            {
+                "available": False,
+                "error": f"Kein Asset für Plattform {platform_key}",
+                "current": current,
+                "remote": manifest.version,
+                "release_tag": manifest.release_tag,
+                "asset_keys_tried": preferred_keys,
+            }
+        )
         return 3
 
     remote = manifest.version
     if not is_newer(remote, current):
         print(f"✓ Kein Update verfügbar (remote: {remote})")
-        write_check_result({
-            "available": False,
-            "current": current,
-            "remote": remote,
-            "release_tag": manifest.release_tag,
-        })
+        write_check_result(
+            {
+                "available": False,
+                "current": current,
+                "remote": remote,
+                "release_tag": manifest.release_tag,
+            }
+        )
         return 0
 
     print(f"⬇️  Update verfügbar: {remote} (Tag: {manifest.release_tag or 'n/a'})")
@@ -81,7 +88,14 @@ def main() -> int:
         print(f"✓ Download: {zip_path}")
     except Exception as e:
         print(f"❌ Download fehlgeschlagen: {e}")
-        write_check_result({"available": False, "error": f"Download fehlgeschlagen: {e}", "current": current, "remote": remote})
+        write_check_result(
+            {
+                "available": False,
+                "error": f"Download fehlgeschlagen: {e}",
+                "current": current,
+                "remote": remote,
+            }
+        )
         return 4
 
     # Checksum – FAIL-CLOSED (Sicherheits-Härtung v2.0.36):
@@ -95,82 +109,88 @@ def main() -> int:
             print("❌ SHA256 stimmt nicht!")
             print(f"  erwartet: {asset.sha256}")
             print(f"  erhalten: {actual}")
-            write_check_result({"available": False, "error": "SHA256 stimmt nicht", "current": current, "remote": remote})
+            write_check_result(
+                {
+                    "available": False,
+                    "error": "SHA256 stimmt nicht",
+                    "current": current,
+                    "remote": remote,
+                }
+            )
             return 5
         print("✓ SHA256 OK")
     else:
         print("❌ Kein SHA256 im Manifest – Update aus Sicherheitsgründen abgelehnt")
-        write_check_result({
-            "available": False,
-            "error": "Kein SHA256 im Manifest – Update aus Sicherheitsgründen abgelehnt",
-            "current": current,
-            "remote": remote,
-        })
+        write_check_result(
+            {
+                "available": False,
+                "error": "Kein SHA256 im Manifest – Update aus Sicherheitsgründen abgelehnt",
+                "current": current,
+                "remote": remote,
+            }
+        )
         return 5
 
-    # Extract staging
+    # Staging wird nach jedem frisch verifizierten Download komplett neu gebaut.
+    # Vorhandene Inhalte duerfen niemals ungeprueft wiederverwendet werden.
     staging = staging_dir_for(remote)
-    if staging.exists() and any(staging.iterdir()):
-        # schon staged
-        print(f"✓ Bereits staged: {staging}")
-    else:
-        try:
-            staging.mkdir(parents=True, exist_ok=True)
-            asset_type = asset.asset_type.strip().lower()
-            if asset_type == "installer":
-                # ── Windows-Installer: Setup-EXE stagen; apply_update startet sie.
-                import shutil
-                from urllib.parse import urlparse
+    try:
+        import shutil
 
-                url_name = Path(urlparse(asset.url).path).name or f"BudgetManager_Setup_{remote}.exe"
-                if not url_name.lower().endswith(".exe"):
-                    url_name = f"BudgetManager_Setup_{remote}.exe"
-                target = staging / url_name
-                shutil.copy2(zip_path, target)
-                print(f"✓ Installer gestaged als: {target.name}")
-            elif asset_is_zip(asset.url, asset.asset_type):
-                # ── ZIP-Asset: sicher entpacken ──
-                safe_extract_zip(zip_path, staging)
-                root = find_staged_root(staging)
-                # Minimal sanity: muss irgendwas enthalten
-                any_file = next(root.rglob("*"), None)
-                if any_file is None:
-                    print("❌ Staging leer – ZIP Inhalt unerwartet")
-                    write_check_result({"available": False, "error": "Staging leer", "current": current, "remote": remote})
-                    return 6
+        if staging.exists():
+            shutil.rmtree(staging)
+        staging.mkdir(parents=True, exist_ok=True)
+        asset_type = asset.asset_type.strip().lower()
+        if asset_type == "installer":
+            from urllib.parse import urlparse
+
+            url_name = (
+                Path(urlparse(asset.url).path).name
+                or f"BudgetManager_Setup_{remote}.exe"
+            )
+            if not url_name.lower().endswith(".exe"):
+                url_name = f"BudgetManager_Setup_{remote}.exe"
+            shutil.copy2(zip_path, staging / url_name)
+        elif asset_is_zip(asset.url, asset.asset_type):
+            safe_extract_zip(zip_path, staging)
+        else:
+            if asset_key == "direct_windows_exe":
+                target_name = current_exe_filename()
             else:
-                # ── Rohe Binary (z.B. BudgetManager-windows.exe): NICHT
-                #    entpacken. Direkt unter dem Ziel-Dateinamen ablegen,
-                #    unter dem die App installiert ist (z.B. BudgetManager.exe).
-                import shutil
+                target_name = update_target_exe_filename()
+            target = staging / target_name
+            shutil.copy2(zip_path, target)
+            try:
+                import os, stat
 
-                # Standalone-EXE: die exakt laufende Datei ersetzen, damit
-                # vorhandene Verknüpfungen/Doppelklicks weiter funktionieren.
-                # Portable-ZIPs enthalten stabile Namen und laufen weiter über
-                # update_target_exe_filename().
-                if asset_key == "direct_windows_exe":
-                    target_name = current_exe_filename()
-                else:
-                    target_name = update_target_exe_filename()
-                target = staging / target_name
-                shutil.copy2(zip_path, target)
-                # Unter Linux: Ausführbar-Bit setzen (geht unter Windows ins Leere)
-                try:
-                    import os
-                    import stat
+                os.chmod(
+                    target,
+                    os.stat(target).st_mode
+                    | stat.S_IXUSR
+                    | stat.S_IXGRP
+                    | stat.S_IXOTH,
+                )
+            except Exception as e:
+                logger.debug("chmod auf gestagete Binary fehlgeschlagen: %s", e)
 
-                    mode = os.stat(target).st_mode
-                    os.chmod(target, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-                except Exception as e:
-                    logger.debug("chmod auf gestagete Binary fehlgeschlagen: %s", e)
-                print(f"✓ Binary gestaged als: {target.name}")
-            write_staged_marker(remote, manifest, asset)
-            print(f"✓ Staged: {staging}")
-        except Exception as e:
-            print(f"❌ Vorbereiten (Staging) fehlgeschlagen: {e}")
-            write_check_result({"available": False, "error": f"Staging fehlgeschlagen: {e}", "current": current, "remote": remote})
-            logger.exception("Staging fehlgeschlagen")
-            return 6
+        root = find_staged_root(staging)
+        validate_staged_payload(root, asset.asset_type)
+        tree_hash = staged_tree_sha256(root)
+        write_staged_marker(remote, manifest, asset)
+        print(f"✓ Staged und validiert: {staging}")
+    except Exception as e:
+        shutil.rmtree(staging, ignore_errors=True)
+        print(f"❌ Vorbereiten (Staging) fehlgeschlagen: {e}")
+        write_check_result(
+            {
+                "available": False,
+                "error": f"Staging fehlgeschlagen: {e}",
+                "current": current,
+                "remote": remote,
+            }
+        )
+        logger.exception("Staging fehlgeschlagen")
+        return 6
 
     # Veraltete Staging-Ordner/Cache entfernen, damit der sichere Fallback in
     # apply_update (latest_staged_version) niemals eine alte, hoeher nummerierte
@@ -178,24 +198,28 @@ def main() -> int:
     # lokalen Pfade respektieren ein etwaiges Monkeypatching in Tests.
     prune_other_staging(staging, zip_path)
 
-    write_check_result({
-        "available": True,
-        "staged": True,
-        "current": current,
-        "remote": remote,
-        "staged_version": remote,
-        "release_tag": manifest.release_tag,
-        "asset_key": asset_key,
-        "asset_type": asset.asset_type,
-        "asset_url": asset.url,
-    })
+    write_check_result(
+        {
+            "available": True,
+            "staged": True,
+            "current": current,
+            "remote": remote,
+            "staged_version": remote,
+            "release_tag": manifest.release_tag,
+            "asset_key": asset_key,
+            "asset_type": asset.asset_type,
+            "asset_url": asset.url,
+        }
+    )
 
     print("\nUpdate wurde vorbereitet.")
     if gui_mode:
         print("Das Update-Fenster schaltet die Installation jetzt frei.")
         print("Klicke auf Jetzt aktualisieren & neu starten und bestätige die Abfrage.")
     else:
-        print("Nächster Schritt: App schließen und Update anwenden: python main.py --apply-update")
+        print(
+            "Nächster Schritt: App schließen und Update anwenden: python main.py --apply-update"
+        )
     return 0
 
 

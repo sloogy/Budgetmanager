@@ -1,14 +1,24 @@
 from __future__ import annotations
 
+from utils.notifications import show_warning
 import logging
+
 logger = logging.getLogger(__name__)
 
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGroupBox, QFormLayout, QLabel,
-    QLineEdit, QPushButton, QFileDialog, QMessageBox,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGroupBox,
+    QFormLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QFileDialog,
+    QMessageBox,
 )
 
 from utils.i18n import tr, trf
@@ -33,7 +43,9 @@ Die gleiche Komponente wird im Reiter „Konto" und in der Einstellungen-Seite
 
 
 class AccountDataHub(QWidget):
-    def __init__(self, settings, main_window, parent=None, *, encrypted_mode: bool = False):
+    def __init__(
+        self, settings, main_window, parent=None, *, encrypted_mode: bool = False
+    ):
         super().__init__(parent)
         self.settings = settings
         self.main_window = main_window
@@ -94,7 +106,9 @@ class AccountDataHub(QWidget):
         fl = QFormLayout(gb_loc)
         self.le_data_dir = QLineEdit()
         self.le_data_dir.setReadOnly(True)
-        self.le_data_dir.setPlaceholderText(tr("settings.data_dir_portable_placeholder"))
+        self.le_data_dir.setPlaceholderText(
+            tr("settings.data_dir_portable_placeholder")
+        )
         row_loc = QHBoxLayout()
         self.btn_loc_browse = QPushButton(tr("settings.choose_data_dir"))
         self.btn_loc_browse.clicked.connect(self._choose_data_dir)
@@ -106,7 +120,8 @@ class AccountDataHub(QWidget):
         row_loc.addWidget(self.btn_loc_reset)
         row_loc.addWidget(self.btn_loc_save)
         row_loc.addStretch(1)
-        row_loc_w = QWidget(); row_loc_w.setLayout(row_loc)
+        row_loc_w = QWidget()
+        row_loc_w.setLayout(row_loc)
         fl.addRow(tr("settings_ui.data_dir_current"), self.le_data_dir)
         fl.addRow("", row_loc_w)
         self.lbl_loc_effective = QLabel("")
@@ -164,7 +179,9 @@ class AccountDataHub(QWidget):
         if self.encrypted_mode and hasattr(self, "lbl_account_summary"):
             try:
                 user = getattr(self._mw(), "_active_user", None)
-                name = getattr(user, "display_name", None) or tr("account_hub.unknown_user")
+                name = getattr(user, "display_name", None) or tr(
+                    "account_hub.unknown_user"
+                )
                 self.lbl_account_summary.setText(
                     trf("account_hub.account_summary", name=name)
                 )
@@ -175,17 +192,23 @@ class AccountDataHub(QWidget):
     def _refresh_effective(self) -> None:
         try:
             from model.app_paths import resolve_data_dir
+
             raw = self.le_data_dir.text().strip()
             eff = resolve_data_dir(raw)
-            self.lbl_loc_effective.setText(trf("settings.data_dir_effective", path=str(eff)))
+            self.lbl_loc_effective.setText(
+                trf("settings.data_dir_effective", path=str(eff))
+            )
         except Exception:
             self.lbl_loc_effective.setText("")
 
     # -- Speicherort -------------------------------------------------
     def _choose_data_dir(self) -> None:
         from model.app_paths import portable_data_dir
+
         start = self.le_data_dir.text().strip() or str(portable_data_dir())
-        chosen = QFileDialog.getExistingDirectory(self, tr("settings.choose_data_dir"), start)
+        chosen = QFileDialog.getExistingDirectory(
+            self, tr("settings.choose_data_dir"), start
+        )
         if chosen:
             self.le_data_dir.setText(chosen.strip())
             self._refresh_effective()
@@ -204,7 +227,9 @@ class AccountDataHub(QWidget):
         if callable(handler):
             applied = handler(new_raw)
             if applied is not False:
-                self._initial_data_dir = str(self._get_setting("data_directory", new_raw) or "")
+                self._initial_data_dir = str(
+                    self._get_setting("data_directory", new_raw) or ""
+                )
                 self.le_data_dir.setText(self._initial_data_dir)
                 self._refresh_effective()
         else:
@@ -214,7 +239,9 @@ class AccountDataHub(QWidget):
                 self._initial_data_dir = new_raw
             except Exception as e:
                 logger.warning("Speicherort konnte nicht gespeichert werden: %s", e)
-                self._show_error(trf("hub.error_save_location", error=str(e)), dialog=True)
+                self._show_error(
+                    trf("hub.error_save_location", error=str(e)), dialog=True
+                )
 
     def _show_error(self, text: str, *, dialog: bool = False) -> None:
         """Zeigt Fehler sichtbar im Hub (und optional als Dialog)."""
@@ -225,7 +252,7 @@ class AccountDataHub(QWidget):
             logger.debug("hub error label: %s", e)
         if dialog:
             try:
-                QMessageBox.warning(self, tr("msg.error"), text)
+                show_warning(self, tr("msg.error"), text)
             except Exception as e:
                 logger.debug("hub error dialog: %s", e)
 

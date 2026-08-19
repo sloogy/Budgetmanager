@@ -1,4 +1,5 @@
 """Regression: erweiterter Lernmodus für neue Budgets aus Tracking."""
+
 from __future__ import annotations
 
 import sqlite3
@@ -17,7 +18,10 @@ from model.budget_learning import (  # noqa: E402
     KIND_VARIABLE_POT,
     apply_learning_budget_kind,
 )
-from model.category_forecast_mode import FORECAST_MODE_NORMAL, FORECAST_MODE_POT  # noqa: E402
+from model.category_forecast_mode import (
+    FORECAST_MODE_NORMAL,
+    FORECAST_MODE_POT,
+)  # noqa: E402
 from model.migrations import migrate_all  # noqa: E402
 from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME  # noqa: E402
@@ -31,7 +35,14 @@ def _add_category(conn: sqlite3.Connection, typ: str, name: str) -> None:
     )
 
 
-def _book(conn: sqlite3.Connection, typ: str, category: str, year: int, month: int, amount: float) -> None:
+def _book(
+    conn: sqlite3.Connection,
+    typ: str,
+    category: str,
+    year: int,
+    month: int,
+    amount: float,
+) -> None:
     conn.execute(
         "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
         (f"{year:04d}-{month:02d}-15", typ, category, amount, "test", "manual"),
@@ -67,7 +78,9 @@ def test_learning_classifies_fixed_recurring_expense(conn: sqlite3.Connection) -
     assert sug.suggested_amount == 1410.0
 
 
-def test_learning_classifies_variable_income_and_rounds_down(conn: sqlite3.Connection) -> None:
+def test_learning_classifies_variable_income_and_rounds_down(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, TYP_INCOME, "Lohn")
     for month, amount in [(4, 4820.0), (5, 5130.0), (6, 4760.0)]:
         _book(conn, TYP_INCOME, "Lohn", 2026, month, amount)
@@ -89,7 +102,9 @@ def test_learning_classifies_variable_income_and_rounds_down(conn: sqlite3.Conne
     assert sug.suggested_amount == 4750.0
 
 
-def test_learning_irregular_health_uses_monthly_reserve(conn: sqlite3.Connection) -> None:
+def test_learning_irregular_health_uses_monthly_reserve(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, TYP_EXPENSES, "Gesundheit")
     _book(conn, TYP_EXPENSES, "Gesundheit", 2026, 3, 250.0)
     _book(conn, TYP_EXPENSES, "Gesundheit", 2026, 5, 400.0)
@@ -111,7 +126,9 @@ def test_learning_irregular_health_uses_monthly_reserve(conn: sqlite3.Connection
     assert sug.observed_months == 4
 
 
-def test_applying_learning_kind_updates_category_flags(conn: sqlite3.Connection) -> None:
+def test_applying_learning_kind_updates_category_flags(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, TYP_EXPENSES, "Franchise")
 
     apply_learning_budget_kind(conn, TYP_EXPENSES, "Franchise", KIND_IRREGULAR)
@@ -125,7 +142,9 @@ def test_applying_learning_kind_updates_category_flags(conn: sqlite3.Connection)
     assert row["forecast_mode"] == FORECAST_MODE_POT
 
 
-def test_year_copy_review_includes_tracking_only_learning_rows(conn: sqlite3.Connection) -> None:
+def test_year_copy_review_includes_tracking_only_learning_rows(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, TYP_EXPENSES, "Essen")
     for month, amount in [(9, 520.0), (10, 610.0), (11, 570.0)]:
         _book(conn, TYP_EXPENSES, "Essen", 2026, month, amount)

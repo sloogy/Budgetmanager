@@ -13,6 +13,7 @@ Die eigentliche Logik lebt in den Sub-Modulen:
     overview_savings_panel.py – Sparziele
     overview_right_panel.py   – Filter + Transaktionsliste
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,9 +27,19 @@ import calendar
 from PySide6.QtCore import Qt, QTimer, Signal, QDate, QSignalBlocker
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QFrame, QScrollArea, QGroupBox, QSizePolicy,
-    QPushButton, QSplitter, QTabWidget, QMessageBox,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QComboBox,
+    QFrame,
+    QScrollArea,
+    QGroupBox,
+    QSizePolicy,
+    QPushButton,
+    QSplitter,
+    QTabWidget,
+    QMessageBox,
     QTreeWidgetItem,
 )
 
@@ -53,6 +64,7 @@ from views.tabs.overview_right_panel import OverviewRightPanel
 
 
 # ── Hilfsfunktionen ─────────────────────────────────────────────────────────
+
 
 def _month_label(idx: int) -> str:
     return tr("lbl.entire_year") if idx <= 0 else tr(f"month_short.{idx}")
@@ -81,10 +93,16 @@ def _month_range(y: int, m: int) -> tuple[date, date]:
     return (date(y, m, 1), date(y, m, last))
 
 
-from model.typ_constants import normalize_typ as _norm_typ, TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.typ_constants import (
+    normalize_typ as _norm_typ,
+    TYP_INCOME,
+    TYP_EXPENSES,
+    TYP_SAVINGS,
+)
 
 
 # ── OverviewTab ──────────────────────────────────────────────────────────────
+
 
 class OverviewTab(QWidget):
     """Finanzübersicht Tab – Orchestrator."""
@@ -99,11 +117,11 @@ class OverviewTab(QWidget):
         self.settings = settings or Settings()
 
         # Modelle
-        self.budget          = BudgetModel(conn)
-        self.track           = TrackingModel(conn)
-        self.categories      = CategoryModel(conn)
-        self.tags            = TagsModel(conn)
-        self.savings         = SavingsGoalsModel(conn)
+        self.budget = BudgetModel(conn)
+        self.track = TrackingModel(conn)
+        self.categories = CategoryModel(conn)
+        self.tags = TagsModel(conn)
+        self.savings = SavingsGoalsModel(conn)
         self.budget_overview = BudgetOverviewModel(conn)
 
         # Kategorie-Caches (werden in _load_categories() befüllt)
@@ -125,10 +143,10 @@ class OverviewTab(QWidget):
 
     def get_subtab_specs(self) -> list[tuple[str, str]]:
         return [
-            ("kpi",      tr("tab.diagram")),
-            ("budget",   tr("tab.budget_overview")),
-            ("tabular",  tr("tab.tabular")),
-            ("savings",  tr("tab.savings")),
+            ("kpi", tr("tab.diagram")),
+            ("budget", tr("tab.budget_overview")),
+            ("tabular", tr("tab.tabular")),
+            ("savings", tr("tab.savings")),
         ]
 
     def apply_subtab_visibility(self, visibility: dict[str, bool]) -> None:
@@ -181,9 +199,13 @@ class OverviewTab(QWidget):
         self.budget_panel = OverviewBudgetPanel(
             self.conn, self.budget, self.budget_overview, self.settings, parent=self
         )
-        self.budget_panel.suggestions_dialog_requested.connect(self._show_budget_suggestions_dialog)
+        self.budget_panel.suggestions_dialog_requested.connect(
+            self._show_budget_suggestions_dialog
+        )
         self.budget_panel.overrun_details_requested.connect(self._show_overrun_details)
-        self.budget_panel.budget_overview_edit_requested.connect(self._on_budget_overview_edit_requested)
+        self.budget_panel.budget_overview_edit_requested.connect(
+            self._on_budget_overview_edit_requested
+        )
         self.budget_panel.budget_data_changed.connect(self._delayed_refresh)
         self.budget_panel.connect_double_clicks(
             on_budget_cell=self._on_budget_cell_double_clicked,
@@ -202,14 +224,20 @@ class OverviewTab(QWidget):
 
         self.budget_tabs = QTabWidget()
         # Tab 0: KPI-Cards + Charts
-        self.budget_tabs.addTab(self.kpi_panel,                      tr("tab.diagram"))
+        self.budget_tabs.addTab(self.kpi_panel, tr("tab.diagram"))
         # Tabs 1–3: Direkt die vom OverviewBudgetPanel gebauten QWidget-Instanzen
-        self.budget_tabs.addTab(self.budget_panel.w_budget_overview, tr("tab.budget_overview"))
-        self.budget_tabs.addTab(self.budget_panel.w_tabular,         tr("tab.tabular"))
-        self.budget_tabs.addTab(self.budget_panel.w_budget_table,    tr("tab.budget_table"))
+        self.budget_tabs.addTab(
+            self.budget_panel.w_budget_overview, tr("tab.budget_overview")
+        )
+        self.budget_tabs.addTab(self.budget_panel.w_tabular, tr("tab.tabular"))
+        self.budget_tabs.addTab(
+            self.budget_panel.w_budget_table, tr("tab.budget_table")
+        )
         # Tab 4: Sparziele
-        self.budget_tabs.addTab(self.savings_panel,                  tr("tab.savings"))
-        self.budget_tabs.setTabVisible(4, False)  # Sparziele jetzt als eigener Haupt-Tab
+        self.budget_tabs.addTab(self.savings_panel, tr("tab.savings"))
+        self.budget_tabs.setTabVisible(
+            4, False
+        )  # Sparziele jetzt als eigener Haupt-Tab
 
         bg_layout.addWidget(self.budget_tabs)
         left_layout.addWidget(self.budget_group)
@@ -243,7 +271,9 @@ class OverviewTab(QWidget):
         layout.setContentsMargins(10, 6, 10, 6)
 
         title = QLabel(tr("overview.title"))
-        font = QFont(); font.setPointSize(12); font.setBold(True)
+        font = QFont()
+        font.setPointSize(12)
+        font.setBold(True)
         title.setFont(font)
         layout.addWidget(title)
         layout.addStretch()
@@ -314,7 +344,9 @@ class OverviewTab(QWidget):
                 logger.debug("tab currentChanged connect: %s", e)
 
         # month_window_combo liegt im budget_panel
-        self.budget_panel.month_window_combo.currentIndexChanged.connect(self._delayed_refresh)  # on w_budget_table
+        self.budget_panel.month_window_combo.currentIndexChanged.connect(
+            self._delayed_refresh
+        )  # on w_budget_table
 
         # btn_show_suggestions ist bereits in overview_budget_panel._build_budget_overview_tab()
         # mit suggestions_dialog_requested verbunden → _show_budget_suggestions_dialog.
@@ -345,13 +377,13 @@ class OverviewTab(QWidget):
             return (today - timedelta(days=90), today)
         else:  # Custom
             d_from = self.right_panel.date_from.date().toPython()
-            d_to   = self.right_panel.date_to.date().toPython()
+            d_to = self.right_panel.date_to.date().toPython()
             return (d_from, d_to)
 
     def _on_range_changed(self) -> None:
         idx = self.range_combo.currentIndex()
-        is_custom = (idx == 4)
-        is_ym = (idx == 0)
+        is_custom = idx == 4
+        is_ym = idx == 0
 
         self.year_combo.setEnabled(is_ym)
         self.month_combo.setEnabled(is_ym)
@@ -382,7 +414,7 @@ class OverviewTab(QWidget):
         self._delayed_refresh()
 
     def _sync_month_window_enabled(self) -> None:
-        is_ym = (self.range_combo.currentIndex() == 0)
+        is_ym = self.range_combo.currentIndex() == 0
         self.budget_panel.month_window_combo.setEnabled(
             is_ym and self.month_combo.currentIndex() != 0
         )
@@ -436,27 +468,42 @@ class OverviewTab(QWidget):
         # ── KPI-Panel ──
         try:
             self.kpi_panel.refresh_kpis(rows, budget_sums)
-            self.kpi_panel.refresh_charts(rows, year, month_idx, date_from, date_to, budget_sums=budget_sums)
+            self.kpi_panel.refresh_charts(
+                rows, year, month_idx, date_from, date_to, budget_sums=budget_sums
+            )
         except Exception as e:
             logger.warning("kpi_panel refresh: %s", e)
 
         # ── Budget-Panel ──
         try:
-            self.budget_panel.refresh_budget_overview(year, month_idx, self._cat_caches, tag_id=tag_id)
+            self.budget_panel.refresh_budget_overview(
+                year, month_idx, self._cat_caches, tag_id=tag_id
+            )
         except Exception as e:
             logger.warning("budget_panel overview: %s", e)
 
         try:
             typ_filter_display = self.right_panel.typ_combo.currentText()
             self.budget_panel.refresh_tabular(
-                date_from, date_to, self._cat_caches, typ_filter_display, range_idx, tag_id=tag_id
+                date_from,
+                date_to,
+                self._cat_caches,
+                typ_filter_display,
+                range_idx,
+                tag_id=tag_id,
             )
         except Exception as e:
             logger.warning("budget_panel tabular: %s", e)
 
         try:
             self.budget_panel.refresh_budget_table(
-                date_from, date_to, year, month_idx, range_idx, self.track, tag_id=tag_id
+                date_from,
+                date_to,
+                year,
+                month_idx,
+                range_idx,
+                self.track,
+                tag_id=tag_id,
             )
         except Exception as e:
             logger.warning("budget_panel table: %s", e)
@@ -502,11 +549,11 @@ class OverviewTab(QWidget):
                 children.setdefault(pid, []).append(cid)
 
         self._cat_caches = {
-            "name_to_id":   name_to_id,
+            "name_to_id": name_to_id,
             "id_to_name_typ": id_to_name_typ,
-            "children":     children,
-            "parent":       parent,
-            "all":          cats,
+            "children": children,
+            "parent": parent,
+            "all": cats,
         }
         self._descendant_name_cache = {}
 
@@ -578,7 +625,9 @@ class OverviewTab(QWidget):
         self._descendant_name_cache[key] = result
         return result
 
-    def _budget_sums_by_typ_for_range(self, date_from: date, date_to: date) -> dict[str, float]:
+    def _budget_sums_by_typ_for_range(
+        self, date_from: date, date_to: date
+    ) -> dict[str, float]:
         months = _months_between(date_from, date_to)
         out = {TYP_INCOME: 0.0, TYP_EXPENSES: 0.0, TYP_SAVINGS: 0.0}
         try:
@@ -595,7 +644,11 @@ class OverviewTab(QWidget):
     def _on_kpi_clicked(self, typ: str) -> None:
         """KPI-Card Klick: Typ-Filter setzen + Transaktionen-Tab öffnen."""
         typ_norm = normalize_typ(typ)
-        self.right_panel.set_typ(typ_norm if typ_norm in (TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS) else tr("lbl.all"))
+        self.right_panel.set_typ(
+            typ_norm
+            if typ_norm in (TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS)
+            else tr("lbl.all")
+        )
         self.refresh_data()
 
     def _on_chart_category_clicked(self, category_name: str) -> None:
@@ -612,14 +665,18 @@ class OverviewTab(QWidget):
             return
         self._on_kpi_clicked(typ_name)
 
-    def _on_maincat_item_double_clicked(self, item: QTreeWidgetItem, column: int) -> None:
+    def _on_maincat_item_double_clicked(
+        self, item: QTreeWidgetItem, column: int
+    ) -> None:
         try:
             if not item:
                 return
             cid = item.data(0, Qt.UserRole)
             if cid is None:
                 return
-            typ, name = self._cat_caches.get("id_to_name_typ", {}).get(int(cid), ("", ""))
+            typ, name = self._cat_caches.get("id_to_name_typ", {}).get(
+                int(cid), ("", "")
+            )
             if not name:
                 return
             if typ:
@@ -668,7 +725,11 @@ class OverviewTab(QWidget):
             except (ValueError, AttributeError):
                 year = date.today().year
             month_idx = self.month_combo.currentIndex()
-            month = month_idx if month_idx > 0 else (date.today().month if year == date.today().year else 1)
+            month = (
+                month_idx
+                if month_idx > 0
+                else (date.today().month if year == date.today().year else 1)
+            )
             self.budget_edit_requested.emit(typ, category, year, month)
         except Exception as e:
             logger.debug("_on_budget_overview_edit_requested: %s", e)
@@ -700,7 +761,9 @@ class OverviewTab(QWidget):
             # "keine Vorschläge". Der Dialog selbst nutzt BudgetOverviewModel
             # als Primärquelle und zeigt bei echtem Leerstand sauber "alles grün".
             budget_model = BudgetModel(self.conn)
-            dlg = BudgetAdjustmentDialog(self, warnings_model, budget_model, year, current_month)
+            dlg = BudgetAdjustmentDialog(
+                self, warnings_model, budget_model, year, current_month
+            )
             dlg.exec()
 
             # Wenn im Dialog ein Lern-/Forecast-Vorschlag übernommen wurde, muss
@@ -711,36 +774,56 @@ class OverviewTab(QWidget):
                 try:
                     self.refresh_data()
                 except Exception as refresh_exc:
-                    logger.debug("refresh after budget suggestion dialog: %s", refresh_exc)
+                    logger.debug(
+                        "refresh after budget suggestion dialog: %s", refresh_exc
+                    )
                 try:
                     win = self.window()
                     if win is not None and hasattr(win, "_schedule_refresh_all_tabs"):
-                        win._schedule_refresh_all_tabs(reason="overview suggestions applied")
+                        win._schedule_refresh_all_tabs(
+                            reason="overview suggestions applied"
+                        )
                     elif win is not None and hasattr(win, "_refresh_all_tabs"):
                         QTimer.singleShot(0, win._refresh_all_tabs)
                 except Exception as refresh_all_exc:
-                    logger.debug("refresh all after budget suggestion dialog: %s", refresh_all_exc)
+                    logger.debug(
+                        "refresh all after budget suggestion dialog: %s",
+                        refresh_all_exc,
+                    )
         except Exception as e:
             logger.warning("_show_budget_suggestions_dialog: %s", e)
 
     def _show_overrun_details(self, overruns: list[dict]) -> None:
         if not overruns:
             return
-        overruns_sorted = sorted(overruns, key=lambda o: float(o.get("rest", 0.0) or 0.0))
+        overruns_sorted = sorted(
+            overruns, key=lambda o: float(o.get("rest", 0.0) or 0.0)
+        )
         lines = []
         for o in overruns_sorted[:40]:
-            typ  = str(o.get("typ", ""))
+            typ = str(o.get("typ", ""))
             name = str(o.get("category", ""))
-            b    = float(o.get("budget", 0.0) or 0.0)
-            a    = float(o.get("actual", 0.0) or 0.0)
+            b = float(o.get("budget", 0.0) or 0.0)
+            a = float(o.get("actual", 0.0) or 0.0)
             rest = float(o.get("rest", 0.0) or 0.0)
-            pct  = o.get("pct")
+            pct = o.get("pct")
             pct_txt = "—" if pct is None else f"{float(pct):.0f}%"
-            status = tr("overview.status_goal_not_reached") if typ == TYP_INCOME else tr("overview.status_budget_exceeded")
+            status = (
+                tr("overview.status_goal_not_reached")
+                if typ == TYP_INCOME
+                else tr("overview.status_budget_exceeded")
+            )
             lines.append(
-                trf("overview.overrun_line",
-                    typ=typ, name=name, budget=format_chf(b), actual=format_chf(a),
-                    rest=format_chf(rest), pct=pct_txt, status=status)
+                trf(
+                    "overview.overrun_line",
+                    typ=typ,
+                    name=name,
+                    budget=format_chf(b),
+                    actual=format_chf(a),
+                    rest=format_chf(rest),
+                    pct=pct_txt,
+                    status=status,
+                )
             )
         if len(overruns_sorted) > 40:
             lines.append(trf("overview.more_items", n=len(overruns_sorted) - 40))
@@ -749,9 +832,7 @@ class OverviewTab(QWidget):
         msg.setIcon(QMessageBox.Warning)
         msg.setWindowTitle(tr("dlg.budget_warnings"))
         msg.setText(tr("overview.categories_outside_plan"))
-        msg.setInformativeText(
-            tr("overview.tip_budget_warnings")
-        )
+        msg.setInformativeText(tr("overview.tip_budget_warnings"))
         msg.setDetailedText("\n".join(lines))
         msg.exec()
 

@@ -1,0 +1,67 @@
+BudgetManager v2.2.24 – Abschlussprotokoll Release-Warnungen
+Datum: 16. Juli 2026
+Basis: BudgetManager_Source_2_2_24_FINAL_MERGED_AUDIT_FIXED.zip
+
+CODE- UND FUNKTIONSERHALT
+- Entfernte bestehende Dateien: 0
+- Entfernte Klassen/Funktionen/Methoden laut AST-Vergleich: 0
+
+MODALE DIALOGE
+- Vorher: 305 tatsächliche QMessageBox-Aufrufe
+  - 107 Information
+  - 102 Warning, davon 97 passive Warnungen
+  - 70 Critical
+  - 26 Question
+- Nachher: 101 bewusst modale Aufrufe
+  - 0 Information
+  - 5 Warning mit ausgewerteter Entscheidung
+  - 70 Critical
+  - 26 Question
+- Passive modale Warnungen: 0
+
+TAB-REIHENFOLGE
+- Komplexe Dialogdateien: 13/13 abgedeckt
+- Dialogklassen: 20
+- Dynamische und verzögert registrierte Widgets berücksichtigt
+
+PLATTFORM-/INSTALLER-/UPDATER-GATES
+- Fedora 42 + Fedora latest, Wayland/Weston, Skalierung 1.0/1.25/1.5/2.0
+- Windows latest, Skalierung 1.0/1.25/1.5/2.0
+- Qt-Accessibility- und Tastaturvertrag
+- Windows Silent Install / installierte EXE / Silent Uninstall / Datenerhalt
+- Updater-Sandbox-E2E: Staging, Hash, Top-Level-Payload, Rollback, Austausch, Datenerhalt
+- Tag-Build benötigt platform-release-gates und dependency-security-gate
+
+ABHÄNGIGKEITEN
+- requirements.lock installierbar
+- pip check: PASS
+- Lokaler pip-audit: DNS der isolierten Umgebung blockiert pypi.org
+- Vollständiger Online-pip-audit ist verpflichtender Tag-Build-Gate
+- Direkter PyPA-Advisory-Abgleich dokumentiert in
+  audit_artifacts/DIRECT_DEPENDENCY_ADVISORY_REVIEW_v2_2_24.json
+
+ABSCHLUSSPRÜFUNGEN
+- pytest: 506 passed
+- Version: 2.2.24 synchron
+- Compileall: PASS
+- I18N DE/EN/FR: PASS
+- Qt-Übersetzungskataloge DE/FR: PASS
+- DAU-Erststart: PASS
+- Release-Lint: PASS
+- Black: PASS (35 geänderte Python-Dateien)
+- Mypy: 40 Dateien, 0 Fehler
+- Enterprise UI/ADHS: 1000 Loops / 4300 Checks / 0 WARN / 0 FAIL
+- UI/ADHS: 1000 Loops / 15623 Checks / 0 Findings
+- Mega Release: 1000 Loops / 6812 Checks / 0 Findings
+- Deep Logic: 500 Loops / 3500 Checks / 0 Findings
+- Stabilität: 300 Loops / 2400 Checks / 0 Findings
+- Release Logic: 100 Loops / 0 Findings
+- Fresh Logic: 100 Loops / 0 Findings
+- GUI-Selbsttest: PASS
+- Updater-E2E: PASS
+- Workflow-YAML: PASS
+
+FREIGABE
+- Source-Release: GO
+- Öffentliche Binaries: werden technisch nur nach erfolgreichen Plattform- und
+  Online-Dependency-Gates erzeugt.

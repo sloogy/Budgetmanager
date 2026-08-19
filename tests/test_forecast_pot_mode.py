@@ -5,6 +5,7 @@ Ziel:
 - Pot wird gegen den Gesamt-Topf geprüft, nicht gegen jedes Monatsbudget.
 - Inkrementell bleibt für Jahresrechnungen/Teilzahlungen verfügbar.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -33,13 +34,21 @@ def _prev_months(year: int, month: int, n: int):
     return out
 
 
-def _add_category(conn, name: str, *, is_fix=True, is_recurring=False, forecast_mode="auto"):
+def _add_category(
+    conn, name: str, *, is_fix=True, is_recurring=False, forecast_mode="auto"
+):
     conn.execute(
         """
         INSERT INTO categories(typ, name, is_fix, is_recurring, recurring_day, forecast_mode)
         VALUES(?,?,?,?,1,?)
         """,
-        (TYP_EXPENSES, name, 1 if is_fix else 0, 1 if is_recurring else 0, forecast_mode),
+        (
+            TYP_EXPENSES,
+            name,
+            1 if is_fix else 0,
+            1 if is_recurring else 0,
+            forecast_mode,
+        ),
     )
 
 
@@ -63,7 +72,13 @@ def _book_amounts(conn, name: str, amounts_by_month: dict[tuple[int, int], float
             INSERT INTO tracking(date, typ, category, amount, details)
             VALUES(?,?,?,?,?)
             """,
-            (f"{y:04d}-{m:02d}-15", TYP_EXPENSES, name, float(amount), "forecast-pot-test"),
+            (
+                f"{y:04d}-{m:02d}-15",
+                TYP_EXPENSES,
+                name,
+                float(amount),
+                "forecast-pot-test",
+            ),
         )
 
 
@@ -143,7 +158,9 @@ def test_fixed_non_recurring_incremental_override_treats_as_yearly_bill(conn):
         forecast_mode="incremental",
     )
     _set_budget(conn, "Hausratversicherung", months, 750.0)
-    _book_amounts(conn, "Hausratversicherung", {(2026, 1): 250, (2026, 2): 250, (2026, 3): 400})
+    _book_amounts(
+        conn, "Hausratversicherung", {(2026, 1): 250, (2026, 2): 250, (2026, 3): 400}
+    )
 
     res = BudgetSuggestionEngine(conn).compute_category_suggestion(
         typ=TYP_EXPENSES,
@@ -182,7 +199,11 @@ def test_pot_zero_year_does_not_reduce_when_app_usage_started_recently(conn):
     _book_amounts(conn, "Alltag", {(2026, 12): 10})
 
     res = BudgetSuggestionEngine(conn).compute_category_suggestion(
-        typ=TYP_EXPENSES, category="Ungenutzter alter Pot", year=2027, month=1, months_back=12
+        typ=TYP_EXPENSES,
+        category="Ungenutzter alter Pot",
+        year=2027,
+        month=1,
+        months_back=12,
     )
 
     assert res is None

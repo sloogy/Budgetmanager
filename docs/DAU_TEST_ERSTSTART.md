@@ -1,6 +1,6 @@
 # DAU-Test — Usability & Durchführung nach dem ersten Start
 
-Stand: v2.2.6 · 3. Juli 2026
+Stand: v2.2.60 · 30. Juli 2026
 
 „DAU" = der technisch völlig unbedarfte Nutzer. Getestet wurde der komplette
 Weg vom allerersten Start bis zur ersten eigenen Buchung — einerseits als
@@ -72,7 +72,7 @@ Setup-Assistenten).
 
 ---
 
-## Teil C — Aktueller Stand in v2.2.6
+## Teil C — Aktueller Stand in v2.2.13
 
 - **B3** Quick-Modus: Warnung jetzt **fett in Warnfarbe** mit klarem Text
   („Jede Person mit Dateizugriff kann deine Daten öffnen").
@@ -93,6 +93,29 @@ Setup-Assistenten).
 - **GUI-Smoke** (echte Klicks) nach `docs/TIEFENANALYSE_RELEASE_v2_0_3.md`,
   Abschnitt 5 — insbesondere DE/EUR-Nutzer ohne geführtes Setup (B1) und das
   neue Budget/Tracking-Gating (R1) gegenprüfen.
+
+---
+
+## Teil D — Fehleingabe-Robustheit (v2.2.42)
+
+Ergänzend zum Erststart-Pfad wurde geprüft, was der DAU im laufenden Betrieb an
+Unsinn eintippen kann. Der `dau_first_run_check.py` deckt das in **Schritt 8**
+mit ab (jederzeit erneut ausführbar).
+
+| Eingabe | Feld | Verhalten |
+|---|---|---|
+| `inf`, `Infinity`, `nan`, `1e400`, sehr lange Ziffernfolge | jedes Betragsfeld | ✅ abgewiesen (fail-closed) |
+| `1,50` · `1.234,56` · `-5` · leer | jedes Betragsfeld | ✅ weiterhin korrekt |
+| inf/nan als Budget, Buchung, Sparziel-Ziel | DB-Schreibgrenze | ✅ abgewiesen — kein nicht-endlicher Wert erreicht die DB |
+| `'); DROP TABLE …` | Kategorie-/Tag-Name | ✅ parametrisiert, keine Injection |
+| leer / nur Leerzeichen | Kategorie-/Tag-Name | ✅ an der GUI abgefangen |
+
+**Hintergrund:** `float("inf")`/`float("nan")` sind formal „numerisch" und
+rutschten früher durch jedes Betragsfeld in die DB — ein einziger solcher Wert
+hätte alle Summen, Budget-Reste, Sparziel-Grenzen und Diagramme vergiftet. Die
+Abwehr sitzt jetzt dreischichtig: `parse_money` (GUI-Eingabe), der Helfer
+`require_finite_amount` (DB-Schreibgrenze, auch für Excel-Import) und Guards in
+den Modellen für Budget, Tracking und Sparziele.
 
 ---
 

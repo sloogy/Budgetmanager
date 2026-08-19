@@ -94,7 +94,7 @@ class BudgetWarningsModelExtended:
 
         if updates:
             params.append(warning_id)
-            query = f"UPDATE budget_warnings SET {', '.join(updates)} WHERE id = ?"
+            query = f"UPDATE budget_warnings SET {', '.join(updates)} WHERE id = ?"  # nosec B608
             self.conn.execute(query, params)
             self.conn.commit()
 

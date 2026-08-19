@@ -15,6 +15,7 @@ Diese Tests sichern zwei Dinge ab:
 
 Läuft ohne Qt/PySide6 (UserModel und crypto sind Qt-frei).
 """
+
 from __future__ import annotations
 
 import json
@@ -77,7 +78,9 @@ def test_startup_offers_recovery_instead_of_hard_exit():
 
 def test_recover_helper_deletes_user_and_db():
     src = _main_src()
-    helper = src.split("def _recover_broken_account(", 1)[1].split("\n        while True:", 1)[0]
+    helper = src.split("def _recover_broken_account(", 1)[1].split(
+        "\n        while True:", 1
+    )[0]
     assert "delete_user(" in helper
     assert "delete_db=True" in helper
     # Letzter Ausweg, falls der reguläre Löschweg scheitert: .enc direkt entfernen.
@@ -86,8 +89,14 @@ def test_recover_helper_deletes_user_and_db():
 
 def test_recover_question_key_present_in_all_locales():
     for loc in ("de", "en", "fr"):
-        data = json.loads((ROOT / "locales" / f"{loc}.json").read_text(encoding="utf-8"))
+        data = json.loads(
+            (ROOT / "locales" / f"{loc}.json").read_text(encoding="utf-8")
+        )
         startup = data.get("startup", {})
         for key in ("recover_title", "recover_question"):
-            assert startup.get(key) and startup[key].strip(), f"{loc}: startup.{key} fehlt/leer"
-        assert "{reason}" in startup["recover_question"], f"{loc}: Platzhalter {{reason}} fehlt"
+            assert (
+                startup.get(key) and startup[key].strip()
+            ), f"{loc}: startup.{key} fehlt/leer"
+        assert (
+            "{reason}" in startup["recover_question"]
+        ), f"{loc}: Platzhalter {{reason}} fehlt"

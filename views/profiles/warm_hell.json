@@ -13,7 +13,7 @@
   "tabelle_gitter": "#fdba74",
   "auswahl_hintergrund": "#f97316",
   "auswahl_text": "#2d1b10",
-  "negativ_text": "#d64545",
+  "negativ_text": "#c23e3e",
   "typ_einnahmen": "#16a34a",
   "typ_ausgaben": "#d64545",
   "typ_ersparnisse": "#2563eb",
@@ -24,5 +24,8 @@
   "dropdown_border": "#fdba74",
   "schriftgroesse": 10,
   "hover_hintergrund": "#fdd6b7",
-  "hover_text": "#2d1b10"
+  "hover_text": "#2d1b10",
+  "akzent_text": "#2d1b10",
+  "akzent_panel_text": "#b05210",
+  "tabelle_header_text": "#2d1b10"
 }

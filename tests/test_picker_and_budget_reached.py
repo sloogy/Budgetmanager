@@ -7,6 +7,7 @@
 
 Läuft ohne Qt/PySide6 (reine Datenschicht).
 """
+
 from __future__ import annotations
 
 import os
@@ -33,11 +34,16 @@ def _fresh():
     fd, p = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     conn = open_db(p)
-    migrate_all(conn, db_path=p)
+    migrate_all(
+        conn,
+        db_path=p,
+        backup_dir=os.path.join(os.path.dirname(p), "migration_backups"),
+    )
     return conn, p
 
 
 # ── 1. Gruppierter Picker ────────────────────────────────────────
+
 
 def test_grouped_picker_groups_and_order():
     conn, p = _fresh()
@@ -52,7 +58,9 @@ def test_grouped_picker_groups_and_order():
         c.create(TYP_EXPENSES, "Lieblingsshop")
         fav.add(TYP_EXPENSES, "Lieblingsshop")
         for i in range(3):
-            t.add(date(2026, 1, i + 1), TYP_EXPENSES, "Hobby", 10.0, "", source="manual")
+            t.add(
+                date(2026, 1, i + 1), TYP_EXPENSES, "Hobby", 10.0, "", source="manual"
+            )
 
         grouped = c.list_for_tracking_dropdown_grouped(TYP_EXPENSES)
         headers = [lbl for kind, lbl, _ in grouped if kind == "header"]
@@ -77,7 +85,12 @@ def test_grouped_picker_groups_and_order():
         assert groups[fix_var_h] == ["Franchise"]
         assert groups[rec_var_h] == ["Strom"]
         assert groups[real_fix_h] == ["Miete"]
-        assert headers.index(freq_h) < headers.index(fix_var_h) < headers.index(rec_var_h) < headers.index(real_fix_h)
+        assert (
+            headers.index(freq_h)
+            < headers.index(fix_var_h)
+            < headers.index(rec_var_h)
+            < headers.index(real_fix_h)
+        )
     finally:
         conn.close()
         os.remove(p)
@@ -91,14 +104,17 @@ def test_grouped_picker_no_duplicates_and_headers_have_no_value():
         c.create(TYP_EXPENSES, "Hobby")
         grouped = c.list_for_tracking_dropdown_grouped(TYP_EXPENSES)
         item_values = [v for k, _, v in grouped if k == "item"]
-        assert len(item_values) == len(set(item_values))            # keine Duplikate
-        assert all(v is None for k, _, v in grouped if k == "header")  # Header ohne Wert
+        assert len(item_values) == len(set(item_values))  # keine Duplikate
+        assert all(
+            v is None for k, _, v in grouped if k == "header"
+        )  # Header ohne Wert
     finally:
         conn.close()
         os.remove(p)
 
 
 # ── 2. Budget-erreicht-Logik (fix XOR wiederkehrend) ─────────────
+
 
 def _status(c, b, t, cat, y, m):
     """Spiegelt die Produktionslogik aus add_fixcosts/_refresh_missing."""
@@ -109,7 +125,10 @@ def _status(c, b, t, cat, y, m):
     single = bool(is_fix) ^ bool(is_rec)
     if both:
         exists = t.exists_in_month(year=y, month=m, typ=TYP_EXPENSES, category=cat)
-        return ("offen" if not exists else "abgeschlossen", budget if not exists else 0.0)
+        return (
+            "offen" if not exists else "abgeschlossen",
+            budget if not exists else 0.0,
+        )
     if single:
         if budget > EPS and abs(booked) >= abs(budget) - EPS:
             return ("abgeschlossen", 0.0)
@@ -137,7 +156,9 @@ def test_franchise_open_until_budget_reached():
         assert s == "offen" and abs(rest - 220.0) < EPS
 
         # auf 300 aufstocken -> abgeschlossen
-        t.add(date(Y, M, 20), TYP_EXPENSES, "Franchise", 220.0, "", source="auto_fixcost")
+        t.add(
+            date(Y, M, 20), TYP_EXPENSES, "Franchise", 220.0, "", source="auto_fixcost"
+        )
         s, _ = _status(c, b, t, "Franchise", Y, M)
         assert s == "abgeschlossen"
     finally:
@@ -192,7 +213,10 @@ def test_both_flags_complete_after_single_booking():
 def test_fix_only_quick_button_selects_only_real_fixed_costs():
     src = (ROOT / "views" / "recurring_bookings_dialog.py").read_text(encoding="utf-8")
     assert "item.is_fix and item.is_recurring" in src
-    assert "Fix-only Kategorien wie Franchise/Selbstbehalt bleiben bewusst außen vor" in src
+    assert (
+        "Fix-only Kategorien wie Franchise/Selbstbehalt bleiben bewusst außen vor"
+        in src
+    )
 
 
 def test_tracking_picker_shows_child_names_without_parent_prefix():
@@ -222,12 +246,12 @@ def test_tracking_picker_shows_child_names_without_parent_prefix():
         os.remove(p)
 
 
-def test_tracker_dialog_keeps_unlisted_preset_category_editable_fallback():
-    """v2.1.7-Blocker-Schutz: ``_set_combo_by_data`` braucht den
-    Editable-Fallback, damit alte Buchungen auf Parent-Kategorien beim
-    Bearbeiten nicht still auf den ersten Picker-Eintrag umgehängt werden."""
-    src = (ROOT / "views" / "tracker_dialog.py").read_text(encoding="utf-8")
-    marker = src.split("def _set_combo_by_data", 1)[1].split("def ", 1)[0]
-    assert "isEditable()" in marker
-    assert "setEditText(value)" in marker
-    assert "setCurrentIndex(-1)" in marker
+def test_edit_dialog_keeps_unlisted_preset_category_fallback():
+    """v2.1.7-Blocker-Schutz, seit v2.2.16 (K1) im QuickAdd-Edit-Modus:
+    Alte Buchungen auf nicht (mehr) gelisteten Kategorien duerfen beim
+    Bearbeiten nicht still auf den ersten Picker-Eintrag umgehaengt werden."""
+    src = (ROOT / "views" / "quick_add_dialog.py").read_text(encoding="utf-8")
+    marker = src.split("def _apply_preset", 1)[1].split("\n    def ", 1)[0]
+    assert "insertItem(0, wanted, wanted)" in marker
+    assert "setCurrentIndex(0)" in marker
+    assert "currentData() != wanted" in marker

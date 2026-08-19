@@ -4,6 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 import json
+import re
 import sqlite3
 from model.typ_constants import TYP_SAVINGS
 from dataclasses import dataclass
@@ -150,7 +151,7 @@ class UndoRedoModel:
         col_sql = ",".join(col_names)
 
         self.conn.execute(
-            f"INSERT INTO undo_stack({col_sql}) VALUES({placeholders})",
+            f"INSERT INTO undo_stack({col_sql}) VALUES({placeholders})",  # nosec B608
             values,
         )
         self.conn.commit()
@@ -313,7 +314,7 @@ class UndoRedoModel:
     def _last_group_id(self, table: str) -> Optional[str]:
         safe = self._safe_table(table)
         row = self.conn.execute(
-            f"SELECT group_id FROM {safe} ORDER BY id DESC LIMIT 1"
+            f"SELECT group_id FROM {safe} ORDER BY id DESC LIMIT 1"  # nosec B608
         ).fetchone()
         if not row:
             return None
@@ -329,7 +330,7 @@ class UndoRedoModel:
         ts_col = "ts" if "ts" in cols else "timestamp" if "timestamp" in cols else "ts"
 
         cur = self.conn.execute(
-            f"SELECT id, COALESCE({ts_col}, ''), COALESCE(group_id,''), table_name, operation, old_data, new_data "
+            f"SELECT id, COALESCE({ts_col}, ''), COALESCE(group_id,''), table_name, operation, old_data, new_data "  # nosec B608
             f"FROM {safe} WHERE group_id=? ORDER BY id {order}",
             (group_id,),
         )
@@ -353,6 +354,9 @@ class UndoRedoModel:
     def _push_to_other_stack(
         self, target_table: str, r: UndoRow, *, clear_redo: bool = False
     ) -> None:
+        # v2.2.25 (d1-Härtung): Ziel-Stack strikt gegen die Whitelist –
+        # target_table erreicht weiter unten ein f-String-INSERT.
+        target_table = self._safe_table(target_table)
         # for redo→undo we must not clear redo stack
         ts = datetime.now().isoformat(sep=" ", timespec="seconds")
         if clear_redo:
@@ -399,7 +403,7 @@ class UndoRedoModel:
         col_sql = ",".join(col_names)
 
         self.conn.execute(
-            f"INSERT INTO {target_table}({col_sql}) VALUES({placeholders})",
+            f"INSERT INTO {target_table}({col_sql}) VALUES({placeholders})",  # nosec B608
             values,
         )
 
@@ -413,10 +417,12 @@ class UndoRedoModel:
             # undo delete => insert old row
             if r.old_data:
                 self._insert_row(r.table_name, r.old_data)
+                self._restore_tracking_tags(r.table_name, r.old_data)
         elif op == "UPDATE":
             # undo update => restore old row
             if r.old_data:
                 self._update_by_id(r.table_name, r.old_data)
+                self._restore_tracking_tags(r.table_name, r.old_data)
         elif op == "RENAME_CASCADE":
             if r.old_data and r.new_data:
                 # inverse => rename new_name back to old_name
@@ -435,12 +441,14 @@ class UndoRedoModel:
         if op == "INSERT":
             if r.new_data:
                 self._insert_row(r.table_name, r.new_data)
+                self._restore_tracking_tags(r.table_name, r.new_data)
         elif op == "DELETE":
             if r.old_data:
                 self._delete_by_id(r.table_name, r.old_data)
         elif op == "UPDATE":
             if r.new_data:
                 self._update_by_id(r.table_name, r.new_data)
+                self._restore_tracking_tags(r.table_name, r.new_data)
         elif op == "RENAME_CASCADE":
             if r.old_data and r.new_data:
                 self._rename_cascade(
@@ -452,17 +460,61 @@ class UndoRedoModel:
         else:
             return
 
+    def _restore_tracking_tags(self, table: str, data: dict[str, Any]) -> None:
+        """Stellt die Tag-Belegung einer Tracking-Zeile atomar wieder her.
+
+        ``_tag_ids`` ist Undo-Metadateninhalt und keine DB-Spalte. Fehlende
+        Tags werden übersprungen, damit ein später separat gelöschter Tag ein
+        ansonsten gültiges Undo nicht blockiert.
+        """
+        if table != "tracking" or "id" not in data or "_tag_ids" not in data:
+            return
+        if not self._table_exists("entry_tags") or not self._table_exists("tags"):
+            return
+        entry_id = int(data["id"])
+        self.conn.execute("DELETE FROM entry_tags WHERE entry_id=?", (entry_id,))
+        raw_ids = data.get("_tag_ids") or []
+        for raw_tag_id in raw_ids:
+            try:
+                tag_id = int(raw_tag_id)
+            except (TypeError, ValueError):
+                continue
+            self.conn.execute(
+                """
+                INSERT OR IGNORE INTO entry_tags(entry_id, tag_id)
+                SELECT ?, id FROM tags WHERE id=?
+                """,
+                (entry_id, tag_id),
+            )
+
     def _delete_by_id(self, table: str, data: dict[str, Any]) -> None:
         if "id" not in data:
             return
         safe = self._safe_table(table)
+        # v2.2.25 (KILLCRITIC k2): Symmetrie zu _restore_tracking_tags –
+        # der Redo-/Undo-Loeschpfad muss die Tag-Zuordnungen einer Buchung
+        # explizit mitentfernen. Das Schema traegt zwar ON DELETE CASCADE,
+        # SQLite erzwingt Fremdschluessel aber nur bei aktivem
+        # PRAGMA foreign_keys, das die App-Verbindung nicht setzt; ohne
+        # diesen Schritt blieben verwaiste entry_tags-Zeilen zurueck.
+        if safe == "tracking":
+            self.conn.execute(
+                "DELETE FROM entry_tags WHERE entry_id=?", (int(data["id"]),)
+            )
         # Kein commit() hier — Transaktionsklammer liegt in undo()/redo()
-        self.conn.execute(f"DELETE FROM {safe} WHERE id=?", (int(data["id"]),))
+        self.conn.execute(
+            f"DELETE FROM {safe} WHERE id=?",  # nosec B608
+            (int(data["id"]),),
+        )
 
     def _insert_row(self, table: str, data: dict[str, Any]) -> None:
         safe = self._safe_table(table)
         cols = self._cols(safe)
-        insert_cols = [k for k in data.keys() if k in cols]
+        insert_cols = [
+            k
+            for k in data.keys()
+            if k in cols and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", k)
+        ]
         if not insert_cols:
             return
         placeholders = ",".join(["?"] * len(insert_cols))
@@ -478,12 +530,19 @@ class UndoRedoModel:
         cols = self._cols(safe)
         if "id" not in data or "id" not in cols:
             return
-        set_cols = [k for k in data.keys() if k in cols and k != "id"]
+        set_cols = [
+            k
+            for k in data.keys()
+            if k in cols and k != "id" and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", k)
+        ]
         if not set_cols:
             return
         set_sql = ", ".join([f"{k}=?" for k in set_cols])
         values = [data[k] for k in set_cols] + [int(data["id"])]
-        self.conn.execute(f"UPDATE {safe} SET {set_sql} WHERE id=?", values)
+        self.conn.execute(
+            f"UPDATE {safe} SET {set_sql} WHERE id=?",  # nosec B608
+            values,
+        )
 
     def _rename_cascade(
         self, *, cat_id: int, typ: str, old_name: str, new_name: str
@@ -561,82 +620,98 @@ class UndoRedoModel:
             )
 
     def _post_recalc(self, rows: list[UndoRow], *, redo: bool = False) -> None:
-        """Nach Undo/Redo abhängige Daten korrigieren (Sparziele).
+        """Spiegelt Undo/Redo in Sparziel-Bestand und Flusswerten.
 
-        WICHTIG: Wir berechnen NICHT pauschal neu, da das manuell eingetragene
-        Sparziel-Beträge überschreiben würde. Stattdessen passen wir den Betrag
-        entsprechend der rückgängig gemachten/wiederholten Operation an.
-
-        Die Fallunterscheidungen unten sind aus UNDO-Sicht formuliert.
-        Redo ist exakt die Umkehrung — daher wird jedes Delta mit `sign`
-        multipliziert (Fix v1.0.31: vorher wurde bei Redo dasselbe Vorzeichen
-        wie bei Undo angewendet, wodurch sich der Sparziel-Betrag nach
-        Undo+Redo um den doppelten Buchungsbetrag verschob statt zum
-        Ausgangswert zurückzukehren).
+        ``factor=+1`` bedeutet: Buchung wird zum Datenbestand hinzugefügt.
+        ``factor=-1`` bedeutet: Buchung wird entfernt. Dadurch bleiben auch
+        Bezug und Korrektur nach Undo/Redo getrennt ausgewiesen.
         """
-        sign = -1.0 if redo else 1.0
-        for r in rows:
-            if r.table_name != "tracking":
+
+        def apply(data: dict | None, factor: float) -> None:
+            if not data or data.get("typ") != TYP_SAVINGS:
+                return
+            category = data.get("category")
+            amount = float(data.get("amount", 0) or 0)
+            if not category or abs(amount) < 1e-12:
+                return
+            raw_action = str(data.get("savings_action") or "").strip().lower()
+            action = raw_action or ("withdrawal" if amount < 0 else "deposit")
+            self._adjust_savings_goal_flow(
+                str(category), amount=amount, action=action, factor=factor
+            )
+
+        for row in rows:
+            if row.table_name != "tracking":
                 continue
-
             try:
-                # Prüfe ob es eine Ersparnisse-Buchung ist
-                old_typ = r.old_data.get("typ") if r.old_data else None
-                new_typ = r.new_data.get("typ") if r.new_data else None
+                operation = row.operation.upper()
+                if operation == "INSERT":
+                    apply(row.new_data, 1.0 if redo else -1.0)
+                elif operation == "DELETE":
+                    apply(row.old_data, -1.0 if redo else 1.0)
+                elif operation == "UPDATE":
+                    if redo:
+                        apply(row.old_data, -1.0)
+                        apply(row.new_data, 1.0)
+                    else:
+                        apply(row.new_data, -1.0)
+                        apply(row.old_data, 1.0)
+            except Exception as exc:
+                logger.error("Fehler bei Sparziel-Korrektur: %s", exc)
 
-                # Bei Undo einer INSERT: Die Buchung wurde gelöscht
-                # → Betrag vom Sparziel abziehen
-                if r.operation.upper() == "INSERT" and new_typ == TYP_SAVINGS:
-                    category = r.new_data.get("category")
-                    amount = float(r.new_data.get("amount", 0))
-                    if category and amount:
-                        self._adjust_savings_goal(category, sign * -amount)
-
-                # Bei Undo einer DELETE: Die Buchung wurde wiederhergestellt
-                # → Betrag zum Sparziel addieren
-                elif r.operation.upper() == "DELETE" and old_typ == TYP_SAVINGS:
-                    category = r.old_data.get("category")
-                    amount = float(r.old_data.get("amount", 0))
-                    if category and amount:
-                        self._adjust_savings_goal(category, sign * amount)
-
-                # Bei Undo einer UPDATE: alte Werte wiederherstellen
-                elif r.operation.upper() == "UPDATE":
-                    # Alte Ersparnisse-Buchung wiederherstellen
-                    if old_typ == TYP_SAVINGS:
-                        old_cat = r.old_data.get("category")
-                        old_amt = float(r.old_data.get("amount", 0))
-                        if old_cat and old_amt:
-                            self._adjust_savings_goal(old_cat, sign * old_amt)
-                    # Neue Ersparnisse-Buchung rückgängig machen
-                    if new_typ == TYP_SAVINGS:
-                        new_cat = r.new_data.get("category")
-                        new_amt = float(r.new_data.get("amount", 0))
-                        if new_cat and new_amt:
-                            self._adjust_savings_goal(new_cat, sign * -new_amt)
-
-            except Exception as e:
-                logger.error("Fehler bei Sparziel-Korrektur: %s", e)
-
-    def _adjust_savings_goal(self, category: str, amount_change: float) -> None:
-        """Passt den Betrag eines Sparziels um einen Wert an."""
+    def _adjust_savings_goal_flow(
+        self, category: str, *, amount: float, action: str, factor: float
+    ) -> None:
+        """Passt Bestand, Einzahlungen und Bezüge symmetrisch an."""
         try:
+            cols = {
+                str(row[1])
+                for row in self.conn.execute("PRAGMA table_info(savings_goals)")
+            }
+            flow_cols = {"contributed_amount", "withdrawn_amount"}.issubset(cols)
+            stock_delta = factor * float(amount)
+            contribution_delta = 0.0
+            withdrawal_delta = 0.0
+            if action == "withdrawal":
+                withdrawal_delta = factor * abs(float(amount))
+            else:
+                contribution_delta = factor * float(amount)
+
             goals = self.conn.execute(
-                "SELECT id, current_amount FROM savings_goals WHERE category = ?",
+                """
+                SELECT id, current_amount
+                FROM savings_goals
+                WHERE category=? AND status IN ('sparend','freigegeben')
+                """,
                 (category,),
             ).fetchall()
-
             for goal in goals:
-                goal_id, current = goal[0], float(goal[1])
-                new_amount = max(0, current + amount_change)  # Nicht unter 0
-                self.conn.execute(
-                    "UPDATE savings_goals SET current_amount = ? WHERE id = ?",
-                    (new_amount, goal_id),
-                )
-
+                goal_id = int(goal[0])
+                if flow_cols:
+                    self.conn.execute(
+                        """
+                        UPDATE savings_goals
+                        SET current_amount=MAX(0,current_amount+?),
+                            contributed_amount=MAX(0,contributed_amount+?),
+                            withdrawn_amount=MAX(0,withdrawn_amount+?)
+                        WHERE id=?
+                        """,
+                        (stock_delta, contribution_delta, withdrawal_delta, goal_id),
+                    )
+                else:
+                    self.conn.execute(
+                        "UPDATE savings_goals SET current_amount=MAX(0,current_amount+?) WHERE id=?",
+                        (stock_delta, goal_id),
+                    )
             if goals:
                 self.conn.commit()
-        except Exception as e:
+        except Exception as exc:
             logger.warning(
-                "Fehler beim Anpassen des Sparziels für '%s': %s", category, e
+                "Fehler beim Anpassen des Sparziels für '%s': %s", category, exc
             )
+
+    def _adjust_savings_goal(self, category: str, amount_change: float) -> None:
+        """Legacy-Helfer: behandelt den Betrag als Einzahlung/Korrektur."""
+        self._adjust_savings_goal_flow(
+            category, amount=amount_change, action="correction", factor=1.0
+        )

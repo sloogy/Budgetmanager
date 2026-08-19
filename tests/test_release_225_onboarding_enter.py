@@ -7,6 +7,7 @@
   Ampel, Nächste Schritte, zwei Wege, Enter-Tipp) und es gibt ein eigenes
   Monatsabschluss-Thema – alles dreisprachig.
 """
+
 from __future__ import annotations
 
 import sys

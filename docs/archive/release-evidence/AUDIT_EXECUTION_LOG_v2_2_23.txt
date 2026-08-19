@@ -1,0 +1,466 @@
+
+===== PYTEST COMPLETE =====
+........................................................................ [ 14%]
+........................................................................ [ 29%]
+........................................................................ [ 43%]
+........................................................................ [ 58%]
+........................................................................ [ 73%]
+........................................................................ [ 87%]
+...........................................................              [100%]
+491 passed in 29.76s
+
+===== BLACK CHECK MODEL =====
+All done! ✨ 🍰 ✨
+40 files would be left unchanged.
+
+===== MYPY MODEL =====
+model/crypto.py:104: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+model/user_model.py:206: note: By default the bodies of untyped functions are not checked, consider using --check-untyped-defs  [annotation-unchecked]
+Success: no issues found in 40 source files
+MYPY_EXIT=0
+
+===== SYNC VERSION =====
+Alle Versionsdateien synchron: 2.2.23
+EXIT=0
+
+===== LINT PROCEDURE =====
+Lint-/Release-Prozedur: PASS
+EXIT=0
+
+===== I18N AUDIT =====
+BudgetManager i18n Audit
+========================
+Root: /mnt/data/BudgetManager_Source_2_2_23_ENTERPRISE_UI_ADHS
+Locales: /mnt/data/BudgetManager_Source_2_2_23_ENTERPRISE_UI_ADHS/locales
+
+[OK] Alle referenzierten Keys existieren in de.json
+
+[OK] en.json hat alle Keys von de.json
+
+[OK] Keine deutschen Restübersetzungen in referenzierten en.json-Werten
+
+[INFO] 568 Key(s) in de.json wirken ungenutzt (kein tr()/trf() Treffer):
+  - account.diese_aktion_kann_nicht
+  - account.quick_no_protection_warn
+  - auto.settings_dialog.260_separaten_kategorien_tab_anzeigen_e55079e5
+  - auto.settings_dialog.262_aktiviert_den_separaten_kategorien__7db32e53
+  - auto.settings_dialog.270_small_i_hinweis_kategorien_koennen__5859fbbe
+  - auto.settings_dialog.696_sqlite_datenbank_db_sqlite_sqlite3__aa8cb8b4
+  - auto.views_budget_entry_dialog.102_z_b_1200_00_d7c96b70
+  - auto.views_budget_entry_dialog.105_bereich_1f8db464
+  - auto.views_budget_entry_dialog.105_monat_069d7526
+  - auto.views_budget_entry_dialog.120_neue_kategorie_erstellen_2cbb61c0
+  - auto.views_budget_entry_dialog.145_diese_kategorie_ist_eine_monatlich__584b29cb
+  - auto.views_budget_entry_dialog.290_value_0_b601d60d
+  - auto.views_budget_entry_dialog.324_die_kategorie_value_0_existiert_noc_66c8701f
+  - auto.views_budget_entry_dialog.376_fehlt_e088971c
+  - auto.views_budget_entry_dialog_extended.616_z_b_1200_00_ad178edd
+  - auto.views_category_manager_dialog.111_all_0aa3eab1
+  - auto.views_category_manager_dialog.115_fix_79f4d539
+  - auto.views_category_manager_dialog.116_recurring_c39ebe21
+  - auto.views_category_properties_dialog.92_markiert_diese_kategorie_als_fixkos_36056c84
+  - auto.views_category_properties_dialog.99_markiert_diese_kategorie_als_wieder_6c7786cd
+  - auto.views_missing_bookings_dialog.47_folgende_buchungen_sind_in_diesem_m_5717d0dc
+  - auto.views_savings_goals_dialog.105_lebenszyklus_b_sparend_b_b_freigege_b8234217
+  - auto.views_tabs_categories_tab.344_neu_hauptkategorie_852d2884
+  - auto.views_tabs_categories_tab.346_neu_unterkategorie_18e330b2
+  - auto.views_tabs_categories_tab.349_umbenennen_4ad27303
+  - auto.views_tabs_categories_tab.647_setzen_ja_f86a5233
+  - auto.views_tabs_categories_tab.647_setzen_nein_60c1ccf6
+  - auto.views_tabs_categories_tab.651_setzen_ja_63aa1520
+  - auto.views_tabs_categories_tab.651_setzen_nein_e7dfddad
+  - auto.views_tabs_categories_tab.656_tag_setzen_c7df7554
+  - auto.views_tabs_categories_tab.68_neu_hauptkategorie_d317a531
+  - auto.views_tabs_categories_tab.69_neu_unterkategorie_577581bc
+  - auto.views_tabs_categories_tab.730_value_0_kategorie_n_aktualisiert_0cf1c2ab
+  - auto.views_tabs_tracking_tab.582_nur_letzte_value_0_tage_a8e14b8a
+  - auto.views_tracker_dialog.162_fehlt_fb898654
+  - auto.views_tracker_dialog.165_fehlt_a7f19cb1
+  - auto.views_tracker_dialog.54_z_b_12_50_7eb13fc1
+  - auto.views_update_dialog.182_kein_update_bereit_dffe0658
+  - auto.views_update_dialog.189_update_installieren_8d363062
+  - auto.views_update_dialog.205_updater_konnte_nicht_gestartet_werd_e418fb58
+  - auto.views_update_dialog.58_aktuell_installiert_b_value_0_b_br__6b5cab7b
+  - backup.restore_failed
+  - backup.restore_key_dialog_label
+  - backup.restore_key_title
+  - backup_restore.auto_backup_notice
+  - backup_restore.backup_created
+  - backup_restore.error_title
+  - backup_restore.hints_title
+  - backup_restore.msg.reset_confirm
+  - btn.book_fixcosts
+  - btn.budget_tabsave_beim_schliessen_fehlgeschlagen
+  - btn.delete_theme
+  - btn.duplicate_theme
+  - btn.export
+  - btn.import_data
+  - btn.load
+  - btn.loeschen_bestaetigen
+  - btn.moechtest_du_sie_jetzt
+  - btn.nach_erfolgreichem_download_schliessen
+  - btn.new_goal
+  - btn.no
+  - btn.open
+  - btn.preview
+  - btn.reset_default
+  - btn.reset_theme
+  - btn.restore_backup
+  - btn.save_all
+  - btn.save_and_new
+  - btn.suggestions
+  - btn.unlock
+  - btn.updatesordner_oeffnen
+  - btn.wieder_oeffnen_ist_jederzeit
+  - btn.wirklich_loeschen
+  - btn.yes
+  - budget.msg.delete_category_also_sub
+  - budget.msg.delete_category_confirm
+  - budget.msg.delete_category_warning
+  - budget.msg.delete_global_warn_1
+  - budget.msg.delete_global_warn_2
+  - budget.msg.edit_buffer_help
+  - budget.msg.remove_row_confirm_short
+  - budget.msg.total_parent_readonly
+  - budget.title.delete_category
+  - budget_learning.kind.fixed_incremental
+  - budget_learning.kind.fixed_recurring
+  - budget_learning.kind.irregular
+  - budget_learning.kind.recurring_only
+  - budget_learning.kind.savings_pot
+  - budget_learning.kind.variable_income
+  - budget_learning.kind.variable_pot
+  - cat.default.01
+  - cat.default.02
+  - cat.default.03
+  - cat.default.04
+  - cat.default.05
+  - cat.default.06
+  - cat.default.07
+  - cat.default.08
+  - cat.default.09
+  - cat.default.10
+  - cat.default.101
+  - cat.default.102
+  - cat.default.103
+  - cat.default.104
+  - cat.default.105
+  - cat.default.106
+  - cat.default.107
+  - cat.default.108
+  - cat.default.109
+  - cat.default.11
+  - cat.default.110
+  - cat.default.111
+  - cat.default.112
+  - cat.default.113
+  - cat.default.114
+  - cat.default.115
+  - cat.default.116
+  - cat.default.117
+  - cat.default.118
+  - cat.default.119
+  - cat.default.12
+  - cat.default.120
+  - cat.default.121
+  - cat.default.122
+  - cat.default.123
+  - cat.default.124
+  - cat.default.125
+  - cat.default.126
+  - cat.default.127
+  - cat.default.128
+  - cat.default.129
+  - cat.default.13
+  - cat.default.130
+  - cat.default.131
+  - cat.default.132
+  - cat.default.133
+  - cat.default.134
+  - cat.default.135
+  - cat.default.136
+  - cat.default.137
+  - cat.default.138
+  - cat.default.139
+  - cat.default.14
+  - cat.default.140
+  - cat.default.141
+  - cat.default.142
+  - cat.default.143
+  - cat.default.144
+  - cat.default.145
+  - cat.default.146
+  - cat.default.15
+  - cat.default.16
+  - cat.default.17
+  - cat.default.18
+  - cat.default.19
+  - cat.default.20
+  - cat.default.21
+  - cat.default.22
+  - cat.default.23
+  - catdel.btn_delete
+  - catdel.children_promoted
+  - catdel.dep_budget
+  - catdel.dep_favorites
+  - catdel.dep_recurring
+  - catdel.dep_savings
+  - catdel.dep_tracking
+  - catdel.dep_warnings
+  - catdel.dependencies
+  - catdel.header
+  - catdel.last_booking
+  - catdel.no_dependencies
+  - catdel.opt_cascade
+  - catdel.opt_cascade_all
+  - catdel.opt_reassign
+  - catdel.title
+  - categories.confirm_delete_count
+  - categories.confirm_delete_multi
+  - categories.confirm_delete_single
+  - categories.delete_with_entries_warning
+  - categories.drag_hint
+  - categories.tree_title
+  - category_delete.target_is_deleted
+  - category_delete.target_type_mismatch
+  - catmgr.delete_err_reassign_missing
+  - catmgr.delete_err_reassign_target
+  - catmgr.move_err_cycle
+  - catmgr.move_err_missing
+  - catmgr.move_err_self
+  - catmgr.move_err_type
+  - chart.plan_actual_by_account
+  - chk.amount_filter
+  - chk.ask_on_due
+  - chk.ask_while_typing
+  - chk.date_filter
+  - cockpit.month_feeling
+  - cockpit.panel.kpis
+  - cockpit.pot_rest_tip
+  - cockpit.warning_near_limit
+  - cockpit.warning_percent
+  - cockpit.warning_repeated
+  ... (+368 weitere)
+
+[OK] Keine verdächtigen hardcoded UI-Strings gefunden
+
+EXIT=0
+
+===== DAU FIRST RUN =====
+================================================================
+DAU E2E – Erststart-Durchführung (headless)
+================================================================
+
+[0] Regionseinstellungen (DAU wählt: Deutsch, CHF, Format 'ch')
+  ✅ Format CHF/ch: "1'234.50 CHF"
+  ✅ Format EUR/eu: '1.234,50 €'
+
+[1] Konto anlegen (Quick-Modus, kein Passwort)
+  ✅ Quick-User angelegt
+  ✅ has_users() == True nach Anlage
+
+[2] DB anlegen, migrieren, Default-Kategorien laden
+  ✅ DB geöffnet
+  ✅ Default-Kategorien geladen: 44 Stück
+  ✅ Kategorien-Baum baubar (17 Wurzeln)
+  ✅ Mindestens eine Unterkategorie vorhanden (Hierarchie)
+
+[3] Budget-Werte eintragen (Setup-Schritt 'Budget')
+  ✅ Budget gesetzt für 'Geschenke': 1234.5
+
+[4] Testbuchung erfassen (Setup-Schritt 'Tracking')
+  ✅ Buchung erfasst (count=1)
+
+[5] Kategorie umbenennen (Cascade über alle Tabellen)
+  ✅ Rename-Cascade ok (budget=1, tracking=1, Reste=0)
+
+[6] Hauptkategorie mit Kindern löschen → Kinder werden hochgestuft
+  ✅ 3 Kinder zu Hauptkategorien hochgestuft
+
+[7] Integritätsprüfung – keine verwaisten Kategorie-Referenzen
+  ✅ Keine verwaisten Namens-Referenzen (gefunden: 0)
+  ✅ Keine hängenden parent_id (gefunden: 0)
+
+================================================================
+ERGEBNIS: ALLE CHECKS BESTANDEN ✅
+================================================================
+EXIT=0
+
+===== ENTERPRISE UI ADHS 1000 =====
+Loop 0200: checks=860 fail=0 warn=40
+Loop 0400: checks=1720 fail=0 warn=80
+Loop 0600: checks=2580 fail=0 warn=120
+Loop 0800: checks=3440 fail=0 warn=160
+Loop 1000: checks=4300 fail=0 warn=200
+CSV: /mnt/data/BudgetManager_Source_2_2_23_ENTERPRISE_UI_ADHS/UI_USABILITY_ADHS_1000_LOOP_MATRIX_v2_2_23.csv
+ENTERPRISE UI/ADHS AUDIT DONE: loops=1000 checks=4300 pass=800 warn=200 fail=0
+  WARN d9_modal_load: 419 QMessageBox-Aufrufe, davon 107 Information
+  WARN d10_keyboard_navigation: 13 komplexe Dialogdateien, 0 explizite Tab-Reihenfolgen
+EXIT=0
+
+===== LEGACY UI ADHS 1000 =====
+Loop 0200: checks=2452 findings=0
+Loop 0400: checks=6794 findings=0
+Loop 0600: checks=8966 findings=0
+Loop 0800: checks=12436 findings=0
+Loop 1000: checks=15623 findings=0
+
+=== UI/ADHS-AUDIT 1000 LOOPS DONE: checks=15623 findings=0 (unique 0) ===
+EXIT=0
+
+===== MEGA RELEASE 1000 =====
+Loop 0100: checks=683 findings=0
+Loop 0200: checks=1364 findings=0
+Loop 0300: checks=2046 findings=0
+Loop 0400: checks=2726 findings=0
+Loop 0500: checks=3407 findings=0
+Loop 0600: checks=4087 findings=0
+Loop 0700: checks=4767 findings=0
+Loop 0800: checks=5447 findings=0
+Loop 0900: checks=6129 findings=0
+Loop 1000: checks=6812 findings=0
+
+=== MEGA-RELEASE-AUDIT 1000 LOOPS DONE: checks=6812 findings=0 ===
+EXIT=0
+
+===== DEEP LOGIC 500 =====
+BudgetManager Deep Logic Audit: PASS
+Loops: 500
+Checks: 3500
+Findings: 0
+EXIT=0
+
+===== STABILITY 300 =====
+Loop 050: findings=0
+Loop 100: findings=0
+Loop 150: findings=0
+Loop 200: findings=0
+Loop 250: findings=0
+Loop 300: findings=0
+Stability Audit: loops=300 checks=2400 findings=0
+EXIT=0
+
+===== RELEASE LOGIC 100 =====
+
+===== RELEASE LOGIC 100 (SEPARATE) =====
+BudgetManager Release-Logik-Audit
+Loops: 100
+Status: PASS
+Findings: 0
+Loop 001: findings=0
+Loop 002: findings=0
+Loop 003: findings=0
+Loop 004: findings=0
+Loop 005: findings=0
+Loop 006: findings=0
+Loop 007: findings=0
+Loop 008: findings=0
+Loop 009: findings=0
+Loop 010: findings=0
+Loop 011: findings=0
+Loop 012: findings=0
+Loop 013: findings=0
+Loop 014: findings=0
+Loop 015: findings=0
+Loop 016: findings=0
+Loop 017: findings=0
+Loop 018: findings=0
+Loop 019: findings=0
+Loop 020: findings=0
+Loop 021: findings=0
+Loop 022: findings=0
+Loop 023: findings=0
+Loop 024: findings=0
+Loop 025: findings=0
+Loop 026: findings=0
+Loop 027: findings=0
+Loop 028: findings=0
+Loop 029: findings=0
+Loop 030: findings=0
+Loop 031: findings=0
+Loop 032: findings=0
+Loop 033: findings=0
+Loop 034: findings=0
+Loop 035: findings=0
+Loop 036: findings=0
+Loop 037: findings=0
+Loop 038: findings=0
+Loop 039: findings=0
+Loop 040: findings=0
+Loop 041: findings=0
+Loop 042: findings=0
+Loop 043: findings=0
+Loop 044: findings=0
+Loop 045: findings=0
+Loop 046: findings=0
+Loop 047: findings=0
+Loop 048: findings=0
+Loop 049: findings=0
+Loop 050: findings=0
+Loop 051: findings=0
+Loop 052: findings=0
+Loop 053: findings=0
+Loop 054: findings=0
+Loop 055: findings=0
+Loop 056: findings=0
+Loop 057: findings=0
+Loop 058: findings=0
+Loop 059: findings=0
+Loop 060: findings=0
+Loop 061: findings=0
+Loop 062: findings=0
+Loop 063: findings=0
+Loop 064: findings=0
+Loop 065: findings=0
+Loop 066: findings=0
+Loop 067: findings=0
+Loop 068: findings=0
+Loop 069: findings=0
+Loop 070: findings=0
+Loop 071: findings=0
+Loop 072: findings=0
+Loop 073: findings=0
+Loop 074: findings=0
+Loop 075: findings=0
+Loop 076: findings=0
+Loop 077: findings=0
+Loop 078: findings=0
+Loop 079: findings=0
+Loop 080: findings=0
+Loop 081: findings=0
+Loop 082: findings=0
+Loop 083: findings=0
+Loop 084: findings=0
+Loop 085: findings=0
+Loop 086: findings=0
+Loop 087: findings=0
+Loop 088: findings=0
+Loop 089: findings=0
+Loop 090: findings=0
+Loop 091: findings=0
+Loop 092: findings=0
+Loop 093: findings=0
+Loop 094: findings=0
+Loop 095: findings=0
+Loop 096: findings=0
+Loop 097: findings=0
+Loop 098: findings=0
+Loop 099: findings=0
+Loop 100: findings=0
+EXIT=0
+
+===== FRESH LOGIC 100 (SEPARATE) =====
+Loop 010: findings=0
+Loop 020: findings=0
+Loop 030: findings=0
+Loop 040: findings=0
+Loop 050: findings=0
+Loop 060: findings=0
+Loop 070: findings=0
+Loop 080: findings=0
+Loop 090: findings=0
+Loop 100: findings=0
+
+=== FRESH-LOGIC 100 LOOPS DONE: 0 findings ===
+EXIT=0
+ALL FINAL CHECKS COMPLETED

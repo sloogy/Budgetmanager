@@ -38,7 +38,9 @@ class CategoryDeleteDialog(QDialog):
         self.cat_ids = sorted({int(i) for i in cat_ids})
         self._decision: CategoryDeleteDecision | None = None
 
-        self.categories: list[Category] = [c for c in (self.model.get_by_id(i) for i in self.cat_ids) if c]
+        self.categories: list[Category] = [
+            c for c in (self.model.get_by_id(i) for i in self.cat_ids) if c
+        ]
         self.setWindowTitle(tr("category_delete.title"))
         self.setModal(True)
         self.setMinimumWidth(560)
@@ -139,7 +141,9 @@ class CategoryDeleteDialog(QDialog):
         self.rb_reassign.toggled.connect(self._update_target_enabled)
         self.rb_delete_all.toggled.connect(self._update_target_enabled)
 
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
         buttons.accepted.connect(self._accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
@@ -161,7 +165,9 @@ class CategoryDeleteDialog(QDialog):
         self.accept()
 
 
-def ask_category_delete_decision(parent, *, conn: sqlite3.Connection, cat_ids: list[int]) -> CategoryDeleteDecision | None:
+def ask_category_delete_decision(
+    parent, *, conn: sqlite3.Connection, cat_ids: list[int]
+) -> CategoryDeleteDecision | None:
     dlg = CategoryDeleteDialog(parent, conn=conn, cat_ids=cat_ids)
     if dlg.exec() != QDialog.DialogCode.Accepted:
         return None

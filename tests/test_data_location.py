@@ -3,6 +3,7 @@
 Prüft Allowlist-Erkennung, Sicherheits-Backup, Kopieren (kein Verschieben),
 sowie die Schutzregeln (leere Quelle, nicht-leeres Ziel, gleicher Pfad).
 """
+
 from __future__ import annotations
 
 import sys
@@ -15,7 +16,10 @@ sys.path.insert(0, str(ROOT))
 import pytest  # noqa: E402
 
 from model.data_location import (  # noqa: E402
-    list_user_data, has_user_data, migrate_data_dir, DataMigrationError,
+    list_user_data,
+    has_user_data,
+    migrate_data_dir,
+    DataMigrationError,
 )
 
 
@@ -23,8 +27,10 @@ def _seed_old(d: Path):
     d.mkdir(parents=True, exist_ok=True)
     (d / "christian.enc").write_bytes(b"ENCRYPTED")
     (d / "users.json").write_text('{"users": []}', encoding="utf-8")
-    (d / "budgetmanager_settings.json").write_text("{}", encoding="utf-8")  # NICHT migrieren
-    (d / "budgetmanager.log").write_text("log", encoding="utf-8")           # NICHT migrieren
+    (d / "budgetmanager_settings.json").write_text(
+        "{}", encoding="utf-8"
+    )  # NICHT migrieren
+    (d / "budgetmanager.log").write_text("log", encoding="utf-8")  # NICHT migrieren
     backups = d / "backups"
     backups.mkdir()
     (backups / "budgetmanager_backup_2026.bmr").write_bytes(b"BMR")
@@ -107,6 +113,7 @@ def test_migration_rejects_nested_source_and_target(tmp_path):
     parent_target = tmp_path
 
     import pytest
+
     with pytest.raises(DataMigrationError):
         migrate_data_dir(old, nested_target)
     with pytest.raises(DataMigrationError):

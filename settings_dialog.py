@@ -1,24 +1,53 @@
 from __future__ import annotations
 
+from utils.notifications import show_info, show_warning
 import logging
+
 logger = logging.getLogger(__name__)
 from pathlib import Path
 from views.ui_colors import ui_colors
 from PySide6.QtWidgets import (
-    QDialog, QListWidget, QListWidgetItem, QStackedWidget, QDialogButtonBox,
-    QVBoxLayout, QHBoxLayout, QGroupBox, QFormLayout, QLabel,
-    QCheckBox, QComboBox, QSpinBox, QPushButton, QLineEdit,
-    QFileDialog, QMessageBox, QWidget, QApplication, QScrollArea, QFrame, QSizePolicy,
-    QTableWidget, QTableWidgetItem, QAbstractItemView, QHeaderView,
-    QKeySequenceEdit
+    QDialog,
+    QListWidget,
+    QListWidgetItem,
+    QStackedWidget,
+    QDialogButtonBox,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGroupBox,
+    QFormLayout,
+    QLabel,
+    QCheckBox,
+    QComboBox,
+    QSpinBox,
+    QPushButton,
+    QLineEdit,
+    QFileDialog,
+    QMessageBox,
+    QWidget,
+    QApplication,
+    QScrollArea,
+    QFrame,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QAbstractItemView,
+    QHeaderView,
+    QKeySequenceEdit,
 )
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer
 from PySide6.QtGui import QFont
 from theme_manager import ThemeManager
 from views.theme_editor_dialog import ThemeEditorDialog
 from model.shortcuts_config import (
-    SHORTCUT_DEFS, group_for, label_for, load_shortcuts, save_shortcuts, default_key,
-    shortcut_display_name, all_action_ids
+    SHORTCUT_DEFS,
+    group_for,
+    label_for,
+    load_shortcuts,
+    save_shortcuts,
+    default_key,
+    shortcut_display_name,
+    all_action_ids,
 )
 
 # i18n
@@ -35,8 +64,14 @@ class SettingsDialog(QDialog):
     plus zusätzliche neue Keys (werden in settings.json gespeichert, wenn MainWindow es übernimmt).
     """
 
-    def __init__(self, settings, parent=None, app_version: str | None = None,
-                 encrypted_mode: bool = False, encrypted_session=None):
+    def __init__(
+        self,
+        settings,
+        parent=None,
+        app_version: str | None = None,
+        encrypted_mode: bool = False,
+        encrypted_session=None,
+    ):
         super().__init__(parent)
         self.settings = settings
         if app_version:
@@ -44,13 +79,14 @@ class SettingsDialog(QDialog):
         else:
             try:
                 from app_info import app_version_label
+
                 self.app_version = app_version_label()
             except Exception:
                 self.app_version = ""
         self.encrypted_mode = encrypted_mode
         # Optional: EncryptedSession (damit manuelles Backup auch im verschlüsselten Modus funktioniert)
         self.encrypted_session = encrypted_session
-        
+
         # Theme Manager initialisieren
         self.theme_manager = ThemeManager(settings)
 
@@ -63,6 +99,9 @@ class SettingsDialog(QDialog):
 
         self.setWindowTitle(tr("dlg.settings"))
         self.setMinimumSize(860, 560)
+        from utils.responsive_dialog import harden_dialog_for_screen
+
+        harden_dialog_for_screen(self)
 
         # --- Root Layout
         root = QVBoxLayout(self)
@@ -73,14 +112,16 @@ class SettingsDialog(QDialog):
         # --- Navigation links
         self.lw_nav = QListWidget()
         self.lw_nav.setMaximumWidth(220)
-        self.lw_nav.addItems([
-            tr("settings.general"),
-            tr("settings.behavior"),
-            tr("settings.appearance"),
-            tr("dlg.shortcuts"),
-            tr("settings.account_data"),
-            tr("settings.about"),
-        ])
+        self.lw_nav.addItems(
+            [
+                tr("settings.general"),
+                tr("settings.behavior"),
+                tr("settings.appearance"),
+                tr("dlg.shortcuts"),
+                tr("settings.account_data"),
+                tr("settings.about"),
+            ]
+        )
         content.addWidget(self.lw_nav)
 
         # --- Seiten rechts
@@ -95,8 +136,14 @@ class SettingsDialog(QDialog):
         self.page_database = self._build_page_database()
         self.page_about = self._build_page_about()
 
-        for p in [self.page_general, self.page_behavior, self.page_appearance,
-                  self.page_shortcuts, self.page_database, self.page_about]:
+        for p in [
+            self.page_general,
+            self.page_behavior,
+            self.page_appearance,
+            self.page_shortcuts,
+            self.page_database,
+            self.page_about,
+        ]:
             self.sw_pages.addWidget(self._scroll_page(p))
 
         self.lw_nav.currentRowChanged.connect(self.sw_pages.setCurrentIndex)
@@ -149,6 +196,7 @@ class SettingsDialog(QDialog):
         """Wrappt Einstellungsseiten, damit größere Schrift/Theme-Skalierung nichts abschneidet."""
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFocusPolicy(Qt.NoFocus)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
         scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
@@ -174,10 +222,12 @@ class SettingsDialog(QDialog):
         lay = QVBoxLayout(w)
         lay.addWidget(self._title(tr("settings.general")))
 
-        gb_start = QGroupBox(tr('auto.settings_dialog.146_start_bedienung_809e5573'))
+        gb_start = QGroupBox(tr("auto.settings_dialog.146_start_bedienung_809e5573"))
         vb = QVBoxLayout(gb_start)
         self.cb_show_onboarding = QCheckBox(tr("chk.show_onboarding"))
-        self.cb_remember_last_tab = QCheckBox(tr("dlg.letzten_geoeffneten_reiter_merken"))
+        self.cb_remember_last_tab = QCheckBox(
+            tr("dlg.letzten_geoeffneten_reiter_merken")
+        )
         self.cb_remember_filters = QCheckBox(tr("settings.remember_filters"))
         self.cb_refresh_on_start = QCheckBox(tr("chk.auto_update"))
         vb.addWidget(self.cb_show_onboarding)
@@ -191,11 +241,19 @@ class SettingsDialog(QDialog):
         self.cmb_language = QComboBox()
         # Sprachen dynamisch aus locales/*.json entdecken
         for lang in available_languages():
-            self.cmb_language.addItem(lang.get("name", lang.get("code", "")), lang.get("code", ""))
+            self.cmb_language.addItem(
+                lang.get("name", lang.get("code", "")), lang.get("code", "")
+            )
         fl.addRow(tr("settings.language"), self.cmb_language)
 
         self.cmb_currency = QComboBox()
-        from utils.money import CURRENCIES, CURRENCY_CODES, NUMBER_FORMATS, NUMBER_FORMAT_CODES
+        from utils.money import (
+            CURRENCIES,
+            CURRENCY_CODES,
+            NUMBER_FORMATS,
+            NUMBER_FORMAT_CODES,
+        )
+
         for code in CURRENCY_CODES:
             self.cmb_currency.addItem(CURRENCIES[code]["label"], code)
         self.cmb_currency.setToolTip(tr("settings.currency_tip"))
@@ -217,7 +275,9 @@ class SettingsDialog(QDialog):
         lay.setSpacing(10)
         lay.addWidget(self._title(tr("settings.behavior")))
 
-        gb_workflow = QGroupBox(tr('auto.settings_dialog.182_eingabe_workflow_c2c724ba'))
+        gb_workflow = QGroupBox(
+            tr("auto.settings_dialog.182_eingabe_workflow_c2c724ba")
+        )
         vb = QVBoxLayout(gb_workflow)
 
         # Bestehende App-Settings
@@ -227,7 +287,9 @@ class SettingsDialog(QDialog):
         # Zusätzliche UX-Settings (werden in JSON gespeichert, wenn MainWindow sie übernimmt)
         self.cb_warn_delete = QCheckBox(tr("dlg.loeschvorgaenge_bestaetigen_lassen"))
         self.cb_warn_budget_overrun = QCheckBox(tr("dlg.warnen_wenn_das_budget"))
-        self.cb_warn_budget_overrun.setToolTip(tr("settings.warn_budget_overrun_tooltip"))
+        self.cb_warn_budget_overrun.setToolTip(
+            tr("settings.warn_budget_overrun_tooltip")
+        )
 
         vb.addWidget(self.cb_auto_save)
         vb.addWidget(self.cb_ask_due)
@@ -241,7 +303,10 @@ class SettingsDialog(QDialog):
         self._configure_form_layout(fl)
         self.cmb_recent_days = QComboBox()
         self.cmb_recent_days.addItems(["14", "30"])
-        fl.addRow(tr("settings.recent_days_filter"), self._settings_field(self.cmb_recent_days))
+        fl.addRow(
+            tr("settings.recent_days_filter"),
+            self._settings_field(self.cmb_recent_days),
+        )
 
         # Wiederkehrend: Default-Tag
         self.cmb_recurring_day = QComboBox()
@@ -250,9 +315,12 @@ class SettingsDialog(QDialog):
             self.cmb_recurring_day.addItem(trf("settings.day_of_month", day=d), d)
         self.cmb_recurring_day.addItem(tr("settings.month_end"), 31)
         self.cmb_recurring_day.setToolTip(
-            tr('auto.settings_dialog.212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5')
+            tr("auto.settings_dialog.212_bevorzugter_tag_fuer_neue_wiederkeh_b61f86c5")
         )
-        fl.addRow(tr("settings.recurring_preferred_day"), self._settings_field(self.cmb_recurring_day))
+        fl.addRow(
+            tr("settings.recurring_preferred_day"),
+            self._settings_field(self.cmb_recurring_day),
+        )
         lay.addWidget(gb_tracking)
 
         # Budget-Übersicht
@@ -265,11 +333,16 @@ class SettingsDialog(QDialog):
                 trf("settings.months_count", count=months), months
             )
         self.cmb_budget_suggestion_months.setToolTip(
-            tr('auto.settings_dialog.226_mindestanzahl_aufeinanderfolgender__c912895e')
+            tr("auto.settings_dialog.226_mindestanzahl_aufeinanderfolgender__c912895e")
         )
-        fl_bo.addRow(tr("dlg.ueberschussdefizitvorschlag_ab"), self._settings_field(self.cmb_budget_suggestion_months, 220))
+        fl_bo.addRow(
+            tr("dlg.ueberschussdefizitvorschlag_ab"),
+            self._settings_field(self.cmb_budget_suggestion_months, 220),
+        )
 
-        self.cb_tracking_budget_learning = QCheckBox(tr("settings.tracking_budget_learning"))
+        self.cb_tracking_budget_learning = QCheckBox(
+            tr("settings.tracking_budget_learning")
+        )
         self.cb_tracking_budget_learning.setToolTip(
             tr("settings.tracking_budget_learning_tip")
         )
@@ -277,33 +350,49 @@ class SettingsDialog(QDialog):
 
         self.sb_tracking_learning_proposal_months = QSpinBox()
         self.sb_tracking_learning_proposal_months.setRange(1, 12)
-        self.sb_tracking_learning_proposal_months.setSuffix(" " + tr("settings.months_suffix"))
+        self.sb_tracking_learning_proposal_months.setSuffix(
+            " " + tr("settings.months_suffix")
+        )
         self.sb_tracking_learning_proposal_months.setToolTip(
             tr("settings.tracking_learning_proposal_tip")
         )
-        fl_bo.addRow(tr("settings.tracking_learning_proposal"), self._settings_field(self.sb_tracking_learning_proposal_months, 160))
+        fl_bo.addRow(
+            tr("settings.tracking_learning_proposal"),
+            self._settings_field(self.sb_tracking_learning_proposal_months, 160),
+        )
 
         self.sb_tracking_learning_stable_months = QSpinBox()
         self.sb_tracking_learning_stable_months.setRange(1, 12)
-        self.sb_tracking_learning_stable_months.setSuffix(" " + tr("settings.months_suffix"))
+        self.sb_tracking_learning_stable_months.setSuffix(
+            " " + tr("settings.months_suffix")
+        )
         self.sb_tracking_learning_stable_months.setToolTip(
             tr("settings.tracking_learning_stable_tip")
         )
-        fl_bo.addRow(tr("settings.tracking_learning_stable"), self._settings_field(self.sb_tracking_learning_stable_months, 160))
+        fl_bo.addRow(
+            tr("settings.tracking_learning_stable"),
+            self._settings_field(self.sb_tracking_learning_stable_months, 160),
+        )
 
-        self.cb_tracking_learning_projection = QCheckBox(tr("settings.tracking_learning_projection"))
+        self.cb_tracking_learning_projection = QCheckBox(
+            tr("settings.tracking_learning_projection")
+        )
         self.cb_tracking_learning_projection.setToolTip(
             tr("settings.tracking_learning_projection_tip")
         )
         fl_bo.addRow("", self.cb_tracking_learning_projection)
 
-        self.cb_tracking_learning_show_report = QCheckBox(tr("settings.tracking_learning_show_report"))
+        self.cb_tracking_learning_show_report = QCheckBox(
+            tr("settings.tracking_learning_show_report")
+        )
         self.cb_tracking_learning_show_report.setToolTip(
             tr("settings.tracking_learning_show_report_tip")
         )
         fl_bo.addRow("", self.cb_tracking_learning_show_report)
 
-        self.cb_tracking_learning_auto_end = QCheckBox(tr("settings.tracking_learning_auto_end"))
+        self.cb_tracking_learning_auto_end = QCheckBox(
+            tr("settings.tracking_learning_auto_end")
+        )
         self.cb_tracking_learning_auto_end.setToolTip(
             tr("settings.tracking_learning_auto_end_tip")
         )
@@ -311,40 +400,109 @@ class SettingsDialog(QDialog):
         fl_bo.addRow("", self.cb_tracking_learning_auto_end)
 
         self.cb_budget_zero_balance_rule = QCheckBox(tr("settings.zero_balance_rule"))
-        self.cb_budget_zero_balance_rule.setToolTip(tr("settings.zero_balance_rule_tip"))
-        fl_bo.addRow("", self.cb_budget_zero_balance_rule)
+        self.cb_budget_zero_balance_rule.setToolTip(
+            tr("settings.zero_balance_rule_tip")
+        )
+
+        zero_balance_row = QWidget()
+        zero_balance_layout = QHBoxLayout(zero_balance_row)
+        zero_balance_layout.setContentsMargins(0, 0, 0, 0)
+        zero_balance_layout.setSpacing(8)
+        zero_balance_layout.addWidget(self.cb_budget_zero_balance_rule, 1)
+        self.btn_budget_zero_balance_help = QPushButton(
+            tr("settings.zero_balance_open_help")
+        )
+        self.btn_budget_zero_balance_help.setToolTip(
+            tr("settings.zero_balance_rule_tip")
+        )
+        self.btn_budget_zero_balance_help.clicked.connect(
+            self._open_soft_zero_budget_help
+        )
+        zero_balance_layout.addWidget(self.btn_budget_zero_balance_help)
+        fl_bo.addRow("", zero_balance_row)
+
+        self.lbl_budget_zero_balance_summary = QLabel(
+            tr("settings.zero_balance_rule_summary")
+        )
+        self.lbl_budget_zero_balance_summary.setWordWrap(True)
+        self.lbl_budget_zero_balance_summary.setObjectName("settingsHint")
+        self.lbl_budget_zero_balance_summary.setToolTip(
+            tr("settings.zero_balance_rule_tip")
+        )
+        fl_bo.addRow("", self.lbl_budget_zero_balance_summary)
 
         self.cmb_budget_surplus_strategy = QComboBox()
-        self.cmb_budget_surplus_strategy.addItem(tr("settings.surplus_strategy_savings"), "savings")
-        self.cmb_budget_surplus_strategy.addItem(tr("settings.surplus_strategy_carryover"), "carryover")
-        self.cmb_budget_surplus_strategy.setToolTip(tr("settings.budget_surplus_strategy_tip"))
-        fl_bo.addRow(tr("settings.budget_surplus_strategy"), self._settings_field(self.cmb_budget_surplus_strategy, 220))
+        self.cmb_budget_surplus_strategy.addItem(
+            tr("settings.surplus_strategy_savings"), "savings"
+        )
+        self.cmb_budget_surplus_strategy.addItem(
+            tr("settings.surplus_strategy_carryover"), "carryover"
+        )
+        self.cmb_budget_surplus_strategy.setToolTip(
+            tr("settings.budget_surplus_strategy_tip")
+        )
+        fl_bo.addRow(
+            tr("settings.budget_surplus_strategy"),
+            self._settings_field(self.cmb_budget_surplus_strategy, 220),
+        )
 
-        self.cb_budget_overview_drag_drop = QCheckBox(tr("settings.budget_overview_drag_drop"))
-        self.cb_budget_overview_drag_drop.setToolTip(tr("settings.budget_overview_drag_drop_tip"))
+        self.cb_budget_overview_drag_drop = QCheckBox(
+            tr("settings.budget_overview_drag_drop")
+        )
+        self.cb_budget_overview_drag_drop.setToolTip(
+            tr("settings.budget_overview_drag_drop_tip")
+        )
         fl_bo.addRow("", self.cb_budget_overview_drag_drop)
 
         self.cb_carryover_start = QComboBox()
-        self.cb_carryover_start.addItems([
-            tr('month.1'), tr('month.2'), tr('month.3'), tr('month.4'), tr('month.5'), tr('month.6'),
-            tr('month.7'), tr('month.8'), tr("month.9"), tr('month.10'), tr("month.11"), tr("month.12")
-        ])
-        self.cb_carryover_start.setToolTip(
-            tr('auto.settings_dialog.237_ab_welchem_monat_soll_der_uebertrag_6ec46422')
+        self.cb_carryover_start.addItems(
+            [
+                tr("month.1"),
+                tr("month.2"),
+                tr("month.3"),
+                tr("month.4"),
+                tr("month.5"),
+                tr("month.6"),
+                tr("month.7"),
+                tr("month.8"),
+                tr("month.9"),
+                tr("month.10"),
+                tr("month.11"),
+                tr("month.12"),
+            ]
         )
-        fl_bo.addRow(tr("settings.carryover_start_month"), self._settings_field(self.cb_carryover_start))
+        self.cb_carryover_start.setToolTip(
+            tr("auto.settings_dialog.237_ab_welchem_monat_soll_der_uebertrag_6ec46422")
+        )
+        fl_bo.addRow(
+            tr("settings.carryover_start_month"),
+            self._settings_field(self.cb_carryover_start),
+        )
 
         self.sb_carryover_start_year = QSpinBox()
         self.sb_carryover_start_year.setRange(2020, 2099)
         self.sb_carryover_start_year.setToolTip(
-            tr('auto.settings_dialog.246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac')
+            tr("auto.settings_dialog.246_ab_welchem_jahr_soll_der_uebertrag__ea4e85ac")
         )
-        fl_bo.addRow(tr("settings.carryover_start_year"), self._settings_field(self.sb_carryover_start_year, 180))
+        fl_bo.addRow(
+            tr("settings.carryover_start_year"),
+            self._settings_field(self.sb_carryover_start_year, 180),
+        )
 
         lay.addWidget(gb_budget_ov)
 
         lay.addStretch(1)
         return w
+
+    def _open_soft_zero_budget_help(self) -> None:
+        """Öffnet die Erklärung zur Soft-0-Budget-Regel direkt aus den Einstellungen."""
+        try:
+            from views.help_dialog import HelpDialog
+
+            HelpDialog(self, start_topic_id="soft-zero-budget").exec()
+        except Exception as exc:
+            logger.exception("Soft-0-Budget-Hilfe konnte nicht geöffnet werden")
+            show_warning(self, tr("msg.error"), str(exc))
 
     def _build_page_appearance(self) -> QWidget:
         w = QWidget()
@@ -357,7 +515,7 @@ class SettingsDialog(QDialog):
         # System-Option würde aktuell wie "Hell" wirken (ThemeManager kennt nur light/dark)
         self.cmb_theme.addItems([tr("settings.theme_light"), tr("settings.theme_dark")])
         fl.addRow(tr("settings.design"), self.cmb_theme)
-        
+
         # Design-Profil Dropdown und Manager-Button
         self.cmb_design_profile = QComboBox()
         self.btn_open_profiles = QPushButton(tr("btn.manage_profiles"))
@@ -372,13 +530,19 @@ class SettingsDialog(QDialog):
         self.sb_fontsize.setSingleStep(1)
         self.sb_fontsize.setValue(10)
         fl.addRow(tr("dlg.schriftgroesse"), self.sb_fontsize)
-        
+
         lay.addWidget(gb_theme)
 
-        gb_tables = QGroupBox(tr('auto.settings_dialog.310_tabellen_listen_d0cf90f1'))
+        gb_tables = QGroupBox(tr("auto.settings_dialog.310_tabellen_listen_d0cf90f1"))
         fl2 = QFormLayout(gb_tables)
         self.cmb_density = QComboBox()
-        self.cmb_density.addItems([tr("settings.density_compact"), tr("settings.density_normal"), tr("settings.density_large")])
+        self.cmb_density.addItems(
+            [
+                tr("settings.density_compact"),
+                tr("settings.density_normal"),
+                tr("settings.density_large"),
+            ]
+        )
         self.cb_highlight_fixcosts = QCheckBox(tr("settings.fix_highlight"))
         fl2.addRow(tr("settings.table_density"), self.cmb_density)
         fl2.addRow(self.cb_highlight_fixcosts)
@@ -393,7 +557,7 @@ class SettingsDialog(QDialog):
         lay.addWidget(self._title(tr("dlg.shortcuts")))
 
         hint = QLabel(
-            tr('auto.settings_dialog.328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c')
+            tr("auto.settings_dialog.328_i_klicke_auf_ein_kuerzel_und_drueck_424a447c")
         )
         hint.setWordWrap(True)
         lay.addWidget(hint)
@@ -401,9 +565,14 @@ class SettingsDialog(QDialog):
         # Shortcuts-Tabelle
         self.tbl_shortcuts = QTableWidget()
         self.tbl_shortcuts.setColumnCount(4)
-        self.tbl_shortcuts.setHorizontalHeaderLabels([
-            tr('header.action'), tr("header.shortcut_current"), tr("settings.standard"), tr('header.group')
-        ])
+        self.tbl_shortcuts.setHorizontalHeaderLabels(
+            [
+                tr("header.action"),
+                tr("header.shortcut_current"),
+                tr("settings.standard"),
+                tr("header.group"),
+            ]
+        )
         self.tbl_shortcuts.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.tbl_shortcuts.setAlternatingRowColors(True)
         self.tbl_shortcuts.verticalHeader().setVisible(False)
@@ -426,6 +595,7 @@ class SettingsDialog(QDialog):
             cur_key = current_map.get(aid, dkey)
             if cur_key:
                 from PySide6.QtGui import QKeySequence
+
                 editor.setKeySequence(QKeySequence(cur_key))
             self._shortcut_editors[aid] = editor
             self.tbl_shortcuts.setCellWidget(i, 1, editor)
@@ -467,6 +637,7 @@ class SettingsDialog(QDialog):
     def _reset_all_shortcuts(self) -> None:
         """Setzt alle Shortcut-Editoren auf die Standardwerte zurück."""
         from PySide6.QtGui import QKeySequence
+
         for aid, dkey, _label, _grp in SHORTCUT_DEFS:
             editor = self._shortcut_editors.get(aid)
             if editor:
@@ -495,6 +666,7 @@ class SettingsDialog(QDialog):
         # Zentraler Hub „Konto & Daten" – dieselbe Komponente wie im Reiter „Konto".
         # Enthält Konto, Speicherort (inkl. Datenübernahme), Backup- und Reset-Zugang.
         from views.account_data_hub import AccountDataHub
+
         self.account_hub = AccountDataHub(
             self.settings,
             self.parent(),
@@ -540,7 +712,9 @@ class SettingsDialog(QDialog):
 
         gb = QGroupBox(tr("grp.application"))
         fl = QFormLayout(gb)
-        self.lbl_app_name = QLabel(tr('auto.settings_dialog.485_budgetmanager_11c4305b'))
+        self.lbl_app_name = QLabel(
+            tr("auto.settings_dialog.485_budgetmanager_11c4305b")
+        )
         self.lbl_version = QLabel(self.app_version or tr("settings_ui.version_unknown"))
         fl.addRow(tr("settings_ui.about_name"), self.lbl_app_name)
         fl.addRow(tr("settings_ui.about_version"), self.lbl_version)
@@ -554,10 +728,18 @@ class SettingsDialog(QDialog):
     # ---------------------------------------------------------------------
     def _load_from_settings(self) -> None:
         # Allgemein (neue Keys, werden via get_settings zurückgegeben)
-        self.cb_show_onboarding.setChecked(bool(self.settings.get("show_onboarding", True)))
-        self.cb_remember_last_tab.setChecked(bool(self.settings.get("remember_last_tab", True)))
-        self.cb_remember_filters.setChecked(bool(self.settings.get("remember_filters", True)))
-        self.cb_refresh_on_start.setChecked(bool(self.settings.get("refresh_on_start", False)))
+        self.cb_show_onboarding.setChecked(
+            bool(self.settings.get("show_onboarding", True))
+        )
+        self.cb_remember_last_tab.setChecked(
+            bool(self.settings.get("remember_last_tab", True))
+        )
+        self.cb_remember_filters.setChecked(
+            bool(self.settings.get("remember_filters", True))
+        )
+        self.cb_refresh_on_start.setChecked(
+            bool(self.settings.get("refresh_on_start", False))
+        )
 
         # Sprache kann als Name ("Deutsch") oder Code ("de") gespeichert sein.
         saved_lang = str(self.settings.get("language", "de"))
@@ -602,26 +784,40 @@ class SettingsDialog(QDialog):
 
         # Budget-Übersicht
         try:
-            suggestion_months = int(self.settings.get("budget_suggestion_months", 3) or 3)
+            suggestion_months = int(
+                self.settings.get("budget_suggestion_months", 3) or 3
+            )
         except Exception:
             suggestion_months = 3
-        idx_sug = self.cmb_budget_suggestion_months.findData(max(2, min(12, suggestion_months)))
+        idx_sug = self.cmb_budget_suggestion_months.findData(
+            max(2, min(12, suggestion_months))
+        )
         self.cmb_budget_suggestion_months.setCurrentIndex(max(0, idx_sug))
         self.cb_tracking_budget_learning.setChecked(
             bool(self.settings.get("tracking_budget_learning_enabled", True))
         )
         try:
-            _learn_proposal = int(self.settings.get("tracking_budget_learning_proposal_months", 2) or 2)
+            _learn_proposal = int(
+                self.settings.get("tracking_budget_learning_proposal_months", 2) or 2
+            )
         except Exception:
             _learn_proposal = 2
         try:
-            _learn_stable = int(self.settings.get("tracking_budget_learning_stable_months", 3) or 3)
+            _learn_stable = int(
+                self.settings.get("tracking_budget_learning_stable_months", 3) or 3
+            )
         except Exception:
             _learn_stable = 3
-        self.sb_tracking_learning_proposal_months.setValue(max(1, min(12, _learn_proposal)))
+        self.sb_tracking_learning_proposal_months.setValue(
+            max(1, min(12, _learn_proposal))
+        )
         self.sb_tracking_learning_stable_months.setValue(max(1, min(12, _learn_stable)))
         self.cb_tracking_learning_projection.setChecked(
-            bool(self.settings.get("tracking_budget_learning_include_current_month_projection", True))
+            bool(
+                self.settings.get(
+                    "tracking_budget_learning_include_current_month_projection", True
+                )
+            )
         )
         self.cb_tracking_learning_show_report.setChecked(
             bool(self.settings.get("tracking_budget_learning_show_in_report", True))
@@ -629,52 +825,88 @@ class SettingsDialog(QDialog):
         self.cb_tracking_learning_auto_end.setChecked(
             bool(self.settings.get("tracking_budget_learning_auto_end", False))
         )
-        self.cb_budget_overview_drag_drop.setChecked(bool(self.settings.get("budget_overview_drag_drop", True)))
-        self.cb_budget_zero_balance_rule.setChecked(bool(self.settings.get("budget_zero_balance_rule", False)))
-        _surplus_strategy = str(self.settings.get("budget_surplus_strategy", "savings") or "savings")
+        self.cb_budget_overview_drag_drop.setChecked(
+            bool(self.settings.get("budget_overview_drag_drop", True))
+        )
+        self.cb_budget_zero_balance_rule.setChecked(
+            bool(self.settings.get("budget_zero_balance_rule", False))
+        )
+        _surplus_strategy = str(
+            self.settings.get("budget_surplus_strategy", "savings") or "savings"
+        )
         _surplus_idx = self.cmb_budget_surplus_strategy.findData(_surplus_strategy)
         self.cmb_budget_surplus_strategy.setCurrentIndex(max(0, _surplus_idx))
-        self.cb_carryover_start.setCurrentIndex(int(self.settings.get("carryover_start_month", 1) or 1) - 1)
+        self.cb_carryover_start.setCurrentIndex(
+            int(self.settings.get("carryover_start_month", 1) or 1) - 1
+        )
         saved_year = int(self.settings.get("carryover_start_year", 0) or 0)
         if saved_year < 2020:
             from datetime import date as _date
+
             saved_year = _date.today().year
         self.sb_carryover_start_year.setValue(saved_year)
 
         # Zusätzliche Warnungen (neue Keys)
         self.cb_warn_delete.setChecked(bool(self.settings.get("warn_delete", True)))
-        self.cb_warn_budget_overrun.setChecked(bool(self.settings.get("warn_budget_overrun", False)))
+        self.cb_warn_budget_overrun.setChecked(
+            bool(self.settings.get("warn_budget_overrun", False))
+        )
 
         # Darstellung
         theme = (self.settings.theme or "light").lower()
         # Hell/Dunkel Dropdown auf Settings spiegeln
         blocker = QSignalBlocker(self.cmb_theme)
-        self.cmb_theme.setCurrentText(tr("settings.theme_dark") if theme == "dark" else tr("settings.theme_light"))
+        self.cmb_theme.setCurrentText(
+            tr("settings.theme_dark") if theme == "dark" else tr("settings.theme_light")
+        )
         del blocker
 
         # Profil-Dropdown anhand Hell/Dunkel filtern
         self._last_mode = self._current_mode()
         self._load_design_profiles()
-        _density_map = {"Kompakt": tr("settings.density_compact"), "Normal": tr("settings.density_normal"), "Groß": tr("settings.density_large")}
+        _density_map = {
+            "Kompakt": tr("settings.density_compact"),
+            "Normal": tr("settings.density_normal"),
+            "Groß": tr("settings.density_large"),
+        }
         _raw_density = str(self.settings.get("table_density", "Normal"))
-        self.cmb_density.setCurrentText(_density_map.get(_raw_density, tr("settings.density_normal")))
-        self.cb_highlight_fixcosts.setChecked(bool(self.settings.get("highlight_fixcosts", True)))
+        self.cmb_density.setCurrentText(
+            _density_map.get(_raw_density, tr("settings.density_normal"))
+        )
+        self.cb_highlight_fixcosts.setChecked(
+            bool(self.settings.get("highlight_fixcosts", True))
+        )
 
         # Backup (neue Keys)
         self.cb_auto_backup.setChecked(bool(self.settings.get("auto_backup", True)))
         self.sb_backup_days.setValue(int(self.settings.get("backup_days", 7)))
-        self.sb_backup_keep.setValue(int(self.settings.get("auto_backup_keep", 10) or 10))
-        self.cb_auto_delete.setChecked(bool(self.settings.get("backup_auto_delete", False)))
+        self.sb_backup_keep.setValue(
+            int(self.settings.get("auto_backup_keep", 10) or 10)
+        )
+        self.cb_auto_delete.setChecked(
+            bool(self.settings.get("backup_auto_delete", False))
+        )
         self._refresh_backup_status()
 
         # Nach vollständigem Rendern prüfen ob Backup-Limit überschritten
-        from model.app_paths import resolve_in_app, configured_db_path, configured_backups_dir
-        _bdir = configured_backups_dir(self.settings.get("backup_directory", "data/backups"))
+        from model.app_paths import (
+            resolve_in_app,
+            configured_db_path,
+            configured_backups_dir,
+        )
+
+        _bdir = configured_backups_dir(
+            self.settings.get("backup_directory", "data/backups")
+        )
         QTimer.singleShot(300, lambda: self._check_and_cleanup_backups(_bdir))
 
     def get_settings(self) -> dict:
         """Kompatibel zum bisherigen MainWindow._show_settings()"""
-        theme_value = "dark" if self.cmb_theme.currentText() == tr("settings.theme_dark") else "light"
+        theme_value = (
+            "dark"
+            if self.cmb_theme.currentText() == tr("settings.theme_dark")
+            else "light"
+        )
 
         return {
             # Keys, die MainWindow bereits verwendet:
@@ -683,31 +915,61 @@ class SettingsDialog(QDialog):
             "ask_due": self.cb_ask_due.isChecked(),
             "refresh_on_start": self.cb_refresh_on_start.isChecked(),
             "recent_days": int(self.cmb_recent_days.currentText()),
-            "recurring_preferred_day": int(self.cmb_recurring_day.currentData() if self.cmb_recurring_day.currentData() is not None else 25),
-            "budget_suggestion_months": int(self.cmb_budget_suggestion_months.currentData() or 3),
-            "tracking_budget_learning_enabled": bool(self.cb_tracking_budget_learning.isChecked()),
-            "tracking_budget_learning_proposal_months": int(self.sb_tracking_learning_proposal_months.value()),
-            "tracking_budget_learning_stable_months": int(self.sb_tracking_learning_stable_months.value()),
-            "tracking_budget_learning_include_current_month_projection": bool(self.cb_tracking_learning_projection.isChecked()),
-            "tracking_budget_learning_show_in_report": bool(self.cb_tracking_learning_show_report.isChecked()),
-            "tracking_budget_learning_auto_end": bool(self.cb_tracking_learning_auto_end.isChecked()),
-            "budget_zero_balance_rule": bool(self.cb_budget_zero_balance_rule.isChecked()),
-            "budget_surplus_strategy": self.cmb_budget_surplus_strategy.currentData() or "savings",
-            "budget_overview_drag_drop": bool(self.cb_budget_overview_drag_drop.isChecked()),
+            "recurring_preferred_day": int(
+                self.cmb_recurring_day.currentData()
+                if self.cmb_recurring_day.currentData() is not None
+                else 25
+            ),
+            "budget_suggestion_months": int(
+                self.cmb_budget_suggestion_months.currentData() or 3
+            ),
+            "tracking_budget_learning_enabled": bool(
+                self.cb_tracking_budget_learning.isChecked()
+            ),
+            "tracking_budget_learning_proposal_months": int(
+                self.sb_tracking_learning_proposal_months.value()
+            ),
+            "tracking_budget_learning_stable_months": int(
+                self.sb_tracking_learning_stable_months.value()
+            ),
+            "tracking_budget_learning_include_current_month_projection": bool(
+                self.cb_tracking_learning_projection.isChecked()
+            ),
+            "tracking_budget_learning_show_in_report": bool(
+                self.cb_tracking_learning_show_report.isChecked()
+            ),
+            "tracking_budget_learning_auto_end": bool(
+                self.cb_tracking_learning_auto_end.isChecked()
+            ),
+            "budget_zero_balance_rule": bool(
+                self.cb_budget_zero_balance_rule.isChecked()
+            ),
+            "budget_surplus_strategy": self.cmb_budget_surplus_strategy.currentData()
+            or "savings",
+            "budget_overview_drag_drop": bool(
+                self.cb_budget_overview_drag_drop.isChecked()
+            ),
             "carryover_start_month": self.cb_carryover_start.currentIndex() + 1,
             "carryover_start_year": self.sb_carryover_start_year.value(),
-
             # Zusätzliche neue Keys (optional später im MainWindow übernehmen):
             "show_onboarding": self.cb_show_onboarding.isChecked(),
             "remember_last_tab": self.cb_remember_last_tab.isChecked(),
             "remember_filters": self.cb_remember_filters.isChecked(),
             # Persistiere Code, nicht den Anzeigenamen (stabil bei Übersetzungen)
-            "language": self.cmb_language.currentData() or self.cmb_language.currentText(),
+            "language": self.cmb_language.currentData()
+            or self.cmb_language.currentText(),
             "currency": self.cmb_currency.currentData() or "CHF",
             "number_format": self.cmb_number_format.currentData() or "swiss",
             "warn_delete": self.cb_warn_delete.isChecked(),
             "warn_budget_overrun": self.cb_warn_budget_overrun.isChecked(),
-            "table_density": {"Kompakt": "Kompakt", "Normal": "Normal", "Groß": "Groß", tr("settings.density_compact"): "Kompakt", tr("settings.density_normal"): "Normal", tr("settings.density_large"): "Groß"}.get(self.cmb_density.currentText(), "Normal"),
+            "table_density": {
+                "Kompakt": "Kompakt",
+                "Normal": "Normal",
+                "Groß": "Groß",
+                tr("settings.density_compact"): "Kompakt",
+                tr("settings.density_normal"): "Normal",
+                tr("settings.density_large"): "Groß",
+            }.get(self.cmb_density.currentText(), "Normal"),
             "highlight_fixcosts": self.cb_highlight_fixcosts.isChecked(),
             "auto_backup": self.cb_auto_backup.isChecked(),
             "backup_days": int(self.sb_backup_days.value()),
@@ -730,7 +992,9 @@ class SettingsDialog(QDialog):
         # Trotzdem persistieren wir die Auswahl, damit MainWindow nach Dialogschluss korrekt lädt.
         self._persist_design_selection()
         try:
-            self._apply_fontsize_to_profile(self.cmb_design_profile.currentText(), int(self.sb_fontsize.value()))
+            self._apply_fontsize_to_profile(
+                self.cmb_design_profile.currentText(), int(self.sb_fontsize.value())
+            )
         except Exception as e:
             logger.debug("self._apply_fontsize_to_profile(self.cmb_design_pr: %s", e)
         if not self._applied_once:
@@ -742,18 +1006,26 @@ class SettingsDialog(QDialog):
         self._persist_design_selection()
         # Schriftgröße ins Profil schreiben
         try:
-            self._apply_fontsize_to_profile(self.cmb_design_profile.currentText(), int(self.sb_fontsize.value()))
+            self._apply_fontsize_to_profile(
+                self.cmb_design_profile.currentText(), int(self.sb_fontsize.value())
+            )
         except Exception as e:
             logger.debug("self._apply_fontsize_to_profile(self.cmb_design_pr: %s", e)
         profile_name = self.cmb_design_profile.currentText().strip()
-        if profile_name and profile_name not in (tr("dlg.keine_profile_vorhanden"), tr("dlg.keine_passenden_profile")):
+        if profile_name and profile_name not in (
+            tr("dlg.keine_profile_vorhanden"),
+            tr("dlg.keine_passenden_profile"),
+        ):
             self.theme_manager.apply_theme(profile_name=profile_name)
             self._applied_once = True
 
     def _preview_profile(self, profile_name: str) -> None:
         """Vorschau des ausgewählten Design-Profils."""
         profile_name = (profile_name or "").strip()
-        if not profile_name or profile_name in (tr("dlg.keine_profile_vorhanden"), tr("dlg.keine_passenden_profile")):
+        if not profile_name or profile_name in (
+            tr("dlg.keine_profile_vorhanden"),
+            tr("dlg.keine_passenden_profile"),
+        ):
             return
 
         # Vorschau: Stylesheet direkt setzen, OHNE Settings zu überschreiben
@@ -768,28 +1040,34 @@ class SettingsDialog(QDialog):
         if app and prof:
             try:
                 b = QSignalBlocker(self.sb_fontsize)
-                self.sb_fontsize.setValue(int(prof.get('schriftgroesse', 10) or 10))
+                self.sb_fontsize.setValue(int(prof.get("schriftgroesse", 10) or 10))
                 del b
             except Exception as e:
                 logger.debug("b = QSignalBlocker(self.sb_fontsize): %s", e)
             app.setStyleSheet(self.theme_manager.build_stylesheet(prof))
-    
+
     def _open_profile_manager(self) -> None:
         """Öffnet den Theme-Editor Dialog."""
         dlg = ThemeEditorDialog(self.settings, self.theme_manager, self)
         if dlg.exec():
             # Profile wurden evtl. geändert, Dropdown aktualisieren
             self._load_design_profiles()
-    
+
     def _preview_theme(self, text: str) -> None:
         # Vorschau: Theme anwenden
-        profile_name = "Standard Dunkel" if text == tr("settings.theme_dark") else "Standard Hell"
+        profile_name = (
+            "Standard Dunkel" if text == tr("settings.theme_dark") else "Standard Hell"
+        )
         self.theme_manager.apply_theme(profile_name=profile_name)
 
     def _refresh_backup_status(self) -> None:
         """Aktualisiert 'Letzte Sicherung' und Backup-Anzahl in der UI."""
         from datetime import datetime as _dt
-        from model.app_paths import resolve_in_app, configured_db_path, configured_backups_dir
+        from model.app_paths import (
+            resolve_in_app,
+            configured_db_path,
+            configured_backups_dir,
+        )
 
         # Letzte Sicherung
         last_backup_str = self.settings.get("last_auto_backup", "")
@@ -804,8 +1082,14 @@ class SettingsDialog(QDialog):
 
         # Anzahl Backups im Backup-Ordner
         try:
-            backup_dir = configured_backups_dir(self.settings.get("backup_directory", "data/backups"))
-            count = sum(1 for _ in backup_dir.glob("budgetmanager_backup_*.bmr")) if backup_dir.exists() else 0
+            backup_dir = configured_backups_dir(
+                self.settings.get("backup_directory", "data/backups")
+            )
+            count = (
+                sum(1 for _ in backup_dir.glob("budgetmanager_backup_*.bmr"))
+                if backup_dir.exists()
+                else 0
+            )
             self.lbl_backup_count.setText(str(count))
         except Exception:
             self.lbl_backup_count.setText("?")
@@ -813,7 +1097,11 @@ class SettingsDialog(QDialog):
     def _create_backup_now(self) -> None:
         """Erstellt sofort ein manuelles Backup der Datenbank."""
         from datetime import datetime
-        from model.app_paths import resolve_in_app, configured_db_path, configured_backups_dir
+        from model.app_paths import (
+            resolve_in_app,
+            configured_db_path,
+            configured_backups_dir,
+        )
         from model.restore_bundle import create_bundle
         from app_info import APP_NAME, APP_VERSION
 
@@ -829,7 +1117,11 @@ class SettingsDialog(QDialog):
                 src_db = configured_db_path(self.settings.database_path)
 
             if not src_db.exists():
-                QMessageBox.warning(self, tr('settings.backup_group'), trf("msg.db_nicht_gefunden", src_db=str(src_db)))
+                show_warning(
+                    self,
+                    tr("settings.backup_group"),
+                    trf("msg.db_nicht_gefunden", src_db=str(src_db)),
+                )
                 return
 
             backup_dir = configured_backups_dir(
@@ -843,9 +1135,10 @@ class SettingsDialog(QDialog):
 
             # Immer als Restore-Bundle speichern (.bmr)
             from model.app_paths import settings_path as _get_settings_path
-            from model.user_model import _users_file_path as _get_users_path
+            from model.user_model import _users_file_path
+
             _s_path = _get_settings_path()
-            _u_path = _get_users_path()
+            _u_path = _users_file_path()
             create_bundle(
                 source_db=src_db,
                 out_path=backup_path,
@@ -859,10 +1152,14 @@ class SettingsDialog(QDialog):
             self.settings.set("last_auto_backup", datetime.now().isoformat())
             self._refresh_backup_status()
 
-            QMessageBox.information(
+            show_info(
                 self,
-                tr('settings.backup_group'),
-                trf('auto.settings_dialog.777_backup_erfolgreich_erstellt_value_0_a8f58abf', value_0=(backup_name), value_1=(backup_dir)),
+                tr("settings.backup_group"),
+                trf(
+                    "auto.settings_dialog.777_backup_erfolgreich_erstellt_value_0_a8f58abf",
+                    value_0=(backup_name),
+                    value_1=(backup_dir),
+                ),
             )
 
             # Bereinigung prüfen
@@ -871,7 +1168,7 @@ class SettingsDialog(QDialog):
         except Exception as exc:
             QMessageBox.critical(
                 self,
-                tr('settings.backup_failed_title'),
+                tr("settings.backup_failed_title"),
                 trf("msg.backup_erstellen_fehler", exc=str(exc)),
             )
 
@@ -910,7 +1207,14 @@ class SettingsDialog(QDialog):
         dlg.resize(550, 400)
 
         layout = QVBoxLayout(dlg)
-        intro = QLabel(trf("backup.cleanup_intro", count=len(all_backups), keep=keep_n, excess=to_delete_count))
+        intro = QLabel(
+            trf(
+                "backup.cleanup_intro",
+                count=len(all_backups),
+                keep=keep_n,
+                excess=to_delete_count,
+            )
+        )
         intro.setWordWrap(True)
         layout.addWidget(intro)
 
@@ -918,6 +1222,7 @@ class SettingsDialog(QDialog):
         list_widget.setSelectionMode(QAbstractItemView.MultiSelection)
 
         from datetime import datetime as _dt
+
         for i, p in enumerate(all_backups):
             size_kb = p.stat().st_size / 1024
             mtime = _dt.fromtimestamp(p.stat().st_mtime).strftime("%d.%m.%Y %H:%M")
@@ -956,14 +1261,18 @@ class SettingsDialog(QDialog):
         self._refresh_backup_status()
 
         if errors:
-            QMessageBox.warning(self, tr("msg.error"), "\n".join(errors))
+            show_warning(self, tr("msg.error"), "\n".join(errors))
 
     # -----------------------------------------------------------------
     # Design/Theme-Logik
     # -----------------------------------------------------------------
     def _current_mode(self) -> str:
-        """"hell" oder "dunkel" basierend auf dem UI-Dropdown."""
-        return "dunkel" if self.cmb_theme.currentText() == tr("settings.theme_dark") else "hell"
+        """ "hell" oder "dunkel" basierend auf dem UI-Dropdown."""
+        return (
+            "dunkel"
+            if self.cmb_theme.currentText() == tr("settings.theme_dark")
+            else "hell"
+        )
 
     def _on_fontsize_changed(self, _val: int) -> None:
         """Schnelleinstellung: Schriftgröße direkt im aktiven Profil speichern.
@@ -976,7 +1285,10 @@ class SettingsDialog(QDialog):
         """
 
         profile_name = (self.cmb_design_profile.currentText() or "").strip()
-        if not profile_name or profile_name in (tr("dlg.keine_profile_vorhanden"), tr("dlg.keine_passenden_profile")):
+        if not profile_name or profile_name in (
+            tr("dlg.keine_profile_vorhanden"),
+            tr("dlg.keine_passenden_profile"),
+        ):
             return
 
         try:
@@ -994,7 +1306,10 @@ class SettingsDialog(QDialog):
     def _apply_fontsize_to_profile(self, profile_name: str, font_size: int) -> None:
         """Speichert Schriftgröße direkt im Profil-JSON (damit alle Widgets davon profitieren)."""
         profile_name = (profile_name or "").strip()
-        if not profile_name or profile_name in (tr("dlg.keine_profile_vorhanden"), tr("dlg.keine_passenden_profile")):
+        if not profile_name or profile_name in (
+            tr("dlg.keine_profile_vorhanden"),
+            tr("dlg.keine_passenden_profile"),
+        ):
             return
         prof = self.theme_manager.get_profile(profile_name)
         if not prof:
@@ -1016,7 +1331,10 @@ class SettingsDialog(QDialog):
 
         # 2) Profil
         profile_name = (self.cmb_design_profile.currentText() or "").strip()
-        if not profile_name or profile_name in (tr("dlg.keine_profile_vorhanden"), tr("dlg.keine_passenden_profile")):
+        if not profile_name or profile_name in (
+            tr("dlg.keine_profile_vorhanden"),
+            tr("dlg.keine_passenden_profile"),
+        ):
             return
 
         self.settings.set("active_design_profile", profile_name)
@@ -1063,7 +1381,11 @@ class SettingsDialog(QDialog):
 
         # Auswahl: 1) aktives Profil, 2) letztes Profil pro Modus, 3) Standard
         active = (self.settings.get("active_design_profile") or "").strip()
-        last = (self._last_selected_by_mode.get(mode) or self.settings.get(f"last_design_profile_{mode}") or "").strip()
+        last = (
+            self._last_selected_by_mode.get(mode)
+            or self.settings.get(f"last_design_profile_{mode}")
+            or ""
+        ).strip()
         fallback = "Standard Dunkel" if mode == "dunkel" else "Standard Hell"
 
         if active in filtered:

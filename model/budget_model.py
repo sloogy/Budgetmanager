@@ -69,6 +69,12 @@ class BudgetModel:
     def set_amount(
         self, year: int, month: int, typ: str, category: str, amount: float
     ) -> None:
+        # v2.2.32 (DAU-Härtung): Kein inf/nan in die Budget-Tabelle lassen –
+        # ein solcher Wert würde jede Budget-/Restberechnung vergiften.
+        from utils.money import require_finite_amount
+
+        amount = require_finite_amount(amount, field="Budgetbetrag")
+
         # SCHUTZ: Reservierte Kategorien blockieren
         if self._is_reserved_category(category):
             logger.warning(
@@ -425,7 +431,7 @@ class BudgetModel:
                 continue
             ph = ",".join(["?"] * len(mlist))
             cur = self.conn.execute(
-                f"SELECT typ, SUM(amount) AS s FROM budget "
+                f"SELECT typ, SUM(amount) AS s FROM budget "  # nosec B608
                 f"WHERE year=? AND month IN ({ph}) GROUP BY typ",
                 [int(y), *[int(mm) for mm in mlist]],
             )
@@ -455,7 +461,7 @@ class BudgetModel:
                 continue
             ph = ",".join(["?"] * len(mlist))
             cur = self.conn.execute(
-                f"SELECT typ, category, SUM(amount) AS s FROM budget "
+                f"SELECT typ, category, SUM(amount) AS s FROM budget "  # nosec B608
                 f"WHERE year=? AND month IN ({ph}) GROUP BY typ, category",
                 [int(y), *[int(mm) for mm in mlist]],
             )

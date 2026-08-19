@@ -3,6 +3,7 @@
 Ziel: Die bessere zentrale Budgetart-Logik aus 2.1.6 bleibt aktiv, während
 persistente Nutzeraktionen aus 2.1.5 wieder funktionieren.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -60,9 +61,14 @@ def _suggest(conn: sqlite3.Connection, **overrides):
     return BudgetOverviewModel(conn).get_tracking_budget_suggestions(**params)
 
 
-def test_learning_state_migration_and_category_cascade_tables_exist(conn: sqlite3.Connection) -> None:
+def test_learning_state_migration_and_category_cascade_tables_exist(
+    conn: sqlite3.Connection,
+) -> None:
     assert CURRENT_VERSION >= 15
-    cols = [row[1] for row in conn.execute("PRAGMA table_info(tracking_learning_state)").fetchall()]
+    cols = [
+        row[1]
+        for row in conn.execute("PRAGMA table_info(tracking_learning_state)").fetchall()
+    ]
     assert cols == ["typ", "category", "status", "snooze_until", "changed_at"]
     assert "tracking_learning_state" in CategoryModel._ALLOWED_SCHEMA_TABLES
     assert "tracking_learning_state" in CategoryModel._CATEGORY_TEXT_REFERENCE_TABLES
@@ -75,14 +81,24 @@ def test_watch_later_ignore_reset_and_force_irregular(conn: sqlite3.Connection) 
     conn.commit()
 
     model = BudgetOverviewModel(conn)
-    assert next(s for s in _suggest(conn, current_month=6) if s.category == "Essen").budget_kind == KIND_VARIABLE_POT
+    assert (
+        next(
+            s for s in _suggest(conn, current_month=6) if s.category == "Essen"
+        ).budget_kind
+        == KIND_VARIABLE_POT
+    )
 
     model.set_learning_action(TYP_EXPENSES, "Essen", "watch_later", year=2026, month=7)
     assert all(s.category != "Essen" for s in _suggest(conn, current_month=7))
     assert any(s.category == "Essen" for s in _suggest(conn, current_month=8))
 
     model.set_learning_action(TYP_EXPENSES, "Essen", "irregular")
-    assert next(s for s in _suggest(conn, current_month=6) if s.category == "Essen").budget_kind == KIND_IRREGULAR
+    assert (
+        next(
+            s for s in _suggest(conn, current_month=6) if s.category == "Essen"
+        ).budget_kind
+        == KIND_IRREGULAR
+    )
 
     model.set_learning_action(TYP_EXPENSES, "Essen", "ignore")
     assert all(s.category != "Essen" for s in _suggest(conn))

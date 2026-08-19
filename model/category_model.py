@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 
 logger = logging.getLogger(__name__)
+import re
 import sqlite3
 from dataclasses import dataclass
 from typing import List
@@ -241,7 +242,7 @@ class CategoryModel:
             select.append("1 as expected_monthly_bookings")
 
         cur = self.conn.execute(
-            f"SELECT {', '.join(select)} FROM categories ORDER BY typ, sort_order, name COLLATE NOCASE"
+            f"SELECT {', '.join(select)} FROM categories ORDER BY typ, sort_order, name COLLATE NOCASE"  # nosec B608
         )
 
         def _map_type(typ: str) -> str:
@@ -582,6 +583,46 @@ class CategoryModel:
         walk(nodes, 0, None)
         return out
 
+    def descendant_names(
+        self, typ: str, name: str, *, include_self: bool = True
+    ) -> List[str]:
+        """Gibt die Kategorie plus alle Unterkategorien nach Namen zurück.
+
+        Wird bewusst im Model gehalten, damit Filter und spätere Auswertungen die
+        gleiche Hierarchie-Logik nutzen können. Falls die Datenbank noch keine
+        ``parent_id``-Spalte hat, fällt die Methode sicher auf die Kategorie selbst
+        zurück.
+        """
+        name = (name or "").strip()
+        if not typ or not name:
+            return []
+        if "parent_id" not in self._cols("categories"):
+            return [name] if include_self else []
+
+        row = self.conn.execute(
+            "SELECT id, name FROM categories WHERE typ=? AND name=?",
+            (typ, name),
+        ).fetchone()
+        if not row:
+            return [name] if include_self else []
+
+        out: List[str] = [str(row["name"])] if include_self else []
+        queue: List[int] = [int(row["id"])]
+        seen: set[int] = set(queue)
+        while queue:
+            parent_id = queue.pop(0)
+            for child in self.conn.execute(
+                "SELECT id, name FROM categories WHERE typ=? AND parent_id=? ORDER BY sort_order, name COLLATE NOCASE",
+                (typ, parent_id),
+            ).fetchall():
+                cid = int(child["id"])
+                if cid in seen:
+                    continue
+                seen.add(cid)
+                out.append(str(child["name"]))
+                queue.append(cid)
+        return out
+
     def display_with_parent(self, typ: str, name: str) -> str:
         """Gibt "Parent › Child" zurück, aber nur wenn die Kategorie einen Parent hat."""
         parent = self.get_parent_name(typ, name)
@@ -814,7 +855,8 @@ class CategoryModel:
             return
         params.append(int(cat_id))
         self.conn.execute(
-            f"UPDATE categories SET {', '.join(fields)} WHERE id=?", params
+            f"UPDATE categories SET {', '.join(fields)} WHERE id=?",  # nosec B608
+            params,
         )
         self.conn.commit()
 
@@ -854,9 +896,19 @@ class CategoryModel:
             if not self._table_exists(table):
                 return 0
             try:
+                # v2.2.25 (d1-Härtung): Tabellenname nur aus der internen
+                # Whitelist; WHERE strikt auf 'col=?'-Ketten begrenzt –
+                # kein freier String erreicht das SQL.
+                safe_table = self._safe_table(table)
+                if not re.fullmatch(
+                    r"[A-Za-z_][A-Za-z0-9_]*=\?(?: AND [A-Za-z_][A-Za-z0-9_]*=\?)*",
+                    where,
+                ):
+                    raise ValueError(f"Nicht erlaubte WHERE-Klausel: {where!r}")
                 return int(
                     self.conn.execute(
-                        f"SELECT COUNT(*) FROM {table} WHERE {where}", params
+                        f"SELECT COUNT(*) FROM {safe_table} WHERE {where}",  # nosec B608
+                        params,
                     ).fetchone()[0]
                     or 0
                 )
@@ -1120,7 +1172,8 @@ class CategoryModel:
             if self._table_exists(table):
                 safe_table = self._safe_table(table)
                 self.conn.execute(
-                    f"DELETE FROM {safe_table} WHERE typ=? AND category=?", (typ, name)
+                    f"DELETE FROM {safe_table} WHERE typ=? AND category=?",  # nosec B608
+                    (typ, name),
                 )
         if typ == TYP_SAVINGS and self._table_exists("savings_goals"):
             if delete_savings_goals:
@@ -1205,7 +1258,7 @@ class CategoryModel:
                     if ids:
                         q = ",".join(["?"] * len(ids))
                         self.conn.execute(
-                            f"UPDATE categories SET parent_id=? WHERE parent_id=? AND id NOT IN ({q})",
+                            f"UPDATE categories SET parent_id=? WHERE parent_id=? AND id NOT IN ({q})",  # nosec B608
                             [cat.parent_id, cat_id, *ids],
                         )
                     else:

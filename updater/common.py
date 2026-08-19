@@ -26,6 +26,7 @@ from typing import Dict, Tuple
 import requests
 from packaging import version as _version
 
+
 DEFAULT_MANIFEST_URL = (
     "https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json"
 )
@@ -289,9 +290,39 @@ def parse_manifest(data: dict) -> Manifest:
 def fetch_manifest(
     manifest_url: str = DEFAULT_MANIFEST_URL, timeout_s: int = 10
 ) -> Manifest:
-    r = requests.get(manifest_url, timeout=timeout_s)
-    r.raise_for_status()
-    data = r.json()
+    """Lädt und verifiziert Manifest + detached Ed25519-Signatur.
+
+    Manifest und SHA-256-Werte allein reichen nicht, wenn die Release-Quelle
+    kompromittiert würde. Deshalb wird ``latest.json.sig`` mit einem beim Build
+    eingebetteten Public-Key geprüft. Fehlende Schlüssel/Signaturen sind Fehler.
+    """
+    from urllib.parse import urlparse
+
+    from updater.manifest_signing import (
+        SIGNATURE_SUFFIX,
+        verify_manifest_signature,
+    )
+
+    parsed_url = urlparse(manifest_url)
+    if parsed_url.scheme.lower() != "https":
+        raise ValueError("Update-Manifest muss über HTTPS geladen werden")
+
+    response = requests.get(manifest_url, timeout=timeout_s)
+    response.raise_for_status()
+    manifest_bytes = bytes(response.content)
+    if not manifest_bytes:
+        raise ValueError("Update-Manifest ist leer")
+
+    signature_response = requests.get(
+        manifest_url + SIGNATURE_SUFFIX, timeout=timeout_s
+    )
+    signature_response.raise_for_status()
+    verify_manifest_signature(manifest_bytes, bytes(signature_response.content))
+
+    try:
+        data = json.loads(manifest_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"Manifest ist kein gültiges UTF-8-JSON: {exc}") from exc
     if not isinstance(data, dict):
         raise ValueError("Manifest ist kein JSON-Objekt")
     return parse_manifest(data)
@@ -333,20 +364,135 @@ def download_file(url: str, dest: Path, timeout_s: int = 30) -> None:
                     f.write(chunk)
 
 
+MAX_UPDATE_FILES = 20_000
+MAX_UPDATE_UNCOMPRESSED_BYTES = 2 * 1024 * 1024 * 1024
+MAX_UPDATE_MEMBER_BYTES = 512 * 1024 * 1024
+MAX_UPDATE_COMPRESSION_RATIO = 250
+
+
 def safe_extract_zip(zip_path: Path, dest_dir: Path) -> None:
-    """Extrahiert ZIP ohne ZipSlip (Pfad-Traversal)."""
+    """Extrahiert ein Update-ZIP fail-closed.
+
+    Blockiert Pfad-Traversal, Symlinks, extreme Dateianzahlen, uebergrosse
+    Eintraege und auffaellige Kompressionsraten (Zip-Bomb-Schutz).
+    """
     dest_dir.mkdir(parents=True, exist_ok=True)
+    root = dest_dir.resolve()
     with zipfile.ZipFile(zip_path, "r") as z:
-        for member in z.infolist():
+        members = z.infolist()
+        if not members or len(members) > MAX_UPDATE_FILES:
+            raise ValueError("Update-Archiv leer oder enthaelt zu viele Dateien")
+
+        # Doppelte Namen koennen je nach Plattform unterschiedliche Inhalte
+        # ueberschreiben. Backslashes und Gross-/Kleinschreibung werden bewusst
+        # normalisiert, damit ein unter Linux gebautes Archiv auf Windows nicht
+        # erst beim Anwenden kollidiert.
+        normalized_names = [
+            member.filename.replace("\\", "/").rstrip("/").casefold()
+            for member in members
+            if member.filename.rstrip("/\\")
+        ]
+        if len(normalized_names) != len(set(normalized_names)):
+            raise ValueError("Doppelte oder kollidierende Pfade im Update-Archiv")
+
+        total = 0
+        for member in members:
             if not member.filename:
                 continue
             member_path = Path(member.filename)
             if member_path.is_absolute() or ".." in member_path.parts:
-                continue
+                raise ValueError(f"Unsicherer Pfad im Update-Archiv: {member.filename}")
+            # Unix-Dateityp aus external_attr: Symlinks werden nicht akzeptiert.
+            mode = (member.external_attr >> 16) & 0o170000
+            if mode == 0o120000:
+                raise ValueError(
+                    f"Symlink im Update-Archiv nicht erlaubt: {member.filename}"
+                )
+            if member.file_size > MAX_UPDATE_MEMBER_BYTES:
+                raise ValueError(f"Datei im Update-Archiv zu gross: {member.filename}")
+            total += member.file_size
+            if total > MAX_UPDATE_UNCOMPRESSED_BYTES:
+                raise ValueError("Update-Archiv ist entpackt unplausibel gross")
+            if (
+                member.compress_size > 0
+                and member.file_size / member.compress_size
+                > MAX_UPDATE_COMPRESSION_RATIO
+            ):
+                raise ValueError(
+                    f"Auffaellige Kompressionsrate im Update-Archiv: {member.filename}"
+                )
             target = (dest_dir / member_path).resolve()
-            if not str(target).startswith(str(dest_dir.resolve())):
-                continue
-            z.extract(member, dest_dir)
+            if target != root and root not in target.parents:
+                raise ValueError(f"Pfad verlaesst Staging-Ordner: {member.filename}")
+        z.extractall(dest_dir)
+
+
+def staged_tree_sha256(root: Path) -> str:
+    """Deterministischer Hash aller gestageten Dateien ausser dem Marker."""
+    h = hashlib.sha256()
+    for path in sorted(
+        (p for p in root.rglob("*") if p.is_file() and p.name != "_update_marker.json"),
+        key=lambda p: p.relative_to(root).as_posix(),
+    ):
+        rel = path.relative_to(root).as_posix().encode("utf-8")
+        h.update(len(rel).to_bytes(4, "big"))
+        h.update(rel)
+        h.update(path.stat().st_size.to_bytes(8, "big"))
+        with path.open("rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                h.update(chunk)
+    return h.hexdigest()
+
+
+def validate_staged_payload(root: Path, asset_type: str = "portable") -> None:
+    """Prueft, dass ein Staging eine startfaehige BudgetManager-App enthaelt.
+
+    v2.2.15 (B2-Verschaerfung): Portable-ZIPs aus dem Release-Build sind immer
+    onedir-Bundles – Binary OHNE ``_internal/`` waere nicht startfaehig und
+    wuerde beim Anwenden eine kaputte Installation hinterlassen. Fuer
+    ZIP-Assets ist ``_internal/`` (nicht leer) deshalb Pflicht. Rohe
+    Einzel-Binaries laufen weiterhin ueber Nicht-ZIP-Assets und sind hiervon
+    unberuehrt. Installer-Staging braucht genau eine Setup-EXE.
+    """
+    if not root.is_dir():
+        raise ValueError("Staging-Root fehlt")
+    files = [
+        p for p in root.rglob("*") if p.is_file() and p.name != "_update_marker.json"
+    ]
+    if not files:
+        raise ValueError("Staging enthaelt keine Programmdateien")
+    kind = (asset_type or "portable").strip().lower()
+    if kind == "installer":
+        setups = [
+            p
+            for p in files
+            if p.name.startswith("BudgetManager_Setup") and p.suffix.lower() == ".exe"
+        ]
+        if len(setups) == 1:
+            return
+        exes = [p for p in files if p.suffix.lower() == ".exe"]
+        if len(exes) != 1:
+            raise ValueError(
+                f"Installer-Staging erwartet genau eine Setup-EXE, gefunden: {len(exes)}"
+            )
+        return
+    names = {p.name.lower() for p in files}
+    has_binary = any(
+        n in {"budgetmanager", "budgetmanager.exe"}
+        or (n.startswith("budgetmanager") and n.endswith(".exe"))
+        for n in names
+    )
+    has_source_entry = "main.py" in names and (
+        "app_info.py" in names or "version.json" in names
+    )
+    if not (has_binary or has_source_entry):
+        raise ValueError("Update enthaelt keinen erkennbaren BudgetManager-Startpunkt")
+    if has_binary and not has_source_entry:
+        internal_dirs = [p for p in root.rglob("_internal") if p.is_dir()]
+        if not internal_dirs or not any(any(d.iterdir()) for d in internal_dirs):
+            raise ValueError(
+                "Portable-Update ohne nicht-leeres _internal/ ist kein startfaehiges onedir-Bundle"
+            )
 
 
 def staging_dir_for(version_str: str) -> Path:
@@ -416,8 +562,13 @@ def prune_other_staging(
         logger.debug("Pruning der Cache-Dateien uebersprungen: %s", e)
 
 
-def write_staged_marker(version_str: str, manifest: Manifest, asset: AssetInfo) -> Path:
+def write_staged_marker(
+    version_str: str, manifest: Manifest, asset: AssetInfo, *, tree_sha256: str = ""
+) -> Path:
     marker = staging_dir_for(version_str) / "_update_marker.json"
+    if not tree_sha256:
+        root = find_staged_root(marker.parent)
+        tree_sha256 = staged_tree_sha256(root)
     payload = {
         "version": version_str,
         "release_tag": manifest.release_tag,
@@ -426,6 +577,7 @@ def write_staged_marker(version_str: str, manifest: Manifest, asset: AssetInfo) 
         "sha256": asset.sha256,
         "asset_type": asset.asset_type,
         "staged_at": int(time.time()),
+        "tree_sha256": tree_sha256,
     }
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text(json.dumps(payload, indent=2), encoding="utf-8")
@@ -438,7 +590,7 @@ def find_staged_root(staging_dir: Path) -> Path:
     if not items:
         return staging_dir
     dirs = [p for p in items if p.is_dir() and p.name not in {"__MACOSX"}]
-    files = [p for p in items if p.is_file()]
+    files = [p for p in items if p.is_file() and p.name not in {"_update_marker.json"}]
     if len(dirs) == 1 and not files:
         return dirs[0]
     return staging_dir

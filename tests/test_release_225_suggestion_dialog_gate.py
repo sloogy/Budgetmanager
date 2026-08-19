@@ -1,4 +1,5 @@
 """Regression v2.2.5: Vorschläge-Button darf Lern-/Forecast-Vorschläge nicht blockieren."""
+
 from __future__ import annotations
 
 from pathlib import Path

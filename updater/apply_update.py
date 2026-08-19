@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 import os
@@ -26,12 +27,14 @@ from updater.common import (
     read_check_result,
     staging_dir_for,
     updates_dir,
+    staged_tree_sha256,
+    validate_staged_payload,
 )
 
 
 EXCLUDE = (
-    "data",        # DB, Settings, Backups
-    "updates",     # update cache/backups behalten
+    "data",  # DB, Settings, Backups
+    "updates",  # update cache/backups behalten
     ".git",
     "__pycache__",
 )
@@ -41,6 +44,7 @@ def read_marker(staging: Path) -> dict:
     marker = staging / "_update_marker.json"
     if marker.exists():
         import json
+
         return json.loads(marker.read_text(encoding="utf-8"))
     return {}
 
@@ -93,6 +97,76 @@ def target_staged_version() -> str | None:
     return latest_staged_version()
 
 
+def _verify_staging(staging_dir: Path, src_root: Path, marker: dict) -> None:
+    """Verifiziert Struktur und Inhalt unmittelbar vor dem Anwenden erneut."""
+    if not marker:
+        raise ValueError("Update-Marker fehlt")
+    expected = str(marker.get("tree_sha256") or "").strip().lower()
+    if not expected:
+        raise ValueError("Staging-Hash fehlt im Update-Marker")
+    validate_staged_payload(src_root, str(marker.get("asset_type") or "portable"))
+    actual = staged_tree_sha256(src_root)
+    if actual.lower() != expected:
+        raise ValueError("Staging wurde nach dem Download veraendert oder beschaedigt")
+
+
+def _transactional_full_tree_update(
+    src_root: Path, dst_root: Path, exclude: tuple[str, ...]
+) -> None:
+    """Ersetzt Top-Level-Programmteile mit Rollback bei jedem Fehler."""
+    tx = updates_dir() / "apply_transaction"
+    incoming = tx / "incoming"
+    old = tx / "old"
+    shutil.rmtree(tx, ignore_errors=True)
+    incoming.mkdir(parents=True, exist_ok=True)
+    old.mkdir(parents=True, exist_ok=True)
+
+    new_names = []
+    for item in src_root.iterdir():
+        if item.name in exclude or item.name == "_update_marker.json":
+            continue
+        new_names.append(item.name)
+        dst = incoming / item.name
+        if item.is_dir():
+            shutil.copytree(item, dst)
+        else:
+            shutil.copy2(item, dst)
+
+    if not new_names:
+        raise OSError("Keine Programmdateien fuer das Update vorhanden")
+
+    moved_old = []
+    installed_new = []
+    try:
+        # Erst alle betroffenen alten Komponenten aus dem Weg bewegen.
+        for name in new_names:
+            current = dst_root / name
+            if current.exists() or current.is_symlink():
+                os.replace(current, old / name)
+                moved_old.append(name)
+        # Danach alle neuen Komponenten per Rename aktivieren.
+        for name in new_names:
+            os.replace(incoming / name, dst_root / name)
+            installed_new.append(name)
+    except Exception:
+        for name in reversed(installed_new):
+            current = dst_root / name
+            try:
+                if current.is_dir() and not current.is_symlink():
+                    shutil.rmtree(current)
+                else:
+                    current.unlink(missing_ok=True)
+            except Exception:
+                logger.exception("Rollback: neue Komponente nicht entfernbar: %s", name)
+        for name in reversed(moved_old):
+            backup = old / name
+            if backup.exists() or backup.is_symlink():
+                os.replace(backup, dst_root / name)
+        raise
+    finally:
+        shutil.rmtree(tx, ignore_errors=True)
+
+
 def remove_paths(target: Path, exclude: tuple[str, ...]) -> None:
     """Entfernt alles im App-Ordner außer exclude.
 
@@ -135,11 +209,13 @@ def _staged_target_binary(src_root: Path) -> Path | None:
     Zielnamen. Damit können alte versionierte Portable-Builds sauber auf
     ``BudgetManager.exe``/``BudgetManager`` migriert werden.
     """
-    for target_name in dict.fromkeys((
-        update_target_exe_filename(),
-        current_exe_filename(),
-        stable_exe_filename(),
-    )):
+    for target_name in dict.fromkeys(
+        (
+            update_target_exe_filename(),
+            current_exe_filename(),
+            stable_exe_filename(),
+        )
+    ):
         candidate = src_root / target_name
         if candidate.is_file():
             return candidate
@@ -171,7 +247,11 @@ def _restart_after_update(src_root: Path) -> None:
             if exe.exists():
                 subprocess.Popen([str(exe)], cwd=str(app_dir()), close_fds=True)
         else:
-            subprocess.Popen([sys.executable, str(app_dir() / "main.py")], cwd=str(app_dir()), close_fds=True)
+            subprocess.Popen(
+                [sys.executable, str(app_dir() / "main.py")],
+                cwd=str(app_dir()),
+                close_fds=True,
+            )
     except Exception as e:
         logger.warning("App-Neustart nach Update fehlgeschlagen: %s", e)
 
@@ -288,16 +368,13 @@ pause
 exit /b 1
 """
     return (
-        template
-        .replace("__LOG__", log)
+        template.replace("__LOG__", log)
         .replace("__SRC__", src)
         .replace("__DST__", dst)
         .replace("__EXE__", exe)
         .replace("__LAUNCHEXE__", launch)
         .replace("__LAUNCHPATH__", launch_path)
     )
-
-
 
 
 def _read_installation_marker() -> dict:
@@ -323,7 +400,7 @@ def _windows_cmd_quote(value: str) -> str:
         .replace("|", "^|")
         .replace("<", "^<")
         .replace(">", "^>")
-        .replace('\"', '\\\"')
+        .replace('"', '\\"')
     )
 
 
@@ -341,7 +418,7 @@ def _build_windows_installer_helper_batch(
     im Update-Modus gestartet und der bisherige Datenordner explizit uebergeben.
     """
     data = str(data_dir) if data_dir is not None else ""
-    template = r'''@echo off
+    template = r"""@echo off
 setlocal enableextensions
 chcp 65001 >nul 2>&1
 title BudgetManager Installer-Update
@@ -392,11 +469,10 @@ echo   Details siehe: "%LOGFILE%"
 echo.
 pause
 exit /b %RC%
-'''
+"""
     launch_path = str(app_root / stable_exe_filename())
     return (
-        template
-        .replace("__LOG__", _windows_cmd_quote(str(log_path)))
+        template.replace("__LOG__", _windows_cmd_quote(str(log_path)))
         .replace("__SETUP__", _windows_cmd_quote(str(setup)))
         .replace("__APPDIR__", _windows_cmd_quote(str(app_root)))
         .replace("__DATADIR__", _windows_cmd_quote(data))
@@ -441,7 +517,9 @@ def _apply_via_windows_installer(src_root: Path, marker: dict) -> int:
     print(f"⟲ Starte Windows-Installer-Update: {setup.name}")
     print("   Die App schließt sich jetzt. Danach startet das Setup im Update-Modus.")
 
-    CREATE_NEW_PROCESS_GROUP = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+    CREATE_NEW_PROCESS_GROUP = getattr(
+        subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200
+    )
     CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0x00000010)
     creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NEW_CONSOLE
     try:
@@ -456,6 +534,7 @@ def _apply_via_windows_installer(src_root: Path, marker: dict) -> int:
         print(f"❌ Windows-Installer-Helfer konnte nicht gestartet werden: {e}")
         return 12
     return 0
+
 
 def _apply_via_windows_helper(src_root: Path) -> int:
     """Windows-Pfad: Backup erstellen, Helfer-Batch schreiben und starten.
@@ -475,24 +554,34 @@ def _apply_via_windows_helper(src_root: Path) -> int:
         b = backup_current_zip(backup_dir, label="win", exclude_names=EXCLUDE)
         print(f"✓ Rollback-Backup erstellt: {b}")
     except Exception as e:
-        logger.warning("Rollback-Backup fehlgeschlagen (fahre fort): %s", e)
-        print(f"⚠️  Rollback-Backup fehlgeschlagen: {e}")
+        # v2.2.15 (B5): Ohne Rollback-Backup KEIN Update. Der Helfer-Batch
+        # loescht und kopiert Verzeichnisse; scheitert er auf halbem Weg,
+        # ist das ZIP der einzige Rettungsweg.
+        logger.exception("Rollback-Backup fehlgeschlagen")
+        print(f"❌ Rollback-Backup fehlgeschlagen – Update wird NICHT angewendet: {e}")
+        return 12
 
     log_path = upd / "update_apply.log"
     batch_path = upd / "apply_update.bat"
-    batch_text = _build_windows_helper_batch(src_root, dst_dir, target_exe, launch_exe, log_path)
+    batch_text = _build_windows_helper_batch(
+        src_root, dst_dir, target_exe, launch_exe, log_path
+    )
 
     # Batch als UTF-8 schreiben (chcp 65001 im Skript setzt passende Codepage).
     batch_path.write_text(batch_text, encoding="utf-8")
 
     print("⟲ Starte externen Update-Helfer (Windows)...")
     print("   Es öffnet sich ein eigenes Konsolenfenster, das den Fortschritt zeigt.")
-    print("   Die App schließt sich jetzt; danach werden die Dateien ersetzt und die App neu gestartet.")
+    print(
+        "   Die App schließt sich jetzt; danach werden die Dateien ersetzt und die App neu gestartet."
+    )
 
     # Eigenes Konsolenfenster, damit der Nutzer unter Windows sieht, was passiert.
     # Wichtig: DETACHED_PROCESS NICHT mit CREATE_NEW_CONSOLE kombinieren; diese
     # Kombination ist unter Windows fehleranfällig und kann das Fenster verhindern.
-    CREATE_NEW_PROCESS_GROUP = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200)
+    CREATE_NEW_PROCESS_GROUP = getattr(
+        subprocess, "CREATE_NEW_PROCESS_GROUP", 0x00000200
+    )
     CREATE_NEW_CONSOLE = getattr(subprocess, "CREATE_NEW_CONSOLE", 0x00000010)
     creationflags = CREATE_NEW_PROCESS_GROUP | CREATE_NEW_CONSOLE
 
@@ -515,7 +604,9 @@ def main() -> int:
     enable_utf8_console()
     v = target_staged_version()
     if not v:
-        print("❌ Kein vorbereitetes Update gefunden. Erst ausführen: python -m updater.check_update")
+        print(
+            "❌ Kein vorbereitetes Update gefunden. Erst ausführen: python -m updater.check_update"
+        )
         return 2
 
     staging_dir = staging_dir_for(v)
@@ -525,6 +616,12 @@ def main() -> int:
 
     src_root = find_staged_root(staging_dir)
     marker = read_marker(staging_dir)
+    try:
+        _verify_staging(staging_dir, src_root, marker)
+    except Exception as e:
+        print(f"❌ Staging-Prüfung fehlgeschlagen: {e}")
+        logger.exception("Staging-Prüfung fehlgeschlagen")
+        return 4
 
     print("BudgetManager Updater – APPLY")
     print(f"App-Ordner: {app_dir()}")
@@ -548,8 +645,11 @@ def main() -> int:
         b = backup_current_zip(backup_dir, label=v, exclude_names=EXCLUDE)
         print(f"✓ Rollback-Backup erstellt: {b}")
     except Exception as e:
-        logger.warning("Rollback-Backup fehlgeschlagen (fahre fort): %s", e)
-        print(f"⚠️  Rollback-Backup fehlgeschlagen: {e}")
+        # v2.2.15 (B5): Ohne funktionierendes Rollback darf kein Update laufen –
+        # ein Abbruch mitten im Tausch haette sonst keinen Rettungsweg.
+        logger.exception("Rollback-Backup fehlgeschlagen")
+        print(f"❌ Rollback-Backup fehlgeschlagen – Update wird NICHT angewendet: {e}")
+        return 12
 
     if target_binary is not None:
         # Single-Binary-Update: nur die Binary atomar ersetzen (sicher, da
@@ -566,7 +666,11 @@ def main() -> int:
         for item in src_root.iterdir():
             if item.name in EXCLUDE or item.name == target_binary.name:
                 continue
-            if item.is_file() and item.suffix.lower() in {".exe", ""} and item.name.startswith("BudgetManager"):
+            if (
+                item.is_file()
+                and item.suffix.lower() in {".exe", ""}
+                and item.name.startswith("BudgetManager")
+            ):
                 # andere Plattform-Binaries überspringen
                 continue
             try:
@@ -583,8 +687,7 @@ def main() -> int:
         # Full-Tree-Update
         print("⟲ Ersetze Programmdateien (data/ bleibt bestehen)...")
         try:
-            remove_paths(app_dir(), exclude=EXCLUDE)
-            copy_new(src_root, app_dir(), exclude=EXCLUDE)
+            _transactional_full_tree_update(src_root, app_dir(), exclude=EXCLUDE)
         except OSError as e:
             print(f"❌ Update fehlgeschlagen: {e}")
             logger.exception("Full-Tree-Update fehlgeschlagen")

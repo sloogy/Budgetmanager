@@ -158,7 +158,7 @@ def list_year_copy_review_rows(
           AND b.category NOT LIKE '%SALDO%'
         GROUP BY b.typ, b.category, c.is_fix, c.is_recurring, c.forecast_mode
         ORDER BY b.typ, b.category COLLATE NOCASE
-        """,
+        """,  # nosec B608
         params,
     ).fetchall()
 

@@ -1,0 +1,52 @@
+{
+  "app": "BudgetManager",
+  "version": "2.2.53",
+  "audit_date": "2026-08-02",
+  "release_type": "setup_finish_segfault_hotfix",
+  "decision": {
+    "source_test_package": "GO_FOR_TARGET_SMOKE",
+    "public_release": "HOLD",
+    "condition": "Pass the real Fedora Wayland/XCB setup-finish and following startup-auto-backup smoke test"
+  },
+  "observed_blocker": {
+    "exception": "native segmentation fault",
+    "component_path": "SetupAssistantDialog.finished -> deferred startup auto-backup",
+    "last_successful_log": "Encrypted DB saved: c.enc",
+    "root_cause_confidence": "high-confidence inference; native core stack not provided",
+    "solution": "Separate QDialog finished/close destruction from encrypted backup and ZIP I/O using parent-bound timers; retain dialog wrapper until native close returns; add idempotent finish guard and diagnostic bypass"
+  },
+  "tests": {
+    "passed": 771,
+    "skipped": 13,
+    "failed": 0,
+    "execution": "four non-overlapping file blocks due tool timeout"
+  },
+  "audits": {
+    "final_release": {
+      "loops": 1000,
+      "checks": 19335,
+      "warnings": 0,
+      "failures": 0
+    },
+    "release_logic": {
+      "loops": 100,
+      "findings": 0
+    },
+    "dau_first_start": "PASS",
+    "i18n": "PASS",
+    "compileall": "PASS",
+    "release_lint": "PASS",
+    "version_sync": "PASS"
+  },
+  "recovery_switch": {
+    "command": "BM_SKIP_STARTUP_AUTO_BACKUP=1 ./run.sh",
+    "scope": "startup automatic backup check only",
+    "manual_backups_affected": false
+  },
+  "external_gate_open": [
+    "Fedora Wayland/XCB setup-finish smoke on the affected system",
+    "Second startup with automatic backup enabled",
+    "Windows installer and portable GUI smoke before public binary release",
+    "CI build, dependency scanning and artifact signing"
+  ]
+}

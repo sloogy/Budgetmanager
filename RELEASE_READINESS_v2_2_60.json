@@ -1,0 +1,72 @@
+{
+  "application": "Budgetmanager",
+  "version": "2.2.60",
+  "date": "2026-08-19",
+  "status": "local_go_github_release_gates_required",
+  "source_release": "go",
+  "public_binary_release": "blocked_until_github_platform_and_signing_gates_pass",
+  "fixed_findings": [
+    "version_and_release_date_mismatch",
+    "main_window_architecture_limit_exceeded",
+    "stale_v2_2_52_release_documentation_and_lock_headers",
+    "missing_current_final_audit_matrix",
+    "malformed_version_info_current_release_block",
+    "historical_release_evidence_in_project_root",
+    "generated_cache_artifacts_in_release_tree",
+    "qtcharts_remove_all_series_native_abort",
+    "diagnostic_zip_raw_log_privacy_leak",
+    "lifeplanner_modal_warning_usability_gate",
+    "fragile_dialog_count_gate",
+    "black_format_gate_failures",
+    "mypy_type_gate_failures",
+    "cryptography_cve_2026_69247"
+  ],
+  "tests": {
+    "test_files": 131,
+    "passed": 838,
+    "skipped_tests": 0,
+    "skipped_gui_modules": 0,
+    "failed": 0,
+    "pyside6_runtime_available": true
+  },
+  "audits": {
+    "dau_enterprise": {"checks": 78166, "findings": 0},
+    "enterprise_release": {"loops": 10000, "checks": 112000, "findings": 0},
+    "final_release": {"loops": 1000, "checks": 19755, "warnings": 0, "failures": 0},
+    "deep_logic": {"loops": 1000, "checks": 7000, "findings": 0},
+    "mega_release": {"loops": 1000, "checks": 6811, "findings": 0},
+    "stability": {"loops": 300, "checks": 2400, "findings": 0},
+    "fresh_logic": {"loops": 100, "findings": 0},
+    "release_logic": {"loops": 100, "findings": 0}
+  },
+  "performance": {
+    "categories": 100,
+    "budget_rows": 12000,
+    "tracking_rows": 50000,
+    "passed": true,
+    "max_measured_seconds": 0.0369
+  },
+  "local_gates": {
+    "version_sync": "pass",
+    "hashed_locks": "pass",
+    "syntax_compile": "pass",
+    "architecture": "pass",
+    "i18n": "pass",
+    "handbook": "pass",
+    "release_lint": "pass",
+    "bandit": "pass",
+    "pip_audit": "pass",
+    "black": "pass",
+    "mypy": "pass",
+    "qt_runtime": "pass"
+  },
+  "required_external_gates": [
+    "platform-release-gates",
+    "dependency-security-gate",
+    "black-format-gate",
+    "mypy-type-gate",
+    "windows-installer-smoke",
+    "lifeplanner-module-install-smoke",
+    "authenticode-and-update-signature-verification"
+  ]
+}

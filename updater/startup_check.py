@@ -36,13 +36,15 @@ def main() -> int:
         # Beim Start darf fehlendes Internet nie stoeren. Fehler wird nur
         # strukturiert abgelegt und geloggt.
         logger.debug("Startup-Update-Pruefung fehlgeschlagen: %s", exc)
-        write_startup_check_result({
-            "available": False,
-            "error": str(exc),
-            "current": current,
-            "downloaded": False,
-            "staged": False,
-        })
+        write_startup_check_result(
+            {
+                "available": False,
+                "error": str(exc),
+                "current": current,
+                "downloaded": False,
+                "staged": False,
+            }
+        )
         return 2
 
     platform_key = detect_platform_key()
@@ -52,31 +54,35 @@ def main() -> int:
     remote = manifest.version
 
     if not asset:
-        write_startup_check_result({
-            "available": False,
-            "error": f"Kein Asset fuer Plattform {platform_key}",
-            "current": current,
-            "remote": remote,
-            "release_tag": manifest.release_tag,
-            "asset_keys_tried": preferred_keys,
-            "downloaded": False,
-            "staged": False,
-        })
+        write_startup_check_result(
+            {
+                "available": False,
+                "error": f"Kein Asset fuer Plattform {platform_key}",
+                "current": current,
+                "remote": remote,
+                "release_tag": manifest.release_tag,
+                "asset_keys_tried": preferred_keys,
+                "downloaded": False,
+                "staged": False,
+            }
+        )
         return 3
 
     available = is_newer(remote, current)
-    write_startup_check_result({
-        "available": bool(available),
-        "current": current,
-        "remote": remote,
-        "release_tag": manifest.release_tag,
-        "channel": manifest.channel,
-        "asset_key": asset_key,
-        "asset_type": asset.asset_type,
-        "asset_url": asset.url,
-        "downloaded": False,
-        "staged": False,
-    })
+    write_startup_check_result(
+        {
+            "available": bool(available),
+            "current": current,
+            "remote": remote,
+            "release_tag": manifest.release_tag,
+            "channel": manifest.channel,
+            "asset_key": asset_key,
+            "asset_type": asset.asset_type,
+            "asset_url": asset.url,
+            "downloaded": False,
+            "staged": False,
+        }
+    )
 
     if available:
         print(f"Update verfuegbar: {remote} ({asset_key}/{asset.asset_type})")

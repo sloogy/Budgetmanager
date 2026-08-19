@@ -11,9 +11,12 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import shutil
+import sqlite3
 import sys
 import tempfile
+from typing import cast
 import zipfile
 
 from app_info import APP_NAME, APP_VERSION
@@ -63,6 +66,13 @@ _SECRET_SUFFIXES = tuple(
     )
 )
 _SECRET_PREFIXES = tuple(f"{name}_" for name in _SECRET_EXACT_KEYS)
+
+_APPLICATION_LOG_PREFIX_RE = re.compile(
+    r"^(?P<prefix>\d{4}-\d{2}-\d{2}[^\[]*\[[A-Z ]+\]\s+[^:]+:)"
+)
+_SAFE_TRACEBACK_LINE_RE = re.compile(
+    r'^\s*File "[^"]+", line \d+, in [A-Za-z0-9_<>.]+\s*$'
+)
 
 
 def _now_iso() -> str:
@@ -266,26 +276,108 @@ def _sanitize(value):
 
 
 def sanitized_settings() -> dict:
-    return _sanitize(_read_json(settings_path()))
+    return cast(dict, _sanitize(_read_json(settings_path())))
 
 
 def system_info() -> dict:
-    return _sanitize(
-        {
-            "app_name": APP_NAME,
-            "app_version": APP_VERSION,
-            "created_at": _now_iso(),
-            "platform": platform.platform(),
-            "system": platform.system(),
-            "release": platform.release(),
-            "machine": platform.machine(),
-            "python_version": platform.python_version(),
-            "executable": sys.executable,
-            "frozen": bool(getattr(sys, "frozen", False)),
-            "app_dir": str(app_dir()),
-            "data_dir": str(data_dir()),
-        }
+    info: dict[str, object] = {
+        "app_name": APP_NAME,
+        "app_version": APP_VERSION,
+        "created_at": _now_iso(),
+        "platform": platform.platform(),
+        "system": platform.system(),
+        "release": platform.release(),
+        "machine": platform.machine(),
+        "python_version": platform.python_version(),
+        "executable": sys.executable,
+        "frozen": bool(getattr(sys, "frozen", False)),
+        "app_dir": str(app_dir()),
+        "data_dir": str(data_dir()),
+        "qt_qpa_platform_env": os.environ.get("QT_QPA_PLATFORM", ""),
+        "qt_scale_factor": os.environ.get("QT_SCALE_FACTOR", ""),
+        "desktop_session": os.environ.get("XDG_SESSION_TYPE", ""),
+        "wayland_display_present": bool(os.environ.get("WAYLAND_DISPLAY")),
+        "display_present": bool(os.environ.get("DISPLAY")),
+    }
+    try:
+        from PySide6 import __version__ as pyside_version
+        from PySide6.QtCore import qVersion
+        from PySide6.QtGui import QGuiApplication
+
+        info["pyside_version"] = pyside_version
+        info["qt_version"] = qVersion()
+        app = QGuiApplication.instance()
+        if isinstance(app, QGuiApplication):
+            info["qt_platform_name"] = app.platformName()
+            screen = app.primaryScreen()
+            if screen is not None:
+                geo = screen.availableGeometry()
+                info["primary_screen"] = {
+                    "width": geo.width(),
+                    "height": geo.height(),
+                    "device_pixel_ratio": screen.devicePixelRatio(),
+                    "logical_dpi": round(screen.logicalDotsPerInch(), 2),
+                }
+    except Exception as exc:
+        info["qt_runtime_info_error"] = f"{type(exc).__name__}: {exc}"
+    return cast(dict[str, object], _sanitize(info))
+
+
+def database_health(connection: sqlite3.Connection | None) -> dict:
+    """Technische DB-Gesundheit ohne Finanzdaten, Namen oder Kommentare."""
+    if connection is None:
+        return {"available": False, "reason": "no_active_connection"}
+    result: dict[str, object] = {"available": True, "checked_at": _now_iso()}
+    try:
+        quick = connection.execute("PRAGMA quick_check(1)").fetchone()
+        result["quick_check"] = str(quick[0] if quick else "unknown")
+    except Exception as exc:
+        result["quick_check"] = "error"
+        result["quick_check_error"] = f"{type(exc).__name__}: {exc}"
+    pragma_readers = (
+        (
+            "schema_user_version",
+            lambda: connection.execute("PRAGMA user_version").fetchone(),
+        ),
+        (
+            "schema_version",
+            lambda: connection.execute("PRAGMA schema_version").fetchone(),
+        ),
+        ("page_count", lambda: connection.execute("PRAGMA page_count").fetchone()),
+        (
+            "freelist_count",
+            lambda: connection.execute("PRAGMA freelist_count").fetchone(),
+        ),
+        (
+            "foreign_keys_enabled",
+            lambda: connection.execute("PRAGMA foreign_keys").fetchone(),
+        ),
+        (
+            "journal_mode",
+            lambda: connection.execute("PRAGMA journal_mode").fetchone(),
+        ),
     )
+    for key, read_pragma in pragma_readers:
+        try:
+            row = read_pragma()
+            result[key] = row[0] if row else None
+        except Exception as exc:
+            result[f"{key}_error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        row = connection.execute(
+            "SELECT COUNT(*) FROM sqlite_master "
+            "WHERE type='table' AND name NOT LIKE 'sqlite_%'"
+        ).fetchone()
+        result["application_table_count"] = int(row[0] if row else 0)
+    except Exception as exc:
+        result["application_table_count_error"] = f"{type(exc).__name__}: {exc}"
+    try:
+        violations = connection.execute("PRAGMA foreign_key_check").fetchmany(21)
+        result["foreign_key_violations"] = min(len(violations), 20)
+        result["foreign_key_violations_truncated"] = len(violations) > 20
+    except Exception as exc:
+        result["foreign_key_check_error"] = f"{type(exc).__name__}: {exc}"
+    return cast(dict[str, object], _sanitize(result))
 
 
 def _resource_file_path(filename: str) -> Path | None:
@@ -329,6 +421,68 @@ def _add_file_if_exists(
         return False
 
 
+def _sanitize_application_log(text: str) -> str:
+    """Reduziert ein App-Log auf technische Metadaten ohne Nutzdaten.
+
+    Kategorien, Beträge, Kommentare und externe IDs können in frei
+    formulierten Logmeldungen vorkommen. Eine Schlüsselwortliste könnte solche
+    Werte nie zuverlässig erkennen. Darum bleiben nur Zeit, Level, Logger und
+    sichere Traceback-Rahmen erhalten; der eigentliche Meldungstext wird
+    konsequent ersetzt.
+    """
+    sanitized: list[str] = []
+    for raw_line in text.splitlines():
+        line = str(_mask_paths(raw_line))
+        prefix = _APPLICATION_LOG_PREFIX_RE.match(line)
+        if prefix:
+            sanitized.append(f"{prefix.group('prefix')} <message redacted>")
+        elif not line.strip():
+            sanitized.append("")
+        elif _SAFE_TRACEBACK_LINE_RE.match(line):
+            sanitized.append(line)
+        elif line.strip() in {
+            "Traceback (most recent call last):",
+            "During handling of the above exception, another exception occurred:",
+        }:
+            sanitized.append(line)
+        else:
+            sanitized.append("<redacted>")
+    return "\n".join(sanitized) + ("\n" if text.endswith("\n") else "")
+
+
+def _add_sanitized_text_file(
+    zf: zipfile.ZipFile,
+    path: Path,
+    arcname: str,
+    manifest: list[str],
+    read_errors: list[str],
+    *,
+    required: bool = False,
+    application_log: bool = False,
+) -> bool:
+    try:
+        if not path.is_file():
+            msg = f"MISSING {arcname} <- {_mask_paths(str(path))}"
+            manifest.append(msg)
+            if required:
+                read_errors.append(msg)
+            return False
+        text = read_text_tail(path)
+        sanitized = (
+            _sanitize_application_log(text)
+            if application_log
+            else str(_mask_paths(text))
+        )
+        zf.writestr(arcname, sanitized)
+        manifest.append(f"ADDED {arcname} <- {_mask_paths(str(path))} (sanitized)")
+        return True
+    except Exception as exc:
+        msg = f"ERROR {arcname} <- {_mask_paths(str(path))}: {exc}"
+        manifest.append(msg)
+        read_errors.append(msg)
+        return False
+
+
 def _add_sanitized_json_file(
     zf: zipfile.ZipFile,
     path: Path,
@@ -363,7 +517,9 @@ def _version_json_payload() -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True)
 
 
-def create_diagnostic_report_zip() -> Path:
+def create_diagnostic_report_zip(
+    *, connection: sqlite3.Connection | None = None
+) -> Path:
     """Erstellt lokal einen Diagnosebericht als ZIP ohne Datenbank/Backups.
 
     Der Bericht enthält ein MANIFEST und ggf. READ_ERRORS, damit fehlende Logs
@@ -385,23 +541,25 @@ def create_diagnostic_report_zip() -> Path:
 
     with zipfile.ZipFile(out, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         # Logs inklusive Rotation, aber keine DB-/Backup-/Exportdaten.
-        _add_file_if_exists(
+        _add_sanitized_text_file(
             zf,
             data_root / LOG_FILENAME,
             LOG_FILENAME,
             manifest,
             read_errors,
             required=True,
+            application_log=True,
         )
         for idx in range(1, 6):
-            _add_file_if_exists(
+            _add_sanitized_text_file(
                 zf,
                 data_root / f"{LOG_FILENAME}.{idx}",
                 f"{LOG_FILENAME}.{idx}",
                 manifest,
                 read_errors,
+                application_log=True,
             )
-        _add_file_if_exists(
+        _add_sanitized_text_file(
             zf,
             data_root / CRASH_LOG_FILENAME,
             CRASH_LOG_FILENAME,
@@ -441,10 +599,26 @@ def create_diagnostic_report_zip() -> Path:
             "ADDED budgetmanager_settings.sanitized.json <- settings (sanitized)"
         )
         zf.writestr(
+            "database_health.json",
+            json.dumps(
+                database_health(connection),
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            ),
+        )
+        manifest.append(
+            "ADDED database_health.json <- active connection (technical metadata only)"
+        )
+        zf.writestr(
             "README.txt",
-            "BudgetManager Diagnosebericht. Enthält Logs, System-/Versionsinfos und bereinigte Einstellungen. "
-            "Enthält bewusst keine Datenbank, keine Backups und keine Exportdaten. "
-            "Benutzerspezifische Home-Pfade werden als <home> maskiert.\n",
+            "BudgetManager Diagnosebericht. Enthält datensparsam bereinigte "
+            "Logs, System-/Versionsinfos "
+            "und bereinigte Einstellungen. Enthält bewusst keine Datenbank, "
+            "keine Backups und keine Exportdaten. Die DB-Prüfung enthält nur "
+            "technische Statuswerte und Zähler. Benutzerspezifische Home-Pfade "
+            "werden als <home> maskiert. Freie Meldungstexte im App-Log werden "
+            "zum Schutz von Kategorien, Beträgen und Kommentaren entfernt.\n",
         )
         manifest.append("ADDED README.txt <- generated")
         if read_errors:

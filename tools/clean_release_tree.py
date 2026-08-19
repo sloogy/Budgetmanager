@@ -13,6 +13,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 FILE_GLOBS = [
+    # Laufzeit-/Nutzerdaten dürfen niemals in einem Source- oder Release-ZIP
+    # verbleiben. Tests können Settings absichtlich am Standardpfad erzeugen;
+    # der Cleaner muss diesen Zustand zuverlässig zurücksetzen.
+    "data/budgetmanager_settings.json",
+    "data/budgetmanager_settings.tmp",
+    "data/users.json",
+    "data/*.db",
+    "data/*.sqlite",
+    "data/*.sqlite3",
+    "data/*.enc",
     "data/backups/*.bmr",
     "data/*.log",
     "data/*crash*.log",
@@ -21,6 +31,7 @@ FILE_GLOBS = [
 ]
 DIR_NAMES = {
     "__pycache__",
+    "theme_profiles",
     ".pytest_cache",
     ".mypy_cache",
     ".ruff_cache",

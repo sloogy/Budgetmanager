@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from utils.notifications import show_warning
 from PySide6.QtWidgets import QMessageBox, QWidget
 
 from model.savings_goals_model import SavingsGoalBoundsError
@@ -21,4 +22,4 @@ def savings_goal_bounds_text(error: SavingsGoalBoundsError) -> str:
 def show_savings_goal_bounds_warning(
     parent: QWidget | None, error: SavingsGoalBoundsError
 ) -> None:
-    QMessageBox.warning(parent, tr("savings.bounds.title"), savings_goal_bounds_text(error))
+    show_warning(parent, tr("savings.bounds.title"), savings_goal_bounds_text(error))

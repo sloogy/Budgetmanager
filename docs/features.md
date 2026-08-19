@@ -1,6 +1,24 @@
-# BudgetManager v2.2.6 — Feature-Übersicht
+# BudgetManager v2.2.60 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
+
+## Freie Cockpit-Anordnung in v2.2.60
+
+- Manuelles Layout über die gesamte Kachel-Kopfzeile oder den Griff `≡`.
+- Zwei gleich breite Zielspalten ab 720 Pixel Breite.
+- Reihenfolge und Spaltenzuordnung werden dauerhaft gespeichert.
+- Tabellen, Buttons und Diagramme bleiben normal bedienbar.
+
+## Bedienung, Berichte und Release-Härtung in v2.2.52
+
+- Einfach-/Erweitert-Modus mit reduziertem Standard für neue Installationen.
+- XLSX-/PDF-Berichte, anonymisierte Diagnose und atomare Restore-Kopie.
+- Voll-Coverage-, Performance- und visuelle Plattform-Gates.
+- Dashboard-Karten, KPI-Trends, Ringdiagramm und Flächenverlauf aus v2.2.42.
+- Automatisches Absenken leerer, geschrumpfter Kacheln aus v2.2.41.
+- Fixierter Drag-and-drop-Modus mit gespeicherter Reihenfolge und Spaltenzuordnung.
+- DesignManager bleibt alleinige Quelle für Farben, Kontraste und Dashboard-Zustände.
+- Migration vorhandener Layout-Einstellungen beider Zwischenversionen.
 
 ## Kernfunktionen
 
@@ -66,13 +84,13 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
 - Multi-Account-System mit Quick/PIN/Passwort-Modus.
 - Stabilitätsfallback unter Wayland über `xcb`, abschaltbar mit `BM_ALLOW_WAYLAND=1`.
 
-## Neu bzw. release-relevant in v2.2.6
+## Neu bzw. release-relevant in v2.2.13
 
-- v2.2.6 als Basis mit Cockpit-, Budgetwarnungs-, Wayland-, i18n-, Restore- und Selbstheilungs-Fixes zusammengeführt.
+- v2.2.13 als Basis mit Cockpit-, Budgetwarnungs-, Wayland-, i18n-, Restore- und Selbstheilungs-Fixes zusammengeführt.
 - Cockpit-Rechtsklick-Menüs sind wieder nutzbar und zeigen echte Cockpit-Aktionen.
 - Budgetwarnungen sind direkt im Cockpit sichtbar.
 - Harte Cockpit-Bezeichnungen wurden in Übersetzungsschlüssel überführt.
-- README, Installationsdoku, Feature-Übersicht, Hilfe, technische Dokumente und Manifest-Beispiele wurden auf v2.2.6 bereinigt.
+- README, Installationsdoku, Feature-Übersicht, Hilfe, technische Dokumente und Manifest-Beispiele wurden auf v2.2.13 bereinigt.
 - CI prüft zusätzlich Formatierung im `model/` (`black --check model/`) und Typen im `model/` (`mypy model/`).
 - Alte Arbeitsberichte und Cache-Ordner wurden aus dem Release-Paket entfernt.
 
@@ -94,3 +112,4 @@ python tools/i18n_audit.py
 python tools/dau_first_run_check.py
 pytest tests/ -v
 ```
+- **Soft-0-Budget / sanfte Null-Bilanz:** Prüft die Gesamtplanung `Einnahmen − Ausgaben − Ersparnisse`, schlägt Überschüsse für Ersparnisse oder Übertrag vor und behandelt Defizite zuerst über Ersparnisse, danach nur über flexible Ausgaben. Keine automatische Änderung; Fixkosten/POTs bleiben geschützt.

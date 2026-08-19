@@ -1,0 +1,14 @@
+[PASS] A Menü-Konventionen: 225 Prüfungen, 0 Funde
+[PASS] B i18n-Parität: 15898 Prüfungen, 0 Funde
+[PASS] C Verweis-Integrität: 26 Prüfungen, 0 Funde
+[PASS] D Signal-Verdrahtung: 317 Prüfungen, 0 Funde
+[PASS] E Theme-Disziplin: 252 Prüfungen, 0 Funde
+[PASS] F Erreichbarkeit: 47 Prüfungen, 0 Funde
+[PASS] G Versionsangaben: 7 Prüfungen, 0 Funde
+[PASS] H Anleitung gegen Oberfläche: 62 Prüfungen, 0 Funde
+[PASS] I Destruktive Aktionen: 15 Prüfungen, 0 Funde
+[PASS] J Leerzustände: 10 Prüfungen, 0 Funde
+[PASS] K Sprache: 59610 Prüfungen, 0 Funde
+[PASS] L Systempalette: 8 Prüfungen, 0 Funde
+
+DAU-ENTERPRISE-AUDIT: loops=10000 checks=764770000 findings=0

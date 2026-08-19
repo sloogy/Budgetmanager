@@ -952,7 +952,7 @@ class BudgetOverviewModel:
             end = f"{int(year):04d}-{end_month + 1:02d}-01"
 
         sql = (
-            "SELECT category, CAST(substr(date, 6, 2) AS INTEGER) AS month_no, "
+            "SELECT category, CAST(substr(date, 6, 2) AS INTEGER) AS month_no, "  # nosec B608
             "COALESCE(SUM(amount), 0) "
             "FROM tracking WHERE date >= ? AND date < ? AND typ = ?"
             f"{source_clause} "
@@ -1880,7 +1880,7 @@ class BudgetOverviewModel:
             return {}
         placeholders = ",".join("?" for _ in months)
         cur = self.conn.execute(
-            f"SELECT category, SUM(amount) FROM budget "
+            f"SELECT category, SUM(amount) FROM budget "  # nosec B608
             f"WHERE year=? AND month IN ({placeholders}) AND typ=? "
             f"GROUP BY category",
             (year, *months, typ),
@@ -1911,7 +1911,7 @@ class BudgetOverviewModel:
             # Nicht zusammenhängend → CAST(substr) für Monatsfilter
             placeholders = ",".join("?" for _ in months)
             cur = self.conn.execute(
-                f"SELECT category, SUM(amount) FROM tracking "
+                f"SELECT category, SUM(amount) FROM tracking "  # nosec B608
                 f"WHERE date >= ? AND date <= ? AND typ=? "
                 f"AND CAST(substr(date, 6, 2) AS INTEGER) IN ({placeholders}) "
                 f"GROUP BY category",

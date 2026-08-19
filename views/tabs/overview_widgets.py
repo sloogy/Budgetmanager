@@ -8,20 +8,36 @@ Enthält die wiederverwendbaren Basiswidgets:
 Wurde aus overview_tab.py extrahiert (v1.0.5 – Patch C: Aufspaltung).
 Alle anderen Overview-Sub-Module importieren aus dieser Datei.
 """
+
 from __future__ import annotations
 
 import logging
+
 logger = logging.getLogger(__name__)
 
 from PySide6.QtCore import Qt, Signal, QMargins
 from PySide6.QtGui import QPainter, QFont, QCursor, QColor
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame, QProgressBar, QSizePolicy,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QFrame,
+    QProgressBar,
+    QSizePolicy,
 )
 from PySide6.QtCharts import (
-    QChart, QChartView, QPieSeries, QPieSlice,
-    QBarSeries, QStackedBarSeries, QBarSet, QBarCategoryAxis, QValueAxis,
-    QLineSeries, QHorizontalStackedBarSeries,
+    QChart,
+    QChartView,
+    QPieSeries,
+    QPieSlice,
+    QBarSeries,
+    QStackedBarSeries,
+    QBarSet,
+    QBarCategoryAxis,
+    QValueAxis,
+    QLineSeries,
+    QHorizontalStackedBarSeries,
 )
 
 from utils.icons import get_icon
@@ -32,10 +48,17 @@ from views.ui_colors import ui_colors
 
 class CompactKPICard(QFrame):
     """Kompakte KPI-Karte – anklickbar, farbkodiert."""
+
     clicked = Signal(str)
 
-    def __init__(self, title: str, value: str = "0", icon: str = "💰",
-                 color: str = None, parent=None):
+    def __init__(
+        self,
+        title: str,
+        value: str = "0",
+        icon: str = "💰",
+        color: str = None,
+        parent=None,
+    ):
         super().__init__(parent)
         self.title = title
         self._color = color or ui_colors(self).accent
@@ -97,7 +120,16 @@ class CompactProgressBar(QWidget):
     Ersparnisse) kann ``typ_key`` gesetzt werden; dann verwendet der Balken
     immer die Kontofarbe aus dem aktiven Theme statt Grün/Gelb/Rot.
     """
-    def __init__(self, label: str, max_value: float = 100, parent=None, *, typ_key: str | None = None, bar_color: str | None = None):
+
+    def __init__(
+        self,
+        label: str,
+        max_value: float = 100,
+        parent=None,
+        *,
+        typ_key: str | None = None,
+        bar_color: str | None = None,
+    ):
         super().__init__(parent)
         self.max_value = max_value
         self.current_value = 0.0
@@ -140,7 +172,8 @@ class CompactProgressBar(QWidget):
             color = c.type_color(self.typ_key)
         else:
             color = self._bar_color or c.progress_color(percent)
-        self.progress.setStyleSheet(f"""
+        self.progress.setStyleSheet(
+            f"""
             QProgressBar {{
                 border: 1px solid {c.border};
                 border-radius: 3px;
@@ -151,11 +184,13 @@ class CompactProgressBar(QWidget):
                 background-color: {color};
                 border-radius: 2px;
             }}
-        """)
+        """
+        )
 
 
 class CompactChart(QChartView):
     """Kompaktes Diagramm mit Click-Signal."""
+
     slice_clicked = Signal(str)
 
     def __init__(self, parent=None):
@@ -163,22 +198,25 @@ class CompactChart(QChartView):
         self.setRenderHint(QPainter.Antialiasing)
         self.setMinimumHeight(180)
         self.setMaximumHeight(300)
-        self._chart = QChart()
-        # Animationen bewusst AUS: SeriesAnimations + removeAllSeries() beim
-        # Neuzeichnen konnten unter Wayland/Linux eine noch animierte Serie
-        # freigeben -> "double free or corruption". Ohne Animation ist das
-        # Umzeichnen (z.B. nach einer Budgetanpassung) sicher.
-        self._chart.setAnimationOptions(QChart.NoAnimation)
-        # v2.1.4: Kleine Margins statt 0, sonst werden aussenliegende
-        # Pie-Labels an den Chart-Rändern abgeschnitten.
-        self._chart.setMargins(QMargins(4, 4, 4, 4))
-        # v2.1.4: QChart ignoriert Qt-Stylesheets. Ohne diese Anpassung bleibt
-        # der Chart-Hintergrund weiss und die Beschriftung schwarz – im dunklen
-        # Theme wirkt das "kaputt". Hintergrund transparent → Theme scheint
-        # durch; Text-/Achsenfarben werden nach jedem Aufbau gesetzt.
-        self._chart.setBackgroundVisible(False)
         self.setStyleSheet("background: transparent; border: none;")
+        self._chart = self._new_chart()
         self.setChart(self._chart)
+
+    @staticmethod
+    def _new_chart() -> QChart:
+        """Erzeugt eine vollständig konfigurierte, noch leere Chart-Instanz."""
+        chart = QChart()
+        # Animationen bleiben aus. Entscheidend für den Fedora-/Wayland-Fix ist
+        # zusätzlich, dass eine sichtbare Chart-Instanz nicht mehr mit
+        # removeAllSeries() synchron zerstört wird.
+        chart.setAnimationOptions(QChart.NoAnimation)
+        # Kleine Margins statt 0, sonst werden aussenliegende Pie-Labels an den
+        # Chart-Rändern abgeschnitten.
+        chart.setMargins(QMargins(4, 4, 4, 4))
+        # QChart ignoriert Qt-Stylesheets. Der transparente Hintergrund lässt
+        # deshalb das aktive Theme durchscheinen.
+        chart.setBackgroundVisible(False)
+        return chart
 
     def _apply_theme_colors(self) -> None:
         """Färbt Titel, Legende, Achsen und Slice-Labels nach dem UI-Theme.
@@ -221,17 +259,30 @@ class CompactChart(QChartView):
             logger.debug("_apply_theme_colors: %s", e)
 
     def _clear_chart(self, *, keep_legend: bool = False) -> None:
-        """Entfernt Serien und Achsen, damit Pie/Line/Bar sauber umschalten.
+        """Tauscht das komplette Chart aus und entsorgt das alte verzögert.
 
-        Ohne Achsen-Cleanup bleiben nach einem Wechsel von Linien-/Balken-
-        Diagrammen zu Kreisdiagrammen gelegentlich alte Achsen im Chart hängen.
+        PySide6 6.10.3 kann unter Fedora/Wayland beim synchronen
+        ``QChart.removeAllSeries()`` in Shiboken abbrechen, während Qt noch
+        Layout-/Paint-Referenzen auf Pie-Slices hält. Ein atomarer Chart-Tausch
+        vermeidet diesen ungültigen Zwischenzustand. ``deleteLater()`` räumt
+        die alte Objektstruktur erst im nächsten Event-Loop-Durchlauf auf.
         """
-        self._chart.removeAllSeries()
-        for axis in list(self._chart.axes()):
-            self._chart.removeAxis(axis)
-        self._chart.legend().setVisible(bool(keep_legend))
+        old_chart = self._chart
+        new_chart = self._new_chart()
+        new_chart.legend().setVisible(bool(keep_legend))
+        self._chart = new_chart
+        self.setChart(new_chart)
+        old_chart.deleteLater()
 
-    def create_pie_chart(self, data: dict[str, float], title: str = "", color_map: dict[str, str] | None = None) -> None:
+    def _emit_slice_clicked(self, sl: QPieSlice) -> None:
+        self.slice_clicked.emit(str(sl.property("raw_label") or ""))
+
+    def create_pie_chart(
+        self,
+        data: dict[str, float],
+        title: str = "",
+        color_map: dict[str, str] | None = None,
+    ) -> None:
         self._clear_chart(keep_legend=False)
         if not data:
             self._chart.setTitle(title + tr("tab_ui.keine_daten"))
@@ -258,9 +309,7 @@ class CompactChart(QChartView):
                 s.setColor(colors[i])
 
         try:
-            series.clicked.connect(
-                lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
-            )
+            series.clicked.connect(self._emit_slice_clicked)
         except Exception as e:
             logger.debug("series.clicked connect: %s", e)
 
@@ -298,14 +347,12 @@ class CompactChart(QChartView):
                 except Exception as e:
                     logger.debug("sl.setBorderWidth: %s", e)
                 try:
-                    sl.hovered.connect(lambda state, s=sl: self._on_slice_hover(state, s))
+                    sl.hovered.connect(self._on_slice_hover)
                 except Exception as e:
                     logger.debug("sl.hovered connect: %s", e)
 
             try:
-                series.clicked.connect(
-                    lambda sl: self.slice_clicked.emit(str(sl.property("raw_label") or ""))
-                )
+                series.clicked.connect(self._emit_slice_clicked)
             except Exception as e:
                 logger.debug("series.clicked connect: %s", e)
 
@@ -313,8 +360,11 @@ class CompactChart(QChartView):
 
         self._apply_theme_colors()
 
-    def _on_slice_hover(self, state: bool, sl: QPieSlice) -> None:
+    def _on_slice_hover(self, state: bool) -> None:
         try:
+            sl = self.sender()
+            if not isinstance(sl, QPieSlice):
+                return
             if state:
                 sl.setExploded(True)
                 sl.setExplodeDistanceFactor(0.05)
@@ -354,7 +404,7 @@ class CompactChart(QChartView):
                 continue
             series = QLineSeries()
             series.setName(sd.get("label", ""))
-            for i, val in enumerate(values[:len(categories)]):
+            for i, val in enumerate(values[: len(categories)]):
                 series.append(i, val)
                 all_values.append(val)
             if sd.get("color"):
@@ -435,7 +485,6 @@ class CompactChart(QChartView):
         self._chart.setTitle(title)
         self._chart.legend().setVisible(False)
         self._apply_theme_colors()
-
 
     def create_horizontal_bar_chart(self, bars: list[dict], title: str = "") -> None:
         """Horizontales Ranking-Diagramm für Kategorien und Top-Buchungen.

@@ -16,6 +16,7 @@ Abgedeckt:
 
 Laeuft ohne Qt/PySide6.
 """
+
 from __future__ import annotations
 
 import base64
@@ -62,7 +63,9 @@ def test_verify_password_accepts_new_and_legacy_rejects_wrong():
     assert crypto.is_legacy_password_hash(secret, salt, new_hash) is False
 
 
-def test_login_migrates_legacy_key_equivalent_hash_even_at_current_iterations(monkeypatch, tmp_path):
+def test_login_migrates_legacy_key_equivalent_hash_even_at_current_iterations(
+    monkeypatch, tmp_path
+):
     monkeypatch.setenv("BUDGETMANAGER_APP_DIR", str(tmp_path))
 
     import importlib

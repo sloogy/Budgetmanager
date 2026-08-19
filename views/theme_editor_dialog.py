@@ -1,14 +1,30 @@
 from __future__ import annotations
 
+from utils.accessibility import configure_dialog_tab_order
+from utils.notifications import show_info, show_warning
+
 """
 Vollständiger Theme-Editor - ALLE Themes komplett editierbar
 """
 
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
-    QListWidget, QScrollArea, QWidget, QFormLayout, QLineEdit,
-    QComboBox, QColorDialog, QMessageBox, QGroupBox, QInputDialog,
-    QFileDialog
+    QDialog,
+    QVBoxLayout,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QListWidget,
+    QScrollArea,
+    QWidget,
+    QFormLayout,
+    QLineEdit,
+    QComboBox,
+    QColorDialog,
+    QMessageBox,
+    QGroupBox,
+    QInputDialog,
+    QFileDialog,
 )
 from utils.icons import get_icon
 from PySide6.QtCore import Qt, QSignalBlocker
@@ -19,37 +35,49 @@ import json
 
 import logging
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
+
 logger = logging.getLogger(__name__)
+
 
 class ThemeEditorDialog(QDialog):
     """Vollständiger Theme-Editor für alle Themes"""
-    
+
     def __init__(self, settings, theme_manager, parent=None):
         super().__init__(parent)
         self.settings = settings
         self.theme_manager = theme_manager
         self.current_theme = None
         self.color_buttons = {}
-        
+
         self._loading = False
         self.setWindowTitle(tr("dlg.theme_editor"))
         self.resize(1000, 700)
-        
+
         self._setup_ui()
         self._load_themes()
-        
+        configure_dialog_tab_order(self)
+
+        # v2.2.25 (KILLCRITIC k9): expliziter Schliessen-Weg statt nur
+        # Esc/Fenster-X – Editor-Dialoge brauchen eine sichtbare Leiste.
+        buttons = QDialogButtonBox()
+        self.btn_close = buttons.addButton(tr("btn.close"), QDialogButtonBox.RejectRole)
+        buttons.rejected.connect(self.reject)
+        outer.addWidget(buttons)
+
     def _setup_ui(self):
         """Setup UI"""
-        layout = QHBoxLayout(self)
-        
+        outer = QVBoxLayout(self)
+        layout = QHBoxLayout()
+        outer.addLayout(layout)
+
         # Links: Theme-Liste
         left = QVBoxLayout()
         left.addWidget(QLabel(tr("dlg.bverfuegbare_themesb")))
-        
+
         self.theme_list = QListWidget()
         self.theme_list.currentTextChanged.connect(self._on_theme_selected)
         left.addWidget(self.theme_list)
-        
+
         # Buttons
         btn_layout = QHBoxLayout()
         self.btn_new = QPushButton(tr("btn.new_theme"))
@@ -57,13 +85,13 @@ class ThemeEditorDialog(QDialog):
         self.btn_duplicate = QPushButton(tr("tracking.ctx.duplicate"))
         self.btn_delete = QPushButton(tr("btn.loeschen_1"))
         self.btn_reset = QPushButton(tr("dlg.zuruecksetzen_1"))
-        
+
         btn_layout.addWidget(self.btn_new)
         btn_layout.addWidget(self.btn_duplicate)
         btn_layout.addWidget(self.btn_delete)
         btn_layout.addWidget(self.btn_reset)
         left.addLayout(btn_layout)
-        
+
         # Import/Export
         io_layout = QHBoxLayout()
         self.btn_import = QPushButton(tr("btn.import_theme"))
@@ -73,94 +101,125 @@ class ThemeEditorDialog(QDialog):
         io_layout.addWidget(self.btn_import)
         io_layout.addWidget(self.btn_export)
         left.addLayout(io_layout)
-        
+
         # Apply Button
         self.btn_apply = QPushButton(tr("btn.apply_theme"))
         self.btn_apply.setIcon(get_icon("✅"))
-        self.btn_apply.setStyleSheet(f"background-color: {ui_colors(self).accent}; color: white; font-weight: bold; padding: 10px;")
+        self.btn_apply.setStyleSheet(
+            f"background-color: {ui_colors(self).accent}; color: white; font-weight: bold; padding: 10px;"
+        )
         left.addWidget(self.btn_apply)
-        
+
         layout.addLayout(left, 1)
-        
+
         # Rechts: Editor
         right = QVBoxLayout()
         right.addWidget(QLabel("<h2>" + tr("dlg.theme_edit_title") + "</h2>"))
-        
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll_widget = QWidget()
         self.editor_layout = QVBoxLayout(scroll_widget)
-        
+
         # Name & Modus
         basic_group = QGroupBox(tr("grp.base_settings"))
         basic_form = QFormLayout(basic_group)
-        
+
         self.name_edit = QLineEdit()
         self.name_edit.setReadOnly(True)  # Name nicht änderbar
         basic_form.addRow(tr("lbl.theme_name") + ":", self.name_edit)
-        
+
         self.modus_combo = QComboBox()
-        self.modus_combo.addItems([tr('auto.views_theme_editor_dialog.103_hell_66974dd7'), tr('auto.views_theme_editor_dialog.103_dunkel_b0351793')])  # Internal values, not translated
+        self.modus_combo.addItems(
+            [
+                tr("auto.views_theme_editor_dialog.103_hell_66974dd7"),
+                tr("auto.views_theme_editor_dialog.103_dunkel_b0351793"),
+            ]
+        )  # Internal values, not translated
         self.modus_combo.currentTextChanged.connect(self._on_changed)
         basic_form.addRow(tr("lbl.theme_mode") + ":", self.modus_combo)
-        
+
         self.font_size_combo = QComboBox()
         self.font_size_combo.addItems([str(i) for i in range(8, 17)])
         self.font_size_combo.currentTextChanged.connect(self._on_changed)
         basic_form.addRow(tr("dlg.schriftgroesse_1"), self.font_size_combo)
-        
+
         self.editor_layout.addWidget(basic_group)
-        
+
         # Farb-Gruppen
-        self._create_color_group(tr("dlg.hintergruende"), [
-            ("hintergrund_app", tr("dlg.bg_app")),
-            ("hintergrund_panel", tr("dlg.bg_panel")),
-            ("hintergrund_seitenleiste", tr("dlg.bg_sidebar")),
-        ])
-        
-        self._create_color_group(tr("dlg.color_text"), [
-            ("text", tr("dlg.color_main_text")),
-            ("text_gedimmt", tr("dlg.sekundaertext")),
-            ("akzent", tr("dlg.color_accent")),
-        ])
-        
-        self._create_color_group(tr("dlg.color_tables"), [
-            ("tabelle_hintergrund", tr("dlg.bg_table")),
-            ("tabelle_alt", tr("dlg.bg_table_alt")),
-            ("tabelle_header", tr("dlg.bg_table_header")),
-            ("tabelle_gitter", "Gitterlinien"),
-            ("auswahl_hintergrund", "Auswahl-Hintergrund"),
-            ("auswahl_text", "Auswahl-Text"),
-        ])
-        
-        self._create_color_group(tr("dlg.hover_mausueber"), [
-            ("hover_hintergrund", "Hover-Hintergrund"),
-            ("hover_text", "Hover-Text"),
-        ])
-        
-        self._create_color_group("Dropdowns", [
-            ("dropdown_bg", "Hintergrund"),
-            ("dropdown_text", "Text"),
-            ("dropdown_selection", "Auswahl-Hintergrund"),
-            ("dropdown_selection_text", "Auswahl-Text"),
-            ("dropdown_border", "Rahmen"),
-        ])
-        
-        self._create_color_group("Typ-Farben", [
-            ("typ_einnahmen", "Einnahmen"),
-            ("typ_ausgaben", tr("kpi.expenses")),
-            ("typ_ersparnisse", tr("typ.Ersparnisse")),
-        ])
-        
-        self._create_color_group("Sonstiges", [
-            ("negativ_text", "Negative Zahlen"),
-        ])
-        
+        self._create_color_group(
+            tr("dlg.hintergruende"),
+            [
+                ("hintergrund_app", tr("dlg.bg_app")),
+                ("hintergrund_panel", tr("dlg.bg_panel")),
+                ("hintergrund_seitenleiste", tr("dlg.bg_sidebar")),
+            ],
+        )
+
+        self._create_color_group(
+            tr("dlg.color_text"),
+            [
+                ("text", tr("dlg.color_main_text")),
+                ("text_gedimmt", tr("dlg.sekundaertext")),
+                ("akzent", tr("dlg.color_accent")),
+                ("akzent_text", tr("theme.color_accent_text")),
+                ("akzent_panel_text", tr("theme.color_group_title")),
+            ],
+        )
+
+        self._create_color_group(
+            tr("dlg.color_tables"),
+            [
+                ("tabelle_hintergrund", tr("dlg.bg_table")),
+                ("tabelle_alt", tr("dlg.bg_table_alt")),
+                ("tabelle_header", tr("dlg.bg_table_header")),
+                ("tabelle_header_text", tr("theme.color_header_text")),
+                ("tabelle_gitter", "Gitterlinien"),
+                ("auswahl_hintergrund", "Auswahl-Hintergrund"),
+                ("auswahl_text", "Auswahl-Text"),
+            ],
+        )
+
+        self._create_color_group(
+            tr("dlg.hover_mausueber"),
+            [
+                ("hover_hintergrund", "Hover-Hintergrund"),
+                ("hover_text", "Hover-Text"),
+            ],
+        )
+
+        self._create_color_group(
+            "Dropdowns",
+            [
+                ("dropdown_bg", "Hintergrund"),
+                ("dropdown_text", "Text"),
+                ("dropdown_selection", "Auswahl-Hintergrund"),
+                ("dropdown_selection_text", "Auswahl-Text"),
+                ("dropdown_border", "Rahmen"),
+            ],
+        )
+
+        self._create_color_group(
+            "Typ-Farben",
+            [
+                ("typ_einnahmen", "Einnahmen"),
+                ("typ_ausgaben", tr("kpi.expenses")),
+                ("typ_ersparnisse", tr("typ.Ersparnisse")),
+            ],
+        )
+
+        self._create_color_group(
+            "Sonstiges",
+            [
+                ("negativ_text", "Negative Zahlen"),
+            ],
+        )
+
         scroll.setWidget(scroll_widget)
         right.addWidget(scroll)
-        
+
         layout.addLayout(right, 2)
-        
+
         # Signals verbinden
         self.btn_new.clicked.connect(self._new_theme)
         self.btn_duplicate.clicked.connect(self._duplicate_theme)
@@ -169,46 +228,46 @@ class ThemeEditorDialog(QDialog):
         self.btn_import.clicked.connect(self._import_theme)
         self.btn_export.clicked.connect(self._export_theme)
         self.btn_apply.clicked.connect(self._apply_theme)
-    
+
     def _create_color_group(self, title, colors):
         """Erstelle Farb-Gruppe"""
         group = QGroupBox(title)
         form = QFormLayout(group)
-        
+
         for key, label in colors:
             row = QHBoxLayout()
-            
+
             # Farb-Vorschau
             color_btn = QPushButton()
             color_btn.setFixedSize(100, 30)
             color_btn.setProperty("color_key", key)
             color_btn.clicked.connect(lambda checked, k=key: self._pick_color(k))
             self.color_buttons[key] = color_btn
-            
+
             # Hex-Anzeige
             hex_label = QLabel("#000000")
             hex_label.setProperty("color_key", key)
-            
+
             row.addWidget(color_btn)
             row.addWidget(hex_label)
             row.addStretch()
-            
+
             form.addRow(label + ":", row)
-        
+
         self.editor_layout.addWidget(group)
-    
+
     def _load_themes(self):
         """Lade alle Themes"""
         self.theme_list.clear()
         themes = self.theme_manager.get_all_profiles()
         self.theme_list.addItems(themes)
-        
+
         # Aktuelles Theme auswählen
         current = self.settings.get("active_design_profile", "Standard Hell")
         items = self.theme_list.findItems(current, Qt.MatchExactly)
         if items:
             self.theme_list.setCurrentItem(items[0])
-    
+
     def _on_theme_selected(self, theme_name):
         """Theme wurde ausgewählt"""
         if not theme_name:
@@ -252,92 +311,104 @@ class ThemeEditorDialog(QDialog):
 
     def _set_button_color(self, button, color_hex):
         """Setze Button-Farbe"""
-        button.setStyleSheet(f"background-color: {color_hex}; border: 2px solid {ui_colors(self).border};")
+        button.setStyleSheet(
+            f"background-color: {color_hex}; border: 2px solid {ui_colors(self).border};"
+        )
         button.setProperty("current_color", color_hex)  # Speichere als Attribut
-        
+
         # Update Hex-Label
         for widget in self.findChildren(QLabel):
             if widget.property("color_key") == button.property("color_key"):
                 widget.setText(color_hex)
-    
+
     def _pick_color(self, key):
         """Farbwähler öffnen"""
         btn = self.color_buttons[key]
         current_color_hex = btn.property("current_color") or "#ffffff"
         current_color = QColor(current_color_hex)
-        
+
         color = QColorDialog.getColor(current_color, self, tr("dlg.farbe_waehlen"))
         if color.isValid():
             self._set_button_color(btn, color.name())
             self._on_changed()
-    
+
     def _on_changed(self):
         """Daten wurden geändert"""
         if not self.current_theme:
             return
         if getattr(self, "_loading", False):
             return
-        
+
         # Sammle alle Daten
         data = {
             "modus": self.modus_combo.currentText(),
             "schriftgroesse": int(self.font_size_combo.currentText()),
         }
-        
+
         # Alle Farben (aus Property lesen)
         for key, btn in self.color_buttons.items():
             color = btn.property("current_color") or "#000000"
             data[key] = color
-        
+
         # Speichere sofort
         self.theme_manager.update_profile(self.current_theme, data)
-    
+
     def _new_theme(self):
         """Neues Theme erstellen"""
-        name, ok = QInputDialog.getText(self, tr('auto.views_theme_editor_dialog.297_neues_theme_7b9881d9'), tr('auto.views_theme_editor_dialog.297_theme_name_e4293a7f'))
+        name, ok = QInputDialog.getText(
+            self,
+            tr("auto.views_theme_editor_dialog.297_neues_theme_7b9881d9"),
+            tr("auto.views_theme_editor_dialog.297_theme_name_e4293a7f"),
+        )
         if ok and name:
             # Basis von Standard Hell
             base = self.theme_manager.get_profile("Standard Hell")
             if base:
                 self.theme_manager.update_profile(name, base.to_dict())
                 self._load_themes()
-                
+
                 # Auswählen
                 items = self.theme_list.findItems(name, Qt.MatchExactly)
                 if items:
                     self.theme_list.setCurrentItem(items[0])
-    
+
     def _duplicate_theme(self):
         """Theme duplizieren"""
         if not self.current_theme:
             return
-        
+
         name, ok = QInputDialog.getText(
-            self, tr('auto.views_theme_editor_dialog.316_theme_duplizieren_610b8173'), 
-            tr('auto.views_theme_editor_dialog.317_neuer_name_771ef819'),
-            text=trf('auto.views_theme_editor_dialog.318_value_0_kopie_7305d694', value_0=(self.current_theme))
+            self,
+            tr("auto.views_theme_editor_dialog.316_theme_duplizieren_610b8173"),
+            tr("auto.views_theme_editor_dialog.317_neuer_name_771ef819"),
+            text=trf(
+                "auto.views_theme_editor_dialog.318_value_0_kopie_7305d694",
+                value_0=(self.current_theme),
+            ),
         )
-        
+
         if ok and name:
             profile = self.theme_manager.get_profile(self.current_theme)
             if profile:
                 self.theme_manager.update_profile(name, profile.to_dict())
                 self._load_themes()
-                
+
                 items = self.theme_list.findItems(name, Qt.MatchExactly)
                 if items:
                     self.theme_list.setCurrentItem(items[0])
-    
+
     def _delete_theme(self):
         """Theme löschen."""
         if not self.current_theme:
             return
 
         # Mitgelieferte Themes können nicht gelöscht werden – nur Overrides via tr("dlg.zuruecksetzen") entfernen.
-        if self.theme_manager.is_bundled(self.current_theme) and not self.theme_manager.has_override(self.current_theme):
-            QMessageBox.warning(
+        if self.theme_manager.is_bundled(
+            self.current_theme
+        ) and not self.theme_manager.has_override(self.current_theme):
+            show_warning(
                 self,
-                tr('msg.error'),
+                tr("msg.error"),
                 tr("theme.msg.builtin_delete_forbidden"),
             )
             return
@@ -347,6 +418,7 @@ class ThemeEditorDialog(QDialog):
             tr("btn.theme_loeschen"),
             trf("theme.msg.delete_confirm", theme=self.current_theme),
             QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
@@ -358,10 +430,12 @@ class ThemeEditorDialog(QDialog):
         if not self.current_theme:
             return
 
-        if not self.theme_manager.is_bundled(self.current_theme) and not self.theme_manager.has_override(self.current_theme):
-            QMessageBox.information(
+        if not self.theme_manager.is_bundled(
+            self.current_theme
+        ) and not self.theme_manager.has_override(self.current_theme):
+            show_info(
                 self,
-                tr('dlg.hinweis'),
+                tr("dlg.hinweis"),
                 tr("theme.msg.no_default_reset"),
             )
             return
@@ -371,74 +445,104 @@ class ThemeEditorDialog(QDialog):
             tr("dlg.zuruecksetzen"),
             trf("theme.msg.reset_confirm", theme=self.current_theme),
             QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
             self.theme_manager.reset_profile(self.current_theme)
             self._on_theme_selected(self.current_theme)  # Neu laden
-            QMessageBox.information(self, tr('msg.success'), tr("dlg.theme_wurde_zurueckgesetzt"))
+            show_info(self, tr("msg.success"), tr("dlg.theme_wurde_zurueckgesetzt"))
 
     def _import_theme(self):
         """Theme importieren"""
         file, _ = QFileDialog.getOpenFileName(
-            self, tr('auto.views_theme_editor_dialog.388_theme_importieren_3afd6b46'), "", tr('auto.views_theme_editor_dialog.388_json_json_90618946')
+            self,
+            tr("auto.views_theme_editor_dialog.388_theme_importieren_3afd6b46"),
+            "",
+            tr("auto.views_theme_editor_dialog.388_json_json_90618946"),
         )
-        
+
         if not file:
             return
-        
+
         try:
-            with open(file, 'r', encoding='utf-8') as f:
+            with open(file, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            
+
             name = data.get("name", "Importiertes Theme")
-            
+
             # Falls Name existiert, frage nach neuem Namen
             if name in self.theme_manager.get_all_profiles():
                 name, ok = QInputDialog.getText(
-                    self, tr('auto.views_theme_editor_dialog.403_name_existiert_4dd02b77'), 
-                    tr('auto.views_theme_editor_dialog.404_theme_name_existiert_bereits_neuer__ebc86c02'),
-                    text=trf('auto.views_theme_editor_dialog.405_value_0_import_6030fc3e', value_0=(name))
+                    self,
+                    tr("auto.views_theme_editor_dialog.403_name_existiert_4dd02b77"),
+                    tr(
+                        "auto.views_theme_editor_dialog.404_theme_name_existiert_bereits_neuer__ebc86c02"
+                    ),
+                    text=trf(
+                        "auto.views_theme_editor_dialog.405_value_0_import_6030fc3e",
+                        value_0=(name),
+                    ),
                 )
                 if not ok:
                     return
-            
+
             # Speichere Theme
             data.pop("name", None)
             self.theme_manager.update_profile(name, data)
             self._load_themes()
-            
-            QMessageBox.information(self, tr("dlg.backup_erfolg"), trf("msg.theme_importiert", name=name))
-            
+
+            show_info(
+                self, tr("dlg.backup_erfolg"), trf("msg.theme_importiert", name=name)
+            )
+
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_theme_editor_dialog.418_import_fehlgeschlagen_value_0_17d04026', value_0=(e)))
-    
+            QMessageBox.critical(
+                self,
+                tr("msg.error"),
+                trf(
+                    "auto.views_theme_editor_dialog.418_import_fehlgeschlagen_value_0_17d04026",
+                    value_0=(e),
+                ),
+            )
+
     def _export_theme(self):
         """Theme exportieren"""
         if not self.current_theme:
             return
-        
+
         file, _ = QFileDialog.getSaveFileName(
-            self, tr('auto.views_theme_editor_dialog.426_theme_exportieren_30cdc637'), 
-            trf('auto.views_theme_editor_dialog.427_value_0_json_05d9a4f0', value_0=(self.current_theme)),
-            tr('auto.views_theme_editor_dialog.428_json_json_7142e86c')
+            self,
+            tr("auto.views_theme_editor_dialog.426_theme_exportieren_30cdc637"),
+            trf(
+                "auto.views_theme_editor_dialog.427_value_0_json_05d9a4f0",
+                value_0=(self.current_theme),
+            ),
+            tr("auto.views_theme_editor_dialog.428_json_json_7142e86c"),
         )
-        
+
         if not file:
             return
-        
+
         try:
             profile = self.theme_manager.get_profile(self.current_theme)
             if profile:
-                with open(file, 'w', encoding='utf-8') as f:
+                with open(file, "w", encoding="utf-8") as f:
                     data = {"name": self.current_theme, **profile.to_dict()}
                     json.dump(data, f, indent=2, ensure_ascii=False)
-                
-                QMessageBox.information(self, tr('msg.success'), tr("dlg.theme_wurde_exportiert"))
-                
+
+                show_info(self, tr("msg.success"), tr("dlg.theme_wurde_exportiert"))
+
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), trf('auto.views_theme_editor_dialog.444_export_fehlgeschlagen_value_0_b3ec54e6', value_0=(e)))
-    
+            QMessageBox.critical(
+                self,
+                tr("msg.error"),
+                trf(
+                    "auto.views_theme_editor_dialog.444_export_fehlgeschlagen_value_0_b3ec54e6",
+                    value_0=(e),
+                ),
+            )
+
     def _apply_theme(self):
         """Theme anwenden"""
         if self.current_theme:
@@ -447,12 +551,16 @@ class ThemeEditorDialog(QDialog):
             self.theme_manager.apply_theme(profile_name=self.current_theme)
             # Alle offenen Fenster zum Neuzeichnen zwingen
             from PySide6.QtWidgets import QApplication
+
             for w in QApplication.allWidgets():
                 try:
                     w.update()
                 except Exception as e:
-                    logger.debug("Widget-Update beim Theme-Refresh fehlgeschlagen: %s", e)
-            QMessageBox.information(
-                self, tr("msg.success"),
+                    logger.debug(
+                        "Widget-Update beim Theme-Refresh fehlgeschlagen: %s", e
+                    )
+            show_info(
+                self,
+                tr("msg.success"),
                 trf("msg.theme_applied", name=self.current_theme),
             )

@@ -10,6 +10,7 @@
 3. i18n: suggestion.suggestion_initial existiert in de/en/fr und alle drei
    Locales bleiben key-paritätisch.
 """
+
 from __future__ import annotations
 
 import json
@@ -47,13 +48,11 @@ def test_compact_chart_applies_theme_colors_in_every_builder():
         "create_grouped_bar_chart",
     ]
     for name in builders:
-        m = re.search(
-            rf"def {name}\(.*?(?=\n    def |\Z)", src, flags=re.S
-        )
+        m = re.search(rf"def {name}\(.*?(?=\n    def |\Z)", src, flags=re.S)
         assert m, f"Builder {name} nicht gefunden"
-        assert "_apply_theme_colors()" in m.group(0), (
-            f"{name} ruft _apply_theme_colors() nicht auf"
-        )
+        assert "_apply_theme_colors()" in m.group(
+            0
+        ), f"{name} ruft _apply_theme_colors() nicht auf"
     # Hintergrund transparent (Theme scheint durch) + Margins > 0 für Labels
     assert "setBackgroundVisible(False)" in src
     assert "QMargins(4, 4, 4, 4)" in src

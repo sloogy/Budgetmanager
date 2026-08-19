@@ -70,7 +70,7 @@ class PotReserveModel:
             else:
                 select_cols.append("NULL")
             row = self.conn.execute(
-                f"SELECT {', '.join(select_cols)} FROM categories WHERE typ=? AND name=? LIMIT 1",
+                f"SELECT {', '.join(select_cols)} FROM categories WHERE typ=? AND name=? LIMIT 1",  # nosec B608
                 (typ_db, str(category)),
             ).fetchone()
             if not row:

@@ -1,20 +1,25 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 import json
+
+from utils.cockpit_presets import PRESETS as _COCKPIT_PRESETS
 import os
 from pathlib import Path
 from typing import Any
 
+
 class Settings:
     """Verwaltet persistente Anwendungseinstellungen"""
-    
+
     def __init__(self, settings_file: str | None = None):
         from model.app_paths import settings_path
+
         # Portable: Settings liegen im ./data/ Ordner neben dem Programm
         self.settings_file = Path(settings_file) if settings_file else settings_path()
         self.settings = self._load()
-    
+
     def _load(self) -> dict[str, Any]:
         """Lädt Einstellungen aus Datei.
 
@@ -28,32 +33,55 @@ class Settings:
         defaults = self._defaults()
         if self.settings_file.exists():
             try:
-                with open(self.settings_file, 'r', encoding='utf-8') as f:
+                with open(self.settings_file, "r", encoding="utf-8") as f:
                     loaded = json.load(f)
                 if isinstance(loaded, dict):
                     merged = {**defaults, **loaded}
+                    # Bestehende Nutzer behalten ihre individuell gewählten
+                    # Cockpit-Panels. Nur echte Neuinstallationen starten im
+                    # neuen Fokus-Preset.
+                    if "cockpit_preset" not in loaded:
+                        merged["cockpit_preset"] = "custom"
+                        if "cockpit_visible_panels" not in loaded:
+                            # Alt-Bestand vor dem Preset-Feature: bisheriges
+                            # Erlebnis war "alle Bereiche sichtbar" – exakt so
+                            # festschreiben, nichts umgestalten.
+                            merged["cockpit_visible_panels"] = {
+                                k: True for k in _COCKPIT_PRESETS["standard"]
+                            }
                     # Zahlformat aus alten Builds normalisieren (ch/eu/us sowie
                     # swiss/german/french/anglo werden toleriert).
                     try:
                         from utils.money import normalize_number_format, CURRENCIES
-                        merged["number_format"] = normalize_number_format(merged.get("number_format"))
+
+                        merged["number_format"] = normalize_number_format(
+                            merged.get("number_format")
+                        )
                         cur = str(merged.get("currency", "CHF") or "CHF").upper()
                         merged["currency"] = cur if cur in CURRENCIES else "CHF"
                     except Exception as e:
-                        logger.debug("Regionseinstellungen konnten nicht normalisiert werden: %s", e)
+                        logger.debug(
+                            "Regionseinstellungen konnten nicht normalisiert werden: %s",
+                            e,
+                        )
                     return merged
-                logger.error("Einstellungsdatei hat unerwartetes Format – nutze Defaults")
+                logger.error(
+                    "Einstellungsdatei hat unerwartetes Format – nutze Defaults"
+                )
                 return defaults
             except Exception as e:
                 logger.error("Fehler beim Laden der Einstellungen: %s", e)
                 return defaults
         return defaults
-    
+
     def _defaults(self) -> dict[str, Any]:
         """Standard-Einstellungen"""
         from pathlib import Path
+
         return {
             "theme": "light",  # "light" oder "dark"
+            # Cockpit: ADHS-freundlicher, reduzierter Einstieg.
+            "cockpit_preset": "focus",
             "auto_save": True,
             "ask_due": True,
             "warn_delete": True,
@@ -65,7 +93,6 @@ class Settings:
             # Tracking: Schnellfilter "nur letzte X Tage".
             # Erlaubte Werte: 14 oder 30
             "recent_days": 14,
-
             # Wiederkehrende Buchungen: bevorzugter Tag (Default), der beim Setzen von
             # "wiederkehrend" automatisch übernommen wird.
             # 0 bedeutet "kein bevorzugter Tag", 31 bedeutet "Monatsende".
@@ -126,7 +153,17 @@ class Settings:
             "window_is_fullscreen": False,  # Fenster im Fullscreen?
             "last_budget_year": None,
             "last_overview_year": None,
-            "tab_order": [5, 0, 1, 2, 3, 4],  # Reihenfolge der Tabs (Cockpit, Budget, Kategorien, Tracking, Übersicht, Sparziele)
+            "tab_order": [
+                5,
+                0,
+                1,
+                2,
+                3,
+                4,
+            ],  # Reihenfolge der Tabs (Cockpit, Budget, Kategorien, Tracking, Übersicht, Sparziele)
+            # Bedienmodus: simple reduziert sichtbare Spezialfunktionen,
+            # advanced zeigt alle Module. Manuelle Anpassungen werden custom.
+            "ui_experience_mode": "simple",
             # Kategorien-Tab anzeigen (Experten-Modus)
             # False = Kategorien werden über Budget-Dialog verwaltet
             # True = Separater Kategorien-Tab sichtbar (Fallback/Experten)
@@ -138,35 +175,51 @@ class Settings:
                 "categories": False,
                 "tracking": True,
                 "overview": True,
-                "savings": True,
+                "savings": False,
             },
-            # Cockpit: frei gestaltbare Bereiche.
-            "cockpit_visible_panels": {
-                "kpis": True,
-                "quick_actions": True,
-                "favorites": True,
-                "savings": True,
-                "warnings": True,
-                "missing": True,
-                "recent": True,
+            # Cockpit: frei gestaltbare Bereiche. Eine Wahrheit fuer die
+            # Preset-Maps: utils/cockpit_presets.py (v2.2.22, UI/ADHS-Audit).
+            "cockpit_visible_panels": dict(_COCKPIT_PRESETS["focus"]),
+            # Cockpit: Automatik schiebt leere, geschrumpfte Bereiche nach unten.
+            # "fixed" aktiviert Drag-and-drop und speichert Position + Spalte.
+            "cockpit_layout_mode": "auto",
+            "cockpit_panel_columns": {
+                "kpis": "left",
+                "quick_actions": "left",
+                "action_needed": "right",
+                "charts": "right",
+                "favorites": "right",
+                "savings": "right",
+                "recent": "right",
             },
-            # Cockpit: Reihenfolge der Bereiche; im Cockpit-Dialog per Hoch/Runter änderbar.
-            "cockpit_panel_order": ["kpis", "quick_actions", "favorites", "savings", "warnings", "missing", "recent"],
+            # Übergangsschlüssel aus v2.2.42; werden synchron gehalten und
+            # können nach erfolgreicher Migration später entfallen.
+            "cockpit_tiles_fixed": False,
+            "cockpit_tile_columns": {},
+            # Cockpit: Basis-/Fixierreihenfolge. Alte Warnschlüssel werden beim
+            # Laden im Cockpit auf "action_needed" migriert.
+            "cockpit_panel_order": [
+                "kpis",
+                "quick_actions",
+                "action_needed",
+                "charts",
+                "favorites",
+                "savings",
+                "recent",
+            ],
             # Tab-Leiste Position und Sichtbarkeit
-            "tab_position": "west",    # north / south / east / west
-            "tab_bar_visible": True,   # Tab-Leiste anzeigen?
+            "tab_position": "west",  # north / south / east / west
+            "tab_bar_visible": True,  # Tab-Leiste anzeigen?
             # Datenbank und Backup Pfade
             # data_directory: leer = portabel ({app}/data). Wenn gesetzt (absoluter
             # Pfad), legt die App DB/Backups/verschlüsselte .enc-Dateien dort ab.
             "data_directory": "",
             "database_path": "data/budgetmanager.db",  # Portable Default (relativ zum Programmordner)
             "backup_directory": "data/backups",  # Portable Default (relativ zum Programmordner)
-
             # AutoBackup: ab Erststart aktiv, damit neue Nutzer nicht ohne Sicherung arbeiten.
             "auto_backup": True,
             # 7 Tage = guter Kompromiss: Schutz ohne Backup-Flut.
             "backup_days": 7,
-
             # AutoBackup: wie viele Auto-Backups sollen maximal behalten werden?
             "auto_backup_keep": 10,
             # AutoBackup: bei Überschreitung älteste Backups automatisch löschen?
@@ -185,7 +238,7 @@ class Settings:
             # Zahlenformat (Dezimal-/Tausendertrennung): swiss|german|french|anglo
             "number_format": "swiss",
         }
-    
+
     def save(self) -> None:
         """Speichert Einstellungen atomar in Datei.
 
@@ -195,8 +248,8 @@ class Settings:
         """
         try:
             self.settings_file.parent.mkdir(parents=True, exist_ok=True)
-            tmp_path = self.settings_file.with_suffix('.tmp')
-            with open(tmp_path, 'w', encoding='utf-8') as f:
+            tmp_path = self.settings_file.with_suffix(".tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
                 json.dump(self.settings, f, indent=2, ensure_ascii=False)
                 f.flush()
                 os.fsync(f.fileno())
@@ -205,58 +258,72 @@ class Settings:
             logger.error("Fehler beim Speichern der Einstellungen: %s", e)
             # Aufräumen: temporäre Datei entfernen falls vorhanden
             try:
-                tmp_path = self.settings_file.with_suffix('.tmp')
+                tmp_path = self.settings_file.with_suffix(".tmp")
                 if tmp_path.exists():
                     tmp_path.unlink()
             except Exception as cleanup_err:
-                logger.debug("Temporäre Settings-Datei konnte nicht gelöscht werden: %s", cleanup_err)
-    
+                logger.debug(
+                    "Temporäre Settings-Datei konnte nicht gelöscht werden: %s",
+                    cleanup_err,
+                )
+
     def get(self, key: str, default: Any = None) -> Any:
         """Holt einen Wert"""
         return self.settings.get(key, default)
-    
+
     def set(self, key: str, value: Any) -> None:
         """Setzt einen Wert und speichert"""
         self.settings[key] = value
         self.save()
-    
+
+    def set_many(self, values: dict[str, Any]) -> None:
+        """Setzt zusammengehörige Werte und speichert sie atomar in einem Lauf.
+
+        Das verhindert Zwischenstände bei Layout-/Migrationsdaten und reduziert
+        mehrere teure fsync-Schreibvorgänge auf einen einzigen.
+        """
+        if not isinstance(values, dict):
+            raise TypeError("values muss ein dict sein")
+        self.settings.update(values)
+        self.save()
+
     # Convenience-Methoden
     @property
     def theme(self) -> str:
         return self.get("theme", "light")
-    
+
     @theme.setter
     def theme(self, value: str):
         self.set("theme", value)
-    
+
     @property
     def auto_save(self) -> bool:
         return self.get("auto_save", True)
-    
+
     @auto_save.setter
     def auto_save(self, value: bool):
         self.set("auto_save", value)
-    
+
     @property
     def ask_due(self) -> bool:
         return self.get("ask_due", True)
-    
+
     @ask_due.setter
     def ask_due(self, value: bool):
         self.set("ask_due", value)
-    
+
     @property
     def refresh_on_start(self) -> bool:
         return self.get("refresh_on_start", True)
-    
+
     @refresh_on_start.setter
     def refresh_on_start(self, value: bool):
         self.set("refresh_on_start", value)
-    
+
     @property
     def tab_order(self) -> list[int]:
         return self.get("tab_order", [0, 1, 2, 3])
-    
+
     @tab_order.setter
     def tab_order(self, value: list[int]):
         self.set("tab_order", value)
@@ -305,11 +372,11 @@ class Settings:
     def database_path(self) -> str:
         """Pfad zur Datenbank-Datei"""
         return self.get("database_path", "budgetmanager.db")
-    
+
     @database_path.setter
     def database_path(self, value: str):
         self.set("database_path", value)
-    
+
     @property
     def backup_directory(self) -> str:
         """Pfad zum Backup-Ordner"""
@@ -317,7 +384,7 @@ class Settings:
 
         default = str(backups_dir())
         return self.get("backup_directory", default)
-    
+
     @backup_directory.setter
     def backup_directory(self, value: str):
         self.set("backup_directory", value)
@@ -327,34 +394,34 @@ class Settings:
     def window_x(self) -> int:
         """X-Position des Fensters"""
         return self.get("window_x", 100)
-    
+
     @window_x.setter
     def window_x(self, value: int):
         self.set("window_x", value)
-    
+
     @property
     def window_y(self) -> int:
         """Y-Position des Fensters"""
         return self.get("window_y", 100)
-    
+
     @window_y.setter
     def window_y(self, value: int):
         self.set("window_y", value)
-    
+
     @property
     def window_is_maximized(self) -> bool:
         """Ist das Fenster maximiert?"""
         return self.get("window_is_maximized", False)
-    
+
     @window_is_maximized.setter
     def window_is_maximized(self, value: bool):
         self.set("window_is_maximized", value)
-    
+
     @property
     def window_is_fullscreen(self) -> bool:
         """Ist das Fenster im Fullscreen?"""
         return self.get("window_is_fullscreen", False)
-    
+
     @window_is_fullscreen.setter
     def window_is_fullscreen(self, value: bool):
         self.set("window_is_fullscreen", value)
@@ -363,7 +430,7 @@ class Settings:
     def show_categories_tab(self) -> bool:
         """Zeigt den separaten Kategorien-Tab (Experten-Modus)"""
         return self.get("show_categories_tab", False)
-    
+
     @show_categories_tab.setter
     def show_categories_tab(self, value: bool):
         self.set("show_categories_tab", value)
@@ -374,6 +441,7 @@ class Settings:
         val = str(self.get("currency", "CHF") or "CHF").upper()
         try:
             from utils.money import CURRENCIES
+
             return val if val in CURRENCIES else "CHF"
         except Exception:
             return val
@@ -383,6 +451,7 @@ class Settings:
         val = str(value or "CHF").upper()
         try:
             from utils.money import CURRENCIES
+
             val = val if val in CURRENCIES else "CHF"
         except Exception:
             pass
@@ -393,6 +462,7 @@ class Settings:
         """Aktives Zahlenformat (swiss, german, french, anglo)."""
         try:
             from utils.money import normalize_number_format
+
             return normalize_number_format(self.get("number_format", "swiss"))
         except Exception:
             return self.get("number_format", "swiss")
@@ -401,6 +471,7 @@ class Settings:
     def number_format(self, value: str):
         try:
             from utils.money import normalize_number_format
+
             value = normalize_number_format(value)
         except Exception:
             pass
