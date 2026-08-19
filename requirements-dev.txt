@@ -42,7 +42,7 @@ pyside6==6.10.3
 pyside6-addons==6.10.3
 pyside6-essentials==6.10.3
 pytest==9.1.1
-pytest-cov==7.0.0
+pytest-cov==7.1.0
 pyyaml==6.0.3
 requests==2.34.2
 rich==15.0.0
