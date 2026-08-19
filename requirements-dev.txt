@@ -1,7 +1,7 @@
 # Komfortdatei für lokale Entwicklung.
 # Release/CI: python -m pip install --require-hashes -r requirements-dev.lock
 bandit==1.9.4
-black==25.1.0
+black==26.5.1
 boolean-py==5.0
 build==1.5.0
 cachecontrol[filecache]==0.14.4
@@ -43,6 +43,7 @@ pyside6-addons==6.10.3
 pyside6-essentials==6.10.3
 pytest==9.1.1
 pytest-cov==7.0.0
+pytokens==0.4.1
 pyyaml==6.0.3
 requests==2.34.2
 rich==15.0.0
