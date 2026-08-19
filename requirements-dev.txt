@@ -1,5 +1,6 @@
 # Komfortdatei für lokale Entwicklung.
 # Release/CI: python -m pip install --require-hashes -r requirements-dev.lock
+ast-serialize==0.8.0
 bandit==1.9.4
 black==25.1.0
 boolean-py==5.0
@@ -17,11 +18,12 @@ et-xmlfile==2.0.0
 filelock==3.32.3
 idna==3.19
 iniconfig==2.3.0
+librt==0.15.0
 license-expression==30.4.4
 markdown-it-py==4.2.0
 mdurl==0.1.2
 msgpack==1.2.1
-mypy==1.15.0
+mypy==2.3.1
 mypy-extensions==1.1.0
 openpyxl==3.1.5
 packageurl-python==0.17.6
