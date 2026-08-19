@@ -29,7 +29,7 @@ jobs:
             fontconfig dbus-libs wayland wayland-protocols weston \
             google-noto-color-emoji-fonts procps-ng
 
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
 
       - name: Install locked dependencies
         run: |
@@ -81,7 +81,7 @@ jobs:
       matrix:
         scale: ["1.0", "1.25", "1.5", "2.0"]
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
       - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
         with:
           python-version: "3.13"
@@ -114,7 +114,7 @@ jobs:
     name: Keyboard and accessibility contract
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4
       - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
         with:
           python-version: "3.13"
