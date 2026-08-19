@@ -9,6 +9,19 @@ from pathlib import Path
 import sqlite3
 import sys
 import traceback
+from typing import TextIO
+
+
+def _emit_result(result: dict[str, object], *, stream: TextIO | None) -> None:
+    """Gibt das Ergebnis auch bei einer Windows-GUI-EXE zuverlässig aus."""
+    payload = json.dumps(result, ensure_ascii=False, sort_keys=True)
+    if stream is not None:
+        print(payload, file=stream)
+    result_path_raw = os.environ.get("BM_SELF_TEST_RESULT_PATH", "").strip()
+    if result_path_raw:
+        result_path = Path(result_path_raw)
+        result_path.parent.mkdir(parents=True, exist_ok=True)
+        result_path.write_text(payload + "\n", encoding="utf-8")
 
 
 def _pixmap_render_metrics(pixmap) -> dict[str, object]:
@@ -158,12 +171,12 @@ def run_release_self_test() -> int:
                 "screenshots": screenshots,
             }
         )
-        print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+        _emit_result(result, stream=sys.stdout)
         return 0
     except Exception as exc:
         result["error"] = f"{type(exc).__name__}: {exc}"
         result["traceback"] = traceback.format_exc()
-        print(json.dumps(result, ensure_ascii=False, sort_keys=True), file=sys.stderr)
+        _emit_result(result, stream=sys.stderr)
         return 1
     finally:
         if window is not None:

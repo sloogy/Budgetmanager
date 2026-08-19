@@ -58,6 +58,7 @@ def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset()
     assert "-Wait -PassThru" in workflow
     assert ".ExitCode" in workflow
     assert "--release-self-test" in workflow
+    assert "BM_SELF_TEST_RESULT_PATH" in workflow
     assert "unins000.exe" in workflow
     builder = (ROOT / "tools" / "build_release_assets.py").read_text(encoding="utf-8")
     assert "BudgetManager_Setup_{version}.exe" in builder
@@ -72,6 +73,19 @@ def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset()
         assert data["assets"]["windows_installer_zip"]["type"] == "installer-zip"
         assert data["assets"]["windows"]["url"].endswith("portable-windows.zip")
         assert data["assets"]["linux"]["url"].endswith("portable-linux.zip")
+
+
+def test_release_self_test_result_supports_windowed_executable(monkeypatch, tmp_path):
+    from utils.release_self_test import _emit_result
+
+    result_path = tmp_path / "release-self-test.json"
+    monkeypatch.setenv("BM_SELF_TEST_RESULT_PATH", str(result_path))
+    _emit_result({"ok": True, "version": "2.2.61"}, stream=None)
+
+    assert json.loads(result_path.read_text(encoding="utf-8")) == {
+        "ok": True,
+        "version": "2.2.61",
+    }
 
 
 def test_updater_has_different_asset_paths_for_installer_direct_and_portable(

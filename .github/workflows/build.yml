@@ -188,9 +188,16 @@ jobs:
           }
 
           $env:QT_QPA_PLATFORM = "offscreen"
+          $selfTestResult = Join-Path $env:RUNNER_TEMP "BudgetManager-release-self-test.json"
+          $env:BM_SELF_TEST_RESULT_PATH = $selfTestResult
           $app = Start-Process -FilePath $appExe -ArgumentList @("--release-self-test") -Wait -PassThru
+          if (-not (Test-Path $selfTestResult)) {
+            throw "Der Starttest hat keine Ergebnisdatei erzeugt: $selfTestResult"
+          }
+          $selfTestJson = Get-Content -Raw $selfTestResult
+          Write-Host "Release-Selbsttest: $selfTestJson"
           if ($app.ExitCode -ne 0) {
-            throw "Starttest der installierten App fehlgeschlagen (Exitcode $($app.ExitCode))."
+            throw "Starttest der installierten App fehlgeschlagen (Exitcode $($app.ExitCode)): $selfTestJson"
           }
 
           $uninstaller = Join-Path $installDir "unins000.exe"
