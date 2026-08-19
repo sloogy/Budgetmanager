@@ -150,9 +150,12 @@ jobs:
           $dataDir = Join-Path $env:RUNNER_TEMP "BudgetManager-Smoke-Data"
           $setup = (Resolve-Path "BudgetManager_Setup.exe").Path
 
-          & $setup /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installDir" "/DATA_DIR=$dataDir" /LANG=english
-          if ($LASTEXITCODE -ne 0) {
-            throw "Silent-Installation fehlgeschlagen (Exitcode $LASTEXITCODE)."
+          $install = Start-Process -FilePath $setup -ArgumentList @(
+            "/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART",
+            "/DIR=`"$installDir`"", "/DATA_DIR=`"$dataDir`"", "/LANG=english"
+          ) -Wait -PassThru
+          if ($install.ExitCode -ne 0) {
+            throw "Silent-Installation fehlgeschlagen (Exitcode $($install.ExitCode))."
           }
 
           $appExe = Join-Path $installDir "BudgetManager.exe"
@@ -171,18 +174,20 @@ jobs:
           }
 
           $env:QT_QPA_PLATFORM = "offscreen"
-          & $appExe --release-self-test
-          if ($LASTEXITCODE -ne 0) {
-            throw "Starttest der installierten App fehlgeschlagen (Exitcode $LASTEXITCODE)."
+          $app = Start-Process -FilePath $appExe -ArgumentList @("--release-self-test") -Wait -PassThru
+          if ($app.ExitCode -ne 0) {
+            throw "Starttest der installierten App fehlgeschlagen (Exitcode $($app.ExitCode))."
           }
 
           $uninstaller = Join-Path $installDir "unins000.exe"
           if (-not (Test-Path $uninstaller)) {
             throw "Uninstaller fehlt: $uninstaller"
           }
-          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
-          if ($LASTEXITCODE -ne 0) {
-            throw "Silent-Deinstallation fehlgeschlagen (Exitcode $LASTEXITCODE)."
+          $uninstall = Start-Process -FilePath $uninstaller -ArgumentList @(
+            "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART"
+          ) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) {
+            throw "Silent-Deinstallation fehlgeschlagen (Exitcode $($uninstall.ExitCode))."
           }
           if (Test-Path $appExe) {
             throw "BudgetManager.exe ist nach der Deinstallation noch vorhanden."

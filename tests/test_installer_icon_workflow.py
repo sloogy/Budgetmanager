@@ -51,6 +51,9 @@ def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset()
     assert ".lpmodule" not in workflow
     assert "Test silent install, app start and uninstall" in workflow
     assert "/VERYSILENT" in workflow
+    assert workflow.count("Start-Process") >= 3
+    assert "-Wait -PassThru" in workflow
+    assert ".ExitCode" in workflow
     assert "--release-self-test" in workflow
     assert "unins000.exe" in workflow
     builder = (ROOT / "tools" / "build_release_assets.py").read_text(encoding="utf-8")
