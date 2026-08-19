@@ -23,15 +23,9 @@ from pathlib import Path
 block_cipher = None
 
 _update_public_key = Path("resources/update_signing_public_key.b64")
-if not _update_public_key.is_file():
-    raise SystemExit(
-        "Update-Public-Key fehlt. Vor dem Release-Build "
-        "tools/materialize_update_public_key.py ausführen."
-    )
 
 datas = [
     ("locales", "locales"),
-    (str(_update_public_key), "resources"),
     ("data/default_categories.json", "data"),
     ("docs/help", "docs/help"),
     ("resources/icons", "resources/icons"),
@@ -43,6 +37,13 @@ datas = [
     # <bundle>/views/profiles (theme_manager.py: bundled_dir)
     ("views/profiles", "views/profiles"),
 ]
+
+# Vorab-Releases werden bis zum finalen Release bewusst ohne Signatur gebaut.
+# Sobald der Public Key materialisiert wurde, wird er automatisch eingebettet.
+if _update_public_key.is_file():
+    datas.append((str(_update_public_key), "resources"))
+else:
+    print("Hinweis: Build ohne Update-Signatur/Public-Key (Vorab-Release).")
 
 # Qt-eigene Übersetzungen (qtbase_<lang>.qm) – nötig für lokalisierte native
 # Kontextmenüs (Kopieren/Einfügen/…). Werden nach PySide6/translations gelegt,

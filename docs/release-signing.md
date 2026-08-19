@@ -1,8 +1,15 @@
 # Release-Signierung und Vertrauenskette
 
-## Einmalige GitHub-Konfiguration
+## Aktueller Vorab-Release-Modus
 
-Der Tag-Build ist absichtlich fail-closed. Ohne diese Werte wird kein Release erzeugt:
+Bis zum finalen Release werden Builds bewusst ohne Update-Signatur erzeugt.
+Fehlende `UPDATE_SIGNING_*`-Werte blockieren den Build daher nicht. Der Updater
+kann in diesen Builds keine signierten Online-Updates verifizieren.
+
+## Einmalige GitHub-Konfiguration für den finalen Release
+
+Vor dem finalen Release müssen diese Werte eingerichtet und das Signatur-Gate
+wieder verpflichtend aktiviert werden:
 
 - Repository Variable `UPDATE_SIGNING_PUBLIC_KEY_B64`
 - Repository Secret `UPDATE_SIGNING_PRIVATE_KEY_B64`
