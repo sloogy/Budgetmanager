@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - '.github/release-finalize-v2261.trigger'
+      - '.github/release-pr-trigger-v2261.txt'
   pull_request_target:
     types: [opened]
     branches:
@@ -141,6 +142,7 @@ jobs:
         run: |
           set -euo pipefail
           rm -f .github/release-finalize-v2261.trigger
+          rm -f .github/release-pr-trigger-v2261.txt
           rm -f .github/workflows/finalize-v2261.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
