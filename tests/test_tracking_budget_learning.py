@@ -4,6 +4,7 @@ Diese Logik ist bewusst von der normalen Budget-Anpassungsengine getrennt:
 - ohne Jahresbudget darf nach genügend Trackingmonaten ein neues Budget vorgeschlagen werden,
 - sobald im Jahr ein Budget > 0 gesetzt ist, übernimmt wieder die normale Vorschlagslogik.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -27,14 +28,25 @@ def _add_category(conn: sqlite3.Connection, typ: str, name: str) -> None:
     )
 
 
-def _book(conn: sqlite3.Connection, year: int, month: int, category: str, amount: float) -> None:
+def _book(
+    conn: sqlite3.Connection, year: int, month: int, category: str, amount: float
+) -> None:
     conn.execute(
         "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
-        (f"{year:04d}-{month:02d}-15", TYP_EXPENSES, category, amount, "test", "manual"),
+        (
+            f"{year:04d}-{month:02d}-15",
+            TYP_EXPENSES,
+            category,
+            amount,
+            "test",
+            "manual",
+        ),
     )
 
 
-def _set_budget(conn: sqlite3.Connection, year: int, month: int, category: str, amount: float) -> None:
+def _set_budget(
+    conn: sqlite3.Connection, year: int, month: int, category: str, amount: float
+) -> None:
     conn.execute(
         "INSERT OR REPLACE INTO budget(year, month, typ, category, amount) VALUES(?,?,?,?,?)",
         (year, month, TYP_EXPENSES, category, amount),
@@ -66,7 +78,9 @@ def test_tracking_learning_observes_first_month(conn: sqlite3.Connection) -> Non
     assert suggestions == []
 
 
-def test_tracking_learning_proposes_after_second_month_without_budget(conn: sqlite3.Connection) -> None:
+def test_tracking_learning_proposes_after_second_month_without_budget(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, TYP_EXPENSES, "Essen")
     _book(conn, 2026, 1, "Essen", 580.0)
     _book(conn, 2026, 2, "Essen", 620.0)
@@ -89,6 +103,7 @@ def test_tracking_learning_proposes_after_second_month_without_budget(conn: sqli
     assert sug.consecutive_months == 2
     # i18n-fest: Phase über den gerenderten Projektions-Key prüfen
     from utils.i18n import tr
+
     assert tr("suggestion.suggestion_tracking_projection").split("{")[0] or True
     assert sug.consecutive_months >= 2
     assert "Hochrechnung" in sug.message or "Projection" in sug.message
@@ -118,7 +133,9 @@ def test_tracking_learning_stable_after_third_month(conn: sqlite3.Connection) ->
     )
 
 
-def test_tracking_learning_is_suppressed_when_any_year_budget_exists(conn: sqlite3.Connection) -> None:
+def test_tracking_learning_is_suppressed_when_any_year_budget_exists(
+    conn: sqlite3.Connection,
+) -> None:
     _add_category(conn, TYP_EXPENSES, "Kleider")
     _book(conn, 2026, 1, "Kleider", 90.0)
     _book(conn, 2026, 2, "Kleider", 110.0)

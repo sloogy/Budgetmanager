@@ -4,6 +4,7 @@ Qt hält bei editierbaren QComboBoxen currentData() oft auf dem vorherigen
 Eintrag, obwohl der Benutzer im Suchfeld bereits einen anderen Text getippt
 hat. Die Schnelleingabe darf dann nicht auf die alte Kategorie buchen.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -173,7 +174,11 @@ def test_parent_category_preset_survives_short_label_picker():
     """
     picker = _picker()
     combo = FakeCombo(
-        [("★ Miete", "Miete"), ("Internet", "Internet"), ("Lebensmittel", "Lebensmittel")],
+        [
+            ("★ Miete", "Miete"),
+            ("Internet", "Internet"),
+            ("Lebensmittel", "Lebensmittel"),
+        ],
         current_index=-1,
         typed_text="Wohnen",
     )

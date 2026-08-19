@@ -17,8 +17,26 @@ from utils.i18n import get_language, set_language  # noqa: E402
 
 def test_shortcut_catalog_is_localized_in_all_release_languages():
     forbidden_by_lang = {
-        "en": ["Hilfe", "Wissensdatenbank", "Einstellungen öffnen", "Zum Budget-Tab", "Allgemein", "Funktionen", "Strg", "Umschalt"],
-        "fr": ["Hilfe", "Wissensdatenbank", "Einstellungen öffnen", "Zum Budget-Tab", "Allgemein", "Funktionen", "Strg", "Umschalt"],
+        "en": [
+            "Hilfe",
+            "Wissensdatenbank",
+            "Einstellungen öffnen",
+            "Zum Budget-Tab",
+            "Allgemein",
+            "Funktionen",
+            "Strg",
+            "Umschalt",
+        ],
+        "fr": [
+            "Hilfe",
+            "Wissensdatenbank",
+            "Einstellungen öffnen",
+            "Zum Budget-Tab",
+            "Allgemein",
+            "Funktionen",
+            "Strg",
+            "Umschalt",
+        ],
     }
 
     # Globale Sprache am Ende wiederherstellen, damit andere Tests nicht von

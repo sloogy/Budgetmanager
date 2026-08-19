@@ -8,6 +8,7 @@ Ein einfacher, durchsuchbarer Themenbrowser:
 Die Inhalte stehen sprachneutral in ``views/help_content.py``. Die angezeigte
 Sprache richtet sich nach der App-Sprache (Fallback Deutsch).
 """
+
 from __future__ import annotations
 
 import logging
@@ -44,13 +45,25 @@ _ROLE_TOPIC = Qt.UserRole + 1
 class HelpDialog(QDialog):
     """Durchsuchbares In-App-Handbuch."""
 
-    def __init__(self, parent=None, *, start_topic_id: str | None = None, on_show_key=None, on_open_mindmap=None):
+    def __init__(
+        self,
+        parent=None,
+        *,
+        start_topic_id: str | None = None,
+        on_show_key=None,
+        on_open_mindmap=None,
+        on_open_wiki_audit=None,
+    ):
         super().__init__(parent)
         self._lang = self._resolve_lang()
         self._on_show_key = on_show_key
         self._on_open_mindmap = on_open_mindmap
+        self._on_open_wiki_audit = on_open_wiki_audit
         self.setWindowTitle(tr("help.window_title"))
         self.setMinimumSize(820, 560)
+        from utils.responsive_dialog import harden_dialog_for_screen
+
+        harden_dialog_for_screen(self)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
         root = QVBoxLayout(self)
@@ -77,6 +90,7 @@ class HelpDialog(QDialog):
         splitter.addWidget(left)
 
         self.viewer = QTextBrowser()
+        self.viewer.setAccessibleName(tr("a11y.help_content"))
         self.viewer.setOpenExternalLinks(True)
         splitter.addWidget(self.viewer)
 
@@ -94,6 +108,10 @@ class HelpDialog(QDialog):
             self.btn_open_mindmap = QPushButton(tr("help.btn_open_mindmap"))
             self.btn_open_mindmap.clicked.connect(self._handle_open_mindmap)
             btn_row.addWidget(self.btn_open_mindmap)
+        if callable(self._on_open_wiki_audit):
+            self.btn_open_wiki_audit = QPushButton(tr("help.btn_open_wiki_audit"))
+            self.btn_open_wiki_audit.clicked.connect(self._handle_open_wiki_audit)
+            btn_row.addWidget(self.btn_open_wiki_audit)
         btn_row.addStretch(1)
         self.btn_close = QPushButton(tr("btn.close"))
         self.btn_close.clicked.connect(self.accept)
@@ -101,7 +119,6 @@ class HelpDialog(QDialog):
         root.addLayout(btn_row)
 
         self._populate(select_id=start_topic_id)
-
 
     def _handle_open_mindmap(self) -> None:
         if callable(self._on_open_mindmap):
@@ -116,6 +133,13 @@ class HelpDialog(QDialog):
                 self._on_show_key(self)
             except Exception:
                 logger.exception("Restore-Key-Anzeige aus dem Handbuch fehlgeschlagen")
+
+    def _handle_open_wiki_audit(self) -> None:
+        if callable(self._on_open_wiki_audit):
+            try:
+                self._on_open_wiki_audit(self)
+            except Exception:
+                logger.exception("Wiki-Audit-Anzeige aus dem Handbuch fehlgeschlagen")
 
     # ── intern ────────────────────────────────────────────────────
     def _resolve_lang(self) -> str:
@@ -172,7 +196,9 @@ class HelpDialog(QDialog):
         for i in range(self.topic_list.count()):
             item = self.topic_list.item(i)
             topic = self._topic_by_id(item.data(_ROLE_TOPIC))
-            match = (not needle) or (topic is not None and needle in help_topic_haystack(topic, self._lang))
+            match = (not needle) or (
+                topic is not None and needle in help_topic_haystack(topic, self._lang)
+            )
             item.setHidden(not match)
             if match:
                 visible += 1

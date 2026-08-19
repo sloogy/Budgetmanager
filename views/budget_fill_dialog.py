@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+
 logger = logging.getLogger(__name__)
 import sqlite3
 from datetime import date
@@ -12,6 +13,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QDialogButtonBox,
     QPushButton,
+    QScrollArea,
+    QFrame,
 )
 
 from views.tabs.budget_tab import BudgetTab
@@ -37,7 +40,9 @@ class BudgetFillDialog(QDialog):
         root = QVBoxLayout(self)
 
         hint = QLabel(
-            tr('auto.views_budget_fill_dialog.40_b_budget_ausfuellen_b_br_trage_dein_680d66fc')
+            tr(
+                "auto.views_budget_fill_dialog.40_b_budget_ausfuellen_b_br_trage_dein_680d66fc"
+            )
         )
         hint.setTextFormat(Qt.RichText)
         hint.setWordWrap(True)
@@ -52,7 +57,16 @@ class BudgetFillDialog(QDialog):
                 self.budget_tab.load()
         except Exception as e:
             logger.debug("if hasattr(self.budget_tab, 'year_spin'):: %s", e)
-        root.addWidget(self.budget_tab, 1)
+        # Der Budget-Tab besitzt bewusst viele Direktaktionen. Auf kleineren
+        # Displays darf deren natürliche Breite den Dialog nicht auf >1500 px
+        # zwingen; stattdessen bleibt alles über eine horizontale Scrollleiste
+        # erreichbar.
+        self.budget_scroll = QScrollArea()
+        self.budget_scroll.setWidgetResizable(True)
+        self.budget_scroll.setFocusPolicy(Qt.NoFocus)
+        self.budget_scroll.setFrameShape(QFrame.NoFrame)
+        self.budget_scroll.setWidget(self.budget_tab)
+        root.addWidget(self.budget_scroll, 1)
 
         buttons = QDialogButtonBox()
         self.btn_save_close = QPushButton(tr("btn.speichern_schliessen"))
@@ -64,8 +78,13 @@ class BudgetFillDialog(QDialog):
         self.btn_save_close.clicked.connect(self._save_and_close)
         self.btn_close.clicked.connect(self.reject)
 
-        # Startgröße (User kann maximieren)
+        # Startgröße (User kann maximieren); dank ScrollArea auch auf kleinen
+        # Notebook-Displays vollständig bedienbar.
+        self.setMinimumSize(760, 560)
         self.resize(1280, 820)
+        from utils.responsive_dialog import harden_dialog_for_screen
+
+        harden_dialog_for_screen(self)
 
     def _save_and_close(self) -> None:
         try:

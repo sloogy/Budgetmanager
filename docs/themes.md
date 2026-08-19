@@ -1,4 +1,4 @@
-# Theme-System — BudgetManager v2.2.6
+# Theme-System — BudgetManager v2.2.60
 
 ## Überblick
 
@@ -20,4 +20,8 @@ BudgetManager nutzt Designprofile unter `views/profiles/` sowie zentrale Farbhel
 
 ## Release-Hinweis
 
-Für v2.2.6 wurden keine neuen Theme-Profile eingeführt. Relevant ist, dass Cockpit, Budgetwarnungen, Jahreswechsel-Dialog und Diagramme weiterhin zentrale Farb-/UI-Helfer nutzen und keine releasefremden Testfarben erzwingen.
+v2.2.43 führt kein weiteres Profil ein, sondern verbindet die Optik aus v2.2.42 mit dem Kachellayout aus v2.2.41. Der DesignManager bleibt die alleinige Quelle für Dashboard-Hintergründe, Ränder, Texte, Akzent-, Status- und Trendfarben. Auch Drag-Griff, Leerzustände und KPI-Typografie werden über Objektrollen im zentralen Stylesheet gestaltet. Beim Theme-Wechsel werden Cockpit, Diagramme und Trends neu aufgebaut.
+
+## Mitternacht – Violett (v2.2.42)
+
+Dunkles Profil nach dem Vorbild moderner Dashboards: fast schwarzer Hintergrund, abgesetzte Kacheln, violetter Akzent `#7150f0`. Der Akzent ist bewusst etwas dunkler als die Vorlage — mit `#7c5cfc` erreichte weiße Schrift darauf nur 4.38:1 und verfehlte WCAG AA.

@@ -11,6 +11,7 @@ Ausgelagert aus dem Cockpit, damit die Logik headless regressionsgesichert ist.
 
 from __future__ import annotations
 
+from calendar import monthrange
 from datetime import date
 
 EPS = 1e-6
@@ -55,6 +56,11 @@ def is_open_this_month(
             dd = int(due_day or 1)
         except (TypeError, ValueError):
             dd = 1
+        # v2.2.25: Fälligkeitstag auf den letzten Tag des Monats klemmen.
+        # Ohne Klemmung wurde eine Position mit due_day 29–31 in kürzeren
+        # Monaten (Februar, 30-Tage-Monate) NIE fällig: am Monatsletzten
+        # galt weiterhin today.day < dd -> "noch nicht fällig".
+        dd = max(1, min(dd, monthrange(year, month)[1]))
         if today.day < dd:
             open_item = False
             rest = 0.0

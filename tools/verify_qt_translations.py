@@ -30,6 +30,7 @@ def _source_dirs() -> list[Path]:
     dirs: list[Path] = []
     try:
         from PySide6.QtCore import QLibraryInfo
+
         try:
             p = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
         except Exception:
@@ -41,6 +42,7 @@ def _source_dirs() -> list[Path]:
 
     try:
         import PySide6
+
         base = Path(PySide6.__file__).resolve().parent
         dirs.append(base / "translations")
         dirs.append(base / "Qt" / "translations")
@@ -98,12 +100,27 @@ def main() -> int:
         dirs = _build_dirs(root)
     else:
         print("Modus: Qt-Installation (Entwicklung)\n")
+        try:
+            import PySide6  # noqa: F401
+        except ImportError:
+            # Headless-/CI-Container ohne Qt: nichts Prüfbares vorhanden.
+            # Build-Modus (mit Pfadargument) bleibt unverändert fail-closed.
+            print(
+                "[SKIP] PySide6 nicht installiert – Check ist nur auf "
+                "Entwicklungs-/Zielsystemen mit Qt aussagekräftig."
+            )
+            return 0
         dirs = _source_dirs()
 
     ok = check(dirs)
-    print("\n" + ("[OK] R2 erfüllt: native Kontextmenüs werden DE/FR lokalisiert."
-                  if ok else
-                  "[FAIL] R2 NICHT erfüllt: qtbase_*.qm fehlt – Build/Qt-Installation prüfen."))
+    print(
+        "\n"
+        + (
+            "[OK] R2 erfüllt: native Kontextmenüs werden DE/FR lokalisiert."
+            if ok
+            else "[FAIL] R2 NICHT erfüllt: qtbase_*.qm fehlt – Build/Qt-Installation prüfen."
+        )
+    )
     return 0 if ok else 1
 
 

@@ -1,26 +1,33 @@
 from __future__ import annotations
-import logging
-
-logger = logging.getLogger(__name__)
-import sqlite3
-from dataclasses import dataclass
-from datetime import datetime, date
-from typing import List, Optional
-
-from model.undo_redo_model import UndoRedoModel
-from model.database import db_transaction
-from model.crypto import suspend_after_commit_autosave
-from model.typ_constants import TYP_SAVINGS
 
 """Sparziele-Datenmodell.
 
-Verwaltet Sparziele mit Lebenszyklusstatus (sparend, freigegeben, abgeschlossen),
-Buchungsintegration und Fortschrittsberechnung.
+Ein Sparziel ist ein Flussbestand:
+
+* Zielbetrag / Einzahlungsziel
+* kumuliert eingezahlt (Korrekturen verändern diesen Wert)
+* kumuliert bezogen / verwendet
+* aktueller Bestand = Einzahlungen - Bezüge
+* noch einzuzahlen = Zielbetrag - Einzahlungen
+* Teilfreigaben reservieren einen Teil des Bestands zur Verwendung, ohne das
+  Sparziel zu beenden.
 """
 
-# ── Konstanten für Sparziel-Status ──
+import logging
+import math
+import sqlite3
+from dataclasses import dataclass
+from datetime import datetime
+from typing import List, Optional
+
+from model.crypto import suspend_after_commit_autosave
+from model.typ_constants import TYP_SAVINGS
+from model.undo_redo_model import UndoRedoModel
+
+logger = logging.getLogger(__name__)
+
 STATUS_SAVING = "sparend"
-STATUS_RELEASED = "freigegeben"
+STATUS_RELEASED = "freigegeben"  # Legacy-Status; neue UI nutzt Teilfreigaben.
 STATUS_COMPLETED = "abgeschlossen"
 
 STATUS_LABELS = {
@@ -28,27 +35,41 @@ STATUS_LABELS = {
     STATUS_RELEASED: "Freigegeben",
     STATUS_COMPLETED: "Abgeschlossen",
 }
-
 STATUS_ICONS = {
     STATUS_SAVING: "💰",
     STATUS_RELEASED: "🔓",
     STATUS_COMPLETED: "✅",
 }
 
+ACTION_DEPOSIT = "deposit"
+ACTION_WITHDRAWAL = "withdrawal"
+ACTION_CORRECTION = "correction"
+VALID_SAVINGS_ACTIONS = {ACTION_DEPOSIT, ACTION_WITHDRAWAL, ACTION_CORRECTION}
+
 _EPSILON_AMOUNT = 0.005
 
 
 class SavingsGoalBoundsError(ValueError):
-    """Fachlicher Fehler: Sparziel-Stand würde seine Grenzen verlassen.
-
-    Ein Sparziel darf rechnerisch nicht unter 0 fallen und nicht über den
-    Zielbetrag steigen. Die UI nutzt message_key/params für eine klare Meldung.
-    """
+    """Fachlicher Fehler: Sparziel-Fluss würde seine Grenzen verlassen."""
 
     def __init__(self, message_key: str, **params: object):
         super().__init__(message_key)
         self.message_key = message_key
         self.params = params
+
+
+def _finite_or_error(goal_name: str, **values: float) -> None:
+    for value in values.values():
+        if not math.isfinite(float(value)):
+            raise SavingsGoalBoundsError(
+                "savings.bounds.not_finite",
+                goal_name=goal_name,
+                current_amount=0.0,
+                target_amount=0.0,
+                attempted_amount=0.0,
+                resulting_amount=0.0,
+                max_allowed=0.0,
+            )
 
 
 def validate_savings_goal_bounds(
@@ -59,14 +80,24 @@ def validate_savings_goal_bounds(
     resulting_amount: float,
     delta_amount: float = 0.0,
 ) -> None:
-    """Validiert die fachlichen Grenzen eines Sparziels.
+    """Kompatible Standprüfung: ``0 <= neuer Stand <= Zielbetrag``.
 
-    Erlaubt ist nur: 0 <= neuer Stand <= Zielbetrag.
+    Diese API bleibt für ältere Aufrufer und Tests erhalten. Neue Buchungspfade
+    verwenden :func:`validate_savings_goal_flow_bounds`, weil ein Bezug den
+    Einzahlungsfortschritt nicht wieder zurücksetzt.
     """
+
     target = float(target_amount or 0.0)
     current = float(current_amount or 0.0)
     result = float(resulting_amount or 0.0)
     delta = float(delta_amount or 0.0)
+    _finite_or_error(
+        goal_name,
+        target=target,
+        current=current,
+        result=result,
+        delta=delta,
+    )
 
     if result < -_EPSILON_AMOUNT:
         raise SavingsGoalBoundsError(
@@ -78,7 +109,6 @@ def validate_savings_goal_bounds(
             resulting_amount=result,
             max_allowed=max(0.0, current),
         )
-
     if result - target > _EPSILON_AMOUNT:
         raise SavingsGoalBoundsError(
             "savings.bounds.deposit_too_much",
@@ -88,6 +118,67 @@ def validate_savings_goal_bounds(
             attempted_amount=abs(delta),
             resulting_amount=result,
             max_allowed=max(0.0, target - current),
+        )
+
+
+def validate_savings_goal_flow_bounds(
+    *,
+    goal_name: str,
+    target_amount: float,
+    current_stock: float,
+    contributed_amount: float,
+    stock_delta: float,
+    contribution_delta: float,
+) -> None:
+    """Validiert Bestand und Einzahlungsziel getrennt.
+
+    Bezüge verändern nur den Bestand. Einzahlungen und Korrekturen verändern
+    sowohl Bestand als auch den kumulierten Einzahlungsfortschritt.
+    """
+
+    target = float(target_amount or 0.0)
+    stock = float(current_stock or 0.0)
+    contributed = float(contributed_amount or 0.0)
+    stock_result = stock + float(stock_delta or 0.0)
+    contribution_result = contributed + float(contribution_delta or 0.0)
+    _finite_or_error(
+        goal_name,
+        target=target,
+        stock=stock,
+        contributed=contributed,
+        stock_result=stock_result,
+        contribution_result=contribution_result,
+    )
+
+    if stock_result < -_EPSILON_AMOUNT:
+        raise SavingsGoalBoundsError(
+            "savings.bounds.withdraw_too_much",
+            goal_name=goal_name,
+            current_amount=stock,
+            target_amount=target,
+            attempted_amount=abs(float(stock_delta)),
+            resulting_amount=stock_result,
+            max_allowed=max(0.0, stock),
+        )
+    if contribution_result < -_EPSILON_AMOUNT:
+        raise SavingsGoalBoundsError(
+            "savings.bounds.correction_too_much",
+            goal_name=goal_name,
+            current_amount=contributed,
+            target_amount=target,
+            attempted_amount=abs(float(contribution_delta)),
+            resulting_amount=contribution_result,
+            max_allowed=max(0.0, contributed),
+        )
+    if contribution_result - target > _EPSILON_AMOUNT:
+        raise SavingsGoalBoundsError(
+            "savings.bounds.deposit_too_much",
+            goal_name=goal_name,
+            current_amount=contributed,
+            target_amount=target,
+            attempted_amount=abs(float(contribution_delta)),
+            resulting_amount=contribution_result,
+            max_allowed=max(0.0, target - contributed),
         )
 
 
@@ -101,21 +192,54 @@ class SavingsGoal:
     category: Optional[str]
     notes: Optional[str]
     created_date: str
-    # Lifecycle-Felder (v10)
     status: str = STATUS_SAVING
     released_amount: float = 0.0
     released_date: Optional[str] = None
+    contributed_amount: float = 0.0
+    withdrawn_amount: float = 0.0
+
+    @property
+    def effective_contributed_amount(self) -> float:
+        """Kompatibler Einzahlungsstand für alte direkt erzeugte Objekte."""
+        if (
+            abs(self.contributed_amount) < _EPSILON_AMOUNT
+            and abs(self.withdrawn_amount) < _EPSILON_AMOUNT
+            and abs(self.current_amount) >= _EPSILON_AMOUNT
+        ):
+            return float(self.current_amount)
+        return float(self.contributed_amount)
 
     @property
     def progress_percent(self) -> float:
         if self.target_amount <= 0:
             return 0.0
-        raw_percent = (self.current_amount / self.target_amount) * 100
-        return max(0.0, min(100.0, raw_percent))
+        return max(
+            0.0,
+            min(
+                100.0, (self.effective_contributed_amount / self.target_amount) * 100.0
+            ),
+        )
 
     @property
     def remaining_amount(self) -> float:
-        return max(0, self.target_amount - self.current_amount)
+        """Noch einzuzahlen (historischer Property-Name)."""
+        return max(0.0, self.target_amount - self.effective_contributed_amount)
+
+    @property
+    def remaining_contribution(self) -> float:
+        return self.remaining_amount
+
+    @property
+    def current_stock(self) -> float:
+        return max(0.0, self.current_amount)
+
+    @property
+    def used_amount(self) -> float:
+        return max(0.0, self.withdrawn_amount)
+
+    @property
+    def released_available(self) -> float:
+        return max(0.0, self.released_amount - self.withdrawn_amount)
 
     @property
     def is_saving(self) -> bool:
@@ -139,13 +263,66 @@ class SavingsGoal:
 
 
 class SavingsGoalsModel:
+    _BASE_SELECT = (
+        "id, name, target_amount, current_amount, deadline, category, notes, "
+        "created_date, status, released_amount, released_date"
+    )
+
     def __init__(self, conn: sqlite3.Connection):
         self.conn = conn
         self.undo = UndoRedoModel(conn)
+        self._goal_columns = {
+            str(row[1]) for row in self.conn.execute("PRAGMA table_info(savings_goals)")
+        }
+        self._tracking_columns = {
+            str(row[1]) for row in self.conn.execute("PRAGMA table_info(tracking)")
+        }
 
-    # ──────────────────────────────────────────────
-    # CRUD
-    # ──────────────────────────────────────────────
+    @property
+    def _has_flow_columns(self) -> bool:
+        return {"contributed_amount", "withdrawn_amount"}.issubset(self._goal_columns)
+
+    @property
+    def _has_action_column(self) -> bool:
+        return "savings_action" in self._tracking_columns
+
+    def _select_sql(self) -> str:
+        # Beide Varianten sind vollständig statische SQL-Literale. Das hält die
+        # Abfrage auditierbar und verhindert, dass Spaltennamen aus externen
+        # Eingaben in SQL gelangen können.
+        return (
+            "id, name, target_amount, current_amount, deadline, category, notes, "
+            "created_date, status, released_amount, released_date, "
+            "contributed_amount, withdrawn_amount"
+            if self._has_flow_columns
+            else "id, name, target_amount, current_amount, deadline, category, notes, "
+            "created_date, status, released_amount, released_date, "
+            "current_amount AS contributed_amount, 0 AS withdrawn_amount"
+        )
+
+    def _snapshot(self, goal_id: int):
+        return self.conn.execute(
+            f"SELECT {self._select_sql()} FROM savings_goals WHERE id=?",  # nosec B608
+            (goal_id,),
+        ).fetchone()
+
+    def _row_to_goal(self, row) -> SavingsGoal:
+        return SavingsGoal(
+            id=int(row[0]),
+            name=str(row[1]),
+            target_amount=float(row[2] or 0.0),
+            current_amount=float(row[3] or 0.0),
+            deadline=row[4],
+            category=row[5],
+            notes=row[6],
+            created_date=str(row[7]),
+            status=str(row[8] or STATUS_SAVING),
+            released_amount=float(row[9] or 0.0),
+            released_date=row[10],
+            contributed_amount=float(row[11] or 0.0),
+            withdrawn_amount=float(row[12] or 0.0),
+        )
+
     def create(
         self,
         name: str,
@@ -155,114 +332,97 @@ class SavingsGoalsModel:
         category: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> int:
-        """Erstellt ein neues Sparziel (Status: sparend)"""
-        validate_savings_goal_bounds(
+        validate_savings_goal_flow_bounds(
             goal_name=name,
             target_amount=target_amount,
-            current_amount=0.0,
-            resulting_amount=current_amount,
-            delta_amount=current_amount,
+            current_stock=0.0,
+            contributed_amount=0.0,
+            stock_delta=current_amount,
+            contribution_delta=current_amount,
         )
         created = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        cur = self.conn.execute(
-            """
-            INSERT INTO savings_goals 
-            (name, target_amount, current_amount, deadline, category, notes, created_date,
-             status, released_amount, released_date)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL)
-            """,
-            (
-                name,
-                target_amount,
-                current_amount,
-                deadline,
-                category,
-                notes,
-                created,
-                STATUS_SAVING,
-            ),
-        )
+        if self._has_flow_columns:
+            cur = self.conn.execute(
+                """
+                INSERT INTO savings_goals
+                (name, target_amount, current_amount, deadline, category, notes,
+                 created_date, status, released_amount, released_date,
+                 contributed_amount, withdrawn_amount)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, 0)
+                """,
+                (
+                    name,
+                    float(target_amount),
+                    float(current_amount),
+                    deadline,
+                    category,
+                    notes,
+                    created,
+                    STATUS_SAVING,
+                    float(current_amount),
+                ),
+            )
+        else:
+            cur = self.conn.execute(
+                """
+                INSERT INTO savings_goals
+                (name, target_amount, current_amount, deadline, category, notes,
+                 created_date, status, released_amount, released_date)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL)
+                """,
+                (
+                    name,
+                    float(target_amount),
+                    float(current_amount),
+                    deadline,
+                    category,
+                    notes,
+                    created,
+                    STATUS_SAVING,
+                ),
+            )
         self.conn.commit()
-        goal_id = cur.lastrowid
-        # Undo-Tracking
+        goal_id = int(cur.lastrowid)
         try:
-            row = self.conn.execute(
-                "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-                "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-                (goal_id,),
-            ).fetchone()
+            row = self._snapshot(goal_id)
             if row:
                 self.undo.record_operation("savings_goals", "INSERT", None, dict(row))
-        except Exception as e:
-            logger.debug("savings_goals create undo: %s", e)
+        except Exception as exc:
+            logger.debug("savings_goals create undo: %s", exc)
         return goal_id
 
-    def _row_to_goal(self, row) -> SavingsGoal:
-        """Konvertiert eine DB-Zeile in ein SavingsGoal-Objekt."""
-        return SavingsGoal(
-            id=row[0],
-            name=row[1],
-            target_amount=float(row[2]),
-            current_amount=float(row[3]),
-            deadline=row[4],
-            category=row[5],
-            notes=row[6],
-            created_date=row[7],
-            status=row[8] or STATUS_SAVING,
-            released_amount=float(row[9] or 0),
-            released_date=row[10],
-        )
-
     def list_all(self) -> List[SavingsGoal]:
-        """Liste alle Sparziele"""
         cur = self.conn.execute(
-            """
-            SELECT id, name, target_amount, current_amount, deadline, category, notes, 
-                   created_date, status, released_amount, released_date
+            f"""
+            SELECT {self._select_sql()}
             FROM savings_goals
-            ORDER BY 
-                CASE status 
-                    WHEN 'sparend' THEN 0 
-                    WHEN 'freigegeben' THEN 1 
-                    WHEN 'abgeschlossen' THEN 2 
+            ORDER BY
+                CASE status
+                    WHEN 'sparend' THEN 0
+                    WHEN 'freigegeben' THEN 1
+                    WHEN 'abgeschlossen' THEN 2
+                    ELSE 3
                 END,
                 deadline IS NULL, deadline, name
-            """
+            """  # nosec B608
         )
         return [self._row_to_goal(row) for row in cur.fetchall()]
 
     def get(self, goal_id: int) -> Optional[SavingsGoal]:
-        """Gibt ein Sparziel zurück"""
-        cur = self.conn.execute(
-            """
-            SELECT id, name, target_amount, current_amount, deadline, category, notes, 
-                   created_date, status, released_amount, released_date
-            FROM savings_goals
-            WHERE id = ?
-            """,
-            (goal_id,),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        return self._row_to_goal(row)
+        row = self._snapshot(goal_id)
+        return self._row_to_goal(row) if row else None
 
     def get_by_category(self, category: str) -> Optional[SavingsGoal]:
-        """Gibt das aktive Sparziel für eine Kategorie zurück (sparend oder freigegeben)."""
-        cur = self.conn.execute(
-            """
-            SELECT id, name, target_amount, current_amount, deadline, category, notes,
-                   created_date, status, released_amount, released_date
+        row = self.conn.execute(
+            f"""
+            SELECT {self._select_sql()}
             FROM savings_goals
-            WHERE category = ? AND status IN (?, ?)
-            LIMIT 1
-            """,
+            WHERE category=? AND status IN (?, ?)
+            ORDER BY id LIMIT 1
+            """,  # nosec B608
             (category, STATUS_SAVING, STATUS_RELEASED),
-        )
-        row = cur.fetchone()
-        if not row:
-            return None
-        return self._row_to_goal(row)
+        ).fetchone()
+        return self._row_to_goal(row) if row else None
 
     def update(
         self,
@@ -274,337 +434,327 @@ class SavingsGoalsModel:
         category: Optional[str] = None,
         notes: Optional[str] = None,
     ) -> None:
-        """Aktualisiert ein Sparziel"""
-        # Alte Werte für Undo
-        old_row = self.conn.execute(
-            "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-            "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-            (goal_id,),
-        ).fetchone()
-        if old_row:
-            old_name = str(old_row[1])
-            old_target = float(old_row[2])
-            old_current = float(old_row[3])
-            next_name = name if name is not None else old_name
-            next_target = target_amount if target_amount is not None else old_target
-            next_current = current_amount if current_amount is not None else old_current
-            validate_savings_goal_bounds(
-                goal_name=str(next_name),
-                target_amount=float(next_target),
-                current_amount=old_current,
-                resulting_amount=float(next_current),
-                delta_amount=float(next_current) - old_current,
-            )
+        old_goal = self.get(goal_id)
+        old_row = self._snapshot(goal_id)
+        if not old_goal:
+            return
+
+        next_name = name if name is not None else old_goal.name
+        next_target = (
+            float(target_amount)
+            if target_amount is not None
+            else old_goal.target_amount
+        )
+        # Das historisch ``current_amount`` genannte Edit-Feld ist ab v18 der
+        # kumulierte Einzahlungsstand. Der Bestand wird daraus abzüglich Bezüge
+        # rekonstruiert, damit eine Verwendung nicht plötzlich verschwindet.
+        next_contributed = (
+            float(current_amount)
+            if current_amount is not None
+            else old_goal.contributed_amount
+        )
+        next_stock = next_contributed - old_goal.withdrawn_amount
+        validate_savings_goal_flow_bounds(
+            goal_name=str(next_name),
+            target_amount=next_target,
+            current_stock=old_goal.current_amount,
+            contributed_amount=old_goal.contributed_amount,
+            stock_delta=next_stock - old_goal.current_amount,
+            contribution_delta=next_contributed - old_goal.contributed_amount,
+        )
 
         updates: list[str] = []
         params: list[object] = []
-
-        if name is not None:
-            updates.append("name = ?")
-            params.append(name)
-        if target_amount is not None:
-            updates.append("target_amount = ?")
-            params.append(target_amount)
+        for column, value in (
+            ("name", name),
+            ("target_amount", target_amount),
+            ("deadline", deadline),
+            ("category", category),
+            ("notes", notes),
+        ):
+            if value is not None:
+                updates.append(f"{column}=?")
+                params.append(value)
         if current_amount is not None:
-            updates.append("current_amount = ?")
-            params.append(current_amount)
-        if deadline is not None:
-            updates.append("deadline = ?")
-            params.append(deadline)
-        if category is not None:
-            updates.append("category = ?")
-            params.append(category)
-        if notes is not None:
-            updates.append("notes = ?")
-            params.append(notes)
+            updates.append("current_amount=?")
+            params.append(next_stock)
+            if self._has_flow_columns:
+                updates.append("contributed_amount=?")
+                params.append(next_contributed)
 
-        if updates:
-            params.append(goal_id)
-            query = f"UPDATE savings_goals SET {', '.join(updates)} WHERE id = ?"
-            self.conn.execute(query, params)
-            self.conn.commit()
-            # Undo-Tracking
-            try:
-                new_row = self.conn.execute(
-                    "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-                    "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-                    (goal_id,),
-                ).fetchone()
-                if old_row and new_row:
-                    self.undo.record_operation(
-                        "savings_goals", "UPDATE", dict(old_row), dict(new_row)
-                    )
-            except Exception as e:
-                logger.debug("savings_goals update undo: %s", e)
+        if not updates:
+            return
+        params.append(goal_id)
+        self.conn.execute(
+            f"UPDATE savings_goals SET {', '.join(updates)} WHERE id=?",  # nosec B608
+            params,
+        )
+        self.conn.commit()
+        try:
+            new_row = self._snapshot(goal_id)
+            if old_row and new_row:
+                self.undo.record_operation(
+                    "savings_goals", "UPDATE", dict(old_row), dict(new_row)
+                )
+        except Exception as exc:
+            logger.debug("savings_goals update undo: %s", exc)
 
     def add_progress(self, goal_id: int, amount: float) -> None:
-        """Fügt Fortschritt zu einem Sparziel hinzu.
+        """Manuelle Einzahlung bzw. Korrektur, niemals ein Bezug.
 
-        Positive Beträge dürfen den Zielbetrag nicht überschreiten. Negative
-        Beträge dürfen den Stand nicht unter 0 ziehen.
+        Positive Werte erhöhen die Einzahlungen. Negative Werte korrigieren eine
+        Fehlbuchung und werden deshalb nicht als Verwendung ausgewiesen.
         """
         goal = self.get(goal_id)
         if not goal:
             return
-        new_amount = goal.current_amount + float(amount)
-        validate_savings_goal_bounds(
+        delta = float(amount)
+        validate_savings_goal_flow_bounds(
             goal_name=goal.name,
             target_amount=goal.target_amount,
-            current_amount=goal.current_amount,
-            resulting_amount=new_amount,
-            delta_amount=float(amount),
+            current_stock=goal.current_amount,
+            contributed_amount=goal.contributed_amount,
+            stock_delta=delta,
+            contribution_delta=delta,
         )
-        self.conn.execute(
-            "UPDATE savings_goals SET current_amount = current_amount + ? WHERE id = ?",
-            (amount, goal_id),
-        )
+        if self._has_flow_columns:
+            self.conn.execute(
+                """
+                UPDATE savings_goals
+                SET current_amount=current_amount+?,
+                    contributed_amount=contributed_amount+?
+                WHERE id=?
+                """,
+                (delta, delta, goal_id),
+            )
+        else:
+            self.conn.execute(
+                "UPDATE savings_goals SET current_amount=current_amount+? WHERE id=?",
+                (delta, goal_id),
+            )
         self.conn.commit()
 
     def delete(self, goal_id: int) -> None:
-        """Löscht ein Sparziel"""
-        old_row = self.conn.execute(
-            "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-            "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-            (goal_id,),
-        ).fetchone()
-        self.conn.execute("DELETE FROM savings_goals WHERE id = ?", (goal_id,))
+        old_row = self._snapshot(goal_id)
+        self.conn.execute("DELETE FROM savings_goals WHERE id=?", (goal_id,))
         self.conn.commit()
-        # Undo-Tracking
         try:
             if old_row:
                 self.undo.record_operation(
                     "savings_goals", "DELETE", dict(old_row), None
                 )
-        except Exception as e:
-            logger.debug("savings_goals delete undo: %s", e)
+        except Exception as exc:
+            logger.debug("savings_goals delete undo: %s", exc)
 
-    # ──────────────────────────────────────────────
-    # Lifecycle: Freigabe / Abschluss
-    # ──────────────────────────────────────────────
+    def release_partial(self, goal_id: int, amount: float) -> Optional[SavingsGoal]:
+        """Gibt einen Teilbetrag frei, ohne das Ziel zu beenden."""
+        goal = self.get(goal_id)
+        if not goal or goal.is_completed:
+            return goal
+        value = float(amount)
+        _finite_or_error(goal.name, amount=value)
+        if value <= _EPSILON_AMOUNT:
+            raise SavingsGoalBoundsError(
+                "savings.bounds.release_positive",
+                goal_name=goal.name,
+                current_amount=goal.current_stock,
+                target_amount=goal.target_amount,
+                attempted_amount=value,
+                resulting_amount=goal.released_available,
+                max_allowed=max(0.0, goal.current_stock - goal.released_available),
+            )
+        max_additional = max(0.0, goal.current_stock - goal.released_available)
+        if value - max_additional > _EPSILON_AMOUNT:
+            raise SavingsGoalBoundsError(
+                "savings.bounds.release_too_much",
+                goal_name=goal.name,
+                current_amount=goal.current_stock,
+                target_amount=goal.target_amount,
+                attempted_amount=value,
+                resulting_amount=goal.released_available + value,
+                max_allowed=max_additional,
+            )
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Bereits erfolgte Bezüge gelten als verbrauchte Freigabe. Bei der
+        # ersten späteren Teilfreigabe wird deshalb mindestens auf den bisher
+        # verwendeten Betrag aufgesetzt, damit der neue Teilbetrag tatsächlich
+        # als verfügbar erscheint.
+        baseline = max(goal.released_amount, goal.withdrawn_amount)
+        self.conn.execute(
+            """
+            UPDATE savings_goals
+            SET released_amount=?, released_date=?
+            WHERE id=?
+            """,
+            (baseline + value, now, goal_id),
+        )
+        self.conn.commit()
+        return self.get(goal_id)
+
     def release(self, goal_id: int) -> Optional[SavingsGoal]:
-        """Gibt ein Sparziel frei: Status -> freigegeben."""
+        """Legacy-Vollfreigabe für alte Aufrufer.
+
+        Die neue Oberfläche verwendet :meth:`release_partial`, wodurch das Ziel
+        im Status ``sparend`` bleibt.
+        """
         goal = self.get(goal_id)
         if not goal:
             return None
-        if goal.status != STATUS_SAVING:
-            logger.warning(
-                "Sparziel %d ist nicht im Status 'sparend', kann nicht freigeben",
-                goal_id,
-            )
-            return goal
-
-        old_row = self.conn.execute(
-            "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-            "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-            (goal_id,),
-        ).fetchone()
-
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.conn.execute(
             """
-            UPDATE savings_goals 
-            SET status = ?, released_amount = current_amount, released_date = ?
-            WHERE id = ?
+            UPDATE savings_goals
+            SET status=?, released_amount=current_amount, released_date=?
+            WHERE id=?
             """,
             (STATUS_RELEASED, now, goal_id),
         )
         self.conn.commit()
-        # Undo-Tracking
-        try:
-            new_row = self.conn.execute(
-                "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-                "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-                (goal_id,),
-            ).fetchone()
-            if old_row and new_row:
-                self.undo.record_operation(
-                    "savings_goals", "UPDATE", dict(old_row), dict(new_row)
-                )
-        except Exception as e:
-            logger.debug("savings_goals release undo: %s", e)
         return self.get(goal_id)
 
     def complete(self, goal_id: int) -> Optional[SavingsGoal]:
-        """Schliesst ein Sparziel ab: Status -> abgeschlossen."""
-        goal = self.get(goal_id)
-        if not goal:
+        if not self.get(goal_id):
             return None
-
-        old_row = self.conn.execute(
-            "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-            "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-            (goal_id,),
-        ).fetchone()
-
         self.conn.execute(
-            "UPDATE savings_goals SET status = ? WHERE id = ?",
+            "UPDATE savings_goals SET status=? WHERE id=?",
             (STATUS_COMPLETED, goal_id),
         )
         self.conn.commit()
-        # Undo-Tracking
-        try:
-            new_row = self.conn.execute(
-                "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-                "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-                (goal_id,),
-            ).fetchone()
-            if old_row and new_row:
-                self.undo.record_operation(
-                    "savings_goals", "UPDATE", dict(old_row), dict(new_row)
-                )
-        except Exception as e:
-            logger.debug("savings_goals complete undo: %s", e)
         return self.get(goal_id)
 
     def reopen(self, goal_id: int) -> Optional[SavingsGoal]:
-        """Oeffnet ein abgeschlossenes/freigegebenes Sparziel wieder zum Sparen."""
-        old_row = self.conn.execute(
-            "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-            "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-            (goal_id,),
-        ).fetchone()
-
+        if not self.get(goal_id):
+            return None
+        # Freigabehistorie bleibt erhalten; nur der Lebenszyklus wird geöffnet.
         self.conn.execute(
-            """
-            UPDATE savings_goals 
-            SET status = ?, released_amount = 0, released_date = NULL
-            WHERE id = ?
-            """,
+            "UPDATE savings_goals SET status=? WHERE id=?",
             (STATUS_SAVING, goal_id),
         )
         self.conn.commit()
-        # Undo-Tracking
-        try:
-            new_row = self.conn.execute(
-                "SELECT id, name, target_amount, current_amount, deadline, category, notes, "
-                "created_date, status, released_amount, released_date FROM savings_goals WHERE id=?",
-                (goal_id,),
-            ).fetchone()
-            if old_row and new_row:
-                self.undo.record_operation(
-                    "savings_goals", "UPDATE", dict(old_row), dict(new_row)
-                )
-        except Exception as e:
-            logger.debug("savings_goals reopen undo: %s", e)
         return self.get(goal_id)
 
-    # ──────────────────────────────────────────────
-    # Verbrauchsberechnung (freigegebene Ziele)
-    # ──────────────────────────────────────────────
     def get_spent_amount(self, goal_id: int) -> float:
-        """Berechnet den Verbrauch seit Freigabe.
-
-        Summiert alle NEGATIVEN Ersparnisse-Buchungen auf die Kategorie
-        nach dem Freigabedatum.
-
-        Returns:
-            Positiver Betrag = so viel wurde bereits ausgegeben.
-        """
         goal = self.get(goal_id)
-        if not goal or not goal.category or not goal.released_date:
+        if not goal:
             return 0.0
-
-        cur = self.conn.execute(
-            """
-            SELECT COALESCE(SUM(ABS(amount)), 0) 
-            FROM tracking 
-            WHERE typ = ? 
-              AND category = ? 
-              AND amount < 0 
-              AND date >= ?
-            """,
-            (TYP_SAVINGS, goal.category, goal.released_date[:10]),
+        if self._has_flow_columns:
+            return goal.withdrawn_amount
+        if not goal.category:
+            return 0.0
+        action_filter = (
+            "AND COALESCE(NULLIF(savings_action,''), 'withdrawal')='withdrawal'"
+            if self._has_action_column
+            else ""
         )
-        row = cur.fetchone()
-        return float(row[0]) if row and row[0] is not None else 0.0
+        row = self.conn.execute(
+            f"""
+            SELECT COALESCE(SUM(ABS(amount)),0)
+            FROM tracking
+            WHERE typ=? AND category=? AND amount<0 {action_filter}
+            """,  # nosec B608
+            (TYP_SAVINGS, goal.category),
+        ).fetchone()
+        return float(row[0] or 0.0) if row else 0.0
 
     def get_added_since_release(self, goal_id: int) -> float:
-        """Berechnet Nachsparen seit Freigabe (positive Buchungen)."""
         goal = self.get(goal_id)
         if not goal or not goal.category or not goal.released_date:
             return 0.0
-
-        cur = self.conn.execute(
+        row = self.conn.execute(
             """
-            SELECT COALESCE(SUM(amount), 0)
+            SELECT COALESCE(SUM(amount),0)
             FROM tracking
-            WHERE typ = ?
-              AND category = ?
-              AND amount > 0
-              AND date >= ?
+            WHERE typ=? AND category=? AND amount>0 AND date>=?
             """,
             (TYP_SAVINGS, goal.category, goal.released_date[:10]),
-        )
-        row = cur.fetchone()
-        return float(row[0]) if row and row[0] is not None else 0.0
+        ).fetchone()
+        return float(row[0] or 0.0) if row else 0.0
 
-    # ──────────────────────────────────────────────
-    # Sync mit Tracking
-    # ──────────────────────────────────────────────
+    def _tracking_totals(self, category: str) -> tuple[float, float, float]:
+        if self._has_action_column:
+            action = (
+                "COALESCE(NULLIF(savings_action,''), "
+                "CASE WHEN amount<0 THEN 'withdrawal' ELSE 'deposit' END)"
+            )
+            row = self.conn.execute(
+                f"""
+                SELECT
+                    COALESCE(SUM(amount),0) AS stock,
+                    COALESCE(SUM(CASE WHEN {action}='withdrawal' THEN 0 ELSE amount END),0)
+                        AS contributed,
+                    COALESCE(SUM(CASE WHEN {action}='withdrawal' THEN ABS(amount) ELSE 0 END),0)
+                        AS withdrawn
+                FROM tracking WHERE typ=? AND category=?
+                """,  # nosec B608
+                (TYP_SAVINGS, category),
+            ).fetchone()
+            return tuple(float(value or 0.0) for value in row[:3])  # type: ignore[return-value]
+
+        row = self.conn.execute(
+            """
+            SELECT COALESCE(SUM(amount),0),
+                   COALESCE(SUM(CASE WHEN amount>0 THEN amount ELSE 0 END),0),
+                   COALESCE(SUM(CASE WHEN amount<0 THEN ABS(amount) ELSE 0 END),0)
+            FROM tracking WHERE typ=? AND category=?
+            """,
+            (TYP_SAVINGS, category),
+        ).fetchone()
+        return tuple(float(value or 0.0) for value in row[:3])  # type: ignore[return-value]
+
     def sync_with_tracking(self, goal_id: int) -> float:
-        """Synchronisiert ein Sparziel mit allen Tracking-Buchungen.
-
-        Nur aktive Ziele (sparend/freigegeben) werden synchronisiert.
-        Abgeschlossene Ziele haben ihren Stand eingefroren.
-        """
         goal = self.get(goal_id)
         if not goal or not goal.category:
             return 0.0
         if goal.is_completed:
-            # Abgeschlossene Ziele nicht neu synchronisieren
             return goal.current_amount
-
-        # Vereinfachte korrekte Version: nur positive Buchungen (Einzahlungen) summieren,
-        # nicht Buchungen anderer Ziele derselben Kategorie doppelt zählen.
-        # Wir summieren ALLE Tracking-Buchungen der Kategorie (positiv = einzahlen, negativ = entnehmen).
-        cur = self.conn.execute(
-            "SELECT COALESCE(SUM(amount), 0) FROM tracking WHERE typ = ? AND category = ?",
-            (TYP_SAVINGS, goal.category),
-        )
-        row = cur.fetchone()
-        total = float(row[0]) if row and row[0] is not None else 0.0
-
-        validate_savings_goal_bounds(
+        stock, contributed, withdrawn = self._tracking_totals(goal.category)
+        validate_savings_goal_flow_bounds(
             goal_name=goal.name,
             target_amount=goal.target_amount,
-            current_amount=goal.current_amount,
-            resulting_amount=total,
-            delta_amount=total - goal.current_amount,
+            current_stock=0.0,
+            contributed_amount=0.0,
+            stock_delta=stock,
+            contribution_delta=contributed,
         )
-        self.conn.execute(
-            "UPDATE savings_goals SET current_amount = ? WHERE id = ?", (total, goal_id)
-        )
+        if self._has_flow_columns:
+            self.conn.execute(
+                """
+                UPDATE savings_goals
+                SET current_amount=?, contributed_amount=?, withdrawn_amount=?
+                WHERE id=?
+                """,
+                (stock, contributed, withdrawn, goal_id),
+            )
+        else:
+            self.conn.execute(
+                "UPDATE savings_goals SET current_amount=? WHERE id=?",
+                (stock, goal_id),
+            )
         self.conn.commit()
-        return total
+        return stock
 
     def recalculate_all(self) -> None:
-        """Berechnet alle Sparziele neu.
-
-        Mehrere Sparziele können jeweils ein eigenes commit() auslösen. Im
-        verschlüsselten Modus bündeln wir diese Commits zu einem finalen
-        .enc-Save, damit die UI bei großen Datenbanken nicht ruckelt.
-        """
-        goals = self.list_all()
         with suspend_after_commit_autosave(self.conn):
-            for goal in goals:
-                if goal.category:
+            for goal in self.list_all():
+                if goal.category and not goal.is_completed:
                     self.sync_with_tracking(goal.id)
 
-    # ──────────────────────────────────────────────
-    # Hilfsmethoden fuer Tracking-Integration
-    # ──────────────────────────────────────────────
     def has_active_goal_for_category(self, category: str) -> bool:
-        """Prueft ob ein aktives (sparend) Sparziel fuer die Kategorie existiert."""
-        cur = self.conn.execute(
-            "SELECT 1 FROM savings_goals WHERE category = ? AND status = ? LIMIT 1",
-            (category, STATUS_SAVING),
-        )
-        return cur.fetchone() is not None
+        row = self.conn.execute(
+            """
+            SELECT 1 FROM savings_goals
+            WHERE category=? AND status IN (?, ?) LIMIT 1
+            """,
+            (category, STATUS_SAVING, STATUS_RELEASED),
+        ).fetchone()
+        return row is not None
 
     def has_released_goal_for_category(self, category: str) -> bool:
-        """Prueft ob ein freigegebenes Sparziel fuer die Kategorie existiert."""
-        cur = self.conn.execute(
-            "SELECT 1 FROM savings_goals WHERE category = ? AND status = ? LIMIT 1",
+        row = self.conn.execute(
+            """
+            SELECT 1 FROM savings_goals
+            WHERE category=? AND (status=? OR COALESCE(released_amount,0)>0) LIMIT 1
+            """,
             (category, STATUS_RELEASED),
-        )
-        return cur.fetchone() is not None
+        ).fetchone()
+        return row is not None

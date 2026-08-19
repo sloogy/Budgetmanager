@@ -1,13 +1,16 @@
 from __future__ import annotations
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 import logging
+
 logger = logging.getLogger(__name__)
 
+from dataclasses import dataclass
 from datetime import date
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QDate, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QDateEdit,
     QDialog,
     QVBoxLayout,
     QHBoxLayout,
@@ -22,33 +25,57 @@ from PySide6.QtWidgets import (
     QComboBox,
 )
 
-from views.missing_bookings_dialog import PendingBooking
-from utils.money import format_short as _fmt_chf, parse_money as _parse_chf, currency_header
+
+# v2.2.16 (K3): PendingBooking lebt jetzt hier – der
+# MissingBookingsDialog ist im vereinheitlichten Dialog aufgegangen.
+@dataclass(frozen=True)
+class PendingBooking:
+    d: date
+    typ: str
+    category: str
+    amount: float
+    details: str
+    source: str = "manual"
+    is_fix: bool = False
+    is_recurring: bool = False
+    budget: float = 0.0
+    booked: float = 0.0
+
+
+from utils.accessibility import configure_dialog_tab_order
+from utils.money import (
+    format_short as _fmt_chf,
+    parse_money as _parse_chf,
+    currency_header,
+)
 from views.ui_colors import ui_colors
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 
 class SortablePendingItem:
     """Wrapper für PendingBooking mit Sortierinformationen"""
-    def __init__(self, booking: PendingBooking, kind: str, is_fix: bool, is_recurring: bool):
+
+    def __init__(
+        self, booking: PendingBooking, kind: str, is_fix: bool, is_recurring: bool
+    ):
         self.booking = booking
         self.kind = kind
         self.is_fix = is_fix
         self.is_recurring = is_recurring
-    
+
     @property
     def due_date(self) -> date:
         return self.booking.d
-    
+
     @property
     def is_overdue(self) -> bool:
         return self.due_date < date.today()
-    
+
     @property
     def days_overdue(self) -> int:
         """Tage überfällig (positiv = überfällig, negativ = in Zukunft)"""
         return (date.today() - self.due_date).days
-    
+
     @property
     def sort_key(self) -> tuple:
         """Sortierung:
@@ -62,7 +89,7 @@ class SortablePendingItem:
         else:
             priority = 2
         return (self.due_date, priority, self.booking.category)
-    
+
     @property
     def should_be_preselected(self) -> bool:
         """Vorauswahl: Überfällig (bis 60 Tage) = angehakt, Zukunft = nicht angehakt"""
@@ -92,15 +119,43 @@ class RecurringBookingsDialog(QDialog):
         recurring_items: list[PendingBooking],
         optional_items: list[PendingBooking] | None = None,
         title: str | None = None,
+        initial_month: tuple[int, int] | None = None,
+        reload_callback=None,
     ):
+        """v2.2.16 (K3): DER eine Dialog fuer faellige Buchungen.
+
+        Vorher brauchte der Monats-Workflow drei Werkzeuge: FixcostDialog
+        (nur Monatsauswahl), diesen Dialog UND den MissingBookingsDialog
+        (zweite Liste nur fuer Fixkosten, mit vorgeschalteter Ja/Nein-Frage).
+        Jetzt: Monatsauswahl integriert (``initial_month`` + ``reload_callback``
+        laedt die Kandidaten beim Monatswechsel neu), und der Nur-Fixkosten-
+        Fall laeuft ueber dieselbe Liste (Fixkosten sind vorangehakt – "alle
+        buchen" ist damit ein einziger OK-Klick).
+        """
         super().__init__(parent)
         self.setModal(True)
         self.setWindowTitle(title or tr("booking.title_fix_recurring"))
         self.setMinimumSize(950, 500)
+        from utils.responsive_dialog import harden_dialog_for_screen
 
-        # Items mit Sortierinformationen versehen.
-        # Flags kommen jetzt direkt von der Buchung (PendingBooking.is_fix/is_recurring).
+        harden_dialog_for_screen(self)
+
+        self._reload_callback = reload_callback
+        self._month = initial_month
         self._items: list[SortablePendingItem] = []
+
+        self._setup_ui()
+        self.set_items(fix_items, recurring_items, optional_items)
+        configure_dialog_tab_order(self)
+
+    def set_items(
+        self,
+        fix_items: list[PendingBooking],
+        recurring_items: list[PendingBooking],
+        optional_items: list[PendingBooking] | None = None,
+    ) -> None:
+        """Fuellt die Liste (auch beim Monatswechsel wiederverwendet)."""
+        self._items = []
         seen: set[tuple[str, str]] = set()
 
         def _kind_label(it) -> str:
@@ -121,41 +176,76 @@ class RecurringBookingsDialog(QDialog):
             seen.add(key)
             f = bool(getattr(it, "is_fix", False))
             r = bool(getattr(it, "is_recurring", False))
-            self._items.append(SortablePendingItem(it, _kind_label(it), is_fix=f, is_recurring=r))
-        
+            self._items.append(
+                SortablePendingItem(it, _kind_label(it), is_fix=f, is_recurring=r)
+            )
+
         # Nach sort_key sortieren
         self._items.sort(key=lambda x: x.sort_key)
-
-        self._setup_ui()
         self._fill()
+
+    def _on_month_changed(self) -> None:
+        if self._reload_callback is None:
+            return
+        qd = self.month_edit.date()
+        y, m = int(qd.year()), int(qd.month())
+        self._month = (y, m)
+        try:
+            fix, rec, opt = self._reload_callback(y, m)
+        except Exception:
+            logger.exception("Kandidaten fuer %04d-%02d nicht ladbar", y, m)
+            return
+        self.set_items(fix, rec, opt)
 
     def _setup_ui(self):
         """Erstellt die UI"""
         root = QVBoxLayout(self)
         root.setSpacing(8)
-        
+
+        # v2.2.16 (K3): integrierte Monatsauswahl (ersetzt den frueheren
+        # FixcostDialog-Vorschaltdialog). Nur sichtbar, wenn ein
+        # reload_callback die Kandidaten neu laden kann.
+        if self._reload_callback is not None and self._month is not None:
+            month_row = QHBoxLayout()
+            month_row.addWidget(QLabel(tr("lbl.month").rstrip(":")))
+            self.month_edit = QDateEdit()
+            self.month_edit.setCalendarPopup(True)
+            self.month_edit.setDisplayFormat("MM.yyyy")
+            y, m = self._month
+            self.month_edit.setDate(QDate(y, m, 1))
+            self.month_edit.dateChanged.connect(lambda _d: self._on_month_changed())
+            month_row.addWidget(self.month_edit)
+            month_row.addStretch(1)
+            root.addLayout(month_row)
+
         # Info-Header
         info_frame = QFrame()
         info_frame.setFrameStyle(QFrame.StyledPanel)
         info_layout = QVBoxLayout(info_frame)
-        
+
         self.lbl = QLabel(
-            tr('auto.views_recurring_bookings_dialog.128_b_fixkosten_b_sind_fix_und_nicht_ed_38adb145')
+            tr(
+                "auto.views_recurring_bookings_dialog.128_b_fixkosten_b_sind_fix_und_nicht_ed_38adb145"
+            )
         )
         self.lbl.setWordWrap(True)
         self.lbl.setTextFormat(Qt.RichText)
         info_layout.addWidget(self.lbl)
-        
+
         _c = ui_colors(self)
         hint = QLabel(
-            trf('auto.views_recurring_bookings_dialog.137_span_style_color_value_0_ueberfaell_81b0f0f3', value_0=(_c.negative), value_1=(_c.ok))
+            trf(
+                "auto.views_recurring_bookings_dialog.137_span_style_color_value_0_ueberfaell_81b0f0f3",
+                value_0=(_c.negative),
+                value_1=(_c.ok),
+            )
         )
         hint.setTextFormat(Qt.RichText)
         hint.setWordWrap(True)
         info_layout.addWidget(hint)
-        
+
         root.addWidget(info_frame)
-        
+
         # Status-Zeile
         status_layout = QHBoxLayout()
         status_layout.addWidget(QLabel(tr("lbl.type")))
@@ -173,7 +263,9 @@ class RecurringBookingsDialog(QDialog):
         self.filter_kind.addItem(tr("booking.filter_kind_all"), "")
         self.filter_kind.addItem(tr("booking.kind_real_fixed"), "real_fixed")
         self.filter_kind.addItem(tr("booking.kind_variable_fixed"), "fix_only")
-        self.filter_kind.addItem(tr("booking.kind_variable_recurring"), "recurring_only")
+        self.filter_kind.addItem(
+            tr("booking.kind_variable_recurring"), "recurring_only"
+        )
         self.filter_kind.addItem(tr("booking.kind_optional"), "optional")
         self.filter_kind.setToolTip(tr("booking.filter_kind_tip"))
         self.filter_kind.currentIndexChanged.connect(lambda _i: self._apply_filters())
@@ -186,7 +278,7 @@ class RecurringBookingsDialog(QDialog):
         self.lbl_upcoming.setStyleSheet(f"color: {_c.ok};")
         self.lbl_selected = QLabel(tr("dlg.ausgewaehlt_0"))
         self.lbl_selected.setStyleSheet("font-weight: bold;")
-        
+
         status_layout.addWidget(self.lbl_total)
         status_layout.addWidget(QLabel("|"))
         status_layout.addWidget(self.lbl_overdue)
@@ -199,42 +291,52 @@ class RecurringBookingsDialog(QDialog):
 
         # Tabelle
         self.table = QTableWidget(0, 8)
-        self.table.setHorizontalHeaderLabels([
-            tr('btn.book'), tr('auto.views_recurring_bookings_dialog.169_art_e71cc758'), tr('header.date'), tr('lbl.status'), tr('header.type'), tr("header.category"), currency_header(), tr("lbl.description")
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                tr("btn.book"),
+                tr("auto.views_recurring_bookings_dialog.169_art_e71cc758"),
+                tr("header.date"),
+                tr("lbl.status"),
+                tr("header.type"),
+                tr("header.category"),
+                currency_header(),
+                tr("lbl.description"),
+            ]
+        )
         self.table.setAlternatingRowColors(True)
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.verticalHeader().setVisible(False)
-        
+
         # Spaltenbreiten
         header = self.table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Fixed)     # Buchen
-        header.setSectionResizeMode(1, QHeaderView.Fixed)     # Art
-        header.setSectionResizeMode(2, QHeaderView.Fixed)     # Datum
-        header.setSectionResizeMode(3, QHeaderView.Fixed)     # Status
-        header.setSectionResizeMode(4, QHeaderView.Fixed)     # Typ
-        header.setSectionResizeMode(5, QHeaderView.Stretch)   # Kategorie
-        header.setSectionResizeMode(6, QHeaderView.Fixed)     # Betrag
-        header.setSectionResizeMode(7, QHeaderView.Stretch)   # Bemerkung
-        
+        header.setSectionResizeMode(0, QHeaderView.Fixed)  # Buchen
+        header.setSectionResizeMode(1, QHeaderView.Fixed)  # Art
+        header.setSectionResizeMode(2, QHeaderView.Fixed)  # Datum
+        header.setSectionResizeMode(3, QHeaderView.Fixed)  # Status
+        header.setSectionResizeMode(4, QHeaderView.Fixed)  # Typ
+        header.setSectionResizeMode(5, QHeaderView.Stretch)  # Kategorie
+        header.setSectionResizeMode(6, QHeaderView.Fixed)  # Betrag
+        header.setSectionResizeMode(7, QHeaderView.Stretch)  # Bemerkung
+
         self.table.setColumnWidth(0, 50)
         self.table.setColumnWidth(1, 100)
         self.table.setColumnWidth(2, 90)
         self.table.setColumnWidth(3, 100)
         self.table.setColumnWidth(4, 90)
         self.table.setColumnWidth(6, 100)
-        
+
         root.addWidget(self.table)
 
         # Buttons
         row_btns = QHBoxLayout()
-        
+
         self.btn_all = QPushButton(tr("btn.all"))
         self.btn_none = QPushButton(tr("btn.none"))
         self.btn_overdue_only = QPushButton(tr("dlg.nur_ueberfaellige"))
-        self.btn_fix_only = QPushButton(tr('booking.btn_real_fixed_only'))
+        self.btn_fix_only = QPushButton(tr("booking.btn_real_fixed_only"))
         self.btn_ok = QPushButton(tr("btn.book"))
-        self.btn_ok.setStyleSheet(f"""
+        self.btn_ok.setStyleSheet(
+            f"""
             QPushButton {{
                 background-color: {_c.ok};
                 color: white;
@@ -244,7 +346,8 @@ class RecurringBookingsDialog(QDialog):
             QPushButton:hover {{
                 opacity: 0.9;
             }}
-        """)
+        """
+        )
         self.btn_cancel = QPushButton(tr("btn.cancel"))
 
         row_btns.addWidget(self.btn_all)
@@ -264,6 +367,9 @@ class RecurringBookingsDialog(QDialog):
         self.btn_fix_only.clicked.connect(self._accept_fix_only)
         self.btn_ok.clicked.connect(self.accept)
         self.btn_cancel.clicked.connect(self.reject)
+        # Status muss auf echte Tabellenänderungen reagieren. Dieser Anschluss
+        # gehört in den UI-Aufbau und darf nicht hinter current_month() liegen.
+        self.table.itemChanged.connect(lambda _it: self._update_status())
 
     def _fill(self) -> None:
         """Füllt die Tabelle mit den Items"""
@@ -272,15 +378,46 @@ class RecurringBookingsDialog(QDialog):
         for item in self._items:
             self._add_row(item)
 
-        self.table.itemChanged.connect(lambda _it: self._update_status())
+        # v2.2.17 (Logikfix F1): Leerer Monat blockiert nicht mehr den ganzen
+        # Workflow – der Dialog bleibt offen, zeigt den Hinweis und der Monat
+        # laesst sich oben wechseln. Buchen ist bei leerer Liste deaktiviert.
+        empty = len(self._items) == 0
+        if not hasattr(self, "lbl_empty"):
+            self.lbl_empty = QLabel(tr("tracking.msg.no_due_bookings"))
+            self.lbl_empty.setWordWrap(True)
+            self.lbl_empty.setAlignment(Qt.AlignCenter)
+            lay = self.layout()
+            if lay is not None:
+                lay.insertWidget(max(0, lay.count() - 1), self.lbl_empty)
+        self.lbl_empty.setVisible(empty)
+
+        # Bei leerem Monat darf keine Buchungsaktion auslösbar sein. Der
+        # Monatswechsel bleibt dagegen verfügbar, damit der Workflow nicht
+        # wieder blockiert wird.
+        for button_name in (
+            "btn_ok",
+            "btn_all",
+            "btn_none",
+            "btn_overdue_only",
+            "btn_fix_only",
+        ):
+            button = getattr(self, button_name, None)
+            if button is not None:
+                button.setEnabled(not empty)
+
+        # Nach jedem Neuaufbau (auch Monatswechsel) Filter und Status frisch
+        # anwenden. Das behebt veraltete Zähler und ignorierte Filter.
         self._apply_filters()
-        self._update_status()
+
+    def current_month(self) -> tuple[int, int] | None:
+        """Der im Dialog zuletzt gewaehlte Monat (fuer korrekte Statistik)."""
+        return self._month
 
     def _add_row(self, item: SortablePendingItem) -> None:
         """Fügt eine Zeile hinzu"""
         r = self.table.rowCount()
         self.table.insertRow(r)
-        
+
         it = item.booking
         is_overdue = item.is_overdue
         days = item.days_overdue
@@ -306,7 +443,7 @@ class RecurringBookingsDialog(QDialog):
         else:
             art_text = tr("booking.kind_optional_short")
             art_color = QColor(c.text_dim)
-        
+
         art_item = QTableWidgetItem(art_text)
         art_item.setForeground(art_color)
         self.table.setItem(r, 1, art_item)
@@ -367,12 +504,14 @@ class RecurringBookingsDialog(QDialog):
 
     def _update_status(self):
         """Aktualisiert die Statusanzeige"""
-        visible_items = [it for row, it in enumerate(self._items) if not self.table.isRowHidden(row)]
+        visible_items = [
+            it for row, it in enumerate(self._items) if not self.table.isRowHidden(row)
+        ]
         total = len(visible_items)
         overdue = sum(1 for it in visible_items if it.is_overdue)
         upcoming = total - overdue
         selected = self._count_selected()
-        
+
         self.lbl_total.setText(trf("lbl.lbl_total", n=total))
         self.lbl_overdue.setText(trf("dlg.ueberfaellig_overdue", overdue=overdue))
         self.lbl_upcoming.setText(trf("lbl.lbl_pending", n=upcoming))
@@ -460,7 +599,9 @@ class RecurringBookingsDialog(QDialog):
                 continue
             chk = self.table.item(r, 0)
             if chk is not None:
-                chk.setCheckState(Qt.Checked if (item.is_fix and item.is_recurring) else Qt.Unchecked)
+                chk.setCheckState(
+                    Qt.Checked if (item.is_fix and item.is_recurring) else Qt.Unchecked
+                )
         self._update_status()
         self.accept()
 
@@ -476,7 +617,7 @@ class RecurringBookingsDialog(QDialog):
                 continue
 
             base = item.booking
-            
+
             # Amount/Details ggf. vom UI übernehmen
             amt_item = self.table.item(r, 6)
             det_item = self.table.item(r, 7)

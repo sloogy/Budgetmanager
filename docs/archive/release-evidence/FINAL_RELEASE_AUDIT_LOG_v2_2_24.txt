@@ -1,0 +1,48 @@
+BudgetManager v2.2.24 FINAL MERGED – unabhängige Nachprüfung
+Datum: 15. Juli 2026
+
+VERGLEICH
+- 337 gemeinsame Dateien zur ENTERPRISE_MERGED_AUDITED-Basis
+- 6 geänderte gemeinsame Dateien
+- 2 zusätzliche Berichte
+- Keine Änderung an Runtime-Code, Views, Modellen, Themes, Locales oder Abhängigkeiten
+
+GEFUNDEN UND BEHOBEN
+- Black-Formatfehler in tools/enterprise_ui_adhs_audit_1000.py
+- Headless-importorskip übersprang unnötig alle 8 Tests der 2223-Suite
+- Qt-freie Audit-Fallbacks wurden missverständlich als vollständiger PASS dargestellt
+
+FINALE GATES
+- Python 3.13.5 / PySide6 6.10.3
+- Frische Virtualenv und pip check: PASS
+- pytest mit Qt: 495 passed
+- Headless-Zieltest: 5 passed, 3 skipped
+- compileall: PASS
+- sync_version --check: PASS (2.2.24)
+- i18n_audit: PASS
+- verify_qt_translations DE/FR: PASS
+- dau_first_run_check: PASS
+- lint_procedure_check: PASS
+- Black: 42 Dateien sauber
+- Mypy model: 0 Fehler in 40 Dateien
+- Enterprise UI/ADHS: 1000 Loops, 4300 Checks, 0 FAIL, 200 WARN
+- UI/ADHS: 1000 Loops, 15623 Checks, 0 Findings
+- Mega Release: 1000 Loops, 6812 Checks, 0 Findings
+- Deep Logic: 500 Loops, 3500 Checks, 0 Findings
+- Stability: 300 Loops, 2400 Checks, 0 Findings
+- Release Logic: 100 Loops, 0 Findings
+- Fresh Logic: 100 Loops, 0 Findings
+- Headless-Startsmoke: 10 Sekunden ohne Traceback oder Crash
+
+SICHERHEIT
+- Bandit: 40108 LOC, 0 HIGH, 32 MEDIUM, 64 LOW
+- Alle MEDIUM: B608/dynamische SQL-Strukturen; Runtime-Code unverändert zur geprüften Enterprise-Basis
+- pip-audit: nicht abschließbar, DNS-Auflösung pypi.org fehlgeschlagen
+
+OFFENE UX-WARNUNGEN
+- 419 QMessageBox-Aufrufe, davon 107 Information
+- 13 komplexe Dialogdateien ohne explizite setTabOrder-Ketten
+
+STATUS
+- Interner Release Candidate: GO
+- Öffentlicher Final-Release: BEDINGTES GO nach manueller Plattform-/Installer-/Updater-/Screenreader-Abnahme und Online-CVE-Gate

@@ -6,7 +6,7 @@ Drei Sicherheitsstufen:
   "pin"      — 4-8 Ziffern, db_key mit PIN-Key verschlüsselt, Restore-Key
   "password" — Passwort, db_key mit PW-Key verschlüsselt, Restore-Key
 
-Jeder Benutzer hat eine eigene .enc-Datei (AES-256-verschlüsselt).
+Jeder Benutzer hat eine eigene .enc-Datei (Fernet: AES-128-CBC + HMAC-SHA256).
 DB ist IMMER verschlüsselt, auch bei Quick-Usern.
 
 Benutzerdaten in data/users.json.
@@ -26,6 +26,7 @@ from typing import Optional
 from datetime import datetime
 
 from model.app_paths import data_dir
+from model.file_permissions import secure_file
 from model.crypto import (
     generate_salt,
     generate_db_key,
@@ -166,21 +167,36 @@ def _make_slug(name: str) -> str:
     return clean[:40] or "user"
 
 
+PIN_MIN_LENGTH = 6  # v2.2.15 (M5): vorher 4 – zu wenig fuer eine Finanz-DB
+PIN_MAX_LENGTH = 8
+PASSWORD_MIN_LENGTH = 10  # v2.2.15 (M5): vorher 4
+
+
 def _validate_security_secret(security: str, secret: str = "") -> None:
     """Validiert Sicherheitsstufe und zugehöriges Secret zentral im Model.
 
     Wichtig: Die GUI validiert ebenfalls, aber das Model ist die letzte
     Schutzschicht. Dadurch können Tests, Scripts oder spätere Dialoge keine
     ungültige PIN/Passwort-Kombination in ``users.json`` speichern.
+
+    v2.2.15 (M5): Gilt nur fuer NEUE Geheimnisse (Neuanlage und Wechsel).
+    Bestehende Konten mit kuerzeren Secrets bleiben anmeldbar, da der Login
+    diese Funktion nicht durchlaeuft.
     """
     if security not in (SECURITY_QUICK, SECURITY_PIN, SECURITY_PASSWORD):
         raise ValueError(f"Ungültige Sicherheitsstufe: {security}")
     if security == SECURITY_PIN:
-        if not secret.isdigit() or not (4 <= len(secret) <= 8):
-            raise ValueError("PIN muss 4–8 Ziffern lang sein")
+        if not secret.isdigit() or not (
+            PIN_MIN_LENGTH <= len(secret) <= PIN_MAX_LENGTH
+        ):
+            raise ValueError(
+                f"PIN muss {PIN_MIN_LENGTH}–{PIN_MAX_LENGTH} Ziffern lang sein"
+            )
     elif security == SECURITY_PASSWORD:
-        if len(secret) < 4:
-            raise ValueError("Passwort muss mindestens 4 Zeichen lang sein")
+        if len(secret) < PASSWORD_MIN_LENGTH:
+            raise ValueError(
+                f"Passwort muss mindestens {PASSWORD_MIN_LENGTH} Zeichen lang sein"
+            )
 
 
 class UserModel:
@@ -218,7 +234,13 @@ class UserModel:
                 json.dump(data, f, indent=2, ensure_ascii=False)
                 f.flush()
                 os.fsync(f.fileno())
+            # SICHERHEIT (v2.2.11): users.json enthaelt bei Quick-Konten den
+            # db_key im Klartext und sonst wrapped_db_key + pw_hash. Rechte
+            # BEVOR dem os.replace setzen – sonst existiert ein Zeitfenster,
+            # in dem die Datei mit umask-Rechten (typisch 0644) lesbar ist.
+            secure_file(tmp)
             os.replace(str(tmp), str(path))
+            secure_file(path)  # falls die Zieldatei schon existierte
             return True
         except Exception as e:
             logger.error("Fehler beim Speichern der Benutzerdatei: %s", e)
@@ -465,7 +487,10 @@ class UserModel:
             if needs_upgrade:
                 self._upgrade_user_kdf(user, db_key, secret)
             return db_key
-        except ValueError:
+        except (ValueError, TypeError):
+            # v2.2.30: TypeError zusätzlich – korrupte users.json-Werte
+            # (z. B. manipulierter pw_hash) dürfen den Login nicht crashen,
+            # sondern führen zur normalen Ablehnung.
             logger.warning("Authentifizierung fehlgeschlagen für '%s'", username)
             return None
 

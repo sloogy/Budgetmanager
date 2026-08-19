@@ -1,4 +1,5 @@
 from __future__ import annotations
+from utils.notifications import show_info, show_warning
 import logging
 
 logger = logging.getLogger(__name__)
@@ -52,7 +53,7 @@ from model.crypto import suspend_after_commit_autosave
 from views.copy_year_dialog import CopyYearDialog
 from views.special_income_dialog import ThirteenthSalaryDialog
 from model.income_specials import apply_13th_month_salary
-from views.budget_entry_dialog import BudgetEntryDialog, BudgetEntryRequest
+from views.budget_entry_dialog_extended import BudgetEntryRequest
 
 # Erweiterter Dialog mit integrierter Kategorie-Verwaltung
 from views.budget_entry_dialog_extended import BudgetEntryDialogExtended
@@ -467,7 +468,7 @@ class BudgetTab(QWidget):
         except Exception as exc:
             QMessageBox.critical(self, tr("msg.error"), str(exc))
             return
-        QMessageBox.information(self, tr("msg.success"), dlg.success_text())
+        show_info(self, tr("msg.success"), dlg.success_text())
         self.year_spin.setValue(plan.year)
         self.load()
 
@@ -584,19 +585,15 @@ class BudgetTab(QWidget):
             target_label = target.name
 
         if source.typ != target_typ:
-            QMessageBox.warning(
-                self, tr("dlg.hinweis"), tr("categories.drag_only_same_type")
-            )
+            show_warning(self, tr("dlg.hinweis"), tr("categories.drag_only_same_type"))
             return False
         if new_parent_id == source.id:
-            QMessageBox.warning(
-                self, tr("dlg.hinweis"), tr("categories.drag_not_onto_self")
-            )
+            show_warning(self, tr("dlg.hinweis"), tr("categories.drag_not_onto_self"))
             return False
 
         ok, reason = self.cats.can_reparent(int(source.id), new_parent_id)
         if not ok:
-            QMessageBox.warning(self, tr("catmgr.move_not_possible"), tr(reason))
+            show_warning(self, tr("catmgr.move_not_possible"), tr(reason))
             return False
         if source.parent_id == new_parent_id:
             return False
@@ -1150,7 +1147,7 @@ class BudgetTab(QWidget):
                 names = self.cats.list_names(t)
                 self.budget.seed_year_from_categories(year, t, names, amount=0.0)
 
-        QMessageBox.information(
+        show_info(
             self,
             tr("msg.success"),
             trf("budget.msg.seed_done", typ=display_typ(typ), year=year),
@@ -1762,7 +1759,7 @@ class BudgetTab(QWidget):
             self._internal_change = True
             item.setText(str(cat_obj.recurring_day or 1))
             self._internal_change = _prev
-            QMessageBox.warning(self, tr("msg.info"), tr("msg.invalid_day"))
+            show_warning(self, tr("msg.info"), tr("msg.invalid_day"))
             return
 
         self.cats.update_flags(
@@ -1782,9 +1779,7 @@ class BudgetTab(QWidget):
             total = 0.0
         if typ == TYP_EXPENSES and total < 0:
             total = abs(total)
-            QMessageBox.information(
-                self, tr("msg.info"), tr("msg.negative_not_allowed")
-            )
+            show_info(self, tr("msg.info"), tr("msg.negative_not_allowed"))
 
         base = round(total / 12.0, 2)
         last = round(total - base * 11, 2)
@@ -1828,9 +1823,7 @@ class BudgetTab(QWidget):
         typed_puffer = parse_amount(item.text())
         if typ == TYP_EXPENSES and typed_puffer < 0:
             typed_puffer = abs(typed_puffer)
-            QMessageBox.information(
-                self, tr("msg.info"), tr("msg.negative_not_allowed")
-            )
+            show_info(self, tr("msg.info"), tr("msg.negative_not_allowed"))
 
         year = int(self.year_spin.value())
 
@@ -1948,17 +1941,14 @@ class BudgetTab(QWidget):
 
             _, is_rec, _day = self.cats.get_flags(typ, cat)
             default_mode = BUDGET_MODE_ALL if is_rec else BUDGET_MODE_MONTH
-            categories = (
-                self.cats.list_names_tree(typ)
-                if hasattr(self.cats, "list_names_tree")
-                else self.cats.list_names(typ)
-            )
-
-            dlg = BudgetEntryDialog(
+            # v2.2.16 (K2): Einheitlich der erweiterte Dialog – vorher bekam
+            # der Nutzer je nach Einstiegspunkt zwei verschiedene Formulare
+            # fuer dieselbe Aufgabe.
+            dlg = BudgetEntryDialogExtended(
                 self,
+                conn=self.conn,
                 default_year=int(year),
                 default_typ=typ,
-                categories=list(categories),
                 preset={
                     "category": cat,
                     "amount": typed,
@@ -1966,7 +1956,6 @@ class BudgetTab(QWidget):
                     "mode": default_mode,
                     "only_if_empty": False,
                 },
-                category_model=self.cats,
             )
             # Referenz halten: PySide darf den Python-Wrapper nicht einsammeln,
             # solange das native Dialogfenster offen ist.
@@ -2009,9 +1998,7 @@ class BudgetTab(QWidget):
 
         if typ == TYP_EXPENSES and val < 0:
             val = abs(val)
-            QMessageBox.information(
-                self, tr("msg.info"), tr("msg.negative_not_allowed")
-            )
+            show_info(self, tr("msg.info"), tr("msg.negative_not_allowed"))
 
         _prev = self._internal_change
         self._internal_change = True
@@ -2206,7 +2193,7 @@ class BudgetTab(QWidget):
                     forecast_mode=str(getattr(req, "forecast_mode", "auto") or "auto"),
                 )
             except Exception as e:
-                QMessageBox.warning(
+                show_warning(
                     self,
                     tr("budget.title.category_error"),
                     trf(
@@ -2347,9 +2334,7 @@ class BudgetTab(QWidget):
         r = self.table.currentRow()
         c = self.table.currentColumn()
         if r < 0 or c < 4 or c > 15:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("budget.msg.select_month_cell")
-            )
+            show_info(self, tr("msg.info"), tr("budget.msg.select_month_cell"))
             return
         if self._is_header_row(r) or self._is_footer_row(r):
             return
@@ -2361,7 +2346,7 @@ class BudgetTab(QWidget):
 
         # Bei Parent mit Children: Bearbeiten öffnet Dialog NICHT (sonst verwirrend)
         if self._row_has_children(r):
-            QMessageBox.information(
+            show_info(
                 self,
                 tr("msg.info"),
                 tr("budget.msg.parent_has_children")
@@ -2448,9 +2433,7 @@ class BudgetTab(QWidget):
     def remove_budget_row(self):
         selected = self._selected_categories()
         if not selected:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("budget.msg.select_category_row")
-            )
+            show_info(self, tr("msg.info"), tr("budget.msg.select_category_row"))
             return
         self._delete_budget_rows_for_categories(selected)
 
@@ -2465,9 +2448,7 @@ class BudgetTab(QWidget):
         """
         selected = self._selected_categories()
         if not selected:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("budget.msg.select_category_row")
-            )
+            show_info(self, tr("msg.info"), tr("budget.msg.select_category_row"))
             return
         self._delete_categories_with_confirm(selected)
 
@@ -2508,9 +2489,7 @@ class BudgetTab(QWidget):
                 cat_ids.append(int(cat_obj.id))
 
         if not cat_ids:
-            QMessageBox.warning(
-                self, tr("msg.warning"), tr("budget.msg.category_missing")
-            )
+            show_warning(self, tr("msg.warning"), tr("budget.msg.category_missing"))
             return
 
         decision = ask_category_delete_decision(self, conn=self.conn, cat_ids=cat_ids)
@@ -2544,9 +2523,7 @@ class BudgetTab(QWidget):
         req = dlg.get_request()
 
         if req.src_year == req.dst_year:
-            QMessageBox.warning(
-                self, tr("msg.warning"), tr("budget.msg.copy_year_diff")
-            )
+            show_warning(self, tr("msg.warning"), tr("budget.msg.copy_year_diff"))
             return
 
         typ = None if not req.scope_typ else req.scope_typ
@@ -2570,7 +2547,7 @@ class BudgetTab(QWidget):
                     req.dst_year, typ, self.cats.list_names(typ), amount=0.0
                 )
 
-        QMessageBox.information(
+        show_info(
             self,
             tr("msg.success"),
             trf("budget.msg.copy_year_done", src=req.src_year, dst=req.dst_year),
@@ -2740,7 +2717,7 @@ class BudgetTab(QWidget):
                 return
             ok, reason = self.cats.can_reparent(int(cat_obj.id), None)
             if not ok:
-                QMessageBox.warning(self, tr("catmgr.move_not_possible"), tr(reason))
+                show_warning(self, tr("catmgr.move_not_possible"), tr(reason))
                 return
             self.cats.update_parent(int(cat_obj.id), None)
             self.load()
@@ -2785,7 +2762,7 @@ class BudgetTab(QWidget):
 
         # Prüfen ob Name bereits existiert
         if new_name in self.cats.list_names(typ):
-            QMessageBox.warning(
+            show_warning(
                 self,
                 tr("msg.error"),
                 trf(
@@ -2810,7 +2787,7 @@ class BudgetTab(QWidget):
                 cat_id, typ=typ, old_name=cat_name, new_name=new_name
             )
             self.load()
-            QMessageBox.information(
+            show_info(
                 self,
                 tr("msg.success"),
                 trf("budget.msg.renamed", old=cat_name, new=new_name),
@@ -2826,7 +2803,7 @@ class BudgetTab(QWidget):
             new_val = not cat.is_fix
             self.cats.update_flags(cat.id, is_fix=new_val)
             status = "aktiviert" if new_val else "deaktiviert"
-            QMessageBox.information(
+            show_info(
                 self,
                 tr("msg.success"),
                 trf("budget.msg.fix_toggled", category=cat.name, status=status),
@@ -2843,7 +2820,7 @@ class BudgetTab(QWidget):
             new_val = not cat.is_recurring
             self.cats.update_flags(cat.id, is_recurring=new_val)
             status = "aktiviert" if new_val else "deaktiviert"
-            QMessageBox.information(
+            show_info(
                 self,
                 tr("msg.success"),
                 trf("budget.msg.rec_toggled", category=cat.name, status=status),
@@ -2869,7 +2846,7 @@ class BudgetTab(QWidget):
 
         try:
             self.cats.update_flags(cat.id, is_recurring=True, recurring_day=day)
-            QMessageBox.information(
+            show_info(
                 self,
                 tr("msg.success"),
                 trf("budget.msg.set_due_day_done", category=cat.name, day=day),
@@ -2946,9 +2923,7 @@ class BudgetTab(QWidget):
                 break
 
         if abs(first_val) < 1e-9:
-            QMessageBox.information(
-                self, tr("msg.info"), tr("budget.msg.no_value_to_copy")
-            )
+            show_info(self, tr("msg.info"), tr("budget.msg.no_value_to_copy"))
             return
 
         year = int(self.year_spin.value())
@@ -2958,7 +2933,7 @@ class BudgetTab(QWidget):
                 self.budget.set_amount(year, m, typ, cat, first_val)
 
         self.load()
-        QMessageBox.information(
+        show_info(
             self,
             "OK",
             trf("budget.msg.copied_to_all_months", value=fmt_amount(first_val)),
@@ -2968,7 +2943,7 @@ class BudgetTab(QWidget):
         """Fügt eine Kategorie zu Favoriten hinzu"""
         self.favorites.add(typ, category)
         self.load()  # Tabelle neu laden um Stern-Symbol anzuzeigen
-        QMessageBox.information(
+        show_info(
             self,
             tr("auto.views_tabs_budget_tab.1934_favorit_6f4adb2a"),
             trf("budget.msg.added_to_favorites", category=category),
@@ -2978,7 +2953,7 @@ class BudgetTab(QWidget):
         """Entfernt eine Kategorie aus Favoriten"""
         self.favorites.remove(typ, category)
         self.load()  # Tabelle neu laden um Stern-Symbol zu entfernen
-        QMessageBox.information(
+        show_info(
             self,
             tr("auto.views_tabs_budget_tab.1943_favorit_a9b8479f"),
             trf(
@@ -3288,8 +3263,13 @@ class BudgetTab(QWidget):
     # -----------------------------
     def _apply_table_styles(self) -> None:
         """Einheitliches Styling für Header/Parent/TOTAL + bessere Übersicht."""
-        pal = self.table.palette()
-        alt = pal.color(QPalette.AlternateBase)
+        # v2.2.46: Farben kommen aus dem Designprofil, nicht aus der
+        # Systempalette. Ein dunkles GNOME-Theme faerbte die Budget-Tabelle
+        # sonst gegen ein helles BudgetManager-Profil — vierter Fund dieser
+        # Bugklasse nach Seitenleiste (2.2.33), Login/Konto (2.2.39) und
+        # Cockpit-Beschriftungen (2.2.44).
+        _c = ui_colors(self)
+        alt = QColor(_c.table_alt)
 
         header_bg = alt.lighter(112)
         parent_bg = alt.lighter(108)

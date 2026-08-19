@@ -32,6 +32,7 @@ from PySide6.QtWidgets import (
 
 from app_info import APP_VERSION, app_version_label
 from updater.common import clear_check_result, read_check_result
+from utils.accessibility import configure_dialog_tab_order
 from utils.i18n import tr, trf
 
 GITHUB_RELEASES_URL = "https://github.com/sloogy/Budgetmanager/releases/latest"
@@ -73,7 +74,9 @@ class UpdateDialog(QDialog):
         root = QVBoxLayout(self)
         root.setSpacing(10)
 
-        self.lbl_info = QLabel(trf("update.current_version", version=app_version_label()))
+        self.lbl_info = QLabel(
+            trf("update.current_version", version=app_version_label())
+        )
         self.lbl_info.setTextFormat(Qt.RichText)
         self.lbl_info.setWordWrap(True)
         root.addWidget(self.lbl_info)
@@ -110,7 +113,9 @@ class UpdateDialog(QDialog):
         btn_row.addWidget(self.btn_recheck)
 
         self.btn_github = QPushButton(tr("update.btn_releases"))
-        self.btn_github.clicked.connect(lambda: QDesktopServices.openUrl(QUrl(GITHUB_RELEASES_URL)))
+        self.btn_github.clicked.connect(
+            lambda: QDesktopServices.openUrl(QUrl(GITHUB_RELEASES_URL))
+        )
         btn_row.addWidget(self.btn_github)
 
         btn_row.addStretch(1)
@@ -129,6 +134,7 @@ class UpdateDialog(QDialog):
         self._append(tr("update.hint_windows"))
 
         QTimer.singleShot(0, self._check)
+        configure_dialog_tab_order(self)
 
     def _append(self, text: str) -> None:
         for line in str(text).splitlines():
@@ -136,7 +142,9 @@ class UpdateDialog(QDialog):
 
     def _toggle_details(self, on: bool) -> None:
         self.log.setVisible(on)
-        self.btn_details.setText(tr("update.hide_details") if on else tr("update.show_details"))
+        self.btn_details.setText(
+            tr("update.hide_details") if on else tr("update.show_details")
+        )
 
     def _set_busy(self, busy: bool) -> None:
         self._busy = busy
@@ -152,7 +160,9 @@ class UpdateDialog(QDialog):
         self._available = False
         self.btn_update.setEnabled(False)
         self.lbl_status.setText(tr("update.status_checking"))
-        self._append("$ " + " ".join(_entrypoint_cmd("updater.check_update") + ["--gui"]))
+        self._append(
+            "$ " + " ".join(_entrypoint_cmd("updater.check_update") + ["--gui"])
+        )
         self._set_busy(True)
 
         self._proc = QProcess(self)
@@ -186,7 +196,9 @@ class UpdateDialog(QDialog):
             self.lbl_status.setText(trf("update.status_error", error=res.get("error")))
         elif res:
             self._available = False
-            self.lbl_status.setText(trf("update.status_uptodate", version=res.get("current") or APP_VERSION))
+            self.lbl_status.setText(
+                trf("update.status_uptodate", version=res.get("current") or APP_VERSION)
+            )
         else:
             self._available = False
             self.lbl_status.setText(trf("update.status_check_failed", code=exit_code))
@@ -194,11 +206,14 @@ class UpdateDialog(QDialog):
     def _apply(self) -> None:
         if not self._available:
             return
-        if QMessageBox.question(
-            self,
-            tr("update.confirm_apply_title"),
-            tr("update.confirm_apply_text"),
-        ) != QMessageBox.Yes:
+        if (
+            QMessageBox.question(
+                self,
+                tr("update.confirm_apply_title"),
+                tr("update.confirm_apply_text"),
+            )
+            != QMessageBox.Yes
+        ):
             return
 
         cmd = _entrypoint_cmd("updater.apply_update")
@@ -208,11 +223,15 @@ class UpdateDialog(QDialog):
             if getattr(sys, "frozen", False):
                 started = QProcess.startDetached(cmd[0], cmd[1:])
             else:
-                started = QProcess.startDetached(cmd[0], cmd[1:], str(Path(__file__).resolve().parents[1]))
+                started = QProcess.startDetached(
+                    cmd[0], cmd[1:], str(Path(__file__).resolve().parents[1])
+                )
             if not started:
                 raise RuntimeError("QProcess.startDetached lieferte False")
         except Exception as e:
-            QMessageBox.critical(self, tr("msg.error"), trf("update.apply_start_failed", error=str(e)))
+            QMessageBox.critical(
+                self, tr("msg.error"), trf("update.apply_start_failed", error=str(e))
+            )
             return
 
         # WICHTIG: last_check.json hier NICHT loeschen. Der soeben abgekoppelt

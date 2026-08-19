@@ -3,7 +3,7 @@ import logging
 
 import sys
 from pathlib import Path
-from openpyxl import load_workbook
+from utils.secure_excel import load_workbook_safely
 from openpyxl.utils import range_boundaries
 
 from model.database import open_db
@@ -14,9 +14,12 @@ from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 MONTH_COLS = list(range(5, 17))  # E..P -> 12 Monate
 
-def _read_budget_block(ws, start_row:int, end_row:int, year:int, typ:str, budget: BudgetModel):
+
+def _read_budget_block(
+    ws, start_row: int, end_row: int, year: int, typ: str, budget: BudgetModel
+):
     # In Budgett Pannung: Kategorie in Spalte C, Monatswerte in E..P
-    for r in range(start_row, end_row+1):
+    for r in range(start_row, end_row + 1):
         cat = ws.cell(row=r, column=3).value
         if not cat or not isinstance(cat, str):
             continue
@@ -25,12 +28,17 @@ def _read_budget_block(ws, start_row:int, end_row:int, year:int, typ:str, budget
             if v is None or v == "":
                 continue
             try:
-                amt=float(v)
+                amt = float(v)
             except Exception:
                 logging.getLogger(__name__).debug(
-                    "Excel-Import: Zelle r%s/c%s ist keine Zahl (%r) — übersprungen", r, col, v)
+                    "Excel-Import: Zelle r%s/c%s ist keine Zahl (%r) — übersprungen",
+                    r,
+                    col,
+                    v,
+                )
                 continue
             budget.set_amount(year, month, typ, cat.strip(), amt)
+
 
 def main() -> int:
     if len(sys.argv) < 2:
@@ -46,11 +54,11 @@ def main() -> int:
     cats = CategoryModel(conn)
     budget = BudgetModel(conn)
 
-    wb = load_workbook(xlsm, data_only=True, keep_vba=True)
+    wb = load_workbook_safely(xlsm, data_only=True, keep_vba=True)
     ws = wb["Budgett Pannung"]
 
     # Jahr 1 ist in E5 (start_jahr) -> data_only kann Wert geben, sonst fallback 2024
-    y1 = ws["E5"].value if isinstance(ws["E5"].value, (int,float)) else 2024
+    y1 = ws["E5"].value if isinstance(ws["E5"].value, (int, float)) else 2024
     y1 = int(y1)
     y2 = y1 + 1
 
@@ -61,13 +69,13 @@ def main() -> int:
 
     def read_table_names(tref, typ):
         minc, minr, maxc, maxr = range_boundaries(tref)
-        for r in range(minr+1, maxr+1):
-            name=ws.cell(row=r, column=minc).value
+        for r in range(minr + 1, maxr + 1):
+            name = ws.cell(row=r, column=minc).value
             if isinstance(name, str) and name.strip():
                 # Fix-Flag: bei Ausgaben ist in Excel Flag in Spalte B
-                is_fix=False
+                is_fix = False
                 if typ == TYP_EXPENSES:
-                    flag=ws.cell(row=r, column=2).value
+                    flag = ws.cell(row=r, column=2).value
                     is_fix = bool(flag and str(flag).strip())
                 cats.upsert(typ, name.strip(), is_fix, True if is_fix else False)
 
@@ -78,7 +86,9 @@ def main() -> int:
     # Budget-Blöcke (aus Analyse):
     # Einkommen: rows 10-12
     _read_budget_block(ws, 10, 12, y1, TYP_INCOME, budget)
-    _read_budget_block(ws, 10, 12, y2, TYP_INCOME, budget)   # year2 values in S..AB nicht gelesen (optional)
+    _read_budget_block(
+        ws, 10, 12, y2, TYP_INCOME, budget
+    )  # year2 values in S..AB nicht gelesen (optional)
 
     # Ausgaben: rows 23-43
     _read_budget_block(ws, 23, 43, y1, TYP_EXPENSES, budget)
@@ -88,6 +98,7 @@ def main() -> int:
 
     print("Import fertig. Jahr:", y1)
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

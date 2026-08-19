@@ -37,16 +37,33 @@ def _referenced_i18n_keys() -> set[str]:
     referenced: set[str] = set()
     for path in ROOT.rglob("*.py"):
         rel = path.relative_to(ROOT)
-        if any(part in {"tests", "tools", "locales", "docs", "data", "updater", "installer", "__pycache__"} for part in rel.parts):
+        if any(
+            part
+            in {
+                "tests",
+                "tools",
+                "locales",
+                "docs",
+                "data",
+                "updater",
+                "installer",
+                "__pycache__",
+            }
+            for part in rel.parts
+        ):
             continue
-        referenced.update(TR_CALL_RE.findall(path.read_text(encoding="utf-8", errors="replace")))
+        referenced.update(
+            TR_CALL_RE.findall(path.read_text(encoding="utf-8", errors="replace"))
+        )
     return referenced
 
 
 def test_en_fr_referenced_values_have_no_german_residuals():
     referenced = _referenced_i18n_keys()
     for lang in ("en", "fr"):
-        values = _flatten_values(json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8")))
+        values = _flatten_values(
+            json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8"))
+        )
         findings = {
             key: values[key]
             for key in referenced
@@ -61,7 +78,7 @@ def test_13th_salary_dialog_has_no_hardcoded_chf_or_german_default_category():
     source = (ROOT / "views" / "special_income_dialog.py").read_text(encoding="utf-8")
     assert 'setSuffix(" CHF")' not in source
     assert 'tr("income13.default_category")' in source
-    assert 'format_money(plan.amount)' in source
+    assert "format_money(plan.amount)" in source
 
 
 def test_copy_year_dialog_uses_localized_rule_flags():
@@ -71,6 +88,8 @@ def test_copy_year_dialog_uses_localized_rule_flags():
 
 
 def test_github_workflow_gates_qt_translation_catalogs():
-    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
+        encoding="utf-8"
+    )
     assert "Verify Qt translation catalogs" in workflow
     assert "python tools/verify_qt_translations.py" in workflow

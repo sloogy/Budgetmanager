@@ -5,7 +5,7 @@
   "hintergrund_panel": "#2d2d30",
   "hintergrund_seitenleiste": "#252526",
   "text": "#cccccc",
-  "text_gedimmt": "#808080",
+  "text_gedimmt": "#949494",
   "akzent": "#007acc",
   "tabelle_hintergrund": "#1e1e1e",
   "tabelle_alt": "#252526",
@@ -24,5 +24,8 @@
   "dropdown_border": "#3e3e42",
   "schriftgroesse": 10,
   "hover_hintergrund": "#163549",
-  "hover_text": "#cccccc"
+  "hover_text": "#cccccc",
+  "akzent_text": "#ffffff",
+  "akzent_panel_text": "#3e9bd8",
+  "tabelle_header_text": "#cccccc"
 }

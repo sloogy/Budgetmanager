@@ -5,6 +5,7 @@ import re
 import sys
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -56,6 +57,7 @@ def test_update_check_writes_success_result_for_gui(monkeypatch, tmp_path):
     source_zip = tmp_path / "asset.zip"
     with zipfile.ZipFile(source_zip, "w") as zf:
         zf.writestr("BudgetManager-v2.0.9-portable/BudgetManager", "binary")
+        zf.writestr("BudgetManager-v2.0.9-portable/_internal/lib.so", "lib")
 
     import hashlib
 
@@ -278,7 +280,9 @@ def test_new_release_i18n_keys_exist_in_all_languages():
         "account.msg.delete_user_confirm",
         "tracking.msg.savings_negative_prompt",
         "backup_restore.msg.restore_restart_prompt",
-        "backup_restore.msg.reset_confirm",
+        "backup.legacy_integrity_title",
+        "backup.legacy_integrity_text",
+        "setup.excel_import_running",
         "about.html",
         "db.info.current",
     }

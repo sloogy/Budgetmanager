@@ -1,0 +1,70 @@
+{
+  "application": "Budgetmanager",
+  "version": "2.2.59",
+  "date": "2026-08-03",
+  "status": "target_system_test_required",
+  "baseline": {
+    "source": "BudgetManager_Source_2_2_56_LIFEPLANNER_FIXED_2026-08-02.zip",
+    "selective_source": "2.2.58",
+    "full_overwrite_performed": false
+  },
+  "integration": {
+    "host": "LifePlanner",
+    "host_version": "0.5.0",
+    "module_schema": "lifeplanner.module.v1",
+    "environment": [
+      "BUDGETMANAGER_DATA_DIR",
+      "LIFEPLANNER_MODULE_DATA_DIR",
+      "LIFEPLANNER_BRIDGE_DIR",
+      "LIFEPLANNER_CENTRAL_UPDATER"
+    ],
+    "review_first_import": true,
+    "automatic_financial_posting": false,
+    "bidirectional_fpm_bridge": true,
+    "savings_goal_outbox": true,
+    "windows_lpmodule": true,
+    "linux_lpmodule": true,
+    "lpmodule_sha256": true
+  },
+  "features": {
+    "salary_cycle_month_status": true,
+    "changed_upsert_tracking": true,
+    "reject_import": true,
+    "foreign_currency_confirmation": true,
+    "pending_import_badge": true,
+    "cockpit_independent_columns": true,
+    "cockpit_drop_placeholder": true,
+    "savings_goal_flow_balance": true,
+    "qtcharts_lifetime_hardening": true
+  },
+  "tests": {
+    "pytest_passed": 815,
+    "pytest_skipped": 13,
+    "pytest_failed": 0,
+    "selective_contract_tests_passed": 26,
+    "final_audit_loops": 1000,
+    "final_audit_checks": 19755,
+    "final_audit_warnings": 0,
+    "final_audit_failures": 0,
+    "release_logic_loops": 100,
+    "release_logic_findings": 0,
+    "i18n": "pass",
+    "handbook": "pass",
+    "version_sync": "pass",
+    "release_lint": "pass",
+    "syntax_compile": "pass",
+    "bandit": "not_run_tool_unavailable",
+    "qt_runtime": "not_run_pyside6_unavailable"
+  },
+  "change_scope": {
+    "modified_files": 45,
+    "added_files": 9,
+    "removed_files": 0
+  },
+  "lifeplanner_follow_up": {
+    "current_pin": "2.2.49",
+    "required_pin": "2.2.59",
+    "required_ref": "v2.2.59",
+    "file": "dependencies/modules.lock.json"
+  }
+}

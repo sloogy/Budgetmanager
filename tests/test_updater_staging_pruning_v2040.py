@@ -15,6 +15,7 @@ Abgedeckt:
 
 Laeuft ohne Qt/PySide6 (reine Daten-/Dateischicht + Quelltextpruefung).
 """
+
 from __future__ import annotations
 
 import sys
@@ -66,7 +67,9 @@ def test_prune_other_staging_cache_only_touches_own_artifacts(tmp_path):
     assert "user_backup.zip" in names, "fremde Dateien duerfen nicht geloescht werden"
 
 
-def test_check_update_prunes_stale_higher_staging_so_fallback_is_safe(monkeypatch, tmp_path):
+def test_check_update_prunes_stale_higher_staging_so_fallback_is_safe(
+    monkeypatch, tmp_path
+):
     import hashlib
     import zipfile
 
@@ -89,6 +92,7 @@ def test_check_update_prunes_stale_higher_staging_so_fallback_is_safe(monkeypatc
     source_zip = tmp_path / "asset.zip"
     with zipfile.ZipFile(source_zip, "w") as zf:
         zf.writestr("BudgetManager-v2.0.40-portable/BudgetManager", "binary")
+        zf.writestr("BudgetManager-v2.0.40-portable/_internal/lib.so", "lib")
     expected_sha = hashlib.sha256(source_zip.read_bytes()).hexdigest()
 
     monkeypatch.setattr(check_update, "read_current_version", lambda: "2.0.39")
@@ -109,9 +113,19 @@ def test_check_update_prunes_stale_higher_staging_so_fallback_is_safe(monkeypatc
             },
         ),
     )
-    monkeypatch.setattr(check_update, "cache_zip_path", lambda remote: cache_root / f"update_{remote}.zip")
-    monkeypatch.setattr(check_update, "download_file", lambda url, dest: dest.write_bytes(source_zip.read_bytes()))
-    monkeypatch.setattr(check_update, "staging_dir_for", lambda remote: staging_root / remote)
+    monkeypatch.setattr(
+        check_update,
+        "cache_zip_path",
+        lambda remote: cache_root / f"update_{remote}.zip",
+    )
+    monkeypatch.setattr(
+        check_update,
+        "download_file",
+        lambda url, dest: dest.write_bytes(source_zip.read_bytes()),
+    )
+    monkeypatch.setattr(
+        check_update, "staging_dir_for", lambda remote: staging_root / remote
+    )
 
     # updates_dir in beiden Namensraeumen auf tmp biegen (fuer write_staged_marker
     # und apply_update.latest_staged_version).
@@ -123,7 +137,9 @@ def test_check_update_prunes_stale_higher_staging_so_fallback_is_safe(monkeypatc
     assert rc == 0
 
     remaining = sorted(p.name for p in staging_root.iterdir() if p.is_dir())
-    assert remaining == ["2.0.40"], f"alter Beta-Staging-Ordner muss weg sein: {remaining}"
+    assert remaining == [
+        "2.0.40"
+    ], f"alter Beta-Staging-Ordner muss weg sein: {remaining}"
 
     # Race-Sicherheitsnetz: ohne last_check.json faellt apply auf die hoechste
     # vorhandene Staging-Version zurueck – die ist jetzt die gerade gepruefte.
@@ -147,6 +163,6 @@ def test_update_dialog_apply_does_not_clear_check_result_before_apply():
     next_def = apply_src.find("\n    def ", len(marker))
     if next_def != -1:
         apply_src = apply_src[:next_def]
-    assert "clear_check_result()" not in apply_src, (
-        "_apply darf last_check.json nicht loeschen (Race mit apply_update)"
-    )
+    assert (
+        "clear_check_result()" not in apply_src
+    ), "_apply darf last_check.json nicht loeschen (Race mit apply_update)"

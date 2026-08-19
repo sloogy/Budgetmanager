@@ -1,0 +1,74 @@
+name: Dependency Security Audit
+
+on:
+  workflow_call:
+  push:
+    branches: [main]
+    paths:
+      - "requirements*.txt"
+      - "requirements*.in"
+      - "requirements*.lock"
+      - "main.py"
+      - "model/**"
+      - "updater/**"
+      - "utils/**"
+      - "views/**"
+      - "tools/bandit_release_gate.py"
+      - "audit_artifacts/BANDIT_STATIC_SCAN_v2_2_24.json"
+      - ".github/workflows/dependency-audit.yml"
+  pull_request:
+    paths:
+      - "requirements*.txt"
+      - "requirements*.in"
+      - "requirements*.lock"
+      - "main.py"
+      - "model/**"
+      - "updater/**"
+      - "utils/**"
+      - "views/**"
+      - "tools/bandit_release_gate.py"
+      - "audit_artifacts/BANDIT_STATIC_SCAN_v2_2_24.json"
+      - ".github/workflows/dependency-audit.yml"
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: "3.13"
+      - name: Install audit tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --require-hashes -r requirements-dev.lock
+      - name: Static source security delta gate
+        run: |
+          mkdir -p audit_artifacts
+          python tools/bandit_release_gate.py \
+            --bandit-json audit_artifacts/BANDIT_CURRENT.json \
+            --summary-json audit_artifacts/BANDIT_RELEASE_GATE.json
+      - name: Resolve and audit locked dependencies online
+        run: |
+          mkdir -p audit_artifacts
+          python -m pip_audit \
+            --requirement requirements.lock \
+            --format json \
+            --output audit_artifacts/PIP_AUDIT_ONLINE.json
+          python -m pip install --require-hashes -r requirements.lock
+          python -m pip check
+      - name: Upload audit evidence
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: pip-audit-online
+          path: |
+            audit_artifacts/PIP_AUDIT_ONLINE.json
+            audit_artifacts/BANDIT_CURRENT.json
+            audit_artifacts/BANDIT_RELEASE_GATE.json
+          if-no-files-found: error

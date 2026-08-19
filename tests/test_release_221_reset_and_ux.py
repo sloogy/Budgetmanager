@@ -11,6 +11,7 @@
   Daten-Hub zeigt Fehler sichtbar; Vorschlagsbericht erklärt "Warum?" und
   kennzeichnet Lernvorschläge; Buchung zeigt Undo-Hinweis.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -86,9 +87,10 @@ def test_partial_reset_keeps_categories_and_tracking(conn):
     assert message == "database.msg.reset_budget_only"
     # Kategorien + Buchungen bleiben
     assert _count(conn, "tracking") == 1
-    assert conn.execute(
-        "SELECT COUNT(*) FROM categories WHERE name='Essen'"
-    ).fetchone()[0] == 1
+    assert (
+        conn.execute("SELECT COUNT(*) FROM categories WHERE name='Essen'").fetchone()[0]
+        == 1
+    )
     # Budgets + budgetbezogene Nebentabellen geleert
     assert _count(conn, "budget") == 0
     assert _count(conn, "budget_warnings") == 0
@@ -97,9 +99,7 @@ def test_partial_reset_keeps_categories_and_tracking(conn):
 
 def test_full_reset_clears_learning_state_and_keeps_system_flags(conn):
     _seed(conn)
-    conn.execute(
-        "INSERT OR REPLACE INTO system_flags(key, value) VALUES('probe', '1')"
-    )
+    conn.execute("INSERT OR REPLACE INTO system_flags(key, value) VALUES('probe', '1')")
     conn.commit()
     mgmt = DatabaseManagementModel("", conn=conn)
     ok, _ = mgmt.reset_database(create_backup=False, keep_user_data=False)
@@ -108,9 +108,10 @@ def test_full_reset_clears_learning_state_and_keeps_system_flags(conn):
     assert _count(conn, "budget") == 0
     assert _count(conn, "tracking_learning_state") == 0
     # system_flags geschützt
-    assert conn.execute(
-        "SELECT value FROM system_flags WHERE key='probe'"
-    ).fetchone()[0] == "1"
+    assert (
+        conn.execute("SELECT value FROM system_flags WHERE key='probe'").fetchone()[0]
+        == "1"
+    )
     # Standard-Kategorien wieder vorhanden
     assert _count(conn, "categories") > 0
 
@@ -131,10 +132,13 @@ def test_savings_data_survives_partial_reset(conn):
         create_backup=False, keep_user_data=True
     )
     assert ok
-    assert conn.execute(
-        "SELECT COALESCE(SUM(amount),0) FROM tracking WHERE typ=?",
-        (TYP_SAVINGS,),
-    ).fetchone()[0] == 500.0
+    assert (
+        conn.execute(
+            "SELECT COALESCE(SUM(amount),0) FROM tracking WHERE typ=?",
+            (TYP_SAVINGS,),
+        ).fetchone()[0]
+        == 500.0
+    )
 
 
 # ── Statische Zusicherungen ──────────────────────────────────────
@@ -171,7 +175,11 @@ def test_hub_shows_errors_visibly():
 
 def test_adjustment_dialog_explains_and_marks_learning_rows():
     src = _src("views/budget_adjustment_dialog.py")
-    for key in ("suggestion.why_deficit", "suggestion.why_surplus", "suggestion.why_learning"):
+    for key in (
+        "suggestion.why_deficit",
+        "suggestion.why_surplus",
+        "suggestion.why_learning",
+    ):
         assert key in src
     assert '"🆕 {typ_display}"' in src or "🆕 {typ_display}" in src
 
@@ -187,10 +195,16 @@ def test_overview_has_tag_filter_wired():
     assert "overview.tag_filter_all" in src
     assert "tag_filter_combo.currentIndexChanged.connect" in src
     assert "get_entries_in_range(date_from, date_to, tag_id=tag_id)" in src
-    assert "refresh_budget_overview(year, month_idx, self._cat_caches, tag_id=tag_id)" in src
+    compact_src = "".join(src.split())
+    assert (
+        "refresh_budget_overview(year,month_idx,self._cat_caches,tag_id=tag_id)"
+        in compact_src
+    )
     assert "refresh_tabular(" in src and "tag_id=tag_id" in src
     assert "refresh_budget_table(" in src and "tag_id=tag_id" in src
-    assert "right_panel.load(date_from, date_to, cat_tree=cat_tree, tag_id=tag_id)" in src
+    assert (
+        "right_panel.load(date_from, date_to, cat_tree=cat_tree, tag_id=tag_id)" in src
+    )
 
     # Der Filter läuft zentral über TrackingModel/entry_tags und wird in den
     # Listen-/Budgetpanels wiederverwendet, statt im Orchestrator dupliziert.
@@ -217,7 +231,9 @@ def test_tracking_range_accepts_tag_filter(conn):
         "VALUES('2026-06-11', ?, 'Essen', 20.0, 'ohne tag', 'manual')",
         (TYP_EXPENSES,),
     )
-    conn.execute("INSERT INTO entry_tags(entry_id, tag_id) VALUES(?, ?)", (tagged_id, tag_id))
+    conn.execute(
+        "INSERT INTO entry_tags(entry_id, tag_id) VALUES(?, ?)", (tagged_id, tag_id)
+    )
     conn.commit()
 
     rows = TrackingModel(conn).get_entries_in_range(

@@ -12,7 +12,7 @@
   "tabelle_header": "#eee0c7",
   "tabelle_gitter": "#d4c1a3",
   "auswahl_hintergrund": "#c97b2b",
-  "auswahl_text": "#ffffff",
+  "auswahl_text": "#272727",
   "negativ_text": "#b23b3b",
   "typ_einnahmen": "#2e7d32",
   "typ_ausgaben": "#b23b3b",
@@ -20,9 +20,12 @@
   "dropdown_bg": "#f3ead7",
   "dropdown_text": "#3a2e1f",
   "dropdown_selection": "#c97b2b",
-  "dropdown_selection_text": "#3a2e1f",
+  "dropdown_selection_text": "#2f2519",
   "dropdown_border": "#d4c1a3",
   "schriftgroesse": 10,
   "hover_hintergrund": "#eed6b9",
-  "hover_text": "#3a2e1f"
+  "hover_text": "#3a2e1f",
+  "akzent_text": "#272727",
+  "akzent_panel_text": "#975d20",
+  "tabelle_header_text": "#3a2e1f"
 }

@@ -1,0 +1,44 @@
+BudgetManager v2.2.25 – Release Audit Execution Log
+Datum: 2026-07-17
+
+BASIS
+- BudgetManager_Source_2_2_24_RELEASE_WARNINGS_FIXED.zip
+
+GEFUNDEN UND BEHOBEN
+1. Alte feste Kategorie-Tags blieben nach Kategorienwechsel erhalten.
+2. Undo/Redo stellte Tracking-Tags nicht wieder her.
+3. Tracking-Lesewege verloren die Buchungsquelle.
+4. Drei neue Bandit-B608-Heuristiken aus der ersten Source-Korrektur wurden durch statische SQL-Abfragen entfernt.
+5. 10.000er-Audit als verpflichtendes Tag-Release-Gate ergänzt.
+6. UI-Audit-Dateiname dynamisch auf APP_VERSION umgestellt.
+7. Bandit-Differenzgate ergänzt; neue MEDIUM/HIGH und jedes HIGH blockieren.
+
+ABSCHLUSSPRÜFUNGEN
+- pytest: 519 passed
+- enterprise_release_audit_10000: PASS, loops=10000, checks=112000, findings=0, seed=20260717
+- deep_logic_release_audit: PASS, loops=500, checks=3500, findings=0
+- enterprise_ui_adhs: PASS, loops=1000, checks=4300, warn=0, fail=0
+- ui_adhs: PASS, loops=1000, checks=15623, findings=0
+- mega_release: PASS, loops=1000, checks=6811, findings=0
+- stability: PASS, loops=300, checks=2400, findings=0
+- release_logic: PASS, loops=100, findings=0
+- fresh_logic: PASS, loops=100, findings=0
+- compileall: PASS
+- sync_version: PASS 2.2.25
+- verify_qt_translations: PASS
+- i18n_audit: PASS
+- dau_first_run_check: PASS
+- black model/: PASS, 40 files
+- black changed release files: PASS
+- mypy model/: PASS, 40 files, 0 errors
+- lint_procedure_check: PASS
+- release_self_test: PASS
+- updater_self_test: PASS
+- real startup smoke: PASS (10 s, timeout expected, no traceback/crash)
+- pip check: PASS
+- local pip-audit: environment DNS failure to pypi.org; mandatory online release gate configured
+- bandit: 98 total, 64 LOW, 34 MEDIUM, 0 HIGH; delta vs v2.2.24 = 0 blocking findings
+- API/AST production symbols removed: 0
+
+HINWEIS
+Ein zusätzlicher Versuch, den historischen Deep-Logic-Audit von 500 auf 10.000 Loops zu erhöhen, überschritt das lokale 10-Minuten-Werkzeuglimit und wird nicht als bestandener Nachweis gezählt. Der neue spezialisierte Enterprise-Zustandsaudit mit 10.000 Loops wurde vollständig abgeschlossen.

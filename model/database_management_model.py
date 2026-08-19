@@ -70,12 +70,19 @@ class DatabaseManagementModel:
             if not src.exists():
                 return False, ("database.msg.db_not_found", {"path": str(src)})
 
+            from model.user_model import _users_file_path
+            from model.app_paths import settings_path as _settings_path
+
+            u_path = _users_file_path()
+            s_path = _settings_path()
             create_bundle(
                 source_db=src,
                 out_path=Path(backup_path),
                 app=APP_NAME,
                 app_version=APP_VERSION,
                 note=f"DB-Management: {prefix}",
+                settings_path=s_path if s_path.exists() else None,
+                users_json_path=u_path if u_path.exists() else None,
             )
 
             return True, backup_path
@@ -158,7 +165,7 @@ class DatabaseManagementModel:
                     "tracking_learning_state",
                 ):
                     try:
-                        cursor.execute(f"DELETE FROM {table}")
+                        cursor.execute(f"DELETE FROM {table}")  # nosec B608
                     except sqlite3.OperationalError as e:
                         logger.debug("Teilreset %s: %s", table, e)
                 message = "database.msg.reset_budget_only"
@@ -191,7 +198,7 @@ class DatabaseManagementModel:
                         logger.warning("DELETE übersprungen (geschützt): %s", table)
                         continue
                     try:
-                        cursor.execute(f"DELETE FROM {table}")
+                        cursor.execute(f"DELETE FROM {table}")  # nosec B608
                     except sqlite3.OperationalError as e:
                         logger.debug("DELETE FROM %s: %s", table, e)
 
@@ -398,7 +405,7 @@ class DatabaseManagementModel:
                     stats[label] = 0
                     continue
                 try:
-                    cursor.execute(f"SELECT COUNT(*) FROM {table}")
+                    cursor.execute(f"SELECT COUNT(*) FROM {table}")  # nosec B608
                     stats[label] = cursor.fetchone()[0]
                 except sqlite3.OperationalError as e:
                     logger.debug("SELECT COUNT FROM %s: %s", table, e)

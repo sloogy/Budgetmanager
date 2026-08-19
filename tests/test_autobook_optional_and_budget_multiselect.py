@@ -3,6 +3,7 @@
 Diese Tests sind bewusst statische Marker-Tests: Die betroffenen Pfade sind Qt-UI-
 Dialoge, deren Fachlogik hier durch eindeutige Quelltext-Marker abgesichert wird.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,7 +15,7 @@ def test_autobooking_includes_optional_non_flagged_budget_items_and_skips_zero()
     src = (ROOT / "views" / "tabs" / "tracking_tab.py").read_text(encoding="utf-8")
     assert "optional_items: list[PendingBooking]" in src
     assert "no_flags = not (cat.is_fix or cat.is_recurring)" in src
-    assert "source=\"auto_optional\"" in src
+    assert 'source="auto_optional"' in src
     assert "if abs(budget_amt) < EPS:" in src
     assert "optional_items=optional_items" in src
 
@@ -42,7 +43,9 @@ def test_budget_tab_supports_ctrl_multiselect_and_bulk_delete_paths():
 
 def test_budget_and_tracking_have_coverage_warning_hooks():
     budget_src = (ROOT / "views" / "tabs" / "budget_tab.py").read_text(encoding="utf-8")
-    tracking_src = (ROOT / "views" / "tabs" / "tracking_tab.py").read_text(encoding="utf-8")
+    tracking_src = (ROOT / "views" / "tabs" / "tracking_tab.py").read_text(
+        encoding="utf-8"
+    )
     assert "budget_year_coverage" in budget_src
     assert "lbl_coverage_warning" in budget_src
     assert "budget.coverage.warning_months" in budget_src

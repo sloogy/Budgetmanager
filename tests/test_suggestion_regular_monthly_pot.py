@@ -11,6 +11,7 @@ Fix: Ist eine "Pot"-Kategorie in jedem Fenstermonat gebucht, ist sie de facto
 eine laufende Monatsausgabe und wird pro Monat verglichen. Echte Töpfe
 (lumpy/unregelmässig, z.B. Franchise) behalten die Topf-Logik.
 """
+
 from __future__ import annotations
 
 import sqlite3

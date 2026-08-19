@@ -8,6 +8,7 @@
    eigenes Symbol statt des fälschlichen Defizit-Symbols 📉.
 3. i18n: setup.budget_learning_skip_ok existiert in de/en/fr, Parität bleibt.
 """
+
 from __future__ import annotations
 
 import json

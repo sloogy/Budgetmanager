@@ -1,37 +1,75 @@
 from __future__ import annotations
 
+from utils.notifications import show_info, show_warning
 import logging
+import os
 import sqlite3
 import sys
 from datetime import date
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl, QPoint, QProcess
-from PySide6.QtGui import QAction, QActionGroup, QIcon, QKeySequence, QShortcut, QDesktopServices
+from PySide6.QtCore import Qt, QTimer, QUrl, QPoint, QProcess, QSize
+from PySide6.QtGui import (
+    QAction,
+    QActionGroup,
+    QIcon,
+    QKeySequence,
+    QShortcut,
+    QDesktopServices,
+)
 from PySide6.QtWidgets import (
-    QMainWindow, QTabWidget, QMenuBar, QMenu, QMessageBox,
-    QDialog, QVBoxLayout, QLabel, QDialogButtonBox, QApplication, QPushButton,
-    QFrame, QTableWidget, QPlainTextEdit
+    QMainWindow,
+    QTabWidget,
+    QMenuBar,
+    QMenu,
+    QMessageBox,
+    QDialog,
+    QVBoxLayout,
+    QLabel,
+    QDialogButtonBox,
+    QApplication,
+    QPushButton,
+    QFrame,
+    QTableWidget,
+    QPlainTextEdit,
+    QToolBar,
+    QToolButton,
+    QWidget,
+    QHBoxLayout,
+    QButtonGroup,
+    QSizePolicy,
+    QLineEdit,
 )
 
 from app_info import APP_NAME, APP_VERSION, app_window_title, app_version_label
-from model.app_paths import resolve_in_app, data_dir, configured_db_path, configured_backups_dir
+from model.app_paths import (
+    resolve_in_app,
+    data_dir,
+    configured_db_path,
+    configured_backups_dir,
+)
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
 from model.category_model import CategoryModel
-from model.shortcuts_config import load_shortcuts, save_shortcuts, default_key
+from model.shortcuts_config import load_shortcuts, default_key
 from model.undo_redo_model import UndoRedoModel
 from settings import Settings
 from utils.icons import get_icon
 from utils.i18n import tr, trf, display_security_label
-from settings_dialog import SettingsDialog
 from theme_manager import ThemeManager
 from views.account_management_dialog import AccountManagementDialog
 from views.backup_restore_dialog import BackupRestoreDialog
+from views.help_launcher import (
+    help_file_candidates,
+    install_help_corner_button,
+    open_help_file,
+)
+from views.help_menu import build_help_menu
 from views.budget_adjustment_dialog import BudgetAdjustmentDialog
 from views.category_manager_dialog import CategoryManagerDialog
 from views.export_dialog import ExportDialog
 from views.favorites_dashboard_dialog import FavoritesDashboardDialog
 from views.global_search_dialog import GlobalSearchDialog
+from views.lifeplanner_import_dialog import LifePlannerImportDialog
 from views.quick_add_dialog import QuickAddDialog
 from views.savings_goals_dialog import SavingsGoalsDialog
 from views.shortcuts_dialog import ShortcutsDialog
@@ -47,125 +85,49 @@ from updater.common import clear_startup_check_result, read_startup_check_result
 
 logger = logging.getLogger(__name__)
 
-class AboutDialog(QDialog):
-    """Über-Dialog"""
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(trf("about.title", app_name=APP_NAME, version=app_version_label()))
 
-        layout = QVBoxLayout()
+from views.main_window_dialogs import AboutDialog, LogViewerDialog
 
-        html = trf(
-            "about.html",
-            app_name=APP_NAME,
-            version=app_version_label(),
-            app_version=APP_VERSION,
-        )
-
-        info = QLabel(html)
-        info.setTextFormat(Qt.RichText)
-        info.setWordWrap(True)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok)
-        buttons.accepted.connect(self.accept)
-
-        # Update-Button direkt im Info/Über-Dialog
-        btn_updates = buttons.addButton(tr("update.title"), QDialogButtonBox.ActionRole)
-        btn_updates.clicked.connect(self._open_updates)
-
-        layout.addWidget(info)
-        layout.addWidget(buttons)
-        self.setLayout(layout)
-        self.setMinimumWidth(450)
-
-    def _open_updates(self):
-        """Öffnet den Update-Dialog (portable/EXE kompatibel)."""
-        try:
-            dlg = UpdateDialog(self.parent() or self)
-            dlg.exec()
-        except Exception as e:
-            QMessageBox.warning(self, tr('auto.views_main_window.100_update_81ab2a4e'), trf("lbl.updatedialog_konnte_nicht_geoeffnet", e=str(e)))
-
-
-
-class LogViewerDialog(QDialog):
-    """Einfacher, robuster Log-Anzeiger für normale Nutzer."""
-
-    def __init__(self, parent, *, title: str, path: Path, text: str):
-        super().__init__(parent)
-        self._path = Path(path)
-        self.setWindowTitle(title)
-
-        layout = QVBoxLayout(self)
-
-        path_label = QLabel(str(self._path))
-        path_label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-        path_label.setWordWrap(True)
-        layout.addWidget(path_label)
-
-        viewer = QPlainTextEdit(self)
-        viewer.setReadOnly(True)
-        viewer.setPlainText(text or trf("diagnostics.file_not_found", path=str(self._path)))
-        viewer.setLineWrapMode(QPlainTextEdit.NoWrap)
-        layout.addWidget(viewer, 1)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.Close)
-        btn_open_folder = buttons.addButton(tr("diagnostics.open_folder"), QDialogButtonBox.ActionRole)
-        btn_refresh = buttons.addButton(tr("diagnostics.refresh"), QDialogButtonBox.ActionRole)
-
-        def _open_folder() -> None:
-            try:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(self._path.parent)))
-            except Exception as exc:
-                QMessageBox.warning(self, tr("msg.error"), str(exc))
-
-        def _refresh() -> None:
-            try:
-                from model.diagnostics import read_text_tail
-
-                viewer.setPlainText(read_text_tail(self._path))
-            except Exception as exc:
-                viewer.setPlainText(str(exc))
-
-        btn_open_folder.clicked.connect(_open_folder)
-        btn_refresh.clicked.connect(_refresh)
-        buttons.rejected.connect(self.reject)
-        buttons.accepted.connect(self.accept)
-        layout.addWidget(buttons)
-
-        self.resize(900, 600)
 
 class MainWindow(QMainWindow):
-    def __init__(self, conn: sqlite3.Connection, *,
-                 active_user=None, user_model=None):
+    def __init__(self, conn: sqlite3.Connection, *, active_user=None, user_model=None):
         super().__init__()
         self.conn = conn
-        self._active_user = active_user    # User-Objekt (oder None bei unverschlüsselter DB)
-        self._user_model = user_model      # UserModel (oder None)
+        self._active_user = (
+            active_user  # User-Objekt (oder None bei unverschlüsselter DB)
+        )
+        self._user_model = user_model  # UserModel (oder None)
         self.setWindowTitle(app_window_title())
 
         # Einstellungen laden
         self.settings = Settings()
         self._startup_update_proc: QProcess | None = None
         self._startup_update_prompt_shown = False
+        # Start-Auto-Backup und Setup-Abschluss laufen bewusst ueber
+        # parent-gebundene QTimer. Native Qt-Dialoge duerfen waehrend ihres
+        # finished-/closeEvent-Stacks weder schwere I/O-Arbeit starten noch ihre
+        # letzte Python-Referenz verlieren (PySide/Shiboken-Segfaultschutz).
+        self._startup_auto_backup_timer: QTimer | None = None
+        self._setup_assistant_finalize_timer: QTimer | None = None
+        self._setup_assistant_finish_pending = False
         # Qt/PySide Crashschutz: Voll-Refreshes werden nach Dialog-/Menüaktionen
         # verzögert ausgeführt. Direktes Rebuild von QTableWidget-Inhalten im
         # QAction-/Dialog-Stack kann unter PySide6/Qt6 native Shiboken-Abbrüche
         # auslösen, obwohl Python selbst keine Exception wirft.
         self._refresh_all_tabs_pending = False
         self._refresh_all_tabs_running = False
-        
+
         # Undo/Redo
         self.undo_redo = UndoRedoModel(conn)
 
         # Theme Manager initialisieren
         self.theme_manager = ThemeManager(self.settings)
-        
+
         # Resize-Timer für Debouncing (verhindert zu häufiges Speichern)
         self.resize_timer = QTimer()
         self.resize_timer.timeout.connect(self._save_window_geometry)
         self.resize_timer.setSingleShot(True)
-        
+
         # Defaults once
         CategoryModel(conn).ensure_defaults()
 
@@ -175,7 +137,7 @@ class MainWindow(QMainWindow):
         self.tabs.setDocumentMode(True)  # Moderneres Aussehen
         self._apply_tab_position()
         self._apply_tab_bar_visibility()
-        
+
         # Tab-Widgets erstellen
         self.cockpit_tab = CockpitTab(conn, settings=self.settings)
         self.budget_tab = BudgetTab(conn)
@@ -187,20 +149,33 @@ class MainWindow(QMainWindow):
         # Reiter „Konto" – zentraler Hub (Konto, Speicherort, Backup, Zurücksetzen).
         # encrypted_mode anhand des aktiven Users (verschlüsselter Login).
         from views.account_data_hub import AccountDataHub
+
         self.account_tab = AccountDataHub(
-            self.settings, self, encrypted_mode=(self._active_user is not None),
+            self.settings,
+            self,
+            encrypted_mode=(self._active_user is not None),
         )
-        
+
         # Schnelleingabe-Signals von Tabs verbinden
         self.cockpit_tab.quick_add_requested.connect(self._show_quick_add)
         self.cockpit_tab.fixcost_requested.connect(self._tracking_add_fixcosts)
         self.cockpit_tab.favorites_requested.connect(self._show_favorites_dashboard)
         self.cockpit_tab.savings_requested.connect(self._show_savings_goals)
-        self.cockpit_tab.goto_budget_requested.connect(lambda: self._goto_tab(self.budget_tab))
-        self.cockpit_tab.goto_tracking_requested.connect(lambda: self._goto_tab(self.tracking_tab))
-        self.cockpit_tab.goto_overview_requested.connect(lambda: self._goto_tab(self.overview_tab))
-        self.cockpit_tab.goto_savings_requested.connect(lambda: self._goto_tab(self.savings_tab))
-        self.cockpit_tab.budget_warnings_requested.connect(lambda: self._check_budget_warnings())
+        self.cockpit_tab.goto_budget_requested.connect(
+            lambda: self._goto_tab(self.budget_tab)
+        )
+        self.cockpit_tab.goto_tracking_requested.connect(
+            lambda: self._goto_tab(self.tracking_tab)
+        )
+        self.cockpit_tab.goto_overview_requested.connect(
+            lambda: self._goto_tab(self.overview_tab)
+        )
+        self.cockpit_tab.goto_savings_requested.connect(
+            lambda: self._goto_tab(self.savings_tab)
+        )
+        self.cockpit_tab.budget_warnings_requested.connect(
+            lambda: self._check_budget_warnings()
+        )
         self.budget_tab.quick_add_requested.connect(self._show_quick_add)
         self.budget_tab.savings_goals_requested.connect(self._show_savings_goals)
         self.categories_tab.quick_add_requested.connect(self._show_quick_add)
@@ -208,22 +183,26 @@ class MainWindow(QMainWindow):
 
         # "Vorschläge"-Button in der Übersicht soll den Budgetwarner öffnen
         try:
-            self.overview_tab.budget_warnings_requested.connect(self._check_budget_warnings_from_overview)
+            self.overview_tab.budget_warnings_requested.connect(
+                self._check_budget_warnings_from_overview
+            )
         except Exception as e:
             logger.debug("%s", e)
         try:
-            self.overview_tab.budget_edit_requested.connect(self._open_budget_editor_from_overview)
+            self.overview_tab.budget_edit_requested.connect(
+                self._open_budget_editor_from_overview
+            )
         except Exception as e:
             logger.debug("%s", e)
-        
+
         # Settings-Checkboxen mit Settings synchronisieren
-        if hasattr(self.budget_tab, 'chk_autosave'):
+        if hasattr(self.budget_tab, "chk_autosave"):
             self.budget_tab.chk_autosave.toggled.connect(self._on_autosave_changed)
-        if hasattr(self.budget_tab, 'chk_ask_due'):
+        if hasattr(self.budget_tab, "chk_ask_due"):
             self.budget_tab.chk_ask_due.toggled.connect(self._on_ask_due_changed)
-        if hasattr(self.budget_tab, 'budget_data_changed'):
+        if hasattr(self.budget_tab, "budget_data_changed"):
             self.budget_tab.budget_data_changed.connect(self._update_undo_redo_actions)
-        
+
         # Tab-Definitionen (Index -> Widget, Name)
         # Tab-Labels: keys statt eingefrorenem tr()-String (fuer retranslate_ui)
         self._tab_label_keys = {
@@ -253,18 +232,18 @@ class MainWindow(QMainWindow):
             4: "savings",
             6: "account",
         }
-        
+
         # Tabs in gespeicherter Reihenfolge hinzufügen
         self._load_tab_order()
         self._apply_tab_icons()
 
-        self.setCentralWidget(self.tabs)
-        
+        self._build_modern_shell()
+
         # Tab-Wechsel Signal verbinden (für dynamisches Bearbeiten-Menü).
         # _last_tab_widget erlaubt Speichern BEVOR der alte Tab verlassen wird.
         self._last_tab_widget = self.tabs.currentWidget()
         self.tabs.currentChanged.connect(self._on_tab_changed)
-        
+
         # Fenster-Geometrie und -Status wiederherstellen
         self._restore_window_state()
 
@@ -277,36 +256,194 @@ class MainWindow(QMainWindow):
                     self.tabs.setCurrentIndex(idx)
         except Exception as e:
             logger.debug("start_on_cockpit: %s", e)
-        
+
         # Menü erstellen
         self._create_menu()
+        self._create_unified_action_toolbar()
+        self._reduce_duplicate_quick_actions()
         self._install_edit_context_menus()
 
         # Footer/Statusbar-Info (User + DB-Pfad)
         self._setup_statusbar_info()
-        
+
         # Globale Shortcuts
         self._setup_shortcuts()
-        
+
         # Einstellungen auf Tabs anwenden
         self._apply_settings_to_tabs()
-        
+
         # Aktuelles Jahr setzen
         self._set_current_year()
-        
+
         # Theme anwenden
         self._apply_theme()
 
         # Übersicht-Subtabs (Dashboard/Verlauf/…) gemäß Settings ein-/ausblenden
         self._apply_overview_subtabs_from_settings()
-        
+
         # Bei Bedarf beim Start alle Tabs aktualisieren
         if self.settings.refresh_on_start:
             self._refresh_all_tabs()
 
+        # LifePlanner-Bridge erst nach vollständigem UI-Aufbau prüfen.
+        # Es wird ausschließlich ein Zähler angezeigt; nie automatisch gebucht.
+        QTimer.singleShot(500, self._update_lifeplanner_import_badge)
+
         # Auto-Backup wird via QTimer.singleShot aus main.py gestartet,
         # damit _encrypted_session korrekt gesetzt ist.
-    
+
+    def _build_modern_shell(self) -> None:
+        """Baut die moderne Seitenleisten-Navigation um die bestehenden Tabs.
+
+        Die fachlichen Reiter bleiben unverändert. Nur ihre Navigation wird in
+        eine feste, beschriftete Seitenleiste verlegt. Dadurch bleiben Modelle,
+        Signale und Controller kompatibel, während die Oberfläche wesentlich
+        ruhiger und eindeutiger wird.
+        """
+        shell = QWidget(self)
+        shell.setObjectName("modernShell")
+        layout = QHBoxLayout(shell)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        sidebar = QFrame(shell)
+        sidebar.setObjectName("mainSidebar")
+        sidebar.setMinimumWidth(188)
+        sidebar.setMaximumWidth(228)
+        side = QVBoxLayout(sidebar)
+        side.setContentsMargins(12, 14, 12, 12)
+        side.setSpacing(6)
+
+        brand = QLabel(APP_NAME, sidebar)
+        brand.setObjectName("sidebarBrand")
+        brand.setMinimumHeight(38)
+        side.addWidget(brand)
+
+        self._sidebar_group = QButtonGroup(self)
+        self._sidebar_group.setExclusive(True)
+        self._sidebar_buttons = {}
+
+        navigation = [
+            (self.cockpit_tab, "🏠", tr("tab.cockpit")),
+            (self.tracking_tab, "💳", tr("tab.tracking")),
+            (self.budget_tab, "📒", tr("tab.budget")),
+            (self.savings_tab, "🎯", tr("tab.savings")),
+            (self.overview_tab, "📊", tr("tab.overview")),
+            (self.categories_tab, "🗂", tr("tab.categories")),
+            (self.account_tab, "🛡", tr("tab.account")),
+        ]
+        for widget, icon, label in navigation:
+            if self.tabs.indexOf(widget) < 0:
+                continue
+            button = QPushButton(f"{icon}  {label}", sidebar)
+            button.setObjectName("sidebarNavButton")
+            button.setCheckable(True)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setMinimumHeight(40)
+            button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+            button.clicked.connect(
+                lambda _checked=False, target=widget: self._goto_tab(target)
+            )
+            self._sidebar_group.addButton(button)
+            self._sidebar_buttons[widget] = button
+            side.addWidget(button)
+        side.addStretch(1)
+
+        def add_utility(text, callback, tip=""):
+            button = QPushButton(text, sidebar)
+            button.setObjectName("sidebarUtilityButton")
+            button.setMinimumHeight(38)
+            if tip:
+                button.setToolTip(tip)
+            button.clicked.connect(callback)
+            side.addWidget(button)
+            return button
+
+        self.sidebar_import_button = add_utility(
+            f"📥  {tr('lifeplanner_import.sidebar')}",
+            self._show_lifeplanner_imports,
+            tr("lifeplanner_import.intro"),
+        )
+        self.sidebar_help_button = add_utility(
+            f"?  {tr('menu.help')}", self._show_handbook, tr("menu.handbook_tip")
+        )
+        self.sidebar_settings_button = add_utility(
+            f"⚙  {tr('menu.settings')}", self._show_settings
+        )
+        version = QLabel(app_version_label(), sidebar)
+        version.setObjectName("sidebarVersion")
+        version.setAlignment(Qt.AlignCenter)
+        side.addWidget(version)
+        # Der Tab-Bar wird nur noch als interner Seiten-Container verwendet.
+        self.tabs.tabBar().hide()
+        self.tabs.setObjectName("modernContentTabs")
+        layout.addWidget(sidebar)
+        layout.addWidget(self.tabs, 1)
+        self.setCentralWidget(shell)
+        self.modern_shell = shell
+        self.main_sidebar = sidebar
+
+        self.tabs.currentChanged.connect(self._sync_sidebar_selection)
+        self._sync_sidebar_selection(self.tabs.currentIndex())
+
+    def _sync_sidebar_selection(self, _index: int = -1) -> None:
+        current = self.tabs.currentWidget()
+        for widget, button in getattr(self, "_sidebar_buttons", {}).items():
+            button.setChecked(widget is current)
+
+    def _apply_modern_shell_style(self) -> None:
+        """Ergänzt **rein strukturelle** Regeln für Sidebar und Aktionsleiste.
+
+        v2.2.33 – zwei Fehler behoben:
+
+        1. **Farben gehörten nie hierher.** Diese Methode setzte Hintergründe
+           über ``palette(base)``/``palette(highlight)`` usw. Der ThemeManager
+           setzt aber ausschliesslich ein Stylesheet und **nie** eine
+           ``QPalette`` – ``palette(...)`` löst deshalb gegen die *System*-
+           Palette auf. Auf einem dunklen Desktop blieb die Seitenleiste damit
+           dunkel, obwohl ein helles Profil aktiv war; der Selektor
+           ``QFrame#mainSidebar`` ist spezifischer als das generische
+           ``QWidget`` des App-Themes und gewann. Alle Farben liegen jetzt im
+           ThemeManager (``build_stylesheet``), hier bleibt nur Geometrie.
+        2. **Stylesheet-Akkumulation.** Der Block wurde per
+           ``setStyleSheet(self.styleSheet() + ...)`` angehängt und diese
+           Methode läuft bei *jedem* Theme-Wechsel erneut – das Stylesheet
+           wuchs unbegrenzt. Der Block wird jetzt idempotent gesetzt.
+        """
+        self.setStyleSheet(
+            """
+            QLabel#sidebarBrand {
+                font-size: 17px;
+                font-weight: 700;
+                padding: 4px 8px 10px 8px;
+            }
+            QPushButton#sidebarNavButton, QPushButton#sidebarUtilityButton {
+                border: 0;
+                border-radius: 8px;
+                padding: 9px 11px;
+                text-align: left;
+            }
+            QPushButton#sidebarNavButton:checked {
+                font-weight: 600;
+            }
+            QLabel#sidebarVersion {
+                font-size: 11px;
+                font-weight: 500;
+                padding-top: 8px;
+            }
+            QToolBar#unifiedActionToolbar {
+                spacing: 7px;
+                padding: 7px 10px;
+            }
+            QToolBar#unifiedActionToolbar QToolButton {
+                border-radius: 7px;
+                padding: 7px 11px;
+                font-weight: 600;
+            }
+            QTabWidget#modernContentTabs::pane { border: 0; }
+        """
+        )
+
     def _restore_window_state(self):
         """Stellt Fenster-Größe, -Position und -Status wieder her"""
         # Position und Größe laden
@@ -314,22 +451,32 @@ class MainWindow(QMainWindow):
         height = self.settings.get("window_height", 800)
         x = self.settings.get("window_x", 100)
         y = self.settings.get("window_y", 100)
-        
+
         # Validiere Position/Groesse (verhindert Off-Screen- und DPI-Wechsel-Probleme)
         try:
             from utils.ui_scaling import clamp_geometry_to_available_screen
-            x, y, width, height = clamp_geometry_to_available_screen(x, y, width, height)
+
+            x, y, width, height = clamp_geometry_to_available_screen(
+                x, y, width, height
+            )
         except Exception as e:
-            logger.debug("Fenstergeometrie konnte nicht DPI-sicher geklemmt werden: %s", e)
+            logger.debug(
+                "Fenstergeometrie konnte nicht DPI-sicher geklemmt werden: %s", e
+            )
             screen = QApplication.primaryScreen()
             if screen:
                 screen_rect = screen.availableGeometry()
-                if x + width < 0 or x > screen_rect.width() or y + height < 0 or y > screen_rect.height():
+                if (
+                    x + width < 0
+                    or x > screen_rect.width()
+                    or y + height < 0
+                    or y > screen_rect.height()
+                ):
                     x, y = 100, 100
 
         # Position und Groesse setzen
         self.setGeometry(x, y, width, height)
-        
+
         # Maximiert/Fullscreen-Status nur merken, aber hier NICHT anzeigen.
         #
         # Wichtig: Dieses Objekt wird noch im Konstruktor aufgebaut. Ein show()/
@@ -361,33 +508,33 @@ class MainWindow(QMainWindow):
             self.showMaximized()
         else:
             self.show()
-    
+
     def _save_window_geometry(self):
         """Speichert Fenster-Geometrie in Settings"""
         # Window-State nicht speichern wenn fullscreen/maximized
         # (das wird separat gespeichert)
         if self.isFullScreen() or self.isMaximized():
             return
-        
+
         self.settings.set("window_x", self.x())
         self.settings.set("window_y", self.y())
         self.settings.set("window_width", self.width())
         self.settings.set("window_height", self.height())
-    
+
     def resizeEvent(self, event):
         """Wird aufgerufen wenn Fenster resized wird"""
         super().resizeEvent(event)
         # Starte Timer um Geometrie nach Delay zu speichern (Debouncing)
         self.resize_timer.stop()
         self.resize_timer.start(500)  # 500ms Verzögerung
-    
+
     def moveEvent(self, event):
         """Wird aufgerufen wenn Fenster verschoben wird"""
         super().moveEvent(event)
         # Auch hier Debouncing
         self.resize_timer.stop()
         self.resize_timer.start(500)
-    
+
     def _shortcut_key(self, action_id: str) -> str:
         """Gibt das konfigurierte Tastenkürzel für eine GUI-Aktion zurück."""
         try:
@@ -412,7 +559,11 @@ class MainWindow(QMainWindow):
             try:
                 self._apply_shortcut(action, action_id)
             except Exception as exc:
-                logger.debug("Shortcut-Aktion %s konnte nicht aktualisiert werden: %s", action_id, exc)
+                logger.debug(
+                    "Shortcut-Aktion %s konnte nicht aktualisiert werden: %s",
+                    action_id,
+                    exc,
+                )
 
     def _setup_shortcuts(self):
         """Richtet globale Tastenkürzel ein (konfigurierbar über Einstellungen)."""
@@ -437,6 +588,85 @@ class MainWindow(QMainWindow):
         self._create_extras_menu(menubar)
         self._create_account_menu(menubar)
         self._create_help_menu(menubar)
+        self._install_help_corner_button(menubar)
+
+    def _install_help_corner_button(self, menubar: QMenuBar) -> None:
+        """Setzt das sichtbare ``?`` rechts oben in die Menüleiste.
+
+        Implementierung in ``views/help_launcher.py``. Der vorhandene Knopf wird
+        bewusst wiederverwendet: ``_retranslate_ui`` leert die Menüleiste, das
+        Corner-Widget überlebt das aber und darf nicht doppelt entstehen.
+        """
+        self.menu_help_button = install_help_corner_button(
+            self,
+            menubar,
+            self._show_handbook,
+            existing=getattr(self, "menu_help_button", None),
+        )
+
+    def _create_unified_action_toolbar(self) -> None:
+        """Zentrale, kontextunabhängige Aktionen für die häufigsten Aufgaben.
+
+        Alle Einstiege rufen dieselben Dialoge/Methoden auf. Damit gibt es für
+        Buchungen, Fixkosten, Kategorien und Sparziele jeweils nur noch einen
+        fachlichen Bedienweg, auch wenn die Aktion von verschiedenen Reitern
+        aus gestartet wird.
+        """
+        toolbar = QToolBar(tr("menu.extras"), self)
+        toolbar.setObjectName("unifiedActionToolbar")
+        toolbar.setMovable(False)
+        toolbar.setFloatable(False)
+        toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+
+        def add_action(label: str, icon: str, callback, tip: str = "") -> QAction:
+            action = QAction(get_icon(icon), label, self)
+            if tip:
+                action.setToolTip(tip)
+                action.setStatusTip(tip)
+            action.triggered.connect(lambda _checked=False, cb=callback: cb())
+            toolbar.addAction(action)
+            return action
+
+        self.action_quick_add_unified = add_action(
+            tr("menu.quick_add"), "➕", self._show_quick_add, tr("menu.quick_add_tip")
+        )
+        self.action_fixcosts_unified = add_action(
+            tr("cockpit.action_fixcosts"),
+            "📅",
+            self._tracking_add_fixcosts,
+            tr("cockpit.action_fixcosts_tip"),
+        )
+        toolbar.addSeparator()
+        self.action_categories_unified = add_action(
+            tr("menu.category_manager"),
+            "📁",
+            self._show_category_manager,
+            tr("menu.category_manager_tip"),
+        )
+        self.action_savings_unified = add_action(
+            tr("menu.savings_goals"),
+            "🎯",
+            self._show_savings_goals,
+            tr("savings.goal.toolbar_tip"),
+        )
+        toolbar.addSeparator()
+        self.action_search_unified = add_action(
+            tr("menu.search"), "🔍", self._show_global_search, tr("menu.search_tip")
+        )
+        self.addToolBar(Qt.TopToolBarArea, toolbar)
+        self.unified_action_toolbar = toolbar
+
+    def _reduce_duplicate_quick_actions(self) -> None:
+        """Blendet redundante Schnelleingabe-Knöpfe in Analyse-/Verwaltungsreitern aus.
+
+        Cockpit und Tracking behalten ihre kontextnahen Einstiege. Budget,
+        Kategorien und Übersicht nutzen stattdessen die dauerhaft sichtbare
+        zentrale Aktionsleiste.
+        """
+        for widget in (self.budget_tab, self.categories_tab, self.overview_tab):
+            button = getattr(widget, "btn_quick_add", None)
+            if button is not None:
+                button.setVisible(False)
 
     def _install_edit_context_menus(self) -> None:
         """Rechtsklick auf freie Tab-Flächen zeigt die passenden Bearbeiten-Aktionen.
@@ -472,7 +702,9 @@ class MainWindow(QMainWindow):
                 seen.add(ident)
                 widget.setContextMenuPolicy(Qt.CustomContextMenu)
                 widget.customContextMenuRequested.connect(
-                    lambda pos, w=widget: self._show_edit_context_menu(w.mapToGlobal(pos))
+                    lambda pos, w=widget: self._show_edit_context_menu(
+                        w.mapToGlobal(pos)
+                    )
                 )
             except Exception as e:
                 logger.debug("Edit-Kontextmenü konnte nicht installiert werden: %s", e)
@@ -525,15 +757,38 @@ class MainWindow(QMainWindow):
         add("cockpit.action_fixcosts", "📅", self._tracking_add_fixcosts)
         add("cockpit.action_budget_warnings", "🚨", self._check_budget_warnings)
         menu.addSeparator()
-        add("cockpit.action_check_budget", "💰", lambda: self._goto_tab(self.budget_tab))
+        add(
+            "cockpit.action_check_budget", "💰", lambda: self._goto_tab(self.budget_tab)
+        )
         add("cockpit.action_overview", "📈", lambda: self._goto_tab(self.overview_tab))
         add("cockpit.action_savings", "🎯", self._show_savings_goals)
         menu.addSeparator()
         add("cockpit.refresh", "🔄", self.cockpit_tab.refresh)
         add("cockpit.customize", "⚙️", self.cockpit_tab._show_customize_menu)
         add("cockpit.show_all", "🏠", self.cockpit_tab._show_all_panels)
+        menu.addSeparator()
+        fixed = QAction(tr("cockpit.layout_fixed"), self)
+        fixed.setCheckable(True)
+        fixed.setChecked(self.cockpit_tab.is_layout_fixed())
+        fixed.setToolTip(tr("cockpit.layout_fixed_tip"))
+        fixed.toggled.connect(self.cockpit_tab.set_layout_fixed)
+        menu.addAction(fixed)
+        reset = QAction(tr("cockpit.reset_layout"), self)
+        reset.triggered.connect(self.cockpit_tab.reset_layout)
+        menu.addAction(reset)
 
         menu.exec(global_pos)
+
+    def _sync_cockpit_layout_action(self, fixed: bool) -> None:
+        """Hält Ansicht-Menü und Cockpit-Dialog ohne Signalschleife synchron."""
+        action = getattr(self, "_cockpit_layout_fixed_action", None)
+        if action is None:
+            return
+        old = action.blockSignals(True)
+        try:
+            action.setChecked(bool(fixed))
+        finally:
+            action.blockSignals(old)
 
     # ── Menü-Sektionen ──────────────────────────────────────────
 
@@ -578,6 +833,10 @@ class MainWindow(QMainWindow):
         """Ansicht-Menü: Tab-Navigation, Subtab-Sichtbarkeit, Vollbild."""
         view_menu = menubar.addMenu(tr("menu.view"))
 
+        from views.ui_experience_menu import build_ui_experience_menu
+
+        build_ui_experience_menu(self, view_menu)
+
         # Anzeigen-Untermenü (Tabs/Module ein- & ausblenden)
         anzeigen_menu = view_menu.addMenu(tr("menu.show"))
 
@@ -597,7 +856,9 @@ class MainWindow(QMainWindow):
             act = QAction(title, self)
             act.setCheckable(True)
             act.setChecked(self.tabs.indexOf(self._tab_definitions[tab_id][0]) >= 0)
-            act.toggled.connect(lambda checked, tid=tab_id: self._set_tab_visible(tid, checked))
+            act.toggled.connect(
+                lambda checked, tid=tab_id: self._set_tab_visible(tid, checked)
+            )
             tabs_menu.addAction(act)
             self._tab_visibility_actions[tab_id] = act
 
@@ -611,7 +872,11 @@ class MainWindow(QMainWindow):
                 act = QAction(title, self)
                 act.setCheckable(True)
                 act.setChecked(bool(cockpit_cfg.get(key, True)))
-                act.toggled.connect(lambda checked, k=key: self.cockpit_tab.set_panel_visible(k, checked))
+                act.toggled.connect(
+                    lambda checked, k=key: self.cockpit_tab.set_panel_visible(
+                        k, checked
+                    )
+                )
                 cockpit_menu.addAction(act)
                 self._cockpit_panel_actions[key] = act
         except Exception:
@@ -624,7 +889,7 @@ class MainWindow(QMainWindow):
         overview_menu.setIcon(get_icon("📈"))
         self._overview_visibility_actions = {}
 
-        vis = self.settings.get('overview_visible_subtabs', {}) or {}
+        vis = self.settings.get("overview_visible_subtabs", {}) or {}
         specs = []
         try:
             specs = self.overview_tab.get_subtab_specs()
@@ -636,13 +901,41 @@ class MainWindow(QMainWindow):
                 act = QAction(title, self)
                 act.setCheckable(True)
                 act.setChecked(bool(vis.get(key, True)))
-                act.toggled.connect(lambda checked, k=key: self._toggle_overview_subtab(k, checked))
+                act.toggled.connect(
+                    lambda checked, k=key: self._toggle_overview_subtab(k, checked)
+                )
                 overview_menu.addAction(act)
                 self._overview_visibility_actions[key] = act
         else:
             dummy = QAction(tr("lbl.keine_optionen_verfuegbar"), self)
             dummy.setEnabled(False)
             overview_menu.addAction(dummy)
+
+        # Cockpit-Layout: Automatik oder bewusst fixiertes Drag-and-drop.
+        cockpit_layout_menu = view_menu.addMenu(tr("menu.cockpit_layout"))
+        cockpit_layout_menu.setIcon(get_icon("↕"))
+        fixed_layout = QAction(tr("cockpit.layout_fixed"), self)
+        fixed_layout.setCheckable(True)
+        fixed_layout.setChecked(self.cockpit_tab.is_layout_fixed())
+        fixed_layout.setToolTip(tr("cockpit.layout_fixed_tip"))
+        fixed_layout.toggled.connect(self.cockpit_tab.set_layout_fixed)
+        cockpit_layout_menu.addAction(fixed_layout)
+        self._cockpit_layout_fixed_action = fixed_layout
+
+        customize_layout = QAction(tr("cockpit.customize"), self)
+        customize_layout.triggered.connect(self.cockpit_tab._show_customize_menu)
+        cockpit_layout_menu.addAction(customize_layout)
+
+        reset_layout = QAction(tr("cockpit.reset_layout"), self)
+        reset_layout.triggered.connect(self.cockpit_tab.reset_layout)
+        cockpit_layout_menu.addAction(reset_layout)
+
+        try:
+            self.cockpit_tab.layout_mode_changed.connect(
+                self._sync_cockpit_layout_action
+            )
+        except Exception:
+            pass
 
         view_menu.addSeparator()
 
@@ -651,39 +944,50 @@ class MainWindow(QMainWindow):
         goto_cockpit.setIcon(get_icon("🏠"))
         self._apply_shortcut(goto_cockpit, "tab_cockpit")
         goto_cockpit.triggered.connect(lambda: self._goto_tab(self.cockpit_tab))
-        view_menu.addAction(goto_cockpit)
+        # v2.2.16 (K7): Menueeintrag entfernt – die Sidebar ist die Navigation.
+        # Die Action bleibt fensterweit registriert, damit der Shortcut weiter wirkt.
+        self.addAction(goto_cockpit)
 
         goto_budget = QAction(tr("menu.goto_budget"), self)
         goto_budget.setIcon(get_icon("💰"))
         self._apply_shortcut(goto_budget, "tab_budget")
         goto_budget.triggered.connect(lambda: self._goto_tab(self.budget_tab))
-        view_menu.addAction(goto_budget)
+        # v2.2.16 (K7): Menueeintrag entfernt – die Sidebar ist die Navigation.
+        # Die Action bleibt fensterweit registriert, damit der Shortcut weiter wirkt.
+        self.addAction(goto_budget)
 
         self.goto_categories_action = QAction(tr("menu.goto_categories"), self)
         self.goto_categories_action.setIcon(get_icon("📁"))
         self._apply_shortcut(self.goto_categories_action, "tab_categories")
         # Wenn der Experten-Tab sichtbar ist, dorthin wechseln; sonst Manager öffnen.
         self.goto_categories_action.triggered.connect(self._goto_categories_or_manager)
-        view_menu.addAction(self.goto_categories_action)
+        # v2.2.16 (K7): siehe oben – Shortcut bleibt, Menueeintrag entfaellt.
+        self.addAction(self.goto_categories_action)
         self._update_categories_menu_visibility()
 
         goto_tracking = QAction(tr("menu.goto_tracking"), self)
         goto_tracking.setIcon(get_icon("📊"))
         self._apply_shortcut(goto_tracking, "tab_tracking")
         goto_tracking.triggered.connect(lambda: self._goto_tab(self.tracking_tab))
-        view_menu.addAction(goto_tracking)
+        # v2.2.16 (K7): Menueeintrag entfernt – die Sidebar ist die Navigation.
+        # Die Action bleibt fensterweit registriert, damit der Shortcut weiter wirkt.
+        self.addAction(goto_tracking)
 
         goto_overview = QAction(tr("menu.goto_overview"), self)
         goto_overview.setIcon(get_icon("📈"))
         self._apply_shortcut(goto_overview, "tab_overview")
         goto_overview.triggered.connect(lambda: self._goto_tab(self.overview_tab))
-        view_menu.addAction(goto_overview)
+        # v2.2.16 (K7): Menueeintrag entfernt – die Sidebar ist die Navigation.
+        # Die Action bleibt fensterweit registriert, damit der Shortcut weiter wirkt.
+        self.addAction(goto_overview)
 
         goto_savings = QAction(tr("menu.goto_savings"), self)
         goto_savings.setIcon(get_icon("🎯"))
         self._apply_shortcut(goto_savings, "tab_savings")
         goto_savings.triggered.connect(lambda: self._goto_tab(self.savings_tab))
-        view_menu.addAction(goto_savings)
+        # v2.2.16 (K7): Menueeintrag entfernt – die Sidebar ist die Navigation.
+        # Die Action bleibt fensterweit registriert, damit der Shortcut weiter wirkt.
+        self.addAction(goto_savings)
 
         view_menu.addSeparator()
 
@@ -715,43 +1019,8 @@ class MainWindow(QMainWindow):
         view_menu.addSeparator()
 
         # ── Tab-Leiste: Sichtbarkeit + Position ──────────────────────
-        tab_bar_menu = view_menu.addMenu(tr("menu.tab_bar"))
-        tab_bar_menu.setIcon(get_icon("📌"))
-
-        self._act_tab_bar_show = QAction(tr("menu.tab_bar_show"), self)
-        self._act_tab_bar_show.setCheckable(True)
-        self._act_tab_bar_show.setChecked(self.settings.get("tab_bar_visible", True))
-        self._act_tab_bar_show.toggled.connect(self._on_tab_bar_show_toggled)
-        tab_bar_menu.addAction(self._act_tab_bar_show)
-
-        tab_bar_menu.addSeparator()
-
-        pos_group = QActionGroup(self)
-        pos_group.setExclusive(True)
-
-        _cur_pos = self.settings.get("tab_position", "west")
-        _pos_defs = [
-            ("west",  tr("menu.tab_bar_pos_left")),
-            ("east",  tr("menu.tab_bar_pos_right")),
-            ("north", tr("menu.tab_bar_pos_top")),
-            ("south", tr("menu.tab_bar_pos_bottom")),
-        ]
-        for pos_key, pos_label in _pos_defs:
-            act = QAction(pos_label, self)
-            if pos_key == "west":
-                act.setIcon(get_icon("⬅️"))
-            elif pos_key == "east":
-                act.setIcon(get_icon("➡️"))
-            elif pos_key == "north":
-                act.setIcon(get_icon("⬆️"))
-            elif pos_key == "south":
-                act.setIcon(get_icon("⬇️"))
-            act.setCheckable(True)
-            act.setChecked(pos_key == _cur_pos)
-            act.setData(pos_key)
-            act.triggered.connect(lambda checked, k=pos_key: self._on_tab_position_changed(k))
-            pos_group.addAction(act)
-            tab_bar_menu.addAction(act)
+        # v2.2.16 (K7): Tab-Leisten-Steuerung entfernt – die Sidebar ist die
+        # Navigation; die alte Tab-Leiste ist dauerhaft ausgeblendet.
 
     def _create_extras_menu(self, menubar: QMenuBar) -> None:
         """Extras-Menü: Schnelleingabe, Suche, Manager, Export, Backup usw."""
@@ -770,6 +1039,12 @@ class MainWindow(QMainWindow):
         search_action.setStatusTip(tr("menu.search_tip"))
         search_action.triggered.connect(self._show_global_search)
         extras_menu.addAction(search_action)
+
+        import_action = QAction(tr("lifeplanner_import.menu"), self)
+        import_action.setIcon(get_icon("📥"))
+        import_action.setStatusTip(tr("lifeplanner_import.intro"))
+        import_action.triggered.connect(self._show_lifeplanner_imports)
+        extras_menu.addAction(import_action)
 
         extras_menu.addSeparator()
 
@@ -803,15 +1078,6 @@ class MainWindow(QMainWindow):
 
         extras_menu.addSeparator()
 
-        updates_action = QAction(tr("menu.updates"), self)
-        updates_action.setIcon(get_icon("⬆️"))
-        self._apply_shortcut(updates_action, "updates")
-        updates_action.setStatusTip(tr("menu.updates_tip"))
-        updates_action.triggered.connect(self._show_update_dialog)
-        extras_menu.addAction(updates_action)
-
-        extras_menu.addSeparator()
-
         export_action = QAction(tr("menu.export"), self)
         export_action.setIcon(get_icon("📤"))
         self._apply_shortcut(export_action, "export")
@@ -836,13 +1102,6 @@ class MainWindow(QMainWindow):
         current_year_action.triggered.connect(self._set_current_year)
         extras_menu.addAction(current_year_action)
 
-        extras_menu.addSeparator()
-
-        reset_tabs_action = QAction(tr("menu.reset_tab_order"), self)
-        reset_tabs_action.setIcon(get_icon("🔄"))
-        reset_tabs_action.triggered.connect(self._reset_tab_order)
-        extras_menu.addAction(reset_tabs_action)
-
     def _create_account_menu(self, menubar: QMenuBar) -> None:
         """Konto-Menü (nur bei verschlüsseltem Login sichtbar)."""
         if not (self._active_user and self._user_model):
@@ -859,95 +1118,25 @@ class MainWindow(QMainWindow):
         account_data_action = QAction(tr("menu.account_data"), self)
         account_data_action.setIcon(get_icon("🗂️"))
         account_data_action.setStatusTip(tr("menu.account_data_tip"))
-        account_data_action.triggered.connect(
-            lambda: self._goto_tab(self.account_tab)
-        )
+        account_data_action.triggered.connect(lambda: self._goto_tab(self.account_tab))
         account_menu.addAction(account_data_action)
 
         account_menu.addSeparator()
 
-        sec_info = (f"{self._active_user.security_icon} "
-                    f"{self._active_user.display_name} — "
-                    f"{display_security_label(self._active_user.security)}")
+        sec_info = (
+            f"{self._active_user.security_icon} "
+            f"{self._active_user.display_name} — "
+            f"{display_security_label(self._active_user.security)}"
+        )
         info_action = QAction(sec_info, self)
         info_action.setEnabled(False)
         account_menu.addAction(info_action)
         self._account_info_action = info_action
 
     def _create_help_menu(self, menubar: QMenuBar) -> None:
-        """Hilfe-Menü: Handbuch, Mindmap, Restore-Key, Tastenkürzel, Setup-Assistent, Über."""
-        help_menu = menubar.addMenu(tr("menu.help"))
+        """Hilfe-Menü nach Desktop-Richtlinien (siehe ``views/help_menu``)."""
+        self.help_menu = build_help_menu(self, menubar)
 
-        handbook_action = QAction(tr("menu.handbook"), self)
-        handbook_action.setIcon(get_icon("📖"))
-        self._apply_shortcut(handbook_action, "help")
-        handbook_action.setStatusTip(tr("menu.handbook_tip"))
-        handbook_action.triggered.connect(self._show_handbook)
-        help_menu.addAction(handbook_action)
-
-        html_help_action = QAction(tr("menu.knowledge_base"), self)
-        html_help_action.setIcon(get_icon("🌐"))
-        html_help_action.setStatusTip(tr("menu.knowledge_base_tip"))
-        html_help_action.triggered.connect(self._open_help_docs)
-        help_menu.addAction(html_help_action)
-
-        mindmap_action = QAction(tr("menu.help_mindmap"), self)
-        mindmap_action.setIcon(get_icon("🧭"))
-        mindmap_action.setStatusTip(tr("menu.help_mindmap_tip"))
-        mindmap_action.triggered.connect(self._open_help_mindmap)
-        help_menu.addAction(mindmap_action)
-
-        restore_key_action = QAction(tr("menu.show_restore_key"), self)
-        restore_key_action.setIcon(get_icon("🔑"))
-        restore_key_action.setStatusTip(tr("menu.show_restore_key_tip"))
-        restore_key_action.triggered.connect(self._show_restore_key_view)
-        help_menu.addAction(restore_key_action)
-
-        shortcuts_action = QAction(tr("menu.shortcuts"), self)
-        shortcuts_action.setIcon(get_icon("⌨️"))
-        self._apply_shortcut(shortcuts_action, "shortcuts")
-        shortcuts_action.triggered.connect(self._show_shortcuts)
-        help_menu.addAction(shortcuts_action)
-
-        setup_action = QAction(tr("menu.setup_assistant"), self)
-        setup_action.setIcon(get_icon("🚀"))
-        setup_action.triggered.connect(lambda: self._start_setup_assistant(force=True))
-        help_menu.addAction(setup_action)
-
-        help_menu.addSeparator()
-
-        show_log_action = QAction(tr("menu.show_log"), self)
-        show_log_action.setIcon(get_icon("📄"))
-        show_log_action.setStatusTip(tr("menu.show_log_tip"))
-        show_log_action.triggered.connect(self._show_app_log)
-        help_menu.addAction(show_log_action)
-
-        show_crash_log_action = QAction(tr("menu.show_crash_log"), self)
-        show_crash_log_action.setIcon(get_icon("💥"))
-        show_crash_log_action.setStatusTip(tr("menu.show_crash_log_tip"))
-        show_crash_log_action.triggered.connect(self._show_crash_log)
-        help_menu.addAction(show_crash_log_action)
-
-        diagnostics_folder_action = QAction(tr("menu.open_diagnostics_folder"), self)
-        diagnostics_folder_action.setIcon(get_icon("📁"))
-        diagnostics_folder_action.setStatusTip(tr("menu.open_diagnostics_folder_tip"))
-        diagnostics_folder_action.triggered.connect(self._open_diagnostics_folder)
-        help_menu.addAction(diagnostics_folder_action)
-
-        diagnostic_report_action = QAction(tr("menu.create_diagnostic_report"), self)
-        diagnostic_report_action.setIcon(get_icon("🧰"))
-        diagnostic_report_action.setStatusTip(tr("menu.create_diagnostic_report_tip"))
-        diagnostic_report_action.triggered.connect(self._create_diagnostic_report)
-        help_menu.addAction(diagnostic_report_action)
-
-        help_menu.addSeparator()
-
-        about_action = QAction(tr("menu.about"), self)
-        about_action.setIcon(get_icon("ℹ️"))
-        about_action.triggered.connect(self._show_about)
-        help_menu.addAction(about_action)
-
-    
     def _setup_statusbar_info(self):
         """Zeigt dauerhaft an, welcher User/DB gerade aktiv ist.
 
@@ -965,7 +1154,9 @@ class MainWindow(QMainWindow):
             if self._active_user is not None:
                 user_name = self._active_user.display_name or self._active_user.username
 
-            if self._active_user is not None and getattr(self._active_user, "db_path", None):
+            if self._active_user is not None and getattr(
+                self._active_user, "db_path", None
+            ):
                 dbp = Path(self._active_user.db_path)
             else:
                 try:
@@ -973,8 +1164,15 @@ class MainWindow(QMainWindow):
                 except Exception:
                     dbp = Path("(unbekannt)")
 
-            self._status_user_label.setText(trf('auto.views_main_window.667_user_value_0_adcf7358', value_0=(user_name)))
-            self._status_db_label.setText(trf('auto.views_main_window.668_db_value_0_04d0a9b3', value_0=(dbp)))
+            self._status_user_label.setText(
+                trf(
+                    "auto.views_main_window.667_user_value_0_adcf7358",
+                    value_0=(user_name),
+                )
+            )
+            self._status_db_label.setText(
+                trf("auto.views_main_window.668_db_value_0_04d0a9b3", value_0=(dbp))
+            )
 
             sb.addPermanentWidget(self._status_user_label)
             sb.addPermanentWidget(self._status_db_label, 1)
@@ -986,34 +1184,41 @@ class MainWindow(QMainWindow):
         try:
             folder = data_dir()
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
-            self.statusBar().showMessage(trf("lbl.datenordner_geoeffnet_folder", folder=str(folder)), 3000)
+            self.statusBar().showMessage(
+                trf("lbl.datenordner_geoeffnet_folder", folder=str(folder)), 3000
+            )
         except Exception as e:
-            QMessageBox.warning(self, tr('auto.views_main_window.682_datenordner_6efcd047'), trf("msg.datenordner_fehler", e=str(e)))
-        
+            show_warning(
+                self,
+                tr("auto.views_main_window.682_datenordner_6efcd047"),
+                trf("msg.datenordner_fehler", e=str(e)),
+            )
 
     def _apply_settings_to_tabs(self):
         """Wendet Einstellungen auf die Tabs an"""
         # Budget-Tab
-        if hasattr(self.budget_tab, 'chk_autosave'):
+        if hasattr(self.budget_tab, "chk_autosave"):
             self.budget_tab.chk_autosave.setChecked(self.settings.auto_save)
-        
-        if hasattr(self.budget_tab, 'chk_ask_due'):
+
+        if hasattr(self.budget_tab, "chk_ask_due"):
             self.budget_tab.chk_ask_due.setChecked(self.settings.ask_due)
-        if hasattr(self.budget_tab, 'set_category_drag_enabled'):
-            self.budget_tab.set_category_drag_enabled(bool(self.settings.get("budget_overview_drag_drop", True)))
+        if hasattr(self.budget_tab, "set_category_drag_enabled"):
+            self.budget_tab.set_category_drag_enabled(
+                bool(self.settings.get("budget_overview_drag_drop", True))
+            )
 
         # Tracking-Tab
-        if hasattr(self.tracking_tab, 'set_recent_days'):
+        if hasattr(self.tracking_tab, "set_recent_days"):
             self.tracking_tab.set_recent_days(self.settings.recent_days)
-    
+
     def _on_autosave_changed(self, checked: bool):
         """Speichert Auto-Save Einstellung wenn Checkbox geändert wird"""
         self.settings.auto_save = checked
-        
+
     def _on_ask_due_changed(self, checked: bool):
         """Speichert Ask-Due Einstellung wenn Checkbox geändert wird"""
         self.settings.ask_due = checked
-    
+
     def _load_tab_order(self):
         """Lädt Tabs in gespeicherter Reihenfolge und berücksichtigt ausgeblendete Reiter."""
         saved_order = list(self.settings.tab_order or [])
@@ -1049,7 +1254,7 @@ class MainWindow(QMainWindow):
                 self.tabs.setTabIcon(i, get_icon("👤"))
             else:
                 self.tabs.setTabIcon(i, QIcon())
-    
+
     def _save_tab_order(self):
         """Speichert die aktuelle Tab-Reihenfolge"""
         current_order = []
@@ -1060,15 +1265,16 @@ class MainWindow(QMainWindow):
                 if widget is tab_widget:
                     current_order.append(tab_id)
                     break
-        
+
         if current_order:
             self.settings.tab_order = current_order
-    
+
     def _goto_tab(self, tab_widget):
         """Wechselt zum angegebenen Tab (unabhängig von Position)"""
         index = self.tabs.indexOf(tab_widget)
         if index >= 0:
             self.tabs.setCurrentIndex(index)
+            self._sync_sidebar_selection(index)
 
     def _goto_categories_or_manager(self) -> None:
         """Öffnet den Kategorien-Tab, falls sichtbar, sonst den Kategorien-Manager."""
@@ -1076,7 +1282,17 @@ class MainWindow(QMainWindow):
             self._goto_tab(self.categories_tab)
         else:
             self._show_category_manager()
-    
+
+    def _apply_ui_experience_mode(self, mode: str) -> None:
+        from views.ui_experience_menu import apply_ui_experience_mode
+
+        apply_ui_experience_mode(self, mode)
+
+    def _sync_ui_experience_mode_actions(self) -> None:
+        from views.ui_experience_menu import sync_ui_experience_mode_actions
+
+        sync_ui_experience_mode_actions(self)
+
     def _tab_visibility_config(self) -> dict:
         defaults = {
             "cockpit": True,
@@ -1104,23 +1320,24 @@ class MainWindow(QMainWindow):
         widget, name = self._tab_definitions[tab_id]
         idx = self.tabs.indexOf(widget)
         if not visible and idx >= 0 and self.tabs.count() <= 1:
-            QMessageBox.information(self, tr("cockpit.hide_tab_title"), tr("cockpit.keep_one_tab"))
+            show_info(self, tr("cockpit.hide_tab_title"), tr("cockpit.keep_one_tab"))
             self._sync_tab_visibility_actions()
             return
         if tab_id == 1 and visible and not self.settings.show_categories_tab:
             self.settings.show_categories_tab = True
-            if hasattr(self, 'toggle_categories_action'):
+            if hasattr(self, "toggle_categories_action"):
                 self.toggle_categories_action.blockSignals(True)
                 self.toggle_categories_action.setChecked(True)
                 self.toggle_categories_action.blockSignals(False)
         cfg = self._tab_visibility_config()
         cfg[self._tab_visibility_keys[tab_id]] = bool(visible)
-        self.settings.set("tab_visibility", cfg)
+        self.settings.set_many({"tab_visibility": cfg, "ui_experience_mode": "custom"})
         if visible and idx < 0:
             self._rebuild_tabs_keep_current(widget)
         elif not visible and idx >= 0:
             self.tabs.removeTab(idx)
         self._sync_tab_visibility_actions()
+        self._sync_ui_experience_mode_actions()
         self._apply_tab_icons()
         self._save_tab_order()
 
@@ -1145,42 +1362,47 @@ class MainWindow(QMainWindow):
     def _update_categories_menu_visibility(self) -> None:
         """Aktualisiert die Sichtbarkeit des Kategorien-Menüpunkts."""
         # Experten-Tab entfernt: Schnellzugriff bleibt sichtbar (oeffnet den Dialog).
-        if hasattr(self, 'goto_categories_action'):
+        if hasattr(self, "goto_categories_action"):
             self.goto_categories_action.setVisible(True)
-    
+
     def _toggle_categories_tab(self, checked: bool) -> None:
         """Schaltet den Kategorien-Tab ein/aus."""
         self.settings.show_categories_tab = checked
         cfg = self._tab_visibility_config()
         cfg["categories"] = bool(checked)
-        self.settings.set("tab_visibility", cfg)
+        self.settings.set_many({"tab_visibility": cfg, "ui_experience_mode": "custom"})
         self._rebuild_tabs_keep_current(self.categories_tab if checked else None)
         self.statusBar().showMessage(
-            tr("msg.categories_tab_enabled") if checked else tr("msg.categories_tab_disabled"),
+            (
+                tr("msg.categories_tab_enabled")
+                if checked
+                else tr("msg.categories_tab_disabled")
+            ),
             2000,
         )
         self._update_categories_menu_visibility()
         self._sync_tab_visibility_actions()
-        
+        self._sync_ui_experience_mode_actions()
+
         # Toggle-Action synchronisieren (falls von extern aufgerufen)
-        if hasattr(self, 'toggle_categories_action'):
+        if hasattr(self, "toggle_categories_action"):
             # Blockiere Signale um Rekursion zu vermeiden
             self.toggle_categories_action.blockSignals(True)
             self.toggle_categories_action.setChecked(checked)
             self.toggle_categories_action.blockSignals(False)
-    
+
     def _reset_tab_order(self):
         """Setzt die Tab-Reihenfolge auf Standard zurück"""
         # Merke aktuellen Tab
         current_widget = self.tabs.currentWidget()
-        
+
         # Alle Tabs entfernen (ohne zu löschen)
         while self.tabs.count() > 0:
             self.tabs.removeTab(0)
-        
+
         # Kategorien-Tab nur anzeigen wenn aktiviert
         show_categories = self.settings.show_categories_tab
-        
+
         # Tabs in Standardreihenfolge hinzufügen
         default_order = [5, 0, 1, 2, 3, 4, 6]
         for tab_id in default_order:
@@ -1190,13 +1412,13 @@ class MainWindow(QMainWindow):
             widget, name = self._tab_definitions[tab_id]
             self.tabs.addTab(widget, name)
         self._apply_tab_icons()
-        
+
         # Vorherigen Tab wiederherstellen
         if current_widget:
             index = self.tabs.indexOf(current_widget)
             if index >= 0:
                 self.tabs.setCurrentIndex(index)
-        
+
         # Speichern
         self.settings.tab_order = default_order
         self.statusBar().showMessage(tr("lbl.tabreihenfolge_zurueckgesetzt"), 2000)
@@ -1206,8 +1428,8 @@ class MainWindow(QMainWindow):
     _TAB_POS_MAP = {
         "north": QTabWidget.North,
         "south": QTabWidget.South,
-        "east":  QTabWidget.East,
-        "west":  QTabWidget.West,
+        "east": QTabWidget.East,
+        "west": QTabWidget.West,
     }
 
     def _apply_tab_position(self) -> None:
@@ -1241,8 +1463,8 @@ class MainWindow(QMainWindow):
 
     def _apply_tab_bar_visibility(self) -> None:
         """Zeigt/versteckt die Tab-Leiste gemäß Settings."""
-        visible = self.settings.get("tab_bar_visible", True)
-        self.tabs.tabBar().setVisible(visible)
+        # v2.2.16 (K7): dauerhaft aus – Navigation laeuft ueber die Sidebar.
+        self.tabs.tabBar().setVisible(False)
 
     def _on_tab_position_changed(self, pos_key: str) -> None:
         """Wird aufgerufen wenn Nutzer eine neue Tab-Position wählt."""
@@ -1258,189 +1480,15 @@ class MainWindow(QMainWindow):
         self._apply_tab_bar_visibility()
 
     def _show_settings(self):
-        """Zeigt Einstellungen-Dialog"""
-        is_encrypted = hasattr(self, '_encrypted_session') and self._encrypted_session is not None
-        dialog = SettingsDialog(
-            self.settings,
-            self,
-            app_version=app_version_label(),
-            encrypted_mode=is_encrypted,
-            encrypted_session=getattr(self, '_encrypted_session', None),
-        )
-        
-        if dialog.exec() == QDialog.Accepted:
-            new_settings = dialog.get_settings()
-            
-            # Theme-Änderung?
-            theme_changed = new_settings["theme"] != self.settings.theme
-            
-            # Einstellungen speichern
-            self.settings.theme = new_settings["theme"]
-            self.settings.auto_save = new_settings["auto_save"]
-            self.settings.ask_due = new_settings["ask_due"]
-            self.settings.refresh_on_start = new_settings["refresh_on_start"]
-            # Tracking
-            if "recent_days" in new_settings:
-                self.settings.recent_days = int(new_settings["recent_days"] or 14)
-            # Budgetübersicht: Monate für Vorschläge
-            if "budget_suggestion_months" in new_settings:
-                try:
-                    self.settings.set("budget_suggestion_months", int(new_settings.get("budget_suggestion_months") or 3))
-                except Exception:
-                    self.settings.set("budget_suggestion_months", 3)
+        """Zeigt den Einstellungsdialog und wendet sichere Änderungen an.
 
-            # Separater Lernmodus: Budget aus reinem Tracking vorschlagen.
-            # Diese Werte werden bewusst unabhängig vom normalen Budgettracker gespeichert.
-            if "tracking_budget_learning_enabled" in new_settings:
-                self.settings.set(
-                    "tracking_budget_learning_enabled",
-                    bool(new_settings.get("tracking_budget_learning_enabled", True)),
-                )
-            if "tracking_budget_learning_proposal_months" in new_settings:
-                try:
-                    v = int(new_settings.get("tracking_budget_learning_proposal_months") or 2)
-                except Exception:
-                    v = 2
-                self.settings.set("tracking_budget_learning_proposal_months", max(1, min(12, v)))
-            if "tracking_budget_learning_stable_months" in new_settings:
-                try:
-                    v = int(new_settings.get("tracking_budget_learning_stable_months") or 3)
-                except Exception:
-                    v = 3
-                self.settings.set("tracking_budget_learning_stable_months", max(1, min(12, v)))
-            if "tracking_budget_learning_include_current_month_projection" in new_settings:
-                self.settings.set(
-                    "tracking_budget_learning_include_current_month_projection",
-                    bool(new_settings.get("tracking_budget_learning_include_current_month_projection", True)),
-                )
-            if "tracking_budget_learning_show_in_report" in new_settings:
-                self.settings.set(
-                    "tracking_budget_learning_show_in_report",
-                    bool(new_settings.get("tracking_budget_learning_show_in_report", True)),
-                )
-            if "tracking_budget_learning_auto_end" in new_settings:
-                self.settings.set(
-                    "tracking_budget_learning_auto_end",
-                    bool(new_settings.get("tracking_budget_learning_auto_end", False)),
-                )
+        Ein Sprachwechsel bleibt absichtlich bis zum Neustart ausstehend
+        (``language_changed`` / ``msg.language_restart_required``), damit keine
+        gemischte Oberfläche entsteht.
+        """
+        from views.main_window_settings import show_settings
 
-            if "budget_overview_drag_drop" in new_settings:
-                enabled = bool(new_settings.get("budget_overview_drag_drop", True))
-                self.settings.set("budget_overview_drag_drop", enabled)
-                if hasattr(self, "budget_tab") and hasattr(self.budget_tab, "set_category_drag_enabled"):
-                    self.budget_tab.set_category_drag_enabled(enabled)
-
-            if "recurring_preferred_day" in new_settings:
-                try:
-                    self.settings.set("recurring_preferred_day", int(new_settings.get("recurring_preferred_day", 25)))
-                except Exception:
-                    self.settings.set("recurring_preferred_day", 25)
-
-            if "budget_zero_balance_rule" in new_settings:
-                self.settings.set("budget_zero_balance_rule", bool(new_settings.get("budget_zero_balance_rule", False)))
-            if "budget_surplus_strategy" in new_settings:
-                strategy = str(new_settings.get("budget_surplus_strategy", "savings") or "savings")
-                if strategy not in {"savings", "carryover"}:
-                    strategy = "savings"
-                self.settings.set("budget_surplus_strategy", strategy)
-
-            # Budgetübersicht: Übertrag-Kumulation Start (Monat/Jahr)
-            # BUGFIX: Diese Werte kamen zwar aus dem SettingsDialog, wurden aber nie persistiert.
-            if "carryover_start_month" in new_settings:
-                try:
-                    m = int(new_settings.get("carryover_start_month") or 1)
-                except Exception:
-                    m = 1
-                if m < 1:
-                    m = 1
-                if m > 12:
-                    m = 12
-                self.settings.set("carryover_start_month", m)
-
-            if "carryover_start_year" in new_settings:
-                try:
-                    y = int(new_settings.get("carryover_start_year") or 0)
-                except Exception:
-                    y = 0
-                # 0 ist bewusst erlaubt (= aktuelles Jahr). Wenn gesetzt, nicht clampen.
-                self.settings.set("carryover_start_year", y)
-            # Zusätzliche (neue) Einstellungen speichern
-            # (Diese Keys sind rückwärtskompatibel – Tabs können sie später nutzen.)
-            self.settings.set("show_onboarding", new_settings.get("show_onboarding", True))
-            self.settings.set("remember_last_tab", new_settings.get("remember_last_tab", True))
-            self.settings.set("remember_filters", new_settings.get("remember_filters", True))
-            self.settings.set("language", new_settings.get("language", "Deutsch"))
-            self.settings.set("currency", new_settings.get("currency", "CHF"))
-            self.settings.set("number_format", new_settings.get("number_format", "swiss"))
-
-            # Sprache & Währung sofort in den Modulen aktualisieren
-            try:
-                from utils.i18n import set_language
-                from utils.money import set_currency, set_number_format
-                set_language(new_settings.get("language", "Deutsch"))
-                set_currency(new_settings.get("currency", "CHF"))
-                set_number_format(new_settings.get("number_format", "swiss"))
-                # Qt-native Kontextmenüs auf neue Sprache umstellen
-                try:
-                    from PySide6.QtWidgets import QApplication
-                    from utils.qt_translator import install_qt_translations, apply_number_locale
-                    apply_number_locale(new_settings.get("number_format", "swiss"))
-                    _app = QApplication.instance()
-                    if _app is not None:
-                        install_qt_translations(_app, new_settings.get("language", "de"))
-                except Exception as _e:
-                    logger.debug("Qt-Übersetzung (Wechsel) nicht installiert: %s", _e)
-                # UI-Labels nach Sprachänderung aktualisieren
-                self._retranslate_ui()
-            except ImportError as e:
-                logger.debug("from utils.i18n import set_language: %s", e)
-
-            self.settings.set("warn_delete", new_settings.get("warn_delete", True))
-            self.settings.set("warn_budget_overrun", new_settings.get("warn_budget_overrun", False))
-            self.settings.set("table_density", new_settings.get("table_density", "Normal"))
-            self.settings.set("highlight_fixcosts", new_settings.get("highlight_fixcosts", True))
-            self.settings.set("auto_backup", new_settings.get("auto_backup", False))
-            self.settings.set("backup_days", int(new_settings.get("backup_days", 30) or 30))
-            self.settings.set("auto_backup_keep", int(new_settings.get("auto_backup_keep", 10) or 10))
-            self.settings.set("backup_auto_delete", bool(new_settings.get("backup_auto_delete", False)))
-
-            # Tastenkürzel speichern und neu laden
-            shortcut_map = new_settings.get("shortcuts")
-            if shortcut_map and isinstance(shortcut_map, dict):
-                save_shortcuts(self.settings, shortcut_map)
-                self._setup_shortcuts()  # Shortcuts sofort neu binden
-            # Datenbankpfad optional übernehmen
-            if new_settings.get("database_path"):
-                self.settings.database_path = new_settings["database_path"]
-            
-            # Kategorien-Tab Einstellung
-            old_show_cat = self.settings.show_categories_tab
-            new_show_cat = new_settings.get("show_categories_tab", False)
-            self.settings.show_categories_tab = new_show_cat
-            
-            # Kategorien-Tab Toggle aktualisieren wenn geändert
-            if old_show_cat != new_show_cat:
-                if hasattr(self, 'toggle_categories_action'):
-                    self.toggle_categories_action.setChecked(new_show_cat)
-                # Tab direkt ein/ausblenden
-                self._toggle_categories_tab(new_show_cat)
-            
-            # Auf Tabs anwenden
-            self._apply_settings_to_tabs()
-
-            # Nach dem Speichern: Views neu laden, damit Änderungen (z.B.
-            # Warnhinweise, Tab-Sichtbarkeit, Dichte, etc.) sofort wirken.
-            self._schedule_refresh_all_tabs(reason="settings saved")
-            
-            # Theme anwenden (Profile werden automatisch geladen)
-            self._apply_theme()
-            
-            if theme_changed:
-                self.statusBar().showMessage(
-                    trf('msg.theme_changed_to', theme=new_settings['theme']), 3000
-                )
-            else:
-                self.statusBar().showMessage(tr("msg.settings_saved"), 2000)
+        show_settings(self)
 
     def _handle_data_directory_change(self, new_raw: str) -> bool:
         """Verarbeitet einen geänderten Datenordner inkl. optionaler Datenübernahme.
@@ -1453,7 +1501,9 @@ class MainWindow(QMainWindow):
         """
         from model.app_paths import data_dir, resolve_data_dir
         from model.data_location import (
-            has_user_data, migrate_data_dir, DataMigrationError,
+            has_user_data,
+            migrate_data_dir,
+            DataMigrationError,
         )
 
         old_eff = data_dir()  # aktuell wirksamer (alter) Ordner – VOR dem Setzen
@@ -1472,8 +1522,11 @@ class MainWindow(QMainWindow):
             ask = QMessageBox.question(
                 self,
                 tr("settings.data_dir_migrate_title"),
-                trf("settings.data_dir_migrate_question",
-                    old=str(old_eff), new=str(new_eff)),
+                trf(
+                    "settings.data_dir_migrate_question",
+                    old=str(old_eff),
+                    new=str(new_eff),
+                ),
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.Yes,
             )
@@ -1484,21 +1537,25 @@ class MainWindow(QMainWindow):
                     if sess is not None and hasattr(sess, "save"):
                         sess.save()
                 except Exception as _e:
-                    logger.debug("Session-Flush vor Datenübernahme fehlgeschlagen: %s", _e)
+                    logger.debug(
+                        "Session-Flush vor Datenübernahme fehlgeschlagen: %s", _e
+                    )
                 try:
                     result = migrate_data_dir(old_eff, new_eff, make_backup=True)
                     _persist()
                     migrated = True
-                    QMessageBox.information(
+                    show_info(
                         self,
                         tr("settings.data_dir_migrate_done_title"),
-                        trf("settings.data_dir_migrate_done_msg",
+                        trf(
+                            "settings.data_dir_migrate_done_msg",
                             count=len(result.copied),
                             backup=str(result.backup_path or "-"),
-                            new=str(new_eff)),
+                            new=str(new_eff),
+                        ),
                     )
                 except DataMigrationError as exc:
-                    QMessageBox.warning(
+                    show_warning(
                         self,
                         tr("settings.data_dir_migrate_failed_title"),
                         trf("settings.data_dir_migrate_failed_msg", error=str(exc)),
@@ -1506,7 +1563,7 @@ class MainWindow(QMainWindow):
                     return False  # Einstellung NICHT ändern -> alte Daten bleiben aktiv
                 except Exception as exc:
                     logger.exception("Datenübernahme fehlgeschlagen")
-                    QMessageBox.warning(
+                    show_warning(
                         self,
                         tr("settings.data_dir_migrate_failed_title"),
                         trf("settings.data_dir_migrate_failed_msg", error=str(exc)),
@@ -1517,7 +1574,7 @@ class MainWindow(QMainWindow):
         elif has_user_data(new_eff):
             # Zielordner enthält bereits Daten -> diese werden nach Neustart genutzt.
             _persist()
-            QMessageBox.information(
+            show_info(
                 self,
                 tr("settings.data_dir_changed_title"),
                 tr("settings.data_dir_target_has_data_msg"),
@@ -1528,13 +1585,15 @@ class MainWindow(QMainWindow):
 
         if not migrated:
             try:
-                QMessageBox.information(
+                show_info(
                     self,
                     tr("settings.data_dir_changed_title"),
                     tr("settings.data_dir_changed_msg"),
                 )
             except Exception as _e:
-                logger.debug("Datenordner-Hinweis konnte nicht angezeigt werden: %s", _e)
+                logger.debug(
+                    "Datenordner-Hinweis konnte nicht angezeigt werden: %s", _e
+                )
         return True
 
     def _change_theme(self, theme: str):
@@ -1542,25 +1601,33 @@ class MainWindow(QMainWindow):
         # Theme über Manager anwenden
         profile_name = "Standard Hell" if theme == "light" else "Standard Dunkel"
         self.theme_manager.apply_theme(profile_name=profile_name)
-        
+        try:
+            if hasattr(self, "cockpit_tab") and hasattr(self.cockpit_tab, "refresh"):
+                self.cockpit_tab.refresh()
+        except Exception as exc:
+            logger.debug("Cockpit nach Theme-Wechsel nicht aktualisierbar: %s", exc)
+
         # Settings aktualisieren für Kompatibilität
         self.settings.theme = theme
-        
+
         # Radio-Buttons aktualisieren
-        if hasattr(self, 'action_light'):
+        if hasattr(self, "action_light"):
             self.action_light.setChecked(theme == "light")
-        if hasattr(self, 'action_dark'):
+        if hasattr(self, "action_dark"):
             self.action_dark.setChecked(theme == "dark")
-        
+
         self.statusBar().showMessage(f"Theme: {theme}", 2000)
 
     def _apply_theme(self):
         """Wendet das aktuelle Theme an"""
         # Theme Manager verwenden
         self.theme_manager.apply_theme()
+        self._apply_modern_shell_style()
 
         # Nach Theme-Wechsel: Typ-Farben/Badges neu anwenden
         try:
+            if hasattr(self, "cockpit_tab") and hasattr(self.cockpit_tab, "refresh"):
+                self.cockpit_tab.refresh()
             if hasattr(self, "tracking_tab") and hasattr(self.tracking_tab, "refresh"):
                 self.tracking_tab.refresh()
             if hasattr(self, "overview_tab"):
@@ -1581,13 +1648,17 @@ class MainWindow(QMainWindow):
         self.edit_menu.clear()
 
         # Undo/Redo (immer verfügbar)
-        self.undo_action = QAction(tr('auto.views_main_window.1037_undo_918f0844'), self)
+        self.undo_action = QAction(
+            tr("auto.views_main_window.1037_undo_918f0844"), self
+        )
         self._apply_shortcut(self.undo_action, "undo")
         self.undo_action.setShortcutContext(Qt.ApplicationShortcut)
         self.undo_action.triggered.connect(self._undo_global)
         self.edit_menu.addAction(self.undo_action)
 
-        self.redo_action = QAction(tr('auto.views_main_window.1043_redo_2dcd731a'), self)
+        self.redo_action = QAction(
+            tr("auto.views_main_window.1043_redo_2dcd731a"), self
+        )
         self._apply_shortcut(self.redo_action, "redo")
         self.redo_action.setShortcutContext(Qt.ApplicationShortcut)
         self.redo_action.triggered.connect(self._redo_global)
@@ -1596,130 +1667,153 @@ class MainWindow(QMainWindow):
         self.edit_menu.addSeparator()
 
         self._update_undo_redo_actions()
-        
+
         # === ALLGEMEINE AKTIONEN (immer sichtbar) ===
         self._edit_actions_general = []
-        
+
         # Neu hinzufügen
         add_action = QAction(tr("btn.neu_hinzufuegen"), self)
         self._apply_shortcut(add_action, "edit_add")
         add_action.triggered.connect(self._edit_add)
         self.edit_menu.addAction(add_action)
         self._edit_actions_general.append(add_action)
-        
+
         # Bearbeiten
-        edit_action = QAction(tr('auto.views_main_window.1064_bearbeiten_4fc85ded'), self)
+        edit_action = QAction(
+            tr("auto.views_main_window.1064_bearbeiten_4fc85ded"), self
+        )
         edit_action.setIcon(get_icon("✏️"))
         self._apply_shortcut(edit_action, "edit_edit")
         edit_action.triggered.connect(self._edit_edit)
         self.edit_menu.addAction(edit_action)
         self._edit_actions_general.append(edit_action)
-        
+
         # Löschen
         delete_action = QAction(tr("btn.loeschen"), self)
         self._apply_shortcut(delete_action, "edit_delete")
         delete_action.triggered.connect(self._edit_delete)
         self.edit_menu.addAction(delete_action)
         self._edit_actions_general.append(delete_action)
-        
+
         self.edit_menu.addSeparator()
-        
+
         # === BUDGET-TAB AKTIONEN ===
         self._edit_actions_budget = []
-        
-        budget_entry_action = QAction(tr('auto.views_main_window.1083_budget_erfassen_d622e1c6'), self)
+
+        budget_entry_action = QAction(
+            tr("auto.views_main_window.1083_budget_erfassen_d622e1c6"), self
+        )
         budget_entry_action.setIcon(get_icon("📝"))
         budget_entry_action.triggered.connect(self._budget_entry)
         self.edit_menu.addAction(budget_entry_action)
         self._edit_actions_budget.append(budget_entry_action)
-        
-        budget_edit_action = QAction(tr('auto.views_main_window.1089_budget_bearbeiten_45efb7d1'), self)
+
+        budget_edit_action = QAction(
+            tr("auto.views_main_window.1089_budget_bearbeiten_45efb7d1"), self
+        )
         budget_edit_action.setIcon(get_icon("✏️"))
         budget_edit_action.triggered.connect(self._budget_edit)
         self.edit_menu.addAction(budget_edit_action)
         self._edit_actions_budget.append(budget_edit_action)
-        
+
         self.edit_menu.addSeparator()
-        
-        budget_seed_action = QAction(tr('auto.views_main_window.1097_zeilen_aus_kategorien_erzeugen_f04f27f9'), self)
+
+        budget_seed_action = QAction(
+            tr("auto.views_main_window.1097_zeilen_aus_kategorien_erzeugen_f04f27f9"),
+            self,
+        )
         budget_seed_action.setIcon(get_icon("🌱"))
         budget_seed_action.triggered.connect(self._budget_seed)
         self.edit_menu.addAction(budget_seed_action)
         self._edit_actions_budget.append(budget_seed_action)
-        
-        budget_copy_action = QAction(tr('auto.views_main_window.1103_jahr_kopieren_a5365b5b'), self)
+
+        budget_copy_action = QAction(
+            tr("auto.views_main_window.1103_jahr_kopieren_a5365b5b"), self
+        )
         budget_copy_action.setIcon(get_icon("📋"))
         budget_copy_action.triggered.connect(self._budget_copy_year)
         self.edit_menu.addAction(budget_copy_action)
         self._edit_actions_budget.append(budget_copy_action)
-        
+
         self.edit_menu.addSeparator()
-        
-        budget_remove_row_action = QAction(tr('auto.views_main_window.1111_budget_zeile_entfernen_2116ca10'), self)
+
+        budget_remove_row_action = QAction(
+            tr("auto.views_main_window.1111_budget_zeile_entfernen_2116ca10"), self
+        )
         budget_remove_row_action.setIcon(get_icon("🗑️"))
         budget_remove_row_action.triggered.connect(self._budget_remove_row)
         self.edit_menu.addAction(budget_remove_row_action)
         self._edit_actions_budget.append(budget_remove_row_action)
-        
+
         budget_remove_cat_action = QAction(tr("btn.kategorie_loeschen_global"), self)
         budget_remove_cat_action.triggered.connect(self._budget_remove_category)
         self.edit_menu.addAction(budget_remove_cat_action)
         self._edit_actions_budget.append(budget_remove_cat_action)
-        
+
         # === KATEGORIEN-TAB AKTIONEN ===
         self._edit_actions_categories = []
-        
-        cat_new_main_action = QAction(tr('auto.views_main_window.1125_neue_hauptkategorie_4edd9c24'), self)
+
+        cat_new_main_action = QAction(
+            tr("auto.views_main_window.1125_neue_hauptkategorie_4edd9c24"), self
+        )
         cat_new_main_action.setIcon(get_icon("📁"))
         cat_new_main_action.triggered.connect(self._categories_new_main)
         self.edit_menu.addAction(cat_new_main_action)
         self._edit_actions_categories.append(cat_new_main_action)
-        
-        cat_new_sub_action = QAction(tr('auto.views_main_window.1131_neue_unterkategorie_51ea953c'), self)
+
+        cat_new_sub_action = QAction(
+            tr("auto.views_main_window.1131_neue_unterkategorie_51ea953c"), self
+        )
         cat_new_sub_action.setIcon(get_icon("📂"))
         cat_new_sub_action.triggered.connect(self._categories_new_sub)
         self.edit_menu.addAction(cat_new_sub_action)
         self._edit_actions_categories.append(cat_new_sub_action)
-        
+
         cat_delete_action = QAction(tr("btn.auswahl_loeschen"), self)
         cat_delete_action.triggered.connect(self._categories_delete)
         self.edit_menu.addAction(cat_delete_action)
         self._edit_actions_categories.append(cat_delete_action)
-        
+
         self.edit_menu.addSeparator()
-        
-        cat_mass_edit_action = QAction(tr('auto.views_main_window.1144_massenbearbeitung_aa0c33a1'), self)
+
+        cat_mass_edit_action = QAction(
+            tr("auto.views_main_window.1144_massenbearbeitung_aa0c33a1"), self
+        )
         cat_mass_edit_action.setIcon(get_icon("✏️"))
         cat_mass_edit_action.setStatusTip(tr("lbl.flags_fuer_mehrere_kategorien"))
         cat_mass_edit_action.triggered.connect(self._categories_mass_edit)
         self.edit_menu.addAction(cat_mass_edit_action)
         self._edit_actions_categories.append(cat_mass_edit_action)
-        
+
         # === TRACKING-TAB AKTIONEN ===
         self._edit_actions_tracking = []
-        
+
         self.edit_menu.addSeparator()
-        
-        fix_action = QAction(tr('auto.views_main_window.1156_fixkosten_buchen_61d1976c'), self)
+
+        fix_action = QAction(
+            tr("auto.views_main_window.1156_fixkosten_buchen_61d1976c"), self
+        )
         fix_action.setIcon(get_icon("📅"))
         self._apply_shortcut(fix_action, "book_fixcosts")
         fix_action.triggered.connect(self._tracking_add_fixcosts)
         self.edit_menu.addAction(fix_action)
         self._edit_actions_tracking.append(fix_action)
-        
+
         # === ÜBERSICHT-TAB AKTIONEN ===
         self._edit_actions_overview = []
-        
-        refresh_overview_action = QAction(tr('auto.views_main_window.1166_daten_aktualisieren_6e5a0ee6'), self)
+
+        refresh_overview_action = QAction(
+            tr("auto.views_main_window.1166_daten_aktualisieren_6e5a0ee6"), self
+        )
         refresh_overview_action.setIcon(get_icon("🔄"))
         self._apply_shortcut(refresh_overview_action, "refresh")
         refresh_overview_action.triggered.connect(self._overview_refresh)
         self.edit_menu.addAction(refresh_overview_action)
         self._edit_actions_overview.append(refresh_overview_action)
-        
+
         # Initial aktualisieren
         self._update_edit_menu()
-    
+
     def _on_tab_changed(self, index: int):
         """Wird aufgerufen wenn Tab gewechselt wird."""
         previous = getattr(self, "_last_tab_widget", None)
@@ -1748,7 +1842,9 @@ class MainWindow(QMainWindow):
         direkt; deren verschlüsselte Persistenz übernimmt der Commit-Hook.
         """
         try:
-            if widget is getattr(self, "budget_tab", None) and getattr(self.settings, "auto_save", True):
+            if widget is getattr(self, "budget_tab", None) and getattr(
+                self.settings, "auto_save", True
+            ):
                 if hasattr(self.budget_tab, "save"):
                     self.budget_tab.save()
                     logger.debug("Budget-Tab vor %s gespeichert.", reason)
@@ -1756,7 +1852,9 @@ class MainWindow(QMainWindow):
             # Session auf Disk bringen, falls kurz vorher Model-Commits liefen.
             self._save_encrypted_session()
         except Exception as exc:
-            logger.warning("Autosave vor %s fehlgeschlagen: %s", reason, exc, exc_info=True)
+            logger.warning(
+                "Autosave vor %s fehlgeschlagen: %s", reason, exc, exc_info=True
+            )
 
     def _refresh_current_tab_safe(self) -> None:
         """Aktualisiert den aktuell sichtbaren Tab (robust, ohne UI-Crash)."""
@@ -1765,6 +1863,7 @@ class MainWindow(QMainWindow):
             self._refresh_tab_widget(tab)
         except Exception:
             import traceback
+
             traceback.print_exc()
 
     def _refresh_tab_widget(self, tab) -> None:
@@ -1773,23 +1872,20 @@ class MainWindow(QMainWindow):
             return
 
         # Reihenfolge: refresh() -> refresh_data() -> load()
-        if hasattr(tab, 'refresh') and callable(getattr(tab, 'refresh')):
+        if hasattr(tab, "refresh") and callable(getattr(tab, "refresh")):
             tab.refresh()
             return
-        if hasattr(tab, 'refresh_data') and callable(getattr(tab, 'refresh_data')):
+        if hasattr(tab, "refresh_data") and callable(getattr(tab, "refresh_data")):
             tab.refresh_data()
             return
-        if hasattr(tab, 'load') and callable(getattr(tab, 'load')):
+        if hasattr(tab, "load") and callable(getattr(tab, "load")):
             tab.load()
             return
 
-
-
-    
     def _update_edit_menu(self):
         """Aktualisiert die Sichtbarkeit der Bearbeiten-Menü-Einträge"""
         current_widget = self.tabs.currentWidget()
-        
+
         # Alle Tab-spezifischen Actions verstecken
         for action in self._edit_actions_budget:
             action.setVisible(False)
@@ -1799,7 +1895,7 @@ class MainWindow(QMainWindow):
             action.setVisible(False)
         for action in self._edit_actions_overview:
             action.setVisible(False)
-        
+
         # Je nach Tab die entsprechenden Actions anzeigen
         if current_widget == self.budget_tab:
             for action in self._edit_actions_budget:
@@ -1817,111 +1913,113 @@ class MainWindow(QMainWindow):
             for action in self._edit_actions_general:
                 action.setEnabled(False)
             return
-        
+
         # Allgemeine Aktionen aktivieren für andere Tabs
         for action in self._edit_actions_general:
             action.setEnabled(True)
 
         self._update_undo_redo_actions()
-    
+
     # --- Bearbeiten-Menü Handler ---
     def _edit_add(self):
         """Neu hinzufügen - delegiert an aktuellen Tab"""
         current = self.tabs.currentWidget()
-        if hasattr(current, 'add'):
+        if hasattr(current, "add"):
             current.add()
-        elif hasattr(current, 'on_add'):
+        elif hasattr(current, "on_add"):
             current.on_add()
-    
+
     def _edit_edit(self):
         """Bearbeiten - delegiert an aktuellen Tab"""
         current = self.tabs.currentWidget()
-        if hasattr(current, 'edit'):
+        if hasattr(current, "edit"):
             current.edit()
-        elif hasattr(current, 'on_edit'):
+        elif hasattr(current, "on_edit"):
             current.on_edit()
-    
+
     def _edit_delete(self):
         """Löschen - delegiert an aktuellen Tab"""
         current = self.tabs.currentWidget()
-        if hasattr(current, 'delete'):
+        if hasattr(current, "delete"):
             current.delete()
-        elif hasattr(current, 'on_delete'):
+        elif hasattr(current, "on_delete"):
             current.on_delete()
-    
+
     def _budget_copy_year(self):
         """Budget: Jahr kopieren"""
-        if hasattr(self.budget_tab, 'copy_year_dialog'):
+        if hasattr(self.budget_tab, "copy_year_dialog"):
             self.budget_tab.copy_year_dialog()
-    
+
     def _budget_entry(self):
         """Budget: Erfassen Dialog"""
-        if hasattr(self.budget_tab, 'open_entry_dialog'):
+        if hasattr(self.budget_tab, "open_entry_dialog"):
             self.budget_tab.open_entry_dialog()
-    
+
     def _budget_edit(self):
         """Budget: Bearbeiten Dialog"""
-        if hasattr(self.budget_tab, 'open_edit_dialog'):
+        if hasattr(self.budget_tab, "open_edit_dialog"):
             self.budget_tab.open_edit_dialog()
-    
+
     def _budget_seed(self):
         """Budget: Zeilen aus Kategorien erzeugen"""
-        if hasattr(self.budget_tab, 'seed_from_categories'):
+        if hasattr(self.budget_tab, "seed_from_categories"):
             self.budget_tab.seed_from_categories()
-    
+
     def _budget_remove_row(self):
         """Budget: Zeile entfernen"""
-        if hasattr(self.budget_tab, 'remove_budget_row'):
+        if hasattr(self.budget_tab, "remove_budget_row"):
             self.budget_tab.remove_budget_row()
-    
+
     def _budget_remove_category(self):
         """Budget: Kategorie global löschen"""
-        if hasattr(self.budget_tab, 'delete_category_global'):
+        if hasattr(self.budget_tab, "delete_category_global"):
             self.budget_tab.delete_category_global()
-    
+
     def _budget_adjust(self):
         """Budget: Anpassen Dialog"""
-        if hasattr(self.budget_tab, 'adjust_budget'):
+        if hasattr(self.budget_tab, "adjust_budget"):
             self.budget_tab.adjust_budget()
-    
+
     def _categories_new_main(self):
         """Kategorien: Neue Hauptkategorie"""
-        if hasattr(self.categories_tab, 'add_root_category'):
+        if hasattr(self.categories_tab, "add_root_category"):
             self.categories_tab.add_root_category()
-    
+
     def _categories_new_sub(self):
         """Kategorien: Neue Unterkategorie"""
-        if hasattr(self.categories_tab, 'add_subcategory'):
+        if hasattr(self.categories_tab, "add_subcategory"):
             self.categories_tab.add_subcategory()
-    
+
     def _categories_delete(self):
         """Kategorien: Auswahl löschen"""
-        if hasattr(self.categories_tab, 'delete_selected'):
+        if hasattr(self.categories_tab, "delete_selected"):
             self.categories_tab.delete_selected()
-    
+
     def _categories_mass_edit(self):
         """Kategorien: Massenbearbeitung"""
-        if hasattr(self.categories_tab, 'mass_edit'):
+        if hasattr(self.categories_tab, "mass_edit"):
             self.categories_tab.mass_edit()
-    
+
     def _categories_sort(self):
         """Kategorien: Sortierung ändern"""
-        if hasattr(self.categories_tab, 'change_sort'):
+        if hasattr(self.categories_tab, "change_sort"):
             self.categories_tab.change_sort()
-    
+
     def _tracking_add_fixcosts(self):
         """Tracking: Fixkosten buchen"""
-        if hasattr(self.tracking_tab, 'add_fixcosts'):
+        if hasattr(self.tracking_tab, "add_fixcosts"):
             self.tracking_tab.add_fixcosts()
-    
+
     def _overview_refresh(self):
         """Übersicht: Daten aktualisieren"""
-        if hasattr(self.overview_tab, 'refresh_data'):
+        if hasattr(self.overview_tab, "refresh_data"):
             self.overview_tab.refresh_data()
-        elif hasattr(self.overview_tab, 'refresh'):
+        elif hasattr(self.overview_tab, "refresh"):
             self.overview_tab.refresh()
 
-    def _open_budget_editor_from_overview(self, typ: str, category: str, year: int, month: int) -> None:
+    def _open_budget_editor_from_overview(
+        self, typ: str, category: str, year: int, month: int
+    ) -> None:
         """Springt von der Übersicht direkt in den Budget-Editor der gewählten Kategorie."""
         try:
             self._goto_tab(self.budget_tab)
@@ -1952,7 +2050,7 @@ class MainWindow(QMainWindow):
         except Exception:
             specs = []
         default = {k: True for k, _t in specs}
-        saved = self.settings.get('overview_visible_subtabs', None)
+        saved = self.settings.get("overview_visible_subtabs", None)
         if isinstance(saved, dict):
             vis = default.copy()
             for k, v in saved.items():
@@ -1964,16 +2062,16 @@ class MainWindow(QMainWindow):
     def _apply_overview_subtabs_from_settings(self) -> None:
         """Wendet die gespeicherte Sichtbarkeit direkt auf die Übersicht an."""
         vis = self._get_overview_subtab_visibility()
-        if hasattr(self.overview_tab, 'apply_subtab_visibility'):
+        if hasattr(self.overview_tab, "apply_subtab_visibility"):
             self.overview_tab.apply_subtab_visibility(vis)
         else:
             # Fallback: einzelne Tabs
             for k, on in vis.items():
-                if hasattr(self.overview_tab, 'set_subtab_visible'):
+                if hasattr(self.overview_tab, "set_subtab_visible"):
                     self.overview_tab.set_subtab_visible(k, bool(on))
 
         # Menü-Checkboxen synchronisieren
-        if hasattr(self, '_overview_visibility_actions'):
+        if hasattr(self, "_overview_visibility_actions"):
             for k, act in self._overview_visibility_actions.items():
                 act.blockSignals(True)
                 act.setChecked(bool(vis.get(k, True)))
@@ -1981,7 +2079,7 @@ class MainWindow(QMainWindow):
 
         # Normalisierte Map speichern
         if vis:
-            self.settings.set('overview_visible_subtabs', vis)
+            self.settings.set("overview_visible_subtabs", vis)
 
     def _toggle_overview_subtab(self, key: str, checked: bool) -> None:
         """Callback aus dem Menü: ein/ausblenden + persistieren."""
@@ -1993,41 +2091,49 @@ class MainWindow(QMainWindow):
         vis[key] = bool(checked)
         if not any(vis.values()):
             vis[key] = True
-            if hasattr(self, '_overview_visibility_actions') and key in self._overview_visibility_actions:
+            if (
+                hasattr(self, "_overview_visibility_actions")
+                and key in self._overview_visibility_actions
+            ):
                 act = self._overview_visibility_actions[key]
                 act.blockSignals(True)
                 act.setChecked(True)
                 act.blockSignals(False)
-            self.statusBar().showMessage(tr("lbl.mindestens_ein_uebersichtreiter_muss"), 3000)
+            self.statusBar().showMessage(
+                tr("lbl.mindestens_ein_uebersichtreiter_muss"), 3000
+            )
             return
 
-        self.settings.set('overview_visible_subtabs', vis)
-        if hasattr(self.overview_tab, 'apply_subtab_visibility'):
+        self.settings.set("overview_visible_subtabs", vis)
+        if hasattr(self.overview_tab, "apply_subtab_visibility"):
             self.overview_tab.apply_subtab_visibility(vis)
-        elif hasattr(self.overview_tab, 'set_subtab_visible'):
+        elif hasattr(self.overview_tab, "set_subtab_visible"):
             self.overview_tab.set_subtab_visible(key, bool(checked))
 
     def _save_budget(self):
         """Speichert das Budget inklusive verschlüsselter Session."""
         try:
-            self._save_widget_before_leave(self.budget_tab, reason="manuelles Speichern")
+            self._save_widget_before_leave(
+                self.budget_tab, reason="manuelles Speichern"
+            )
             self.statusBar().showMessage(tr("msg.budget_saved"), 3000)
             self._update_undo_redo_actions()
         except Exception as e:
             logger.error("Budget speichern fehlgeschlagen: %s", e, exc_info=True)
-            QMessageBox.warning(self, tr('dlg.hinweis'), trf("msg.fehler_beim_speichern_e", e=str(e)))
+            show_warning(
+                self, tr("dlg.hinweis"), trf("msg.fehler_beim_speichern_e", e=str(e))
+            )
 
     def _refresh_current_tab(self):
         """Aktualisiert den aktuellen Tab"""
         current_widget = self.tabs.currentWidget()
-        
-        if hasattr(current_widget, 'refresh'):
+
+        if hasattr(current_widget, "refresh"):
             current_widget.refresh()
             self.statusBar().showMessage(tr("msg.view_refreshed"), 2000)
-        elif hasattr(current_widget, 'load'):
+        elif hasattr(current_widget, "load"):
             current_widget.load()
             self.statusBar().showMessage(tr("msg.view_refreshed"), 2000)
-    
 
     def _update_undo_redo_actions(self) -> None:
         """Aktiviert/Deaktiviert Undo/Redo je nach Stack."""
@@ -2049,18 +2155,18 @@ class MainWindow(QMainWindow):
     def _set_current_year(self):
         """Setzt in allen Tabs das aktuelle Jahr"""
         current_year = date.today().year
-        
+
         # Budget-Tab
-        if hasattr(self.budget_tab, 'year_spin'):
+        if hasattr(self.budget_tab, "year_spin"):
             self.budget_tab.year_spin.setValue(current_year)
-        
+
         # Overview-Tab
-        if hasattr(self.overview_tab, 'year_combo'):
+        if hasattr(self.overview_tab, "year_combo"):
             for i in range(self.overview_tab.year_combo.count()):
                 if self.overview_tab.year_combo.itemText(i) == str(current_year):
                     self.overview_tab.year_combo.setCurrentIndex(i)
                     break
-        
+
         self.statusBar().showMessage(f"Jahr {current_year} geladen", 2000)
 
     def _show_db_info(self):
@@ -2069,7 +2175,7 @@ class MainWindow(QMainWindow):
         import os
         from pathlib import Path
         from model.app_paths import resolve_in_app
-        
+
         try:
             # Aktive DB-Datei (für Anzeige & Größe)
             encrypted_session = getattr(self, "_encrypted_session", None)
@@ -2083,19 +2189,20 @@ class MainWindow(QMainWindow):
 
             # Statistiken via Model (kein raw SQL in View)
             from model.database_management_model import DatabaseManagementModel
+
             db_stats = DatabaseManagementModel(
                 str(active_file), conn=self.conn
             ).get_database_statistics()
 
-            db_size = db_stats.get('db_size_kb', 0)
-            tables = db_stats.get('tables', [])
+            db_size = db_stats.get("db_size_kb", 0)
+            tables = db_stats.get("tables", [])
             budget_count = db_stats.get(tr("lbl.budgeteintraege"), 0)
-            tracking_count = db_stats.get('Buchungen', 0)
+            tracking_count = db_stats.get("Buchungen", 0)
             category_count = db_stats.get(tr("tab.categories"), 0)
             savings_count = db_stats.get(tr("dlg.savings_goals"), 0)
-            years_b = [str(y) for y in db_stats.get('years_budget', [])]
-            years_t = [str(y) for y in db_stats.get('years_tracking', [])]
-            
+            years_b = [str(y) for y in db_stats.get("years_budget", [])]
+            years_t = [str(y) for y in db_stats.get("years_tracking", [])]
+
             # Dialog aufbauen
             info = f"""{tr('db.info.title_html')}
 
@@ -2107,14 +2214,14 @@ class MainWindow(QMainWindow):
 <h4>{tr('db.info.migration_status')}</h4>
 <p>"""
 
-            if migration_info['needs_migration']:
+            if migration_info["needs_migration"]:
                 info += f"<span style='color: orange;'>{tr('db.info.migration_needed')}</span><br>"
-                if migration_info['missing_tables']:
+                if migration_info["missing_tables"]:
                     info += f"<b>{tr('db.info.missing_tables')}:</b> {', '.join(migration_info['missing_tables'])}"
             else:
                 info += f"<span style='color: green;'>{tr('db.info.current')}</span>"
 
-            no_years = tr('db.info.no_years')
+            no_years = tr("db.info.no_years")
             info += f"""</p>
 
 <h4>{tr('db.info.data_stats')}</h4>
@@ -2131,15 +2238,17 @@ class MainWindow(QMainWindow):
 <h4>{tr('db.info.available_tables')} ({len(tables)})</h4>
 <p><small>{', '.join(tables)}</small></p>
 """
-            
+
             msg = QMessageBox(self)
             msg.setWindowTitle(tr("dlg.db_info"))
             msg.setTextFormat(Qt.RichText)
             msg.setText(info)
             msg.exec()
-            
+
         except Exception as e:
-            QMessageBox.warning(self, tr('dlg.hinweis'), trf("msg.fehler_beim_laden_der", e=str(e)))
+            show_warning(
+                self, tr("dlg.hinweis"), trf("msg.fehler_beim_laden_der", e=str(e))
+            )
 
     def _show_log_file(self, *, path: Path, title_key: str) -> None:
         """Öffnet eine Logdatei in einem eigenen Dialog statt im Systemeditor."""
@@ -2150,7 +2259,11 @@ class MainWindow(QMainWindow):
             dlg = LogViewerDialog(self, title=tr(title_key), path=path, text=text)
             dlg.exec()
         except Exception as exc:
-            QMessageBox.warning(self, tr("msg.error"), trf("diagnostics.log_open_failed", error=str(exc)))
+            show_warning(
+                self,
+                tr("msg.error"),
+                trf("diagnostics.log_open_failed", error=str(exc)),
+            )
 
     def _show_app_log(self) -> None:
         from model.diagnostics import log_file_path
@@ -2160,7 +2273,9 @@ class MainWindow(QMainWindow):
     def _show_crash_log(self) -> None:
         from model.diagnostics import crash_log_file_path
 
-        self._show_log_file(path=crash_log_file_path(), title_key="diagnostics.crash_log_title")
+        self._show_log_file(
+            path=crash_log_file_path(), title_key="diagnostics.crash_log_title"
+        )
 
     def _open_diagnostics_folder(self) -> None:
         """Öffnet den Diagnoseordner im Dateimanager."""
@@ -2170,30 +2285,47 @@ class MainWindow(QMainWindow):
             folder = diagnostics_dir()
             QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
             if self.statusBar():
-                self.statusBar().showMessage(trf("diagnostics.folder_opened", folder=str(folder)), 3000)
+                self.statusBar().showMessage(
+                    trf("diagnostics.folder_opened", folder=str(folder)), 3000
+                )
         except Exception as exc:
-            QMessageBox.warning(self, tr("msg.error"), trf("diagnostics.folder_open_failed", error=str(exc)))
+            show_warning(
+                self,
+                tr("msg.error"),
+                trf("diagnostics.folder_open_failed", error=str(exc)),
+            )
 
     def _create_diagnostic_report(self) -> None:
         """Erstellt lokal ein Diagnose-ZIP ohne Datenbank/Backups."""
         try:
-            from model.diagnostics import create_diagnostic_report_zip, remove_old_diagnostic_reports
+            from model.diagnostics import (
+                create_diagnostic_report_zip,
+                remove_old_diagnostic_reports,
+            )
 
-            path = create_diagnostic_report_zip()
+            path = create_diagnostic_report_zip(connection=self.conn)
             remove_old_diagnostic_reports()
             box = QMessageBox(self)
             box.setIcon(QMessageBox.Information)
             box.setWindowTitle(tr("diagnostics.report_created_title"))
             box.setText(trf("diagnostics.report_created_text", path=str(path)))
-            open_folder_button = box.addButton(tr("diagnostics.open_folder"), QMessageBox.ActionRole)
+            open_folder_button = box.addButton(
+                tr("diagnostics.open_folder"), QMessageBox.ActionRole
+            )
             box.addButton(QMessageBox.Ok)
             box.exec()
             if box.clickedButton() is open_folder_button:
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
         except Exception as exc:
-            QMessageBox.warning(self, tr("msg.error"), trf("diagnostics.report_create_failed", error=str(exc)))
+            show_warning(
+                self,
+                tr("msg.error"),
+                trf("diagnostics.report_create_failed", error=str(exc)),
+            )
 
-    def schedule_unclean_shutdown_prompt(self, previous_state: dict | None, *, delay_ms: int = 1200) -> None:
+    def schedule_unclean_shutdown_prompt(
+        self, previous_state: dict | None, *, delay_ms: int = 1200
+    ) -> None:
         """Zeigt nach einem vermuteten Crash/Kill beim Neustart einen Diagnosehinweis."""
         if not previous_state:
             return
@@ -2206,7 +2338,9 @@ class MainWindow(QMainWindow):
                     return
                 self._show_unclean_shutdown_prompt(previous_state)
             except RuntimeError:
-                logger.debug("Crash-Hinweis übersprungen: MainWindow wurde bereits zerstört.")
+                logger.debug(
+                    "Crash-Hinweis übersprungen: MainWindow wurde bereits zerstört."
+                )
             except Exception:
                 logger.exception("Crash-Hinweis konnte nicht angezeigt werden")
             finally:
@@ -2219,22 +2353,29 @@ class MainWindow(QMainWindow):
         timer.start(max(0, int(delay_ms)))
 
     def _show_unclean_shutdown_prompt(self, previous_state: dict) -> None:
-        started_at = str(previous_state.get("started_at") or tr("diagnostics.unknown_time"))
-        reason = str(previous_state.get("exit_reason") or tr("diagnostics.unknown_reason"))
+        started_at = str(
+            previous_state.get("started_at") or tr("diagnostics.unknown_time")
+        )
+        reason = str(
+            previous_state.get("exit_reason") or tr("diagnostics.unknown_reason")
+        )
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Warning)
         box.setWindowTitle(tr("diagnostics.unclean_title"))
         box.setText(tr("diagnostics.unclean_text"))
-        box.setInformativeText(trf("diagnostics.unclean_info", started_at=started_at, reason=reason))
+        box.setInformativeText(
+            trf("diagnostics.unclean_info", started_at=started_at, reason=reason)
+        )
         log_button = box.addButton(tr("diagnostics.show_log"), QMessageBox.ActionRole)
-        report_button = box.addButton(tr("diagnostics.create_report"), QMessageBox.ActionRole)
+        report_button = box.addButton(
+            tr("diagnostics.create_report"), QMessageBox.ActionRole
+        )
         box.addButton(tr("diagnostics.ignore"), QMessageBox.RejectRole)
         box.exec()
         if box.clickedButton() is log_button:
             self._show_app_log()
         elif box.clickedButton() is report_button:
             self._create_diagnostic_report()
-
 
     def _show_about(self):
         """Zeigt Über-Dialog"""
@@ -2246,41 +2387,27 @@ class MainWindow(QMainWindow):
         from views.help_dialog import HelpDialog
 
         topic = start_topic_id if isinstance(start_topic_id, str) else None
-        on_show_key = self._show_restore_key_view if self._current_restore_key() else None
+        on_show_key = (
+            self._show_restore_key_view if self._current_restore_key() else None
+        )
         dialog = HelpDialog(
             self,
             start_topic_id=topic,
             on_show_key=on_show_key,
             on_open_mindmap=lambda parent=None: self._open_help_mindmap(),
+            on_open_wiki_audit=lambda parent=None: self._open_wiki_audit(),
         )
         dialog.exec()
 
     def _help_file_candidates(self, rel_path: str) -> list[Path]:
-        """Mögliche Orte für lokale Hilfedateien in Source, Portable und PyInstaller."""
-        candidates: list[Path] = []
-        try:
-            candidates.append(resolve_in_app(rel_path))
-        except Exception:
-            pass
-        meipass = getattr(sys, "_MEIPASS", None)
-        if meipass:
-            candidates.append(Path(meipass) / rel_path)
-        candidates.append(Path(__file__).resolve().parents[1] / rel_path)
-        return candidates
+        """Mögliche Orte für lokale Hilfedateien (siehe ``views/help_launcher``)."""
+        return help_file_candidates(rel_path)
 
-    def _open_help_file(self, rel_path: str, *, title_key: str = "menu.handbook") -> bool:
-        """Öffnet eine lokale Hilfedatei im Browser/Standardprogramm."""
-        for path in self._help_file_candidates(rel_path):
-            try:
-                if path.exists():
-                    QDesktopServices.openUrl(QUrl.fromLocalFile(str(path)))
-                    if self.statusBar():
-                        self.statusBar().showMessage(trf("msg.help_opened", path=str(path)), 3000)
-                    return True
-            except Exception as e:
-                logger.debug("Help candidate failed %s: %s", path, e)
-        QMessageBox.warning(self, tr(title_key), tr("msg.help_not_found"))
-        return False
+    def _open_help_file(
+        self, rel_path: str, *, title_key: str = "menu.handbook"
+    ) -> bool:
+        """Öffnet eine lokale Hilfedatei (siehe ``views/help_launcher``)."""
+        return open_help_file(self, rel_path, title_key=title_key)
 
     def _open_help_docs(self):
         """Öffnet die vollständige lokale HTML-Wissensdatenbank."""
@@ -2289,6 +2416,9 @@ class MainWindow(QMainWindow):
     def _open_help_mindmap(self):
         """Öffnet die direkt anzeigbare Mindmap / den Informations-Laufplan."""
         self._open_help_file("docs/help/mindmap.html", title_key="menu.help_mindmap")
+
+    def _open_wiki_audit(self):
+        self._open_help_file("docs/help/wiki-audit.html", title_key="menu.wiki_audit")
 
     def _current_restore_key(self) -> str | None:
         """Leitet den Restore-Key der aktuell geöffneten Datenbank ab.
@@ -2307,6 +2437,7 @@ class MainWindow(QMainWindow):
             return None
         try:
             from model.crypto import db_key_to_restore_key
+
             return db_key_to_restore_key(db_key)
         except Exception:
             logger.exception("Restore-Key konnte nicht abgeleitet werden")
@@ -2316,8 +2447,10 @@ class MainWindow(QMainWindow):
         """Zeigt den Restore-Key der aktuellen DB (aus der Hilfe heraus)."""
         key = self._current_restore_key()
         if not key:
-            QMessageBox.information(
-                self, tr("restore_key.view_title"), tr("account.restorekey_nicht_verfuegbar")
+            show_info(
+                self,
+                tr("restore_key.view_title"),
+                tr("account.restorekey_nicht_verfuegbar"),
             )
             return
         from views.restore_key_dialog import RestoreKeyDialog
@@ -2327,9 +2460,12 @@ class MainWindow(QMainWindow):
     def _show_account_management(self):
         """Zeigt den Kontoverwaltungs-Dialog."""
         if not self._active_user or not self._user_model:
-            QMessageBox.information(
-                self, tr('auto.views_main_window.1577_info_a7110986'),
-                tr('auto.views_main_window.1578_kontoverwaltung_ist_nur_bei_verschl_381922cb')
+            show_info(
+                self,
+                tr("auto.views_main_window.1577_info_a7110986"),
+                tr(
+                    "auto.views_main_window.1578_kontoverwaltung_ist_nur_bei_verschl_381922cb"
+                ),
             )
             return
 
@@ -2362,13 +2498,27 @@ class MainWindow(QMainWindow):
         if self._active_user:
             icon = self._active_user.security_icon
             base = app_window_title()
-            self.setWindowTitle(trf('auto.views_main_window.1611_value_0_value_1_value_2_1814eaf1', value_0=(base), value_1=(icon), value_2=(new_name)))
-            # Konto-Menü Info aktualisieren
-            if hasattr(self, '_account_info_action'):
-                self._account_info_action.setText(
-                    trf('auto.views_main_window.1615_value_0_value_1_value_2_81323b29', value_0=(icon), value_1=(new_name), value_2=(display_security_label(self._active_user.security)))
+            self.setWindowTitle(
+                trf(
+                    "auto.views_main_window.1611_value_0_value_1_value_2_1814eaf1",
+                    value_0=(base),
+                    value_1=(icon),
+                    value_2=(new_name),
                 )
-            self.statusBar().showMessage(trf("lbl.anzeigename_geaendert_new_name", new_name=new_name), 3000)
+            )
+            # Konto-Menü Info aktualisieren
+            if hasattr(self, "_account_info_action"):
+                self._account_info_action.setText(
+                    trf(
+                        "auto.views_main_window.1615_value_0_value_1_value_2_81323b29",
+                        value_0=(icon),
+                        value_1=(new_name),
+                        value_2=(display_security_label(self._active_user.security)),
+                    )
+                )
+            self.statusBar().showMessage(
+                trf("lbl.anzeigename_geaendert_new_name", new_name=new_name), 3000
+            )
 
     def _on_security_changed(self, new_security: str):
         """Aktualisiert den Fenstertitel nach Sicherheitsstufen-Wechsel."""
@@ -2376,32 +2526,74 @@ class MainWindow(QMainWindow):
             icon = self._active_user.security_icon
             name = self._active_user.display_name
             base = app_window_title()
-            self.setWindowTitle(trf('auto.views_main_window.1625_value_0_value_1_value_2_1999fbaa', value_0=(base), value_1=(icon), value_2=(name)))
+            self.setWindowTitle(
+                trf(
+                    "auto.views_main_window.1625_value_0_value_1_value_2_1999fbaa",
+                    value_0=(base),
+                    value_1=(icon),
+                    value_2=(name),
+                )
+            )
             # Konto-Menü Info aktualisieren
-            if hasattr(self, '_account_info_action'):
+            if hasattr(self, "_account_info_action"):
                 self._account_info_action.setText(
-                    trf('auto.views_main_window.1629_value_0_value_1_value_2_943d4260', value_0=(icon), value_1=(name), value_2=(display_security_label(self._active_user.security)))
+                    trf(
+                        "auto.views_main_window.1629_value_0_value_1_value_2_943d4260",
+                        value_0=(icon),
+                        value_1=(name),
+                        value_2=(display_security_label(self._active_user.security)),
+                    )
                 )
             self.statusBar().showMessage(
-                trf("lbl.sicherheitsstufe_geaendert_self_active_usersecurity_label",
-                    label=display_security_label(self._active_user.security)), 3000
+                trf(
+                    "lbl.sicherheitsstufe_geaendert_self_active_usersecurity_label",
+                    label=display_security_label(self._active_user.security),
+                ),
+                3000,
             )
-    
+
     def _show_shortcuts(self):
         """Zeigt Tastenkürzel-Übersicht (F1)"""
         dialog = ShortcutsDialog(self, settings=self.settings)
         dialog.exec()
-    
+
+    def _update_lifeplanner_import_badge(self):
+        """Aktualisiert nur den offenen Bridge-Zähler; keine Auto-Buchung."""
+        try:
+            from model.lifeplanner_import_service import pending_count
+
+            count = pending_count(self.conn)
+            button = getattr(self, "sidebar_import_button", None)
+            if button is not None:
+                suffix = f" ({count})" if count else ""
+                button.setText(f"📥  {tr('lifeplanner_import.sidebar')}{suffix}")
+                button.setProperty("hasPendingImports", bool(count))
+            if count:
+                self.statusBar().showMessage(
+                    trf("lifeplanner_import.pending_status", count=count), 7000
+                )
+        except Exception as exc:
+            logger.debug("LifePlanner import badge: %s", exc)
+
+    def _show_lifeplanner_imports(self):
+        """Öffnet die sichere FPM/LifePlanner-Review-Inbox."""
+        dialog = LifePlannerImportDialog(self.conn, self)
+        dialog.exec()
+        if dialog.imported_count:
+            self._save_encrypted_session()
+            self._schedule_refresh_all_tabs(reason="lifeplanner_import", delay_ms=0)
+        self._update_lifeplanner_import_badge()
+
     def _show_quick_add(self):
         """Zeigt Schnelleingabe-Dialog (Strg+N)"""
         dialog = QuickAddDialog(self.conn, self)
         if dialog.exec() == QDialog.Accepted:
             self._save_encrypted_session()
             # Tracking-Tab aktualisieren
-            if hasattr(self.tracking_tab, 'refresh'):
+            if hasattr(self.tracking_tab, "refresh"):
                 self.tracking_tab.refresh()
             self.statusBar().showMessage(tr("lbl.eintrag_hinzugefuegt"), 2000)
-    
+
     def _show_global_search(self):
         """Zeigt Globale Suche (Strg+F)"""
         dialog = GlobalSearchDialog(self.conn, self)
@@ -2415,25 +2607,88 @@ class MainWindow(QMainWindow):
             widget = tab_map.get(tab_key)
             if widget:
                 self._goto_tab(widget)
-    
+
     def _show_export(self):
         """Zeigt Export-Dialog (Strg+E)"""
         dialog = ExportDialog(self.conn, self)
         dialog.exec()
-    
+
     def _show_savings_goals(self):
         """Zeigt Sparziele-Dialog (NEU v0.16)"""
         dialog = SavingsGoalsDialog(self, self.conn)
         dialog.exec()
         self._save_encrypted_session()
         # Nach Schließen: alle relevanten Einstiege aktualisieren.
-        for widget in (getattr(self, "savings_tab", None), getattr(self, "overview_tab", None), getattr(self, "tracking_tab", None)):
+        for widget in (
+            getattr(self, "savings_tab", None),
+            getattr(self, "overview_tab", None),
+            getattr(self, "tracking_tab", None),
+        ):
             try:
                 if widget is not None and hasattr(widget, "refresh"):
                     widget.refresh()
             except Exception as exc:
                 logger.debug("Sparziel-Refresh nach Dialog fehlgeschlagen: %s", exc)
-    
+
+    def _schedule_startup_auto_backup(self, *, delay_ms: int = 1200) -> None:
+        """Plant die einmalige Start-Backup-Pruefung Qt-sicher ein.
+
+        Der Callback laeuft nie direkt aus einem Dialog-``finished``-Signal.
+        Gerade unter Fedora/Wayland ueber XCB kann synchrones Verschluesseln/
+        ZIP-Schreiben im nativen Schliess-Stack eines QDialog zu einem
+        Shiboken/Qt-Segfault ohne Python-Traceback fuehren.
+        """
+        if getattr(self, "_startup_auto_backup_done", False):
+            return
+
+        skip_requested = os.environ.get(
+            "BM_SKIP_STARTUP_AUTO_BACKUP", ""
+        ).strip().lower() in {"1", "true", "yes", "on"}
+        if skip_requested:
+            self._startup_auto_backup_done = True
+            logger.warning(
+                "Startup-Auto-Backup durch BM_SKIP_STARTUP_AUTO_BACKUP deaktiviert. "
+                "Manuelle Backups bleiben verfuegbar."
+            )
+            return
+
+        existing = getattr(self, "_startup_auto_backup_timer", None)
+        try:
+            if existing is not None and existing.isActive():
+                return
+        except RuntimeError:
+            self._startup_auto_backup_timer = None
+
+        timer = QTimer(self)
+        timer.setSingleShot(True)
+        self._startup_auto_backup_timer = timer
+
+        def _run_safely() -> None:
+            try:
+                if QApplication.instance() is None:
+                    return
+                if getattr(self, "_is_closing", False):
+                    return
+                self._check_auto_backup()
+            except RuntimeError:
+                logger.debug(
+                    "Auto-Backup uebersprungen: MainWindow wurde bereits zerstoert."
+                )
+            except Exception:
+                logger.exception("Startup-Auto-Backup konnte nicht geprueft werden")
+            finally:
+                if getattr(self, "_startup_auto_backup_timer", None) is timer:
+                    self._startup_auto_backup_timer = None
+                try:
+                    timer.deleteLater()
+                except Exception:
+                    pass
+
+        timer.timeout.connect(_run_safely)
+        safe_delay = max(250, int(delay_ms))
+        logger.debug("Startup-Auto-Backup in %d ms eingeplant.", safe_delay)
+        timer.start(safe_delay)
+
     def _check_auto_backup(self):
         """Prüft ob ein automatisches Backup fällig ist und erstellt es ggf."""
         if getattr(self, "_startup_auto_backup_done", False):
@@ -2487,9 +2742,10 @@ class MainWindow(QMainWindow):
                     backup_path = backup_dir / backup_name
 
                     from model.app_paths import settings_path as _get_settings_path
-                    from model.user_model import _users_file_path as _get_users_path
+                    from model.user_model import _users_file_path
+
                     _s_path = _get_settings_path()
-                    _u_path = _get_users_path()
+                    _u_path = _users_file_path()
                     create_bundle(
                         source_db=src_db,
                         out_path=backup_path,
@@ -2502,7 +2758,9 @@ class MainWindow(QMainWindow):
 
                     self.settings.set("last_auto_backup", datetime.now().isoformat())
                     logger.info("Auto-Backup erstellt: %s", backup_name)
-                    self.statusBar().showMessage(f"Auto-Backup erstellt: {backup_name}", 5000)
+                    self.statusBar().showMessage(
+                        f"Auto-Backup erstellt: {backup_name}", 5000
+                    )
 
             # Alte Backups immer bereinigen (auch wenn kein neues Backup nötig)
             if backup_dir.exists():
@@ -2530,7 +2788,10 @@ class MainWindow(QMainWindow):
         if encrypted_session is None:
             db_path = str(configured_db_path(self.settings.database_path))
         dialog = BackupRestoreDialog(
-            self, self.conn, db_path, self.settings,
+            self,
+            self.conn,
+            db_path,
+            self.settings,
             encrypted_session=encrypted_session,
             active_user=self._active_user,
         )
@@ -2540,20 +2801,26 @@ class MainWindow(QMainWindow):
         #   → Tabs refreshen, KEIN Neustart nötig.
         # - Verschlüsselt: .enc auf Disk wurde ersetzt, In-Memory-DB ist noch alt
         #   → Neustart erforderlich.
-        if getattr(dialog, "db_changed", False) and not getattr(dialog, "exit_requested", False):
+        if getattr(dialog, "db_changed", False) and not getattr(
+            dialog, "exit_requested", False
+        ):
             if encrypted_session is None:
                 try:
                     self._schedule_refresh_all_tabs(reason="restore dialog changed DB")
-                    self.statusBar().showMessage(tr("database.msg.restore_success"), 5000)
+                    self.statusBar().showMessage(
+                        tr("database.msg.restore_success"), 5000
+                    )
                 except Exception as e:
                     logger.warning("Tab-Refresh nach Restore fehlgeschlagen: %s", e)
             else:
-                QMessageBox.information(
+                show_info(
                     self,
-                    tr('auto.views_main_window.1788_neustart_erforderlich_288778eb'),
-                    tr('auto.views_main_window.1789_bitte_starten_sie_die_anwendung_neu_e67d74c9')
+                    tr("auto.views_main_window.1788_neustart_erforderlich_288778eb"),
+                    tr(
+                        "auto.views_main_window.1789_bitte_starten_sie_die_anwendung_neu_e67d74c9"
+                    ),
                 )
-    
+
     def _show_database_management(self):
         """Zeigt den Datenbank-Verwaltungsdialog (Statistiken, Reset, Bereinigung)"""
         from views.database_management_dialog import DatabaseManagementDialog
@@ -2566,8 +2833,13 @@ class MainWindow(QMainWindow):
         else:
             db_path = str(configured_db_path(self.settings.database_path))
 
-        dialog = DatabaseManagementDialog(db_path, parent=self, conn=self.conn,
-                                          encrypted=encrypted_session is not None)
+        dialog = DatabaseManagementDialog(
+            db_path,
+            parent=self,
+            conn=self.conn,
+            active_user=self._active_user,
+            encrypted=encrypted_session is not None,
+        )
         result = dialog.exec()
 
         # Nach Änderungen (Reset/Bereinigung): Encrypted Session auf Disk schreiben + Tabs refreshen
@@ -2576,10 +2848,14 @@ class MainWindow(QMainWindow):
                 try:
                     encrypted_session.save()
                 except Exception as _e:
-                    logger.warning("encrypted_session.save nach DB-Reset fehlgeschlagen: %s", _e)
+                    logger.warning(
+                        "encrypted_session.save nach DB-Reset fehlgeschlagen: %s", _e
+                    )
             self._schedule_refresh_all_tabs(reason="database management changed DB")
-            self.statusBar().showMessage(tr("lbl.datenbankaenderungen_uebernommen"), 3000)
-    
+            self.statusBar().showMessage(
+                tr("lbl.datenbankaenderungen_uebernommen"), 3000
+            )
+
     def _show_category_manager(self):
         """Zeigt den Kategorien-Manager-Dialog (NEU v2.2.0)"""
         dialog = CategoryManagerDialog(self, conn=self.conn)
@@ -2597,20 +2873,27 @@ class MainWindow(QMainWindow):
         """Öffnet das Favoriten-Dashboard (v2.4.0)"""
         # Jahr/Monat aus Budget-Tab wenn vorhanden, sonst heute
         try:
-            year = int(self.budget_tab.year_spin.value()) if hasattr(self.budget_tab, "year_spin") else None
+            year = (
+                int(self.budget_tab.year_spin.value())
+                if hasattr(self.budget_tab, "year_spin")
+                else None
+            )
         except Exception:
             year = None
         from datetime import date as _date
+
         if year is None:
             year = _date.today().year
         month = _date.today().month
-        dialog = FavoritesDashboardDialog(self.conn, current_year=year, current_month=month, parent=self)
+        dialog = FavoritesDashboardDialog(
+            self.conn, current_year=year, current_month=month, parent=self
+        )
         dialog.exec()
-
 
     def _retranslate_ui(self) -> None:
         """Aktualisiert alle UI-Labels nach einer Sprachänderung."""
         from utils.i18n import tr
+
         # Tab-Labels aktualisieren
         self._tab_definitions = {
             5: (self.cockpit_tab, tr("tab.cockpit")),
@@ -2646,15 +2929,16 @@ class MainWindow(QMainWindow):
         """Prüft Budgetwarnungen und zeigt Anpassungsdialog (v2.4.0)"""
         from datetime import date
         from PySide6.QtWidgets import QMessageBox
+
         # Jahr/Monat möglichst aus der UI ableiten, damit "Extras → Budgetwarnungen"
         # dasselbe zeigt wie die Übersicht (kein "nur über Klick in Übersicht").
         try:
-            if year is None and hasattr(self.overview_tab, 'year_combo'):
+            if year is None and hasattr(self.overview_tab, "year_combo"):
                 year = int(self.overview_tab.year_combo.currentText())
         except Exception:
             year = None
         try:
-            if month is None and hasattr(self.overview_tab, 'month_combo'):
+            if month is None and hasattr(self.overview_tab, "month_combo"):
                 idx = int(self.overview_tab.month_combo.currentIndex())
                 # idx==0 ist "Gesamt": aktuelles Jahr → heutiger Monat,
                 # vergangene/andere Jahre → Dezember. Sonst fragt Extras →
@@ -2662,7 +2946,9 @@ class MainWindow(QMainWindow):
                 # abgeschlossene Jahr ab.
                 if idx == 0:
                     selected_year = int(year) if year is not None else date.today().year
-                    month = date.today().month if selected_year == date.today().year else 12
+                    month = (
+                        date.today().month if selected_year == date.today().year else 12
+                    )
                 else:
                     month = idx
         except Exception:
@@ -2671,7 +2957,11 @@ class MainWindow(QMainWindow):
         # Fallback: Budget-Tab Jahr, sonst heute
         try:
             if year is None:
-                year = int(self.budget_tab.year_spin.value()) if hasattr(self.budget_tab, "year_spin") else date.today().year
+                year = (
+                    int(self.budget_tab.year_spin.value())
+                    if hasattr(self.budget_tab, "year_spin")
+                    else date.today().year
+                )
         except Exception:
             year = date.today().year
         if month is None:
@@ -2680,7 +2970,7 @@ class MainWindow(QMainWindow):
         # Lookback identisch zur Einstellung, damit "keine Auffälligkeiten" nicht
         # fälschlich erscheint, obwohl der Dialog später Vorschläge hätte.
         try:
-            lookback = int(self.settings.get('budget_suggestion_months', 3) or 3)
+            lookback = int(self.settings.get("budget_suggestion_months", 3) or 3)
         except Exception:
             lookback = 3
 
@@ -2694,6 +2984,7 @@ class MainWindow(QMainWindow):
         if budget_model is None:
             try:
                 from model.budget_model import BudgetModel
+
                 budget_model = BudgetModel(self.conn)
             except Exception:
                 budget_model = None
@@ -2709,19 +3000,22 @@ class MainWindow(QMainWindow):
     def _check_budget_warnings_from_overview(self):
         """Öffnet Budgetwarner mit Jahr/Monat aus der Übersicht."""
         from datetime import date
+
         year = None
         month = None
         try:
-            if hasattr(self.overview_tab, 'year_combo'):
+            if hasattr(self.overview_tab, "year_combo"):
                 year = int(self.overview_tab.year_combo.currentText())
         except Exception:
             year = None
         try:
-            if hasattr(self.overview_tab, 'month_combo'):
+            if hasattr(self.overview_tab, "month_combo"):
                 idx = int(self.overview_tab.month_combo.currentIndex())
                 if idx == 0:
                     selected_year = int(year) if year is not None else date.today().year
-                    month = date.today().month if selected_year == date.today().year else 12
+                    month = (
+                        date.today().month if selected_year == date.today().year else 12
+                    )
                 else:
                     month = idx
         except Exception:
@@ -2740,6 +3034,13 @@ class MainWindow(QMainWindow):
         Die Pruefung laedt nur das Manifest. Download/Staging/Installation
         passieren erst nach Klick im normalen Update-Dialog.
         """
+        if os.environ.get("LIFEPLANNER_CENTRAL_UPDATER", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            return
         if not bool(self.settings.get("check_updates_on_start", True)):
             return
         timer = QTimer(self)
@@ -2793,7 +3094,9 @@ class MainWindow(QMainWindow):
         res = read_startup_check_result()
         if not res.get("available"):
             if res.get("error"):
-                logger.debug("Startup-Update-Check ohne Hinweis beendet: %s", res.get("error"))
+                logger.debug(
+                    "Startup-Update-Check ohne Hinweis beendet: %s", res.get("error")
+                )
             return
         if self._startup_update_prompt_shown:
             return
@@ -2801,25 +3104,45 @@ class MainWindow(QMainWindow):
 
         remote = str(res.get("remote") or "")
         current = str(res.get("current") or APP_VERSION)
-        self.statusBar().showMessage(trf("update.startup_status_available", version=remote), 10000)
+        self.statusBar().showMessage(
+            trf("update.startup_status_available", version=remote), 10000
+        )
 
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Information)
         msg.setWindowTitle(tr("update.startup_available_title"))
-        msg.setText(trf("update.startup_available_text", current=current, remote=remote))
+        msg.setText(
+            trf("update.startup_available_text", current=current, remote=remote)
+        )
         msg.setInformativeText(tr("update.startup_available_info"))
-        btn_update = msg.addButton(tr("update.startup_btn_open"), QMessageBox.AcceptRole)
+        btn_update = msg.addButton(
+            tr("update.startup_btn_open"), QMessageBox.AcceptRole
+        )
         msg.addButton(tr("update.startup_btn_later"), QMessageBox.RejectRole)
         msg.exec()
         if msg.clickedButton() is btn_update:
             self._show_update_dialog()
 
     def _show_update_dialog(self):
-        """Öffnet den Updater-Dialog (Installer/Standalone/Portable kompatibel)."""
+        """Öffnet standalone den Modul-Updater, im Host den zentralen Updater."""
+        if os.environ.get("LIFEPLANNER_CENTRAL_UPDATER", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "on",
+        }:
+            show_info(
+                self,
+                tr("update.title"),
+                tr("lifeplanner_import.central_updater"),
+            )
+            return
         dialog = UpdateDialog(self)
         dialog.exec()
 
-    def _schedule_refresh_all_tabs(self, *, reason: str = "", delay_ms: int = 0) -> None:
+    def _schedule_refresh_all_tabs(
+        self, *, reason: str = "", delay_ms: int = 0
+    ) -> None:
         """Plant einen kompletten Tab-Refresh stabil im Qt-Eventloop.
 
         Hintergrund: Nach Budgetwarnungs-/Vorschlagsdialogen und QAction-Menüs ist
@@ -2852,19 +3175,27 @@ class MainWindow(QMainWindow):
         Für Stabilität bevorzugen wir `refresh()` und fallen auf `load()` zurück.
         """
         if getattr(self, "_refresh_all_tabs_running", False):
-            self._schedule_refresh_all_tabs(reason="reentrant refresh skipped", delay_ms=0)
+            self._schedule_refresh_all_tabs(
+                reason="reentrant refresh skipped", delay_ms=0
+            )
             return
         self._refresh_all_tabs_running = True
         try:
-            for tab in [self.budget_tab, self.categories_tab, self.tracking_tab, self.overview_tab]:
+            for tab in [
+                self.budget_tab,
+                self.categories_tab,
+                self.tracking_tab,
+                self.overview_tab,
+            ]:
                 self._refresh_tab_widget(tab)
         except Exception:
             # Refresh darf nie die UI killen, aber wir wollen wenigstens eine Spur im Terminal.
             import traceback
+
             traceback.print_exc()
         finally:
             self._refresh_all_tabs_running = False
-    
+
     def _toggle_fullscreen(self, checked):
         """Toggle Vollbildmodus (F11)"""
         if checked:
@@ -2877,31 +3208,32 @@ class MainWindow(QMainWindow):
             else:
                 self.showNormal()
             self.statusBar().showMessage(tr("msg.fullscreen_disabled"), 2000)
-        
+
         self.settings.set("window_is_fullscreen", checked)
-    
+
     def _toggle_maximize(self, checked):
         """Toggle Maximiert-Modus (F10)"""
         if self.isFullScreen():
             # Wenn fullscreen, erst aus fullscreen
             self.showNormal()
             self.settings.set("window_is_fullscreen", False)
-        
+
         if checked:
             self.showMaximized()
             self.statusBar().showMessage(tr("msg.window_maximized"), 2000)
         else:
             self.showNormal()
             self.statusBar().showMessage(tr("msg.window_normalized"), 2000)
-        
+
         self.settings.set("window_is_maximized", checked)
 
     def changeEvent(self, event):
         """Wird aufgerufen wenn Fenster-State sich ändert (minimize, maximize, etc)"""
         from PySide6.QtGui import QWindowStateChangeEvent
+
         if isinstance(event, QWindowStateChangeEvent):
             # Update maximize status (nur wenn settings schon initialisiert)
-            if hasattr(self, 'settings'):
+            if hasattr(self, "settings"):
                 is_max = self.isMaximized()
                 self.settings.set("window_is_maximized", is_max)
         super().changeEvent(event)
@@ -2909,27 +3241,29 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         """Wird beim Schließen des Fensters aufgerufen"""
         # Speichere Fenster-State BEVOR wir fragen (nur wenn settings existiert)
-        if hasattr(self, 'settings'):
+        if hasattr(self, "settings"):
             self.settings.set("window_is_fullscreen", self.isFullScreen())
             self.settings.set("window_is_maximized", self.isMaximized())
-            
+
             # Fenstergröße speichern (nur wenn nicht fullscreen/maximized)
             if not self.isFullScreen() and not self.isMaximized():
                 self.settings.set("window_width", self.width())
                 self.settings.set("window_height", self.height())
                 self.settings.set("window_x", self.x())
                 self.settings.set("window_y", self.y())
-        
+
         # Tab-Reihenfolge speichern
         self._save_tab_order()
-        
+
         # Wenn Auto-Save aktiv: Einfach speichern und schließen
-        if hasattr(self, 'settings') and self.settings.auto_save:
-            self._save_widget_before_leave(getattr(self, "budget_tab", None), reason=tr("btn.close"))
+        if hasattr(self, "settings") and self.settings.auto_save:
+            self._save_widget_before_leave(
+                getattr(self, "budget_tab", None), reason=tr("btn.close")
+            )
             self._is_closing = True
             event.accept()
             return
-        
+
         # In Tests / headless: blockierenden Bestätigungsdialog überspringen.
         # exec() würde ohne Display ewig warten und den Prozess aufhängen.
         if getattr(self, "_suppress_close_confirm", False):
@@ -2940,14 +3274,16 @@ class MainWindow(QMainWindow):
         # Wenn Auto-Save nicht aktiv: Einmal fragen ob gespeichert werden soll
         reply = QMessageBox.question(
             self,
-            tr('msg.confirm_exit'),
+            tr("msg.confirm_exit"),
             tr("btn.moechten_sie_das_budget"),
             QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
-            QMessageBox.Save
+            QMessageBox.Save,
         )
-        
+
         if reply == QMessageBox.Save:
-            self._save_widget_before_leave(getattr(self, "budget_tab", None), reason=tr("btn.close"))
+            self._save_widget_before_leave(
+                getattr(self, "budget_tab", None), reason=tr("btn.close")
+            )
             self._is_closing = True
             event.accept()
         elif reply == QMessageBox.Discard:
@@ -2959,7 +3295,7 @@ class MainWindow(QMainWindow):
 
     def _save_encrypted_session(self):
         """Speichert verschlüsselte DB-Session falls vorhanden."""
-        session = getattr(self, '_encrypted_session', None)
+        session = getattr(self, "_encrypted_session", None)
         if session:
             try:
                 session.save()
@@ -2969,9 +3305,11 @@ class MainWindow(QMainWindow):
     # =========================================================================
     # Setup-Assistent / Onboarding
     # =========================================================================
-    def _start_setup_assistant(self, *, force: bool = False, db_existed_before: bool | None = None) -> None:
+    def _start_setup_assistant(
+        self, *, force: bool = False, db_existed_before: bool | None = None
+    ) -> None:
         """Startet den First-Start-Guide (Setup-Assistent).
-        
+
         Args:
             force: True = immer starten (z.B. aus Menü), False = nur wenn Bedingungen erfüllt
             db_existed_before: Optional, ob die DB vor dem Start schon existierte
@@ -2992,22 +3330,82 @@ class MainWindow(QMainWindow):
                 db_existed = bool(db_existed_before)
             else:
                 try:
-                    db_path = configured_db_path(self.settings.get("database_path", "budgetmanager.db"))
+                    db_path = configured_db_path(
+                        self.settings.get("database_path", "budgetmanager.db")
+                    )
                     db_existed = db_path.exists()
                 except Exception:
                     db_existed = True
 
-            dlg = SetupAssistantDialog(self, self.conn, self.settings, db_existed_before=db_existed)
+            dlg = SetupAssistantDialog(
+                self, self.conn, self.settings, db_existed_before=db_existed
+            )
             # Referenz behalten: verhindert, dass der Assistent je nach Qt/Python-
             # Lebensdauer nach dem Start sofort verschwindet.
             self._setup_assistant_dialog = dlg
 
             def _setup_finished(*_args) -> None:
-                setattr(self, "_setup_assistant_dialog", None)
-                if getattr(self, "_defer_startup_auto_backup_until_setup", False):
-                    self._defer_startup_auto_backup_until_setup = False
-                    logger.info("Setup-Assistent beendet; verschobenes Auto-Backup wird geprüft.")
-                    self._check_auto_backup()
+                # WICHTIG: Nichts Schweres synchron im nativen finished-Signal
+                # ausfuehren und die letzte Python-Referenz auf ``dlg`` hier noch
+                # nicht entfernen. Diese Kombination lag im beobachteten
+                # Fedora/Wayland+XCB-Absturzpfad nach "Fertig"; ohne nativen
+                # Core-Stack bleibt sie die am staerksten belegte Ursache.
+                if getattr(self, "_setup_assistant_finish_pending", False):
+                    return
+                self._setup_assistant_finish_pending = True
+
+                timer = QTimer(self)
+                timer.setSingleShot(True)
+                self._setup_assistant_finalize_timer = timer
+
+                def _finalize_after_native_close() -> None:
+                    try:
+                        # Der QDialog-Schliess-Stack ist jetzt verlassen. Den
+                        # versteckten Assistenten erst hier zur Loeschung
+                        # vormerken und danach die Python-Referenz freigeben.
+                        try:
+                            dlg.deleteLater()
+                        except RuntimeError:
+                            pass
+                        if getattr(self, "_setup_assistant_dialog", None) is dlg:
+                            self._setup_assistant_dialog = None
+
+                        if getattr(
+                            self, "_defer_startup_auto_backup_until_setup", False
+                        ):
+                            self._defer_startup_auto_backup_until_setup = False
+                            logger.info(
+                                "Setup-Assistent beendet; verschobenes "
+                                "Auto-Backup wird zeitversetzt geprüft."
+                            )
+                            # Noch einen eigenen Event-Loop-Abstand lassen, damit
+                            # deleteLater()/Fokus-/Fensterereignisse abgeschlossen
+                            # sind, bevor Verschluesselung und ZIP-I/O beginnen.
+                            self._schedule_startup_auto_backup(delay_ms=1500)
+                    except RuntimeError:
+                        logger.debug(
+                            "Setup-Abschluss uebersprungen: MainWindow wurde zerstoert."
+                        )
+                    except Exception:
+                        logger.exception(
+                            "Setup-Abschluss konnte nicht finalisiert werden"
+                        )
+                    finally:
+                        self._setup_assistant_finish_pending = False
+                        if (
+                            getattr(self, "_setup_assistant_finalize_timer", None)
+                            is timer
+                        ):
+                            self._setup_assistant_finalize_timer = None
+                        try:
+                            timer.deleteLater()
+                        except Exception:
+                            pass
+
+                timer.timeout.connect(_finalize_after_native_close)
+                # 250 ms statt SingleShot(0): Unter XCB koennen nach closeEvent
+                # noch native Fokus- und Destroy-Ereignisse nachlaufen.
+                timer.start(250)
 
             dlg.finished.connect(_setup_finished)
             dlg.show()
@@ -3015,10 +3413,16 @@ class MainWindow(QMainWindow):
             # genau diese native Fokus-Aktivierung sporadisch segfaulten. Der
             # Assistent ist Kind des Hauptfensters und wird auch ohne Forcieren
             # sichtbar, bleibt aber stabiler.
-            logger.info("Setup-Assistent angezeigt (force=%s, db_existed_before=%s).", force, db_existed)
+            logger.info(
+                "Setup-Assistent angezeigt (force=%s, db_existed_before=%s).",
+                force,
+                db_existed,
+            )
         except Exception as e:
             logger.exception("Setup-Assistent konnte nicht gestartet werden")
             if getattr(self, "_defer_startup_auto_backup_until_setup", False):
                 self._defer_startup_auto_backup_until_setup = False
-                self._check_auto_backup()
-            QMessageBox.critical(self, tr('msg.error'), trf("msg.setup_assistent_fehler", e=str(e)))
+                self._schedule_startup_auto_backup(delay_ms=750)
+            QMessageBox.critical(
+                self, tr("msg.error"), trf("msg.setup_assistent_fehler", e=str(e))
+            )

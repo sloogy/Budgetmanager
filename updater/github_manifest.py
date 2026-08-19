@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+
 logger = logging.getLogger(__name__)
 
 import json
@@ -7,7 +8,9 @@ from dataclasses import dataclass
 from typing import Dict, Any
 
 
-DEFAULT_MANIFEST_URL = "https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json"
+DEFAULT_MANIFEST_URL = (
+    "https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json"
+)
 
 
 @dataclass(frozen=True)
@@ -53,7 +56,9 @@ def parse_manifest(data: Dict[str, Any]) -> Manifest:
     if not assets:
         raise ValueError("Manifest enthält keine gültigen Assets")
 
-    return Manifest(version=version, release_tag=release_tag, channel=channel, assets=assets)
+    return Manifest(
+        version=version, release_tag=release_tag, channel=channel, assets=assets
+    )
 
 
 def loads_manifest(text: str) -> Manifest:

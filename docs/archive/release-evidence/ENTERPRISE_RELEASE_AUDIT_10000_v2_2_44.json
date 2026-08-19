@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "loops": 10000,
+  "checks": 112000,
+  "seed": 20260728,
+  "scenario_counts": {
+    "scenario_tag_switch": 1000,
+    "scenario_tag_undo_lifecycle": 1000,
+    "scenario_source_roundtrip": 1000,
+    "scenario_savings_state_machine": 1000,
+    "scenario_filter_oracle": 1000,
+    "scenario_rename_cascade": 1000,
+    "scenario_budget_copy": 1000,
+    "scenario_recurring_calendar": 1000,
+    "scenario_zip_safety": 1000,
+    "scenario_sqlite_integrity": 1000
+  },
+  "findings": []
+}

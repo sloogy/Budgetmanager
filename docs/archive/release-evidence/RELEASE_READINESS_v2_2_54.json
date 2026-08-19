@@ -1,0 +1,34 @@
+{
+  "application": "Budgetmanager",
+  "version": "2.2.54",
+  "date": "2026-08-02",
+  "status": "target_system_test_required",
+  "release_blocker_fixed": "native QtCharts cockpit segmentation fault after booking refresh",
+  "root_cause": "QAreaSeries did not own its locally scoped upper QLineSeries; PySide could destroy the edge series while QtCharts retained a native pointer",
+  "fixes": [
+    "persistent QLineSeries reference with QObject parent",
+    "persistent QAreaSeries and QValueAxis instances",
+    "atomic in-place point replacement",
+    "no removeAllSeries or createDefaultAxes during trend refresh",
+    "BM_DISABLE_COCKPIT_CHARTS emergency switch"
+  ],
+  "tests": {
+    "pytest_passed": 776,
+    "pytest_skipped": 13,
+    "pytest_failed": 0,
+    "new_regression_tests_passed": 5,
+    "final_audit_loops": 1000,
+    "final_audit_checks": 19335,
+    "final_audit_warnings": 0,
+    "final_audit_failures": 0,
+    "release_logic_loops": 100,
+    "release_logic_findings": 0,
+    "i18n": "pass",
+    "dau_first_run": "pass",
+    "syntax_compile": "pass"
+  },
+  "limitations": [
+    "PySide6 6.10.3 was unavailable in the isolated audit environment",
+    "native Fedora QtCharts booking stress test must be performed on the target system"
+  ]
+}

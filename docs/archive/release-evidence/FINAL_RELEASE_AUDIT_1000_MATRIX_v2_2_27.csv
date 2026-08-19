@@ -1,0 +1,1001 @@
+loop,domain,checks,status,detail
+1,d1_sql_surface,40,PASS,__init__.py: SQL-Oberfläche sauber
+2,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+3,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+4,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+5,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+6,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+7,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+8,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+9,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+10,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+11,d1_sql_surface,40,PASS,app_paths.py: SQL-Oberfläche sauber
+12,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+13,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+14,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+15,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+16,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+17,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+18,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+19,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+20,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+21,d1_sql_surface,40,PASS,backup_auth.py: SQL-Oberfläche sauber
+22,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+23,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+24,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+25,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+26,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+27,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+28,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+29,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+30,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+31,d1_sql_surface,40,PASS,budget_learning.py: SQL-Oberfläche sauber
+32,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+33,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+34,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+35,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+36,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+37,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+38,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+39,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+40,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+41,d1_sql_surface,40,PASS,budget_model.py: SQL-Oberfläche sauber
+42,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+43,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+44,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+45,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+46,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+47,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+48,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+49,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+50,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+51,d1_sql_surface,40,PASS,budget_modes.py: SQL-Oberfläche sauber
+52,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+53,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+54,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+55,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+56,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+57,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+58,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+59,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+60,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+61,d1_sql_surface,40,PASS,budget_overview_model.py: SQL-Oberfläche sauber
+62,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+63,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+64,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+65,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+66,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+67,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+68,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+69,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+70,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+71,d1_sql_surface,40,PASS,budget_suggestion_engine.py: SQL-Oberfläche sauber
+72,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+73,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+74,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+75,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+76,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+77,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+78,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+79,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+80,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+81,d1_sql_surface,40,PASS,budget_warnings_model_extended.py: SQL-Oberfläche sauber
+82,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+83,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+84,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+85,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+86,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+87,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+88,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+89,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+90,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+91,d1_sql_surface,40,PASS,category_forecast_mode.py: SQL-Oberfläche sauber
+92,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+93,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+94,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+95,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+96,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+97,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+98,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+99,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+100,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+101,d1_sql_surface,40,PASS,category_model.py: SQL-Oberfläche sauber
+102,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+103,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+104,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+105,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+106,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+107,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+108,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+109,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+110,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+111,d1_sql_surface,40,PASS,coverage_model.py: SQL-Oberfläche sauber
+112,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+113,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+114,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+115,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+116,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+117,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+118,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+119,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+120,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+121,d1_sql_surface,40,PASS,crypto.py: SQL-Oberfläche sauber
+122,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+123,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+124,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+125,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+126,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+127,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+128,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+129,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+130,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+131,d1_sql_surface,40,PASS,data_location.py: SQL-Oberfläche sauber
+132,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+133,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+134,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+135,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+136,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+137,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+138,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+139,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+140,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+141,d1_sql_surface,40,PASS,database.py: SQL-Oberfläche sauber
+142,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+143,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+144,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+145,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+146,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+147,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+148,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+149,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+150,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+151,d1_sql_surface,40,PASS,database_management_model.py: SQL-Oberfläche sauber
+152,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+153,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+154,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+155,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+156,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+157,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+158,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+159,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+160,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+161,d1_sql_surface,40,PASS,date_ranges.py: SQL-Oberfläche sauber
+162,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+163,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+164,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+165,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+166,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+167,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+168,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+169,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+170,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+171,d1_sql_surface,40,PASS,default_categories.py: SQL-Oberfläche sauber
+172,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+173,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+174,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+175,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+176,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+177,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+178,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+179,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+180,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+181,d1_sql_surface,40,PASS,diagnostics.py: SQL-Oberfläche sauber
+182,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+183,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+184,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+185,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+186,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+187,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+188,d8_i18n_format_safety,120,PASS,24 Keys ×3 format-sicher
+189,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+190,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+191,d1_sql_surface,40,PASS,favorites_model.py: SQL-Oberfläche sauber
+192,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+193,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+194,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+195,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+196,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+197,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+198,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+199,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+200,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+201,d1_sql_surface,40,PASS,file_permissions.py: SQL-Oberfläche sauber
+202,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+203,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+204,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+205,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+206,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+207,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+208,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+209,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+210,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+211,d1_sql_surface,40,PASS,fixed_cost_due.py: SQL-Oberfläche sauber
+212,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+213,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+214,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+215,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+216,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+217,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+218,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+219,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+220,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+221,d1_sql_surface,40,PASS,income_specials.py: SQL-Oberfläche sauber
+222,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+223,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+224,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+225,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+226,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+227,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+228,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+229,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+230,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+231,d1_sql_surface,40,PASS,logging_config.py: SQL-Oberfläche sauber
+232,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+233,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+234,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+235,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+236,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+237,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+238,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+239,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+240,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+241,d1_sql_surface,40,PASS,migrations.py: SQL-Oberfläche sauber
+242,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+243,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+244,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+245,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+246,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+247,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+248,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+249,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+250,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+251,d1_sql_surface,40,PASS,month_close_model.py: SQL-Oberfläche sauber
+252,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+253,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+254,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+255,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+256,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+257,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+258,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+259,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+260,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+261,d1_sql_surface,40,PASS,month_status.py: SQL-Oberfläche sauber
+262,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+263,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+264,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+265,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+266,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+267,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+268,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+269,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+270,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+271,d1_sql_surface,40,PASS,overview_aggregation.py: SQL-Oberfläche sauber
+272,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+273,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+274,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+275,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+276,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+277,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+278,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+279,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+280,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+281,d1_sql_surface,40,PASS,pot_reserve_model.py: SQL-Oberfläche sauber
+282,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+283,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+284,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+285,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+286,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+287,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+288,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+289,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+290,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+291,d1_sql_surface,40,PASS,process_utils.py: SQL-Oberfläche sauber
+292,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+293,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+294,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+295,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+296,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+297,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+298,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+299,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+300,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+301,d1_sql_surface,40,PASS,recurring_transactions_model.py: SQL-Oberfläche sauber
+302,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+303,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+304,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+305,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+306,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+307,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+308,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+309,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+310,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+311,d1_sql_surface,40,PASS,restore_bundle.py: SQL-Oberfläche sauber
+312,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+313,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+314,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+315,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+316,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+317,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+318,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+319,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+320,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+321,d1_sql_surface,40,PASS,savings_goals_model.py: SQL-Oberfläche sauber
+322,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+323,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+324,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+325,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+326,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+327,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+328,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+329,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+330,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+331,d1_sql_surface,40,PASS,shortcuts_config.py: SQL-Oberfläche sauber
+332,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+333,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+334,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+335,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+336,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+337,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+338,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+339,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+340,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+341,d1_sql_surface,40,PASS,tags_model.py: SQL-Oberfläche sauber
+342,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+343,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+344,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+345,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+346,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+347,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+348,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+349,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+350,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+351,d1_sql_surface,40,PASS,tracking_model.py: SQL-Oberfläche sauber
+352,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+353,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+354,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+355,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+356,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+357,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+358,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+359,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+360,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+361,d1_sql_surface,40,PASS,typ_constants.py: SQL-Oberfläche sauber
+362,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+363,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+364,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+365,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+366,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+367,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+368,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+369,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+370,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+371,d1_sql_surface,40,PASS,undo_redo_model.py: SQL-Oberfläche sauber
+372,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+373,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+374,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+375,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+376,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+377,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+378,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+379,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+380,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+381,d1_sql_surface,40,PASS,user_model.py: SQL-Oberfläche sauber
+382,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+383,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+384,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+385,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+386,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+387,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+388,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+389,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+390,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+391,d1_sql_surface,40,PASS,year_copy_rules.py: SQL-Oberfläche sauber
+392,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+393,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+394,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+395,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+396,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+397,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+398,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+399,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+400,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+401,d1_sql_surface,40,PASS,__init__.py: SQL-Oberfläche sauber
+402,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+403,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+404,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+405,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+406,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+407,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+408,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+409,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+410,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+411,d1_sql_surface,40,PASS,app_paths.py: SQL-Oberfläche sauber
+412,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+413,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+414,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+415,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+416,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+417,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+418,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+419,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+420,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+421,d1_sql_surface,40,PASS,backup_auth.py: SQL-Oberfläche sauber
+422,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+423,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+424,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+425,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+426,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+427,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+428,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+429,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+430,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+431,d1_sql_surface,40,PASS,budget_learning.py: SQL-Oberfläche sauber
+432,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+433,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+434,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+435,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+436,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+437,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+438,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+439,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+440,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+441,d1_sql_surface,40,PASS,budget_model.py: SQL-Oberfläche sauber
+442,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+443,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+444,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+445,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+446,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+447,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+448,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+449,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+450,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+451,d1_sql_surface,40,PASS,budget_modes.py: SQL-Oberfläche sauber
+452,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+453,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+454,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+455,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+456,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+457,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+458,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+459,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+460,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+461,d1_sql_surface,40,PASS,budget_overview_model.py: SQL-Oberfläche sauber
+462,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+463,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+464,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+465,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+466,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+467,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+468,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+469,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+470,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+471,d1_sql_surface,40,PASS,budget_suggestion_engine.py: SQL-Oberfläche sauber
+472,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+473,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+474,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+475,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+476,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+477,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+478,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+479,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+480,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+481,d1_sql_surface,40,PASS,budget_warnings_model_extended.py: SQL-Oberfläche sauber
+482,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+483,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+484,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+485,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+486,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+487,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+488,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+489,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+490,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+491,d1_sql_surface,40,PASS,category_forecast_mode.py: SQL-Oberfläche sauber
+492,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+493,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+494,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+495,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+496,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+497,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+498,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+499,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+500,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+501,d1_sql_surface,40,PASS,category_model.py: SQL-Oberfläche sauber
+502,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+503,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+504,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+505,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+506,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+507,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+508,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+509,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+510,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+511,d1_sql_surface,40,PASS,coverage_model.py: SQL-Oberfläche sauber
+512,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+513,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+514,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+515,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+516,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+517,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+518,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+519,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+520,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+521,d1_sql_surface,40,PASS,crypto.py: SQL-Oberfläche sauber
+522,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+523,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+524,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+525,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+526,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+527,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+528,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+529,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+530,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+531,d1_sql_surface,40,PASS,data_location.py: SQL-Oberfläche sauber
+532,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+533,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+534,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+535,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+536,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+537,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+538,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+539,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+540,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+541,d1_sql_surface,40,PASS,database.py: SQL-Oberfläche sauber
+542,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+543,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+544,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+545,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+546,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+547,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+548,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+549,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+550,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+551,d1_sql_surface,40,PASS,database_management_model.py: SQL-Oberfläche sauber
+552,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+553,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+554,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+555,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+556,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+557,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+558,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+559,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+560,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+561,d1_sql_surface,40,PASS,date_ranges.py: SQL-Oberfläche sauber
+562,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+563,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+564,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+565,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+566,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+567,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+568,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+569,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+570,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+571,d1_sql_surface,40,PASS,default_categories.py: SQL-Oberfläche sauber
+572,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+573,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+574,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+575,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+576,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+577,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+578,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+579,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+580,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+581,d1_sql_surface,40,PASS,diagnostics.py: SQL-Oberfläche sauber
+582,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+583,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+584,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+585,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+586,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+587,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+588,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+589,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+590,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+591,d1_sql_surface,40,PASS,favorites_model.py: SQL-Oberfläche sauber
+592,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+593,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+594,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+595,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+596,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+597,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+598,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+599,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+600,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+601,d1_sql_surface,40,PASS,file_permissions.py: SQL-Oberfläche sauber
+602,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+603,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+604,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+605,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+606,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+607,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+608,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+609,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+610,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+611,d1_sql_surface,40,PASS,fixed_cost_due.py: SQL-Oberfläche sauber
+612,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+613,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+614,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+615,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+616,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+617,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+618,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+619,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+620,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+621,d1_sql_surface,40,PASS,income_specials.py: SQL-Oberfläche sauber
+622,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+623,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+624,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+625,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+626,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+627,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+628,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+629,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+630,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+631,d1_sql_surface,40,PASS,logging_config.py: SQL-Oberfläche sauber
+632,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+633,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+634,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+635,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+636,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+637,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+638,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+639,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+640,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+641,d1_sql_surface,40,PASS,migrations.py: SQL-Oberfläche sauber
+642,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+643,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+644,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+645,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+646,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+647,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+648,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+649,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+650,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+651,d1_sql_surface,40,PASS,month_close_model.py: SQL-Oberfläche sauber
+652,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+653,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+654,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+655,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+656,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+657,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+658,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+659,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+660,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+661,d1_sql_surface,40,PASS,month_status.py: SQL-Oberfläche sauber
+662,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+663,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+664,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+665,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+666,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+667,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+668,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+669,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+670,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+671,d1_sql_surface,40,PASS,overview_aggregation.py: SQL-Oberfläche sauber
+672,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+673,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+674,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+675,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+676,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+677,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+678,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+679,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+680,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+681,d1_sql_surface,40,PASS,pot_reserve_model.py: SQL-Oberfläche sauber
+682,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+683,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+684,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+685,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+686,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+687,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+688,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+689,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+690,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+691,d1_sql_surface,40,PASS,process_utils.py: SQL-Oberfläche sauber
+692,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+693,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+694,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+695,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+696,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+697,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+698,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+699,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+700,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+701,d1_sql_surface,40,PASS,recurring_transactions_model.py: SQL-Oberfläche sauber
+702,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+703,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+704,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+705,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+706,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+707,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+708,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+709,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+710,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+711,d1_sql_surface,40,PASS,restore_bundle.py: SQL-Oberfläche sauber
+712,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+713,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+714,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+715,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+716,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+717,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+718,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+719,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+720,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+721,d1_sql_surface,40,PASS,savings_goals_model.py: SQL-Oberfläche sauber
+722,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+723,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+724,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+725,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+726,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+727,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+728,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+729,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+730,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+731,d1_sql_surface,40,PASS,shortcuts_config.py: SQL-Oberfläche sauber
+732,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+733,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+734,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+735,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+736,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+737,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+738,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+739,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+740,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+741,d1_sql_surface,40,PASS,tags_model.py: SQL-Oberfläche sauber
+742,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+743,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+744,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+745,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+746,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+747,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+748,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+749,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+750,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+751,d1_sql_surface,40,PASS,tracking_model.py: SQL-Oberfläche sauber
+752,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+753,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+754,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+755,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+756,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+757,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+758,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+759,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+760,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+761,d1_sql_surface,40,PASS,typ_constants.py: SQL-Oberfläche sauber
+762,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+763,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+764,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+765,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+766,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+767,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+768,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+769,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+770,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+771,d1_sql_surface,40,PASS,undo_redo_model.py: SQL-Oberfläche sauber
+772,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+773,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+774,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+775,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+776,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+777,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+778,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+779,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+780,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+781,d1_sql_surface,40,PASS,user_model.py: SQL-Oberfläche sauber
+782,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+783,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+784,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+785,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+786,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+787,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+788,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+789,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+790,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+791,d1_sql_surface,40,PASS,year_copy_rules.py: SQL-Oberfläche sauber
+792,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+793,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+794,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+795,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+796,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+797,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+798,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+799,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+800,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+801,d1_sql_surface,40,PASS,__init__.py: SQL-Oberfläche sauber
+802,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+803,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+804,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+805,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+806,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+807,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+808,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+809,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+810,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+811,d1_sql_surface,40,PASS,app_paths.py: SQL-Oberfläche sauber
+812,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+813,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+814,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+815,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+816,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+817,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+818,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+819,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+820,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+821,d1_sql_surface,40,PASS,backup_auth.py: SQL-Oberfläche sauber
+822,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+823,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+824,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+825,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+826,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+827,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+828,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+829,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+830,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+831,d1_sql_surface,40,PASS,budget_learning.py: SQL-Oberfläche sauber
+832,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+833,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+834,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+835,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+836,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+837,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+838,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+839,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+840,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+841,d1_sql_surface,40,PASS,budget_model.py: SQL-Oberfläche sauber
+842,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+843,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+844,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+845,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+846,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+847,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+848,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+849,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+850,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+851,d1_sql_surface,40,PASS,budget_modes.py: SQL-Oberfläche sauber
+852,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+853,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+854,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+855,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+856,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+857,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+858,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+859,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+860,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+861,d1_sql_surface,40,PASS,budget_overview_model.py: SQL-Oberfläche sauber
+862,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+863,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+864,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+865,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+866,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+867,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+868,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+869,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+870,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+871,d1_sql_surface,40,PASS,budget_suggestion_engine.py: SQL-Oberfläche sauber
+872,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+873,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+874,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+875,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+876,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+877,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+878,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+879,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+880,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+881,d1_sql_surface,40,PASS,budget_warnings_model_extended.py: SQL-Oberfläche sauber
+882,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+883,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+884,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+885,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+886,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+887,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+888,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+889,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+890,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+891,d1_sql_surface,40,PASS,category_forecast_mode.py: SQL-Oberfläche sauber
+892,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+893,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+894,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+895,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+896,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+897,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+898,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+899,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+900,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+901,d1_sql_surface,40,PASS,category_model.py: SQL-Oberfläche sauber
+902,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+903,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+904,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+905,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+906,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+907,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+908,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+909,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+910,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+911,d1_sql_surface,40,PASS,coverage_model.py: SQL-Oberfläche sauber
+912,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+913,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+914,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+915,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+916,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+917,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+918,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+919,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+920,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+921,d1_sql_surface,40,PASS,crypto.py: SQL-Oberfläche sauber
+922,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+923,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+924,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+925,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+926,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+927,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+928,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+929,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+930,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+931,d1_sql_surface,40,PASS,data_location.py: SQL-Oberfläche sauber
+932,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+933,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+934,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+935,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+936,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+937,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+938,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+939,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+940,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+941,d1_sql_surface,40,PASS,database.py: SQL-Oberfläche sauber
+942,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+943,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+944,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+945,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+946,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+947,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+948,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+949,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+950,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+951,d1_sql_surface,40,PASS,database_management_model.py: SQL-Oberfläche sauber
+952,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+953,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+954,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+955,d5_due_clamp,10,PASS,2024 (leap=True): Ultimo-Klemmung + Semantik ok
+956,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+957,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+958,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+959,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+960,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+961,d1_sql_surface,40,PASS,date_ranges.py: SQL-Oberfläche sauber
+962,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+963,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+964,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+965,d5_due_clamp,10,PASS,2025 (leap=False): Ultimo-Klemmung + Semantik ok
+966,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+967,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+968,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+969,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+970,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+971,d1_sql_surface,40,PASS,default_categories.py: SQL-Oberfläche sauber
+972,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+973,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+974,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+975,d5_due_clamp,10,PASS,2026 (leap=False): Ultimo-Klemmung + Semantik ok
+976,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+977,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+978,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+979,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+980,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+981,d1_sql_surface,40,PASS,diagnostics.py: SQL-Oberfläche sauber
+982,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+983,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+984,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+985,d5_due_clamp,10,PASS,2027 (leap=False): Ultimo-Klemmung + Semantik ok
+986,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+987,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+988,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+989,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+990,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten
+991,d1_sql_surface,40,PASS,favorites_model.py: SQL-Oberfläche sauber
+992,d2_privacy_sanitize,4,PASS,"HOME→<home> rekursiv (posix+win), Resttext intakt"
+993,d3_file_permissions,3,PASS,"0644→0600 real gesetzt, Erkennung korrekt"
+994,d4_money_format,28,PASS,normalize+Gruppierung(4 Formate)+Vorzeichen/Symbol stabil
+995,d5_due_clamp,10,PASS,2028 (leap=True): Ultimo-Klemmung + Semantik ok
+996,d6_migration_idempotent,3,PASS,"user_version=0, Schema stabil über 2 Läufe"
+997,d7_bundle_tamper,2,PASS,Member=database.db; Byte-Flip abgelehnt (Pruefsumme stimmt nicht – Backup beschaedigt oder veraendert)
+998,d8_i18n_format_safety,115,PASS,23 Keys ×3 format-sicher
+999,d9_modal_info_load,2,PASS,0 modale Infos; Toast-Regressionsschutz intakt
+1000,d10_taborder_decl,1,PASS,13/13 komplexe Dialogdateien mit Tab-Ketten

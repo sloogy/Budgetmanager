@@ -1,5 +1,7 @@
 # Portable Updater (GitHub Releases)
 
+Stand: BudgetManager v2.2.60
+
 Der Updater ersetzt Programmdateien, aber keine Nutzerdaten:
 
 - `data/` bleibt erhalten: DB, Settings, Backups.
@@ -43,17 +45,17 @@ Bevorzugt über den GitHub-Workflow `.github/workflows/build.yml`.
 Lokal kann das Paketieren so getestet werden:
 
 ```bash
-python tools/build_release_assets.py   --version 2.2.6   --release-tag v2.2.6   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.6   --windows-build-dir artifacts/windows   --linux-build-dir artifacts/linux   --out-dir release_assets
+python tools/build_release_assets.py   --version 2.2.22   --release-tag v2.2.22   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.22   --windows-build-dir artifacts/windows   --linux-build-dir artifacts/linux   --out-dir release_assets
 ```
 
 Das erzeugt:
 
-- `BudgetManager-v2.2.6-portable-windows.zip`
-- `BudgetManager-v2.2.6-portable-linux.zip`
-- `BudgetManager-v2.2.6-windows.exe`
-- `BudgetManager-v2.2.6-linux`
-- `BudgetManager_Setup_2.2.6.exe`, falls der Installer vorhanden ist.
-- `BudgetManager_Setup_2.2.6.zip`, falls der Installer vorhanden ist.
+- `BudgetManager-v2.2.22-portable-windows.zip`
+- `BudgetManager-v2.2.22-portable-linux.zip`
+- `BudgetManager-v2.2.22-windows.exe`
+- `BudgetManager-v2.2.22-linux`
+- `BudgetManager_Setup_2.2.22.exe`, falls der Installer vorhanden ist.
+- `BudgetManager_Setup_2.2.22.zip`, falls der Installer vorhanden ist.
 - `latest.json`
 - `SHA256SUMS.txt`
 
@@ -64,7 +66,7 @@ Der direkte Installer bleibt für Nutzer verfügbar. Der Installer-ZIP ist der W
 Der kleine Manifest-Helfer bleibt für einfache ZIP-Releases erhalten:
 
 ```bash
-python -m updater.generate_manifest   --version 2.2.6   --release-tag v2.2.6   --channel stable   --windows-zip dist/BudgetManager-v2.2.6-portable-windows.zip   --linux-zip dist/BudgetManager-v2.2.6-portable-linux.zip   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.6   --out latest.json
+python -m updater.generate_manifest   --version 2.2.22   --release-tag v2.2.22   --channel stable   --windows-zip dist/BudgetManager-v2.2.22-portable-windows.zip   --linux-zip dist/BudgetManager-v2.2.22-portable-linux.zip   --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.22   --out latest.json
 ```
 
 Der Updater prüft die SHA256-Werte aus dem Manifest fail-closed. Fehlt ein Hash oder passt er nicht, wird das Update abgelehnt.

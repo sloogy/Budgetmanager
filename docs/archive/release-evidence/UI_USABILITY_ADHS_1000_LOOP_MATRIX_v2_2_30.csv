@@ -1,0 +1,1001 @@
+loop,domain,checks,result,detail
+1,d1_release_cleaner,8,PASS,
+2,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+3,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+4,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+5,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+6,d6_theme_contrast,19,PASS,dracula_dunkel.json: 
+7,d7_icon_targets,1,PASS,views/account_data_hub.py: 
+8,d8_scaling,1,PASS,views/account_data_hub.py: setFixedSize auf Dialog
+9,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+10,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+11,d1_release_cleaner,8,PASS,
+12,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+13,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+14,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+15,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+16,d6_theme_contrast,19,PASS,dunkel_blau.json: 
+17,d7_icon_targets,1,PASS,views/account_management_dialog.py: 
+18,d8_scaling,1,PASS,views/account_management_dialog.py: setFixedSize auf Dialog
+19,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+20,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+21,d1_release_cleaner,8,PASS,
+22,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+23,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+24,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+25,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+26,d6_theme_contrast,19,PASS,dunkel_grn.json: 
+27,d7_icon_targets,1,PASS,views/backup_restore_dialog.py: 
+28,d8_scaling,1,PASS,views/backup_restore_dialog.py: setFixedSize auf Dialog
+29,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+30,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+31,d1_release_cleaner,8,PASS,
+32,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+33,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+34,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+35,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+36,d6_theme_contrast,19,PASS,dunkel_oled_kontrastarm.json: 
+37,d7_icon_targets,1,PASS,views/budget_adjustment_dialog.py: 
+38,d8_scaling,1,PASS,views/budget_adjustment_dialog.py: setFixedSize auf Dialog
+39,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+40,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+41,d1_release_cleaner,8,PASS,
+42,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+43,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+44,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+45,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+46,d6_theme_contrast,19,PASS,dunkel_warm_sepia.json: 
+47,d7_icon_targets,1,PASS,views/budget_entry_dialog_extended.py: 
+48,d8_scaling,1,PASS,views/budget_entry_dialog_extended.py: setFixedSize auf Dialog
+49,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+50,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+51,d1_release_cleaner,8,PASS,
+52,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+53,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+54,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+55,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+56,d6_theme_contrast,19,PASS,gruvbox_dunkel.json: 
+57,d7_icon_targets,1,PASS,views/budget_fill_dialog.py: 
+58,d8_scaling,1,PASS,views/budget_fill_dialog.py: setFixedSize auf Dialog
+59,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+60,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+61,d1_release_cleaner,8,PASS,
+62,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+63,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+64,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+65,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+66,d6_theme_contrast,19,PASS,gruvbox_hell.json: 
+67,d7_icon_targets,1,PASS,views/category_delete_dialog.py: 
+68,d8_scaling,1,PASS,views/category_delete_dialog.py: setFixedSize auf Dialog
+69,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+70,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+71,d1_release_cleaner,8,PASS,
+72,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+73,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+74,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+75,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+76,d6_theme_contrast,19,PASS,hell_grn.json: 
+77,d7_icon_targets,1,PASS,views/category_excel_io.py: 
+78,d8_scaling,1,PASS,views/category_excel_io.py: setFixedSize auf Dialog
+79,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+80,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+81,d1_release_cleaner,8,PASS,
+82,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+83,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+84,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+85,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+86,d6_theme_contrast,19,PASS,hell_warm_sepia.json: 
+87,d7_icon_targets,1,PASS,views/category_manager_dialog.py: 
+88,d8_scaling,1,PASS,views/category_manager_dialog.py: setFixedSize auf Dialog
+89,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+90,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+91,d1_release_cleaner,8,PASS,
+92,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+93,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+94,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+95,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+96,d6_theme_contrast,19,PASS,kontrast_schwarzwei.json: 
+97,d7_icon_targets,1,PASS,views/category_picker.py: 
+98,d8_scaling,1,PASS,views/category_picker.py: setFixedSize auf Dialog
+99,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+100,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+101,d1_release_cleaner,8,PASS,
+102,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+103,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+104,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+105,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+106,d6_theme_contrast,19,PASS,modern_cyan_v2.json: 
+107,d7_icon_targets,1,PASS,views/category_properties_dialog.py: 
+108,d8_scaling,1,PASS,views/category_properties_dialog.py: setFixedSize auf Dialog
+109,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+110,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+111,d1_release_cleaner,8,PASS,
+112,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+113,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+114,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+115,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+116,d6_theme_contrast,19,PASS,monokai_dunkel.json: 
+117,d7_icon_targets,1,PASS,views/copy_year_dialog.py: 
+118,d8_scaling,1,PASS,views/copy_year_dialog.py: setFixedSize auf Dialog
+119,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+120,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+121,d1_release_cleaner,8,PASS,
+122,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+123,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+124,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+125,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+126,d6_theme_contrast,19,PASS,nord_dunkel.json: 
+127,d7_icon_targets,1,PASS,views/database_management_dialog.py: 
+128,d8_scaling,1,PASS,views/database_management_dialog.py: setFixedSize auf Dialog
+129,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+130,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+131,d1_release_cleaner,8,PASS,
+132,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+133,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+134,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+135,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+136,d6_theme_contrast,19,PASS,ocean_dunkel.json: 
+137,d7_icon_targets,1,PASS,views/delegates/badge_delegate.py: 
+138,d8_scaling,1,PASS,views/delegates/badge_delegate.py: setFixedSize auf Dialog
+139,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+140,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+141,d1_release_cleaner,8,PASS,
+142,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+143,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+144,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+145,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+146,d6_theme_contrast,19,PASS,pastell_sanft.json: 
+147,d7_icon_targets,1,PASS,views/export_dialog.py: 
+148,d8_scaling,1,PASS,views/export_dialog.py: setFixedSize auf Dialog
+149,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+150,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+151,d1_release_cleaner,8,PASS,
+152,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+153,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+154,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+155,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+156,d6_theme_contrast,19,PASS,solarized_dunkel.json: 
+157,d7_icon_targets,1,PASS,views/favorites_dashboard_dialog.py: 
+158,d8_scaling,1,PASS,views/favorites_dashboard_dialog.py: setFixedSize auf Dialog
+159,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+160,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+161,d1_release_cleaner,8,PASS,
+162,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+163,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+164,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+165,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+166,d6_theme_contrast,19,PASS,solarized_hell.json: 
+167,d7_icon_targets,1,PASS,views/global_search_dialog.py: 
+168,d8_scaling,1,PASS,views/global_search_dialog.py: setFixedSize auf Dialog
+169,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+170,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+171,d1_release_cleaner,8,PASS,
+172,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+173,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+174,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+175,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+176,d6_theme_contrast,19,PASS,standard_dunkel.json: 
+177,d7_icon_targets,1,PASS,views/help_content.py: 
+178,d8_scaling,1,PASS,views/help_content.py: setFixedSize auf Dialog
+179,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+180,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+181,d1_release_cleaner,8,PASS,
+182,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+183,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+184,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+185,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+186,d6_theme_contrast,19,PASS,standard_hell.json: 
+187,d7_icon_targets,1,PASS,views/help_dialog.py: 
+188,d8_scaling,1,PASS,views/help_dialog.py: setFixedSize auf Dialog
+189,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+190,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+191,d1_release_cleaner,8,PASS,
+192,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+193,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+194,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+195,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+196,d6_theme_contrast,19,PASS,v2_dunkel_graphite_cyan.json: 
+197,d7_icon_targets,1,PASS,views/language_select_dialog.py: 
+198,d8_scaling,1,PASS,views/language_select_dialog.py: setFixedSize auf Dialog
+199,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+200,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+201,d1_release_cleaner,8,PASS,
+202,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+203,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+204,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+205,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+206,d6_theme_contrast,19,PASS,v2_dunkel_purple_night.json: 
+207,d7_icon_targets,1,PASS,views/login_dialog.py: 
+208,d8_scaling,1,PASS,views/login_dialog.py: setFixedSize auf Dialog
+209,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+210,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+211,d1_release_cleaner,8,PASS,
+212,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+213,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+214,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+215,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+216,d6_theme_contrast,19,PASS,v2_hell_neon_cyan.json: 
+217,d7_icon_targets,1,PASS,views/main_window.py: 
+218,d8_scaling,1,PASS,views/main_window.py: setFixedSize auf Dialog
+219,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+220,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+221,d1_release_cleaner,8,PASS,
+222,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+223,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+224,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+225,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+226,d6_theme_contrast,19,PASS,v2_hell_pastel_mint.json: 
+227,d7_icon_targets,1,PASS,views/main_window_dialogs.py: 
+228,d8_scaling,1,PASS,views/main_window_dialogs.py: setFixedSize auf Dialog
+229,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+230,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+231,d1_release_cleaner,8,PASS,
+232,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+233,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+234,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+235,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+236,d6_theme_contrast,19,PASS,v2_hell_warm_sand.json: 
+237,d7_icon_targets,1,PASS,views/month_close_dialog.py: 
+238,d8_scaling,1,PASS,views/month_close_dialog.py: setFixedSize auf Dialog
+239,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+240,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+241,d1_release_cleaner,8,PASS,
+242,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+243,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+244,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+245,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+246,d6_theme_contrast,19,PASS,warm_hell.json: 
+247,d7_icon_targets,1,PASS,views/quick_add_dialog.py: 
+248,d8_scaling,1,PASS,views/quick_add_dialog.py: setFixedSize auf Dialog
+249,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+250,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+251,d1_release_cleaner,8,PASS,
+252,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+253,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+254,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+255,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+256,d6_theme_contrast,19,PASS,dracula_dunkel.json: 
+257,d7_icon_targets,1,PASS,views/reauth.py: 
+258,d8_scaling,1,PASS,views/reauth.py: setFixedSize auf Dialog
+259,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+260,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+261,d1_release_cleaner,8,PASS,
+262,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+263,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+264,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+265,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+266,d6_theme_contrast,19,PASS,dunkel_blau.json: 
+267,d7_icon_targets,1,PASS,views/recurring_bookings_dialog.py: 
+268,d8_scaling,1,PASS,views/recurring_bookings_dialog.py: setFixedSize auf Dialog
+269,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+270,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+271,d1_release_cleaner,8,PASS,
+272,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+273,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+274,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+275,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+276,d6_theme_contrast,19,PASS,dunkel_grn.json: 
+277,d7_icon_targets,1,PASS,views/restore_key_dialog.py: 
+278,d8_scaling,1,PASS,views/restore_key_dialog.py: setFixedSize auf Dialog
+279,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+280,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+281,d1_release_cleaner,8,PASS,
+282,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+283,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+284,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+285,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+286,d6_theme_contrast,19,PASS,dunkel_oled_kontrastarm.json: 
+287,d7_icon_targets,1,PASS,views/savings_goal_messages.py: 
+288,d8_scaling,1,PASS,views/savings_goal_messages.py: setFixedSize auf Dialog
+289,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+290,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+291,d1_release_cleaner,8,PASS,
+292,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+293,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+294,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+295,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+296,d6_theme_contrast,19,PASS,dunkel_warm_sepia.json: 
+297,d7_icon_targets,1,PASS,views/savings_goals_dialog.py: 
+298,d8_scaling,1,PASS,views/savings_goals_dialog.py: setFixedSize auf Dialog
+299,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+300,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+301,d1_release_cleaner,8,PASS,
+302,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+303,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+304,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+305,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+306,d6_theme_contrast,19,PASS,gruvbox_dunkel.json: 
+307,d7_icon_targets,1,PASS,views/setup_assistant_dialog.py: 
+308,d8_scaling,1,PASS,views/setup_assistant_dialog.py: setFixedSize auf Dialog
+309,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+310,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+311,d1_release_cleaner,8,PASS,
+312,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+313,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+314,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+315,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+316,d6_theme_contrast,19,PASS,gruvbox_hell.json: 
+317,d7_icon_targets,1,PASS,views/shortcuts_dialog.py: 
+318,d8_scaling,1,PASS,views/shortcuts_dialog.py: setFixedSize auf Dialog
+319,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+320,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+321,d1_release_cleaner,8,PASS,
+322,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+323,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+324,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+325,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+326,d6_theme_contrast,19,PASS,hell_grn.json: 
+327,d7_icon_targets,1,PASS,views/special_income_dialog.py: 
+328,d8_scaling,1,PASS,views/special_income_dialog.py: setFixedSize auf Dialog
+329,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+330,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+331,d1_release_cleaner,8,PASS,
+332,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+333,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+334,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+335,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+336,d6_theme_contrast,19,PASS,hell_warm_sepia.json: 
+337,d7_icon_targets,1,PASS,views/startup_wizard.py: 
+338,d8_scaling,1,PASS,views/startup_wizard.py: setFixedSize auf Dialog
+339,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+340,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+341,d1_release_cleaner,8,PASS,
+342,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+343,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+344,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+345,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+346,d6_theme_contrast,19,PASS,kontrast_schwarzwei.json: 
+347,d7_icon_targets,1,PASS,views/tabs/budget_tab.py: 
+348,d8_scaling,1,PASS,views/tabs/budget_tab.py: setFixedSize auf Dialog
+349,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+350,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+351,d1_release_cleaner,8,PASS,
+352,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+353,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+354,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+355,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+356,d6_theme_contrast,19,PASS,modern_cyan_v2.json: 
+357,d7_icon_targets,1,PASS,views/tabs/categories_tab.py: 
+358,d8_scaling,1,PASS,views/tabs/categories_tab.py: setFixedSize auf Dialog
+359,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+360,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+361,d1_release_cleaner,8,PASS,
+362,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+363,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+364,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+365,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+366,d6_theme_contrast,19,PASS,monokai_dunkel.json: 
+367,d7_icon_targets,1,PASS,views/tabs/cockpit_tab.py: 
+368,d8_scaling,1,PASS,views/tabs/cockpit_tab.py: setFixedSize auf Dialog
+369,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+370,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+371,d1_release_cleaner,8,PASS,
+372,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+373,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+374,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+375,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+376,d6_theme_contrast,19,PASS,nord_dunkel.json: 
+377,d7_icon_targets,1,PASS,views/tabs/overview_budget_panel.py: 
+378,d8_scaling,1,PASS,views/tabs/overview_budget_panel.py: setFixedSize auf Dialog
+379,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+380,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+381,d1_release_cleaner,8,PASS,
+382,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+383,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+384,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+385,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+386,d6_theme_contrast,19,PASS,ocean_dunkel.json: 
+387,d7_icon_targets,1,PASS,views/tabs/overview_kpi_panel.py: 
+388,d8_scaling,1,PASS,views/tabs/overview_kpi_panel.py: setFixedSize auf Dialog
+389,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+390,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+391,d1_release_cleaner,8,PASS,
+392,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+393,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+394,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+395,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+396,d6_theme_contrast,19,PASS,pastell_sanft.json: 
+397,d7_icon_targets,1,PASS,views/tabs/overview_right_panel.py: 
+398,d8_scaling,1,PASS,views/tabs/overview_right_panel.py: setFixedSize auf Dialog
+399,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+400,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+401,d1_release_cleaner,8,PASS,
+402,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+403,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+404,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+405,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+406,d6_theme_contrast,19,PASS,solarized_dunkel.json: 
+407,d7_icon_targets,1,PASS,views/tabs/overview_savings_panel.py: 
+408,d8_scaling,1,PASS,views/tabs/overview_savings_panel.py: setFixedSize auf Dialog
+409,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+410,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+411,d1_release_cleaner,8,PASS,
+412,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+413,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+414,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+415,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+416,d6_theme_contrast,19,PASS,solarized_hell.json: 
+417,d7_icon_targets,1,PASS,views/tabs/overview_tab.py: 
+418,d8_scaling,1,PASS,views/tabs/overview_tab.py: setFixedSize auf Dialog
+419,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+420,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+421,d1_release_cleaner,8,PASS,
+422,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+423,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+424,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+425,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+426,d6_theme_contrast,19,PASS,standard_dunkel.json: 
+427,d7_icon_targets,1,PASS,views/tabs/overview_widgets.py: 
+428,d8_scaling,1,PASS,views/tabs/overview_widgets.py: setFixedSize auf Dialog
+429,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+430,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+431,d1_release_cleaner,8,PASS,
+432,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+433,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+434,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+435,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+436,d6_theme_contrast,19,PASS,standard_hell.json: 
+437,d7_icon_targets,1,PASS,views/tabs/tracking_tab.py: 
+438,d8_scaling,1,PASS,views/tabs/tracking_tab.py: setFixedSize auf Dialog
+439,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+440,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+441,d1_release_cleaner,8,PASS,
+442,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+443,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+444,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+445,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+446,d6_theme_contrast,19,PASS,v2_dunkel_graphite_cyan.json: 
+447,d7_icon_targets,1,PASS,views/tags_manager_dialog.py: 
+448,d8_scaling,1,PASS,views/tags_manager_dialog.py: setFixedSize auf Dialog
+449,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+450,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+451,d1_release_cleaner,8,PASS,
+452,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+453,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+454,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+455,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+456,d6_theme_contrast,19,PASS,v2_dunkel_purple_night.json: 
+457,d7_icon_targets,1,PASS,views/theme_editor_dialog.py: 
+458,d8_scaling,1,PASS,views/theme_editor_dialog.py: setFixedSize auf Dialog
+459,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+460,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+461,d1_release_cleaner,8,PASS,
+462,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+463,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+464,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+465,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+466,d6_theme_contrast,19,PASS,v2_hell_neon_cyan.json: 
+467,d7_icon_targets,1,PASS,views/type_color_helper.py: 
+468,d8_scaling,1,PASS,views/type_color_helper.py: setFixedSize auf Dialog
+469,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+470,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+471,d1_release_cleaner,8,PASS,
+472,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+473,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+474,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+475,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+476,d6_theme_contrast,19,PASS,v2_hell_pastel_mint.json: 
+477,d7_icon_targets,1,PASS,views/ui_colors.py: 
+478,d8_scaling,1,PASS,views/ui_colors.py: setFixedSize auf Dialog
+479,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+480,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+481,d1_release_cleaner,8,PASS,
+482,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+483,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+484,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+485,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+486,d6_theme_contrast,19,PASS,v2_hell_warm_sand.json: 
+487,d7_icon_targets,1,PASS,views/update_dialog.py: 
+488,d8_scaling,1,PASS,views/update_dialog.py: setFixedSize auf Dialog
+489,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+490,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+491,d1_release_cleaner,8,PASS,
+492,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+493,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+494,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+495,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+496,d6_theme_contrast,19,PASS,warm_hell.json: 
+497,d7_icon_targets,1,PASS,views/account_data_hub.py: 
+498,d8_scaling,1,PASS,views/account_data_hub.py: setFixedSize auf Dialog
+499,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+500,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+501,d1_release_cleaner,8,PASS,
+502,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+503,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+504,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+505,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+506,d6_theme_contrast,19,PASS,dracula_dunkel.json: 
+507,d7_icon_targets,1,PASS,views/account_management_dialog.py: 
+508,d8_scaling,1,PASS,views/account_management_dialog.py: setFixedSize auf Dialog
+509,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+510,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+511,d1_release_cleaner,8,PASS,
+512,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+513,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+514,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+515,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+516,d6_theme_contrast,19,PASS,dunkel_blau.json: 
+517,d7_icon_targets,1,PASS,views/backup_restore_dialog.py: 
+518,d8_scaling,1,PASS,views/backup_restore_dialog.py: setFixedSize auf Dialog
+519,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+520,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+521,d1_release_cleaner,8,PASS,
+522,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+523,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+524,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+525,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+526,d6_theme_contrast,19,PASS,dunkel_grn.json: 
+527,d7_icon_targets,1,PASS,views/budget_adjustment_dialog.py: 
+528,d8_scaling,1,PASS,views/budget_adjustment_dialog.py: setFixedSize auf Dialog
+529,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+530,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+531,d1_release_cleaner,8,PASS,
+532,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+533,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+534,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+535,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+536,d6_theme_contrast,19,PASS,dunkel_oled_kontrastarm.json: 
+537,d7_icon_targets,1,PASS,views/budget_entry_dialog_extended.py: 
+538,d8_scaling,1,PASS,views/budget_entry_dialog_extended.py: setFixedSize auf Dialog
+539,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+540,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+541,d1_release_cleaner,8,PASS,
+542,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+543,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+544,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+545,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+546,d6_theme_contrast,19,PASS,dunkel_warm_sepia.json: 
+547,d7_icon_targets,1,PASS,views/budget_fill_dialog.py: 
+548,d8_scaling,1,PASS,views/budget_fill_dialog.py: setFixedSize auf Dialog
+549,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+550,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+551,d1_release_cleaner,8,PASS,
+552,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+553,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+554,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+555,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+556,d6_theme_contrast,19,PASS,gruvbox_dunkel.json: 
+557,d7_icon_targets,1,PASS,views/category_delete_dialog.py: 
+558,d8_scaling,1,PASS,views/category_delete_dialog.py: setFixedSize auf Dialog
+559,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+560,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+561,d1_release_cleaner,8,PASS,
+562,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+563,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+564,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+565,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+566,d6_theme_contrast,19,PASS,gruvbox_hell.json: 
+567,d7_icon_targets,1,PASS,views/category_excel_io.py: 
+568,d8_scaling,1,PASS,views/category_excel_io.py: setFixedSize auf Dialog
+569,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+570,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+571,d1_release_cleaner,8,PASS,
+572,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+573,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+574,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+575,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+576,d6_theme_contrast,19,PASS,hell_grn.json: 
+577,d7_icon_targets,1,PASS,views/category_manager_dialog.py: 
+578,d8_scaling,1,PASS,views/category_manager_dialog.py: setFixedSize auf Dialog
+579,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+580,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+581,d1_release_cleaner,8,PASS,
+582,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+583,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+584,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+585,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+586,d6_theme_contrast,19,PASS,hell_warm_sepia.json: 
+587,d7_icon_targets,1,PASS,views/category_picker.py: 
+588,d8_scaling,1,PASS,views/category_picker.py: setFixedSize auf Dialog
+589,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+590,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+591,d1_release_cleaner,8,PASS,
+592,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+593,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+594,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+595,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+596,d6_theme_contrast,19,PASS,kontrast_schwarzwei.json: 
+597,d7_icon_targets,1,PASS,views/category_properties_dialog.py: 
+598,d8_scaling,1,PASS,views/category_properties_dialog.py: setFixedSize auf Dialog
+599,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+600,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+601,d1_release_cleaner,8,PASS,
+602,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+603,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+604,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+605,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+606,d6_theme_contrast,19,PASS,modern_cyan_v2.json: 
+607,d7_icon_targets,1,PASS,views/copy_year_dialog.py: 
+608,d8_scaling,1,PASS,views/copy_year_dialog.py: setFixedSize auf Dialog
+609,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+610,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+611,d1_release_cleaner,8,PASS,
+612,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+613,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+614,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+615,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+616,d6_theme_contrast,19,PASS,monokai_dunkel.json: 
+617,d7_icon_targets,1,PASS,views/database_management_dialog.py: 
+618,d8_scaling,1,PASS,views/database_management_dialog.py: setFixedSize auf Dialog
+619,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+620,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+621,d1_release_cleaner,8,PASS,
+622,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+623,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+624,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+625,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+626,d6_theme_contrast,19,PASS,nord_dunkel.json: 
+627,d7_icon_targets,1,PASS,views/delegates/badge_delegate.py: 
+628,d8_scaling,1,PASS,views/delegates/badge_delegate.py: setFixedSize auf Dialog
+629,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+630,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+631,d1_release_cleaner,8,PASS,
+632,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+633,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+634,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+635,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+636,d6_theme_contrast,19,PASS,ocean_dunkel.json: 
+637,d7_icon_targets,1,PASS,views/export_dialog.py: 
+638,d8_scaling,1,PASS,views/export_dialog.py: setFixedSize auf Dialog
+639,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+640,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+641,d1_release_cleaner,8,PASS,
+642,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+643,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+644,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+645,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+646,d6_theme_contrast,19,PASS,pastell_sanft.json: 
+647,d7_icon_targets,1,PASS,views/favorites_dashboard_dialog.py: 
+648,d8_scaling,1,PASS,views/favorites_dashboard_dialog.py: setFixedSize auf Dialog
+649,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+650,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+651,d1_release_cleaner,8,PASS,
+652,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+653,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+654,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+655,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+656,d6_theme_contrast,19,PASS,solarized_dunkel.json: 
+657,d7_icon_targets,1,PASS,views/global_search_dialog.py: 
+658,d8_scaling,1,PASS,views/global_search_dialog.py: setFixedSize auf Dialog
+659,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+660,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+661,d1_release_cleaner,8,PASS,
+662,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+663,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+664,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+665,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+666,d6_theme_contrast,19,PASS,solarized_hell.json: 
+667,d7_icon_targets,1,PASS,views/help_content.py: 
+668,d8_scaling,1,PASS,views/help_content.py: setFixedSize auf Dialog
+669,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+670,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+671,d1_release_cleaner,8,PASS,
+672,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+673,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+674,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+675,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+676,d6_theme_contrast,19,PASS,standard_dunkel.json: 
+677,d7_icon_targets,1,PASS,views/help_dialog.py: 
+678,d8_scaling,1,PASS,views/help_dialog.py: setFixedSize auf Dialog
+679,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+680,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+681,d1_release_cleaner,8,PASS,
+682,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+683,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+684,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+685,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+686,d6_theme_contrast,19,PASS,standard_hell.json: 
+687,d7_icon_targets,1,PASS,views/language_select_dialog.py: 
+688,d8_scaling,1,PASS,views/language_select_dialog.py: setFixedSize auf Dialog
+689,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+690,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+691,d1_release_cleaner,8,PASS,
+692,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+693,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+694,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+695,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+696,d6_theme_contrast,19,PASS,v2_dunkel_graphite_cyan.json: 
+697,d7_icon_targets,1,PASS,views/login_dialog.py: 
+698,d8_scaling,1,PASS,views/login_dialog.py: setFixedSize auf Dialog
+699,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+700,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+701,d1_release_cleaner,8,PASS,
+702,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+703,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+704,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+705,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+706,d6_theme_contrast,19,PASS,v2_dunkel_purple_night.json: 
+707,d7_icon_targets,1,PASS,views/main_window.py: 
+708,d8_scaling,1,PASS,views/main_window.py: setFixedSize auf Dialog
+709,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+710,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+711,d1_release_cleaner,8,PASS,
+712,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+713,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+714,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+715,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+716,d6_theme_contrast,19,PASS,v2_hell_neon_cyan.json: 
+717,d7_icon_targets,1,PASS,views/main_window_dialogs.py: 
+718,d8_scaling,1,PASS,views/main_window_dialogs.py: setFixedSize auf Dialog
+719,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+720,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+721,d1_release_cleaner,8,PASS,
+722,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+723,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+724,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+725,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+726,d6_theme_contrast,19,PASS,v2_hell_pastel_mint.json: 
+727,d7_icon_targets,1,PASS,views/month_close_dialog.py: 
+728,d8_scaling,1,PASS,views/month_close_dialog.py: setFixedSize auf Dialog
+729,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+730,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+731,d1_release_cleaner,8,PASS,
+732,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+733,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+734,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+735,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+736,d6_theme_contrast,19,PASS,v2_hell_warm_sand.json: 
+737,d7_icon_targets,1,PASS,views/quick_add_dialog.py: 
+738,d8_scaling,1,PASS,views/quick_add_dialog.py: setFixedSize auf Dialog
+739,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+740,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+741,d1_release_cleaner,8,PASS,
+742,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+743,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+744,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+745,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+746,d6_theme_contrast,19,PASS,warm_hell.json: 
+747,d7_icon_targets,1,PASS,views/reauth.py: 
+748,d8_scaling,1,PASS,views/reauth.py: setFixedSize auf Dialog
+749,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+750,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+751,d1_release_cleaner,8,PASS,
+752,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+753,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+754,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+755,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+756,d6_theme_contrast,19,PASS,dracula_dunkel.json: 
+757,d7_icon_targets,1,PASS,views/recurring_bookings_dialog.py: 
+758,d8_scaling,1,PASS,views/recurring_bookings_dialog.py: setFixedSize auf Dialog
+759,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+760,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+761,d1_release_cleaner,8,PASS,
+762,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+763,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+764,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+765,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+766,d6_theme_contrast,19,PASS,dunkel_blau.json: 
+767,d7_icon_targets,1,PASS,views/restore_key_dialog.py: 
+768,d8_scaling,1,PASS,views/restore_key_dialog.py: setFixedSize auf Dialog
+769,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+770,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+771,d1_release_cleaner,8,PASS,
+772,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+773,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+774,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+775,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+776,d6_theme_contrast,19,PASS,dunkel_grn.json: 
+777,d7_icon_targets,1,PASS,views/savings_goal_messages.py: 
+778,d8_scaling,1,PASS,views/savings_goal_messages.py: setFixedSize auf Dialog
+779,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+780,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+781,d1_release_cleaner,8,PASS,
+782,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+783,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+784,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+785,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+786,d6_theme_contrast,19,PASS,dunkel_oled_kontrastarm.json: 
+787,d7_icon_targets,1,PASS,views/savings_goals_dialog.py: 
+788,d8_scaling,1,PASS,views/savings_goals_dialog.py: setFixedSize auf Dialog
+789,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+790,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+791,d1_release_cleaner,8,PASS,
+792,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+793,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+794,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+795,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+796,d6_theme_contrast,19,PASS,dunkel_warm_sepia.json: 
+797,d7_icon_targets,1,PASS,views/setup_assistant_dialog.py: 
+798,d8_scaling,1,PASS,views/setup_assistant_dialog.py: setFixedSize auf Dialog
+799,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+800,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+801,d1_release_cleaner,8,PASS,
+802,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+803,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+804,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+805,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+806,d6_theme_contrast,19,PASS,gruvbox_dunkel.json: 
+807,d7_icon_targets,1,PASS,views/shortcuts_dialog.py: 
+808,d8_scaling,1,PASS,views/shortcuts_dialog.py: setFixedSize auf Dialog
+809,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+810,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+811,d1_release_cleaner,8,PASS,
+812,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+813,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+814,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+815,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+816,d6_theme_contrast,19,PASS,gruvbox_hell.json: 
+817,d7_icon_targets,1,PASS,views/special_income_dialog.py: 
+818,d8_scaling,1,PASS,views/special_income_dialog.py: setFixedSize auf Dialog
+819,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+820,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+821,d1_release_cleaner,8,PASS,
+822,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+823,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+824,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+825,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+826,d6_theme_contrast,19,PASS,hell_grn.json: 
+827,d7_icon_targets,1,PASS,views/startup_wizard.py: 
+828,d8_scaling,1,PASS,views/startup_wizard.py: setFixedSize auf Dialog
+829,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+830,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+831,d1_release_cleaner,8,PASS,
+832,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+833,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+834,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+835,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+836,d6_theme_contrast,19,PASS,hell_warm_sepia.json: 
+837,d7_icon_targets,1,PASS,views/tabs/budget_tab.py: 
+838,d8_scaling,1,PASS,views/tabs/budget_tab.py: setFixedSize auf Dialog
+839,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+840,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+841,d1_release_cleaner,8,PASS,
+842,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+843,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+844,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+845,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+846,d6_theme_contrast,19,PASS,kontrast_schwarzwei.json: 
+847,d7_icon_targets,1,PASS,views/tabs/categories_tab.py: 
+848,d8_scaling,1,PASS,views/tabs/categories_tab.py: setFixedSize auf Dialog
+849,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+850,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+851,d1_release_cleaner,8,PASS,
+852,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+853,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+854,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+855,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+856,d6_theme_contrast,19,PASS,modern_cyan_v2.json: 
+857,d7_icon_targets,1,PASS,views/tabs/cockpit_tab.py: 
+858,d8_scaling,1,PASS,views/tabs/cockpit_tab.py: setFixedSize auf Dialog
+859,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+860,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+861,d1_release_cleaner,8,PASS,
+862,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+863,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+864,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+865,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+866,d6_theme_contrast,19,PASS,monokai_dunkel.json: 
+867,d7_icon_targets,1,PASS,views/tabs/overview_budget_panel.py: 
+868,d8_scaling,1,PASS,views/tabs/overview_budget_panel.py: setFixedSize auf Dialog
+869,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+870,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+871,d1_release_cleaner,8,PASS,
+872,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+873,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+874,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+875,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+876,d6_theme_contrast,19,PASS,nord_dunkel.json: 
+877,d7_icon_targets,1,PASS,views/tabs/overview_kpi_panel.py: 
+878,d8_scaling,1,PASS,views/tabs/overview_kpi_panel.py: setFixedSize auf Dialog
+879,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+880,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+881,d1_release_cleaner,8,PASS,
+882,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+883,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+884,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+885,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+886,d6_theme_contrast,19,PASS,ocean_dunkel.json: 
+887,d7_icon_targets,1,PASS,views/tabs/overview_right_panel.py: 
+888,d8_scaling,1,PASS,views/tabs/overview_right_panel.py: setFixedSize auf Dialog
+889,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+890,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+891,d1_release_cleaner,8,PASS,
+892,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+893,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+894,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+895,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+896,d6_theme_contrast,19,PASS,pastell_sanft.json: 
+897,d7_icon_targets,1,PASS,views/tabs/overview_savings_panel.py: 
+898,d8_scaling,1,PASS,views/tabs/overview_savings_panel.py: setFixedSize auf Dialog
+899,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+900,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+901,d1_release_cleaner,8,PASS,
+902,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+903,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+904,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+905,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+906,d6_theme_contrast,19,PASS,solarized_dunkel.json: 
+907,d7_icon_targets,1,PASS,views/tabs/overview_tab.py: 
+908,d8_scaling,1,PASS,views/tabs/overview_tab.py: setFixedSize auf Dialog
+909,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+910,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+911,d1_release_cleaner,8,PASS,
+912,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+913,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+914,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+915,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+916,d6_theme_contrast,19,PASS,solarized_hell.json: 
+917,d7_icon_targets,1,PASS,views/tabs/overview_widgets.py: 
+918,d8_scaling,1,PASS,views/tabs/overview_widgets.py: setFixedSize auf Dialog
+919,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+920,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+921,d1_release_cleaner,8,PASS,
+922,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+923,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+924,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+925,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+926,d6_theme_contrast,19,PASS,standard_dunkel.json: 
+927,d7_icon_targets,1,PASS,views/tabs/tracking_tab.py: 
+928,d8_scaling,1,PASS,views/tabs/tracking_tab.py: setFixedSize auf Dialog
+929,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+930,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+931,d1_release_cleaner,8,PASS,
+932,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+933,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+934,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+935,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+936,d6_theme_contrast,19,PASS,standard_hell.json: 
+937,d7_icon_targets,1,PASS,views/tags_manager_dialog.py: 
+938,d8_scaling,1,PASS,views/tags_manager_dialog.py: setFixedSize auf Dialog
+939,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+940,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+941,d1_release_cleaner,8,PASS,
+942,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+943,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+944,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+945,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+946,d6_theme_contrast,19,PASS,v2_dunkel_graphite_cyan.json: 
+947,d7_icon_targets,1,PASS,views/theme_editor_dialog.py: 
+948,d8_scaling,1,PASS,views/theme_editor_dialog.py: setFixedSize auf Dialog
+949,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+950,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+951,d1_release_cleaner,8,PASS,
+952,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+953,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+954,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+955,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+956,d6_theme_contrast,19,PASS,v2_dunkel_purple_night.json: 
+957,d7_icon_targets,1,PASS,views/type_color_helper.py: 
+958,d8_scaling,1,PASS,views/type_color_helper.py: setFixedSize auf Dialog
+959,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+960,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+961,d1_release_cleaner,8,PASS,
+962,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+963,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+964,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+965,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+966,d6_theme_contrast,19,PASS,v2_hell_neon_cyan.json: 
+967,d7_icon_targets,1,PASS,views/ui_colors.py: 
+968,d8_scaling,1,PASS,views/ui_colors.py: setFixedSize auf Dialog
+969,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+970,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+971,d1_release_cleaner,8,PASS,
+972,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+973,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+974,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+975,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+976,d6_theme_contrast,19,PASS,v2_hell_pastel_mint.json: 
+977,d7_icon_targets,1,PASS,views/update_dialog.py: 
+978,d8_scaling,1,PASS,views/update_dialog.py: setFixedSize auf Dialog
+979,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+980,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+981,d1_release_cleaner,8,PASS,
+982,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+983,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+984,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+985,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+986,d6_theme_contrast,19,PASS,v2_hell_warm_sand.json: 
+987,d7_icon_targets,1,PASS,views/account_data_hub.py: 
+988,d8_scaling,1,PASS,views/account_data_hub.py: setFixedSize auf Dialog
+989,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+990,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette
+991,d1_release_cleaner,8,PASS,
+992,d2_prefilled_focus,2,PASS,Vorbefüllte Felder dürfen nicht komplett markiert werden
+993,d3_form_accessibility,1,WARN,Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden
+994,d4_destructive_metadata,2,WARN,Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden
+995,d5_language_consistency,5,PASS,Live-Sprachwechsel würde gemischte UI erzeugen
+996,d6_theme_contrast,19,PASS,warm_hell.json: 
+997,d7_icon_targets,1,PASS,views/account_management_dialog.py: 
+998,d8_scaling,1,PASS,views/account_management_dialog.py: setFixedSize auf Dialog
+999,d9_modal_load,2,PASS,"0 modale Informationen, 0 passive Warnungen, 93 Sicherheits-/Fehlerdialoge bewusst modal"
+1000,d10_keyboard_navigation,2,PASS,13/13 komplexe Dialogdateien mit expliziter Tab-Kette

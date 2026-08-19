@@ -1,0 +1,7 @@
+# Direkte Laufzeitabhängigkeiten. Release-Installation ausschliesslich über requirements.lock.
+PySide6==6.10.3
+openpyxl==3.1.5
+cryptography==50.0.0
+requests==2.34.2
+packaging==26.2
+defusedxml==0.7.1

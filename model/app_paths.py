@@ -30,6 +30,25 @@ def ensure_dir(p: Path) -> Path:
     return p
 
 
+def _environment_data_dir() -> Path | None:
+    """Host-/Launcher-Override für ausschließlich den Nutzerdatenordner.
+
+    ``BUDGETMANAGER_DATA_DIR`` ist der explizite Standalone-/Launcher-Schalter.
+    ``LIFEPLANNER_MODULE_DATA_DIR`` ist der generische Hostvertrag. Anders als
+    ``BUDGETMANAGER_APP_DIR`` verändern beide weder Ressourcen- noch Updaterpfade.
+    """
+    raw = (
+        os.environ.get("BUDGETMANAGER_DATA_DIR", "").strip()
+        or os.environ.get("LIFEPLANNER_MODULE_DATA_DIR", "").strip()
+    )
+    if not raw:
+        return None
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = (Path.cwd() / path).resolve()
+    return path.resolve()
+
+
 def portable_data_dir() -> Path:
     """Portabler Datenordner neben dem Programm ({app}/data).
 
@@ -109,6 +128,9 @@ def settings_path() -> Path:
     Dokumente und AppData. Der kleine ``installation.json``-Marker im
     Programmordner ist nur der Bootstrap-Hinweis auf den gewählten Datenordner.
     """
+    environment_dir = _environment_data_dir()
+    if environment_dir is not None:
+        return ensure_dir(environment_dir) / SETTINGS_FILENAME
     installer_dir = _installer_data_dir()
     base = installer_dir if installer_dir is not None else portable_data_dir()
     return ensure_dir(base) / SETTINGS_FILENAME
@@ -164,6 +186,9 @@ def data_dir() -> Path:
     - Installer: gewählter Datenordner aus installation.json/Settings
     - Portable/Source: {app}/data oder ein in Settings gesetzter Override
     """
+    environment_dir = _environment_data_dir()
+    if environment_dir is not None:
+        return ensure_dir(environment_dir)
     override = _read_data_directory_override()
     base = override if override is not None else portable_data_dir()
     return ensure_dir(base)

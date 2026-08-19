@@ -9,6 +9,7 @@ auf, und die alte Zeile blieb als Leiche stehen. Der Delete-Pfad war bereits
 korrekt (``_CATEGORY_TEXT_REFERENCE_TABLES``); Rename/Reassign/Undo nutzten
 handgeschriebene SQL-Listen, in denen genau diese Tabelle fehlte.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -44,7 +45,9 @@ def test_rename_carries_learning_state(conn):
     cid = cat.create(TYP_EXPENSES, "Hobbys")
     BudgetOverviewModel(conn).set_learning_action(TYP_EXPENSES, "Hobbys", "ignore")
 
-    cat.rename_and_cascade(cid, typ=TYP_EXPENSES, old_name="Hobbys", new_name="Freizeit")
+    cat.rename_and_cascade(
+        cid, typ=TYP_EXPENSES, old_name="Hobbys", new_name="Freizeit"
+    )
 
     assert _states(conn) == [(TYP_EXPENSES, "Freizeit", "ignored")]
 
@@ -54,7 +57,9 @@ def test_undo_redo_rename_keeps_learning_state_consistent(conn):
     cid = cat.create(TYP_EXPENSES, "Hobbys")
     BudgetOverviewModel(conn).set_learning_action(TYP_EXPENSES, "Hobbys", "ignore")
 
-    cat.rename_and_cascade(cid, typ=TYP_EXPENSES, old_name="Hobbys", new_name="Freizeit")
+    cat.rename_and_cascade(
+        cid, typ=TYP_EXPENSES, old_name="Hobbys", new_name="Freizeit"
+    )
     assert cat.undo.undo() is True
     assert _states(conn) == [(TYP_EXPENSES, "Hobbys", "ignored")]
 

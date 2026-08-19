@@ -13,6 +13,7 @@ Geprüft wird:
 
 Läuft ohne Qt/PySide6.
 """
+
 from __future__ import annotations
 
 import os
@@ -33,7 +34,11 @@ def _fresh():
     fd, p = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     conn = open_db(p)
-    migrate_all(conn, db_path=p)
+    migrate_all(
+        conn,
+        db_path=p,
+        backup_dir=os.path.join(os.path.dirname(p), "migration_backups"),
+    )
     return conn, p
 
 
@@ -77,7 +82,9 @@ def test_resolve_name_handles_subcategories():
         c = CategoryModel(conn)
         c.create(TYP_EXPENSES, "Wohnen")
         parent = [x for x in c.list(TYP_EXPENSES) if x.name == "Wohnen"][0]
-        c.create(TYP_EXPENSES, "Miete", parent_id=parent.id, is_fix=True, is_recurring=True)
+        c.create(
+            TYP_EXPENSES, "Miete", parent_id=parent.id, is_fix=True, is_recurring=True
+        )
         # Unterkategorie wird per echtem Namen aufgelöst (Picker bucht den echten Namen,
         # nicht den Baum-Pfad "Wohnen › Miete").
         assert c.resolve_name(TYP_EXPENSES, "Miete") == "Miete"
@@ -90,10 +97,11 @@ def test_resolve_name_handles_subcategories():
 def test_quick_add_and_tracker_dialog_validate_category_in_save_path():
     """Quelltext-Marker: beide Buchungsdialoge lösen die Kategorie vor dem Speichern auf."""
     qa = (ROOT / "views" / "quick_add_dialog.py").read_text(encoding="utf-8")
-    td = (ROOT / "views" / "tracker_dialog.py").read_text(encoding="utf-8")
-    for name, src in (("quick_add_dialog", qa), ("tracker_dialog", td)):
+    for name, src in (("quick_add_dialog", qa),):  # v2.2.16 (K1): ein Dialog
         assert "resolve_name(" in src, f"{name}: ruft resolve_name nicht auf"
-        assert "dlg.unknown_category" in src, f"{name}: zeigt keine Unbekannt-Kategorie-Warnung"
+        assert (
+            "dlg.unknown_category" in src
+        ), f"{name}: zeigt keine Unbekannt-Kategorie-Warnung"
 
 
 if __name__ == "__main__":

@@ -17,7 +17,9 @@ def test_requirements_lock_header_matches_current_release():
 
 
 def test_github_workflow_cleans_and_verifies_lint_procedure_before_pyinstaller():
-    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(encoding="utf-8")
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
+        encoding="utf-8"
+    )
     pytest_pos = workflow.index("python -m pytest tests/ -v -ra --tb=short")
     clean_pos = workflow.index("python tools/clean_release_tree.py")
     lint_pos = workflow.index("python tools/lint_procedure_check.py")
@@ -30,7 +32,7 @@ def test_release_checklist_contains_cleaner_and_lint_procedure_check():
     assert "python tools/clean_release_tree.py" in checklist
     assert "python tools/lint_procedure_check.py" in checklist
     assert "python -m pytest tests/ -v -ra --tb=short" in checklist
-    assert "python -m black --check model/" in checklist
+    assert "python -m black --check --workers 1 main.py" in checklist
     assert "python -m mypy model/" in checklist
 
 
@@ -45,7 +47,9 @@ def test_lint_procedure_script_exists_and_is_self_contained():
 
 
 def test_lint_procedure_passes_after_clean_release_tree():
-    subprocess.run([sys.executable, "tools/clean_release_tree.py"], cwd=ROOT, check=True)
+    subprocess.run(
+        [sys.executable, "tools/clean_release_tree.py"], cwd=ROOT, check=True
+    )
     result = subprocess.run(
         [sys.executable, "tools/lint_procedure_check.py"],
         cwd=ROOT,

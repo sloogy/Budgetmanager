@@ -1,11 +1,24 @@
 from __future__ import annotations
 
+from utils.accessibility import configure_dialog_tab_order
+from utils.notifications import show_info
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QFormLayout,
-    QPushButton, QLabel, QTableWidget, QTableWidgetItem,
-    QMessageBox, QHeaderView, QAbstractItemView, QGroupBox,
-    QTextEdit, QComboBox, QMenu
+    QDialog,
+    QVBoxLayout,
+    QHBoxLayout,
+    QFormLayout,
+    QPushButton,
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QMessageBox,
+    QHeaderView,
+    QAbstractItemView,
+    QGroupBox,
+    QTextEdit,
+    QComboBox,
+    QMenu,
 )
 from PySide6.QtGui import QColor
 
@@ -24,7 +37,9 @@ from views.ui_colors import ui_colors
 
 import logging
 from utils.i18n import tr, trf, display_typ, db_typ_from_display
+
 logger = logging.getLogger(__name__)
+
 
 class _LearningBudgetKindDialog(QDialog):
     """Bestätigung der Budgetart beim Übernehmen eines Lernvorschlags."""
@@ -38,11 +53,13 @@ class _LearningBudgetKindDialog(QDialog):
         self.setMinimumWidth(520)
 
         root = QVBoxLayout(self)
-        title = QLabel(trf(
-            "budget_learning.dialog.heading",
-            category=suggestion.category,
-            amount=format_money(suggestion.suggested_amount),
-        ))
+        title = QLabel(
+            trf(
+                "budget_learning.dialog.heading",
+                category=suggestion.category,
+                amount=format_money(suggestion.suggested_amount),
+            )
+        )
         title.setWordWrap(True)
         title.setStyleSheet("font-weight: bold;")
         root.addWidget(title)
@@ -52,7 +69,9 @@ class _LearningBudgetKindDialog(QDialog):
         root.addWidget(info)
 
         if getattr(suggestion, "tracking_data", ""):
-            tracking = QLabel(trf("budget_learning.dialog.tracking", data=suggestion.tracking_data))
+            tracking = QLabel(
+                trf("budget_learning.dialog.tracking", data=suggestion.tracking_data)
+            )
             tracking.setWordWrap(True)
             root.addWidget(tracking)
 
@@ -81,6 +100,7 @@ class _LearningBudgetKindDialog(QDialog):
         self.btn_accept.clicked.connect(self._accept_budget)
         self.btn_observe.clicked.connect(self._observe)
         self.btn_ignore.clicked.connect(self._ignore)
+        configure_dialog_tab_order(self)
 
     def _accept_budget(self) -> None:
         self.decision = "accept"
@@ -101,23 +121,29 @@ class _LearningBudgetKindDialog(QDialog):
 class BudgetAdjustmentDialog(QDialog):
     """
     Dialog zur Anzeige von Budget-Abweichungen mit Anpassungsvorschlägen
-    
+
     Zeigt:
     - Kategorien mit häufigen Überschreitungen
     - Historische Daten (wie oft überschritten)
     - Intelligente Budget-Vorschläge
     - Option zur direkten Anpassung
     """
-    
-    def __init__(self, parent, warnings_model: BudgetWarningsModelExtended, 
-                 budget_model, year: int, month: int):
+
+    def __init__(
+        self,
+        parent,
+        warnings_model: BudgetWarningsModelExtended,
+        budget_model,
+        year: int,
+        month: int,
+    ):
         super().__init__(parent)
         self.warnings_model = warnings_model
         self.budget_model = budget_model
         self.year = year
         self.month = month
         self.data_changed = False
-        
+
         self.setWindowTitle(tr("dlg.budget_adjustment"))
         self.setModal(True)
         self.resize(1000, 700)
@@ -128,14 +154,19 @@ class BudgetAdjustmentDialog(QDialog):
         # Achtung: Dieser Dialog soll *denselben* Regler nutzen wie die Übersicht,
         # sonst wirkt das Verhalten "zufällig" (z.B. immer 6 Monate).
         try:
-            self._lookback_months = int(Settings().get("budget_suggestion_months", 3) or 3)
+            self._lookback_months = int(
+                Settings().get("budget_suggestion_months", 3) or 3
+            )
         except Exception:
             self._lookback_months = 3
-        
+
         self._already_loaded = False
-        self._applied_categories: set[tuple[str, str]] = set()  # (typ, category) bereits angepasst
+        self._applied_categories: set[tuple[str, str]] = (
+            set()
+        )  # (typ, category) bereits angepasst
         self._setup_ui()
         self._load_exceedances()
+        configure_dialog_tab_order(self)
 
     def showEvent(self, event):
         """Bei erneutem Öffnen frisch laden – aber NICHT beim ersten Anzeigen
@@ -152,22 +183,23 @@ class BudgetAdjustmentDialog(QDialog):
                 self._load_exceedances()
             except Exception:
                 import traceback
+
                 traceback.print_exc()
         else:
             # Erster showEvent nach __init__ – Daten sind bereits geladen
             self._already_loaded = True
-    
+
     def _setup_ui(self):
         layout = QVBoxLayout(self)
-        
+
         # Titel und Info
-        title = QLabel(trf("dlg.budgetabweichungen_fuer", month=self.month, year=self.year))
+        title = QLabel(
+            trf("dlg.budgetabweichungen_fuer", month=self.month, year=self.year)
+        )
         title.setStyleSheet("font-size: 16px; font-weight: bold; padding: 10px;")
         layout.addWidget(title)
-        
-        info = QLabel(
-            "ℹ️ " + tr("dlg.dlg_banner_hint")
-        )
+
+        info = QLabel("ℹ️ " + tr("dlg.dlg_banner_hint"))
         info.setWordWrap(True)
         _c0 = ui_colors(self)
         info.setStyleSheet(
@@ -175,20 +207,22 @@ class BudgetAdjustmentDialog(QDialog):
             f"border-radius: 4px; color: {_c0.warning};"
         )
         layout.addWidget(info)
-        
+
         # Tabelle für Überschreitungen
         self.table = QTableWidget(0, 9)
-        self.table.setHorizontalHeaderLabels([
-            tr("header.header_typ"),
-            tr("header.category"),
-            tr("header.header_budget"),
-            tr("header.header_spent"),
-            tr("header.header_diff"),
-            tr("header.header_pct"),
-            trf("dlg.haeufigkeit", months=self._lookback_months),
-            tr("lbl.suggestion"),
-            tr("header.header_adjust"),
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                tr("header.header_typ"),
+                tr("header.category"),
+                tr("header.header_budget"),
+                tr("header.header_spent"),
+                tr("header.header_diff"),
+                tr("header.header_pct"),
+                trf("dlg.haeufigkeit", months=self._lookback_months),
+                tr("lbl.suggestion"),
+                tr("header.header_adjust"),
+            ]
+        )
         self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.table.setAlternatingRowColors(True)
         self.table.verticalHeader().setVisible(False)
@@ -207,21 +241,21 @@ class BudgetAdjustmentDialog(QDialog):
         type_info_layout.addWidget(self.type_info_text)
         self.type_info_group.setVisible(False)
         layout.addWidget(self.type_info_group)
-        
+
         # Statistik-Bereich
         stats_group = QGroupBox(tr("dlg.dlg_recommendations"))
         stats_layout = QVBoxLayout(stats_group)
-        
+
         self.recommendation_text = QTextEdit()
         self.recommendation_text.setReadOnly(True)
         self.recommendation_text.setMaximumHeight(150)
         stats_layout.addWidget(self.recommendation_text)
-        
+
         layout.addWidget(stats_group)
-        
+
         # Buttons
         btn_layout = QHBoxLayout()
-        
+
         self.btn_select_all = QPushButton(tr("btn.select_all"))
         self.btn_deselect_all = QPushButton(tr("btn.deselect_all"))
         self.btn_apply = QPushButton(tr("dlg.ausgewaehlte_anwenden"))
@@ -230,22 +264,22 @@ class BudgetAdjustmentDialog(QDialog):
             f"font-weight: bold; }} QPushButton:hover {{ opacity: 0.9; }}"
         )
         self.btn_close = QPushButton(tr("btn.close"))
-        
+
         btn_layout.addWidget(self.btn_select_all)
         btn_layout.addWidget(self.btn_deselect_all)
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_apply)
         btn_layout.addWidget(self.btn_close)
-        
+
         layout.addLayout(btn_layout)
-        
+
         # Signals
         self.btn_select_all.clicked.connect(lambda: self._toggle_all(True))
         self.btn_deselect_all.clicked.connect(lambda: self._toggle_all(False))
         self.btn_apply.clicked.connect(self._on_apply_adjustments)
         self.btn_close.clicked.connect(self.reject)
         self.table.itemSelectionChanged.connect(self._on_selection_changed)
-    
+
     @staticmethod
     def _is_learning_suggestion(sug: BudgetSuggestion | None) -> bool:
         return bool(sug is not None and getattr(sug, "direction", "") == "initial")
@@ -322,6 +356,7 @@ class BudgetAdjustmentDialog(QDialog):
         # Ungültiges Jahr abfangen (z.B. year=0 wenn DB leer oder year_combo noch nicht befüllt)
         if not self.year or self.year < 1:
             from datetime import date as _date
+
             self.year = _date.today().year
 
         try:
@@ -429,32 +464,40 @@ class BudgetAdjustmentDialog(QDialog):
             return None
 
         try:
-            accepted_this_month = self.warnings_model.get_accepted_for_month(self.year, self.month)
+            accepted_this_month = self.warnings_model.get_accepted_for_month(
+                self.year, self.month
+            )
         except Exception:
             accepted_this_month = set()
 
         excluded = self._applied_categories | accepted_this_month
         if excluded:
             merged_rows = [
-                (sug, exc) for (sug, exc) in merged_rows
+                (sug, exc)
+                for (sug, exc) in merged_rows
                 if _row_key(sug, exc) not in excluded
             ]
 
         if not merged_rows:
             _c0 = ui_colors(self)
             self.recommendation_text.setHtml(
-                "<p style='color: " + _c0.ok + "; font-weight: bold;'>✓ " + tr("dlg.dlg_all_green") + "</p>"
+                "<p style='color: "
+                + _c0.ok
+                + "; font-weight: bold;'>✓ "
+                + tr("dlg.dlg_all_green")
+                + "</p>"
             )
             return
 
         # Auto-Generierung kennzeichnen: Wenn keine gespeicherten Warnungsregeln,
         # wurden die Einträge automatisch aus dem Budget erzeugt → transparent für Nutzer.
-        _auto = getattr(self.warnings_model, '_auto_generated', False)
+        _auto = getattr(self.warnings_model, "_auto_generated", False)
         if _auto:
             _ci = ui_colors(self)
             # Info-Banner über die Tabelle (falls noch kein solches Widget vorhanden)
-            if not getattr(self, '_lbl_auto_info', None):
+            if not getattr(self, "_lbl_auto_info", None):
                 from PySide6.QtWidgets import QLabel as _QLabel
+
                 self._lbl_auto_info = _QLabel()
                 self._lbl_auto_info.setWordWrap(True)
                 # Einfügen direkt über der Tabelle
@@ -462,16 +505,14 @@ class BudgetAdjustmentDialog(QDialog):
                 tbl_idx = lyt.indexOf(self.table)
                 if tbl_idx >= 0:
                     lyt.insertWidget(tbl_idx, self._lbl_auto_info)
-            self._lbl_auto_info.setText(
-                "ℹ️ " + tr("dlg.dlg_check_info")
-            )
+            self._lbl_auto_info.setText("ℹ️ " + tr("dlg.dlg_check_info"))
             self._lbl_auto_info.setStyleSheet(
                 f"padding: 6px 10px; background-color: {_ci.info_bg}; "
                 f"border-left: 3px solid {_ci.accent}; border-radius: 3px; "
                 f"color: {_ci.text}; font-size: 11px;"
             )
             self._lbl_auto_info.setVisible(True)
-        elif getattr(self, '_lbl_auto_info', None):
+        elif getattr(self, "_lbl_auto_info", None):
             self._lbl_auto_info.setVisible(False)
 
         # Sortieren: Vorschläge mit deficit zuerst, dann surplus, dann reine Warnungen
@@ -482,6 +523,7 @@ class BudgetAdjustmentDialog(QDialog):
             if sug.direction == "initial":
                 return (0, sug.observed_months * -1, sug.consecutive_months * -1)
             return (1 if sug.direction == "deficit" else 2, sug.consecutive_months * -1)
+
         merged_rows.sort(key=_sort_key)
 
         total_adjustment = 0
@@ -511,18 +553,25 @@ class BudgetAdjustmentDialog(QDialog):
                     spent = max(0.0, float(budget) - float(sug.avg_deviation))
             else:
                 spent = 0.0
-            percent_used = exc.percent_used if exc else (0.0 if budget <= 0 else (spent / budget * 100.0))
+            percent_used = (
+                exc.percent_used
+                if exc
+                else (0.0 if budget <= 0 else (spent / budget * 100.0))
+            )
             exceed_count = exc.exceed_count if exc else 0
             # Vorschlag aus BudgetOverviewModel (einheitliche Quelle)
-            suggestion = sug.suggested_amount if sug else (exc.suggestion if exc else None)
+            suggestion = (
+                sug.suggested_amount if sug else (exc.suggestion if exc else None)
+            )
 
             # Konflikt-Erkennung: Engine schaut nur in Vormonate (use_current_month=False).
             # Wenn der aktuelle Monat klar überschritten ist (spent > budget), die Engine
             # aber aufgrund historischer Unter-Nutzung eine SENKUNG vorschlägt (suggestion < budget),
             # dann ist das Signal widersprüchlich → Vorschlag ausblenden.
-            if (suggestion is not None and spent > budget * 1.05
-                    and suggestion < budget):
-                suggestion = None  # Widerspruch: aktuell über Budget, Vorschlag aber runter
+            if suggestion is not None and spent > budget * 1.05 and suggestion < budget:
+                suggestion = (
+                    None  # Widerspruch: aktuell über Budget, Vorschlag aber runter
+                )
 
             # Typ
             typ_display = display_typ(typ)
@@ -570,7 +619,7 @@ class BudgetAdjustmentDialog(QDialog):
             # zählt genau die Monate mit spent >= budget. Die frühere Oder-
             # Bedingung über consecutive_months war richtungsblind und markierte
             # auch dauerhaft UNTER-Budget-Kategorien fälschlich als Überschreiter.
-            is_chronic = (exceed_count >= 3)
+            is_chronic = exceed_count >= 3
             if is_chronic:
                 cat_item.setBackground(QColor(c.error_bg))
                 chronic_categories.append(category)
@@ -584,7 +633,9 @@ class BudgetAdjustmentDialog(QDialog):
             # Ausgegeben
             spent_item = QTableWidgetItem(format_money(spent))
             spent_item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
-            spent_item.setForeground(QColor(c.negative if (budget > 0 and spent > budget) else c.ok))
+            spent_item.setForeground(
+                QColor(c.negative if (budget > 0 and spent > budget) else c.ok)
+            )
             self.table.setItem(row, 3, spent_item)
 
             # Differenz
@@ -601,9 +652,16 @@ class BudgetAdjustmentDialog(QDialog):
 
             # Überschritten (%)
             if budget <= 0 and suggestion is not None:
-                percent_item = QTableWidgetItem(tr("budget_adjustment.new_budget_label"))
+                percent_item = QTableWidgetItem(
+                    tr("budget_adjustment.new_budget_label")
+                )
             else:
-                percent_item = QTableWidgetItem(trf('auto.views_budget_adjustment_dialog.366_value_0_e619e83b', value_0=(percent_used)))
+                percent_item = QTableWidgetItem(
+                    trf(
+                        "auto.views_budget_adjustment_dialog.366_value_0_e619e83b",
+                        value_0=(percent_used),
+                    )
+                )
             percent_item.setTextAlignment(Qt.AlignCenter)
             if percent_used >= 150:
                 percent_item.setBackground(QColor(c.error_bg))
@@ -659,8 +717,10 @@ class BudgetAdjustmentDialog(QDialog):
             # Checkbox: auto-check bei Vorschlag vorhanden + chronisch
             chk = QTableWidgetItem()
             chk.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled)
-            is_surplus = (budget > 0 and spent <= budget and suggestion is not None)
-            is_chronic_deficit = (exceed_count >= 3) or (sug and sug.consecutive_months >= 3 and sug.direction == "deficit")
+            is_surplus = budget > 0 and spent <= budget and suggestion is not None
+            is_chronic_deficit = (exceed_count >= 3) or (
+                sug and sug.consecutive_months >= 3 and sug.direction == "deficit"
+            )
             auto = (suggestion is not None) and (is_surplus or is_chronic_deficit)
             if sug and sug.direction == "initial":
                 auto = False
@@ -668,7 +728,7 @@ class BudgetAdjustmentDialog(QDialog):
             self.table.setItem(row, 8, chk)
 
             if suggestion is not None and auto:
-                total_adjustment += (suggestion - budget)
+                total_adjustment += suggestion - budget
 
         self._apply_stable_column_widths()
 
@@ -686,16 +746,18 @@ class BudgetAdjustmentDialog(QDialog):
             2: 105,  # Budget
             3: 105,  # Getrackt
             4: 105,  # Differenz
-            5: 80,   # Prozent / neu
-            6: 95,   # Häufigkeit
+            5: 80,  # Prozent / neu
+            6: 95,  # Häufigkeit
             7: 120,  # Vorschlag
-            8: 70,   # Auswahl
+            8: 70,  # Auswahl
         }
         for col, width in widths.items():
             header.setSectionResizeMode(col, QHeaderView.Fixed)
             self.table.setColumnWidth(col, width)
 
-    def _render_type_suggestions(self, type_suggestions: list[BudgetSuggestion]) -> None:
+    def _render_type_suggestions(
+        self, type_suggestions: list[BudgetSuggestion]
+    ) -> None:
         """Zeigt Typ-Gesamt-Vorschläge separat und nicht editierbar an."""
         if not type_suggestions:
             self.type_info_group.setVisible(False)
@@ -711,41 +773,58 @@ class BudgetAdjustmentDialog(QDialog):
                 )
         self.type_info_text.setPlainText("\n".join(rows))
         self.type_info_group.setVisible(True)
-    def _generate_recommendations(self, exceedances: list, chronic_categories: list, 
-                                  total_adjustment: float):
+
+    def _generate_recommendations(
+        self, exceedances: list, chronic_categories: list, total_adjustment: float
+    ):
         """Generiert Empfehlungstext basierend auf den Daten"""
         _c = ui_colors(self)
         html = "<div style='font-family: Arial; font-size: 12px;'>"
-        
+
         # Überschrift – differenziert nach Überschreitung und Unterschreitung
         exceeded_cats = [e for e in exceedances if e.spent > e.budget]
-        surplus_cats  = [e for e in exceedances if e.spent <= e.budget and e.suggestion is not None]
+        surplus_cats = [
+            e for e in exceedances if e.spent <= e.budget and e.suggestion is not None
+        ]
         header_parts = []
         if exceeded_cats:
-            header_parts.append(f"⚠️ " + trf("suggestion.exceeded_n", n=len(exceeded_cats)))
+            header_parts.append(
+                f"⚠️ " + trf("suggestion.exceeded_n", n=len(exceeded_cats))
+            )
         if surplus_cats:
-            header_parts.append(f"💡 " + trf("suggestion.surplus_n", n=len(surplus_cats)))
-        header_txt = " &nbsp;|&nbsp; ".join(header_parts) if header_parts else trf("budget_adjustment.header.info_n", n=len(exceedances))
+            header_parts.append(
+                f"💡 " + trf("suggestion.surplus_n", n=len(surplus_cats))
+            )
+        header_txt = (
+            " &nbsp;|&nbsp; ".join(header_parts)
+            if header_parts
+            else trf("budget_adjustment.header.info_n", n=len(exceedances))
+        )
         html += f"<h3 style='margin-top: 0;'>{header_txt}</h3>"
-        
+
         # Chronische Überschreiter
         if chronic_categories:
             html += f"<p><strong>{trf('suggestion.chronic_label')}</strong> "
             html += ", ".join(chronic_categories)
             html += "<br/>💡 <em>" + tr("suggestion.chronic_text") + "</em></p>"
-        
+
         # Gesamtanpassung
         if total_adjustment > 0:
             html += f"<p><strong>{tr('suggestion.total_increase_label')}</strong> "
             html += f"<span style='color: {_c.success_text}; font-weight: bold;'>"
             html += f"{format_money(total_adjustment, force_sign=True)}"
             html += "</span></p>"
-        
+
         # Einkommens-Check: Übersteigen die Vorschläge das Einkommen?
         try:
             typ_sums = self.budget_model.sum_by_typ(self.year, self.month)
             # DB-Schlüssel verwenden (sprachunabhängig)
-            from model.typ_constants import TYP_INCOME as _TI, TYP_EXPENSES as _TE, TYP_SAVINGS as _TS
+            from model.typ_constants import (
+                TYP_INCOME as _TI,
+                TYP_EXPENSES as _TE,
+                TYP_SAVINGS as _TS,
+            )
+
             income_budget = typ_sums.get(_TI, 0.0)
 
             if income_budget > 0 and total_adjustment > 0:
@@ -783,36 +862,60 @@ class BudgetAdjustmentDialog(QDialog):
                     )
         except Exception as e:
             logger.debug("%s", e)
-        
+
         # Allgemeine Tipps
         html += f"<hr/><p><strong>{tr('budget_adjustment.recommendations.title')}:</strong></p><ul>"
-        
-        avg_exceed_count = (sum(e.exceed_count for e in exceedances) / len(exceedances)) if exceedances else 0
-        
+
+        avg_exceed_count = (
+            (sum(e.exceed_count for e in exceedances) / len(exceedances))
+            if exceedances
+            else 0
+        )
+
         if avg_exceed_count >= 3:
-            html += "<li>" + trf("budget_adjustment.recommendations.critical", text=tr("dlg.dlg_urgent_check")) + "</li>"
+            html += (
+                "<li>"
+                + trf(
+                    "budget_adjustment.recommendations.critical",
+                    text=tr("dlg.dlg_urgent_check"),
+                )
+                + "</li>"
+            )
         elif avg_exceed_count >= 2:
             html += "<li>" + tr("budget_adjustment.recommendations.attention") + "</li>"
         else:
-            html += "<li>" + trf("budget_adjustment.recommendations.hint", text=tr("dlg.dlg_structural_changes")) + "</li>"
-        
+            html += (
+                "<li>"
+                + trf(
+                    "budget_adjustment.recommendations.hint",
+                    text=tr("dlg.dlg_structural_changes"),
+                )
+                + "</li>"
+            )
+
         # Spezifische Tipps basierend auf aktuellen Überschreitungen.
         # Regression v2.0.8: Der Dialog kann reine Verlaufsvorschläge enthalten,
         # ohne dass im aktuellen Monat eine echte Überschreitung vorliegt.
         # Dann ist ``exceedances`` leer und max([]) darf nicht crashen.
-        max_exceedance = max(exceeded_cats, key=lambda x: x.percent_used) if exceeded_cats else None
+        max_exceedance = (
+            max(exceeded_cats, key=lambda x: x.percent_used) if exceeded_cats else None
+        )
         if max_exceedance is not None and max_exceedance.percent_used >= 150:
-            html += "<li>" + trf(
-                "budget_adjustment.recommendations.category_exceeded",
-                category=max_exceedance.category,
-                percent=f"{max_exceedance.percent_used:.0f}",
-            ) + "</li>"
-        
+            html += (
+                "<li>"
+                + trf(
+                    "budget_adjustment.recommendations.category_exceeded",
+                    category=max_exceedance.category,
+                    percent=f"{max_exceedance.percent_used:.0f}",
+                )
+                + "</li>"
+            )
+
         html += "</ul>"
         html += "</div>"
-        
+
         self.recommendation_text.setHtml(html)
-    
+
     def _toggle_all(self, checked: bool):
         """Wählt alle/keine Checkboxen aus"""
         state = Qt.Checked if checked else Qt.Unchecked
@@ -820,11 +923,11 @@ class BudgetAdjustmentDialog(QDialog):
             chk = self.table.item(row, 8)
             if chk:
                 chk.setCheckState(state)
-    
+
     def _on_selection_changed(self):
         """Reagiert auf Selektion in der Tabelle"""
         pass
-    
+
     def _on_apply_adjustments(self):
         """Wendet die ausgewählten Budget-Anpassungen an"""
         # Zähle ausgewählte Einträge
@@ -833,23 +936,22 @@ class BudgetAdjustmentDialog(QDialog):
             chk = self.table.item(row, 8)
             if chk and chk.checkState() == Qt.Checked:
                 selected_rows.append(row)
-        
+
         if not selected_rows:
-            QMessageBox.information(
-                self,
-                tr("dlg.keine_auswahl"),
-                tr("dlg.dlg_no_min_warnings_selected")
+            show_info(
+                self, tr("dlg.keine_auswahl"), tr("dlg.dlg_no_min_warnings_selected")
             )
             return
-        
+
         # Frage: Nur diesen Monat oder restliche Monate?
         remaining_months_count = 12 - self.month + 1
-        
+
         msg = QMessageBox(self)
         msg.setIcon(QMessageBox.Question)
         msg.setWindowTitle(tr("dlg.confirm"))
         msg.setText(
-            tr("dlg.dlg_adjust_period_question") + "\n\n"
+            tr("dlg.dlg_adjust_period_question")
+            + "\n\n"
             + trf(
                 "budget_adjustment.apply.period_lines",
                 month=self.month,
@@ -857,28 +959,30 @@ class BudgetAdjustmentDialog(QDialog):
                 count=remaining_months_count,
             )
         )
-        
+
         btn_this_month = msg.addButton(
-            f"{tr('dlg.dlg_only_this_month').format(month=self.month, year=self.year)}", QMessageBox.AcceptRole
+            f"{tr('dlg.dlg_only_this_month').format(month=self.month, year=self.year)}",
+            QMessageBox.AcceptRole,
         )
         btn_remaining = msg.addButton(
-            f"{tr('dlg.dlg_remaining_months').format(n=remaining_months_count)}", QMessageBox.AcceptRole
+            f"{tr('dlg.dlg_remaining_months').format(n=remaining_months_count)}",
+            QMessageBox.AcceptRole,
         )
         btn_cancel = msg.addButton(tr("btn.cancel"), QMessageBox.RejectRole)
-        
+
         msg.setDefaultButton(btn_this_month)
         msg.exec()
-        
+
         clicked = msg.clickedButton()
         if clicked == btn_cancel:
             return
-        
-        apply_remaining = (clicked == btn_remaining)
-        
+
+        apply_remaining = clicked == btn_remaining
+
         applied_count = 0
         total_increase = 0
         total_months_affected = 0
-        
+
         for row in selected_rows:
             typ_item = self.table.item(row, 0)
             typ = typ_item.data(Qt.UserRole) if typ_item else None
@@ -889,7 +993,7 @@ class BudgetAdjustmentDialog(QDialog):
             if not new_budget_str or new_budget_str.strip() in {"-", "–"}:
                 continue
             new_budget = float(parse_money(new_budget_str))
-            
+
             old_budget_str = self.table.item(row, 2).text()
             old_budget = float(parse_money(old_budget_str))
 
@@ -904,7 +1008,9 @@ class BudgetAdjustmentDialog(QDialog):
                     self._set_learning_action_for_row(row, "ignore")
                     self._applied_categories.add((typ, category))
                     try:
-                        self.warnings_model.mark_suggestion_accepted(typ, category, self.year, self.month)
+                        self.warnings_model.mark_suggestion_accepted(
+                            typ, category, self.year, self.month
+                        )
                     except Exception as e:
                         logger.debug("mark_suggestion_accepted(ignore): %s", e)
                     continue
@@ -917,35 +1023,59 @@ class BudgetAdjustmentDialog(QDialog):
                     )
                 except Exception as e:
                     logger.warning("Budgetart konnte nicht gespeichert werden: %s", e)
-            
+
             # Budget anwenden
             months_affected = self.warnings_model.apply_budget_suggestion(
-                typ, category, self.year, self.month, new_budget,
-                remaining_months=apply_remaining
+                typ,
+                category,
+                self.year,
+                self.month,
+                new_budget,
+                remaining_months=apply_remaining,
             )
-            
+
             # Als angepasst markieren → session-intern + persistent (nächster Monat wieder sichtbar)
             self._applied_categories.add((typ, category))
             try:
-                self.warnings_model.mark_suggestion_accepted(typ, category, self.year, self.month)
+                self.warnings_model.mark_suggestion_accepted(
+                    typ, category, self.year, self.month
+                )
             except Exception as e:
                 logger.debug("mark_suggestion_accepted: %s", e)
-            
+
             applied_count += 1
-            total_increase += (new_budget - old_budget)
+            total_increase += new_budget - old_budget
             total_months_affected += months_affected
-        
+
         if applied_count > 0:
             self.data_changed = True
             scope_text = (
-                trf("budget_adjustment.apply.scope_remaining", month=self.month, year=self.year, count=total_months_affected)
+                trf(
+                    "budget_adjustment.apply.scope_remaining",
+                    month=self.month,
+                    year=self.year,
+                    count=total_months_affected,
+                )
                 if apply_remaining
-                else trf("budget_adjustment.apply.scope_month", month=self.month, year=self.year)
+                else trf(
+                    "budget_adjustment.apply.scope_month",
+                    month=self.month,
+                    year=self.year,
+                )
             )
-            QMessageBox.information(
+            show_info(
                 self,
                 tr("header.budgets_adjusted"),
-                trf('auto.views_budget_adjustment_dialog.634_value_0_budget_s_wurden_erfolgreich_e65aecbd', value_0=(applied_count), value_1=(scope_text), value_2=(tr('dlg.dlg_increase_per_month').format(amount=format_money(total_increase, force_sign=True))))
+                trf(
+                    "auto.views_budget_adjustment_dialog.634_value_0_budget_s_wurden_erfolgreich_e65aecbd",
+                    value_0=(applied_count),
+                    value_1=(scope_text),
+                    value_2=(
+                        tr("dlg.dlg_increase_per_month").format(
+                            amount=format_money(total_increase, force_sign=True)
+                        )
+                    ),
+                ),
             )
             # Tabs sofort aktualisieren: sonst wirkt ein übernommener
             # Lernvorschlag so, als sei er nicht in das Budget übernommen worden,
@@ -953,7 +1083,9 @@ class BudgetAdjustmentDialog(QDialog):
             try:
                 parent = self.parent()
                 if parent is not None and hasattr(parent, "_schedule_refresh_all_tabs"):
+                    # fmt: off
                     parent._schedule_refresh_all_tabs(reason="budget adjustment applied")
+                    # fmt: on
                 elif parent is not None and hasattr(parent, "_refresh_all_tabs"):
                     QTimer.singleShot(0, parent._refresh_all_tabs)
             except Exception as refresh_exc:
@@ -961,19 +1093,24 @@ class BudgetAdjustmentDialog(QDialog):
             # Dialog NICHT schliessen – stattdessen Tabelle neu laden ohne die bereits
             # angepassten Kategorien. So sieht der Nutzer direkt, was noch offen ist.
             self._load_exceedances()
-    
+
     @staticmethod
-    def check_and_show_if_needed(parent, warnings_model: BudgetWarningsModelExtended,
-                                  budget_model, year: int, month: int,
-                                  auto_show_threshold: int = 2) -> bool:
+    def check_and_show_if_needed(
+        parent,
+        warnings_model: BudgetWarningsModelExtended,
+        budget_model,
+        year: int,
+        month: int,
+        auto_show_threshold: int = 2,
+    ) -> bool:
         """
         Prüft ob Budget-Anpassungen nötig sind und zeigt Dialog ggf. automatisch.
         Verwendet dieselbe lookback_months-Einstellung wie der interaktiv geöffnete Dialog,
         damit check_and_show_if_needed und manuelles Öffnen konsistente Ergebnisse liefern.
-        
+
         Args:
             auto_show_threshold: Ab wie vielen Überschreitungen Dialog automatisch zeigen
-            
+
         Returns:
             True wenn Dialog gezeigt wurde
         """
@@ -983,14 +1120,20 @@ class BudgetAdjustmentDialog(QDialog):
         except Exception:
             lookback = 3
 
-        exceedances = warnings_model.check_warnings_extended(year, month, lookback_months=lookback)
-        
+        exceedances = warnings_model.check_warnings_extended(
+            year, month, lookback_months=lookback
+        )
+
         # Zähle chronische Überschreiter (≥ threshold)
-        chronic_count = sum(1 for exc in exceedances if exc.exceed_count >= auto_show_threshold)
-        
+        chronic_count = sum(
+            1 for exc in exceedances if exc.exceed_count >= auto_show_threshold
+        )
+
         if chronic_count > 0:
-            dialog = BudgetAdjustmentDialog(parent, warnings_model, budget_model, year, month)
+            dialog = BudgetAdjustmentDialog(
+                parent, warnings_model, budget_model, year, month
+            )
             dialog.exec()
             return True
-        
+
         return False

@@ -8,6 +8,7 @@ definiert ist.
 
 Läuft ohne Qt/PySide6 (reine AST-Analyse).
 """
+
 from __future__ import annotations
 
 import ast

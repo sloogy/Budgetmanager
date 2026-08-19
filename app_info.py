@@ -13,10 +13,10 @@ Die Versionsnummer ist die zentrale Release-Nummer für App, Installer, Updater 
 APP_NAME = "Budgetmanager"
 
 # SemVer-Release-Version
-APP_VERSION = "2.2.6"
+APP_VERSION = "2.2.60"
 
 # Nur Anzeige (About-Dialog). Kannst du jederzeit anpassen.
-APP_RELEASE_DATE = "5. Juli 2026"
+APP_RELEASE_DATE = "19. August 2026"
 
 
 def app_window_title() -> str:

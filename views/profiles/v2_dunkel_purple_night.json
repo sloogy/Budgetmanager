@@ -24,5 +24,8 @@
   "dropdown_border": "#2b2340",
   "schriftgroesse": 10,
   "hover_hintergrund": "#32204e",
-  "hover_text": "#f0e9ff"
+  "hover_text": "#f0e9ff",
+  "akzent_text": "#0f0d14",
+  "akzent_panel_text": "#9b5cff",
+  "tabelle_header_text": "#f0e9ff"
 }

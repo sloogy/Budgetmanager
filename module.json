@@ -1,0 +1,23 @@
+{
+  "schema": "lifeplanner.module.v1",
+  "id": "budgetmanager",
+  "name": "BudgetManager",
+  "version": "2.2.60",
+  "description": "Budget, Buchungen, Forecasts, Sparziele und Monatsabschluss.",
+  "source_entry": "main.py",
+  "windows_executable": "BudgetManager/BudgetManager.exe",
+  "linux_executable": "BudgetManager/BudgetManager",
+  "permissions": [
+    "own_data_read",
+    "own_data_write",
+    "bridge_read",
+    "bridge_write",
+    "network_optional"
+  ],
+  "environment": {
+    "BUDGETMANAGER_DATA_DIR": "{module_data_dir}",
+    "LIFEPLANNER_MODULE_DATA_DIR": "{module_data_dir}",
+    "LIFEPLANNER_BRIDGE_DIR": "{bridge_dir}",
+    "LIFEPLANNER_CENTRAL_UPDATER": "1"
+  }
+}

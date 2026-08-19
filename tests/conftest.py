@@ -19,3 +19,10 @@ def pytest_configure(config):
     test_iterations = 1_000
     crypto.PBKDF2_ITERATIONS = test_iterations
     user_model.PBKDF2_ITERATIONS = test_iterations
+
+
+def pytest_runtest_teardown(item, nextitem):
+    """Finalisiert zyklische Testobjekte pro Test, damit Ressourcenlecks sofort auffallen."""
+    import gc
+
+    gc.collect()

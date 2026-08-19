@@ -1,0 +1,43 @@
+{
+  "application": "Budgetmanager",
+  "version": "2.2.55",
+  "date": "2026-08-02",
+  "status": "target_system_test_required",
+  "issue_fixed": "cockpit tiles were technically draggable only from a tiny handle and the layout collapsed to one column below 1180 px",
+  "fixes": [
+    "full tile header acts as drag source in manual mode",
+    "existing drag handle remains available",
+    "shared MIME and QDrag implementation for header and handle",
+    "manual two-column workspace from 720 px",
+    "equal-width manual target columns",
+    "atomic persistence of order and column remains unchanged",
+    "updated German, English and French guidance"
+  ],
+  "tests": {
+    "pytest_passed": 782,
+    "pytest_skipped": 13,
+    "pytest_failed": 0,
+    "new_regression_tests_passed": 6,
+    "cockpit_layout_regression_tests_passed": 26,
+    "final_audit_loops": 1000,
+    "final_audit_checks": 19335,
+    "final_audit_warnings": 0,
+    "final_audit_failures": 0,
+    "release_logic_loops": 100,
+    "release_logic_findings": 0,
+    "i18n": "pass",
+    "syntax_compile": "pass",
+    "version_sync": "pass",
+    "release_lint": "pass"
+  },
+  "compatibility": {
+    "database_migration_required": false,
+    "settings_migration_required": false,
+    "existing_tile_order_retained": true,
+    "design_manager_retained": true
+  },
+  "limitations": [
+    "PySide6 6.10.3 was unavailable in the isolated audit environment",
+    "real mouse drag and drop must be smoke-tested on the Fedora target system"
+  ]
+}

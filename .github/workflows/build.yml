@@ -6,10 +6,68 @@ on:
       - 'v*'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
+  platform-release-gates:
+    uses: ./.github/workflows/platform-release-gates.yml
+
+  dependency-security-gate:
+    uses: ./.github/workflows/dependency-audit.yml
+
+  enterprise-release-audit-10000:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.13'
+      - name: Install verified dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --require-hashes -r requirements-dev.lock
+          python -m pip check
+          python tools/verify_hashed_lock.py
+      - name: Run deterministic enterprise release audit
+        run: |
+          mkdir -p audit_artifacts
+          python tools/enterprise_release_audit_10000.py --loops 10000 --seed 20260718 --json-out audit_artifacts/ENTERPRISE_RELEASE_AUDIT_10000.json
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: enterprise-release-audit-10000
+          path: audit_artifacts/ENTERPRISE_RELEASE_AUDIT_10000.json
+          if-no-files-found: error
+
+  killcritic-usability-audit-10000:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
+        with:
+          python-version: '3.13'
+      - name: Install verified dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --require-hashes -r requirements-dev.lock
+          python -m pip check
+      - name: Run KILLCRITIC X10THINK usability audit
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: utf-8
+        run: |
+          mkdir -p audit_artifacts
+          python tools/run_killcritic_usability_10000.py --loops 10000 --seed 20260718 --json audit_artifacts/KILLCRITIC_USABILITY_10000.json --csv audit_artifacts/KILLCRITIC_USABILITY_10000.csv
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: killcritic-usability-audit-10000
+          path: |
+            audit_artifacts/KILLCRITIC_USABILITY_10000.json
+            audit_artifacts/KILLCRITIC_USABILITY_10000.csv
+          if-no-files-found: error
+
   build:
+    needs: [platform-release-gates, dependency-security-gate, enterprise-release-audit-10000, killcritic-usability-audit-10000]
     strategy:
       fail-fast: false
       matrix:
@@ -17,50 +75,45 @@ jobs:
           - os: windows-latest
             artifact_name: BudgetManager-windows
             pyinstaller_output: dist/BudgetManager
-
           - os: ubuntu-latest
             artifact_name: BudgetManager-linux
             pyinstaller_output: dist/BudgetManager
-
     runs-on: ${{ matrix.os }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
         with:
           python-version: '3.12'
-
-      - name: Install dependencies
+      - name: Install verified build and test dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -r requirements-build.txt
-          python -m pip install -r requirements-dev.txt
-
+          python -m pip install --require-hashes -r requirements-build.lock
+          python -m pip install --require-hashes -r requirements-dev.lock
+          python -m pip check
+          python tools/verify_hashed_lock.py
       - name: Install Qt offscreen dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1
-
-      - name: Check version consistency
-        run: python tools/sync_version.py --check
-
-      - name: Verify Qt translation catalogs
-        run: python tools/verify_qt_translations.py
-
+      - name: Materialize trusted updater public key
+        env:
+          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
+        run: python tools/materialize_update_public_key.py
+      - name: Verify Qt translation catalogs and version consistency
+        run: |
+          python tools/sync_version.py --check
+          python tools/verify_qt_translations.py
+          python tools/i18n_audit.py
       - name: Compile all sources
         run: python -m compileall -q . -x '_attic|__pycache__|.venv|venv'
-
-      - name: Check model formatting
-        run: |
-          python -m black --version
-          python -m black --check model/
-
-      - name: Type-check model layer
-        run: python -m mypy model/
-
-      - name: Run core tests
+      - name: Check complete source formatting
+        run: python -m black --check --workers 1 main.py app_info.py settings.py settings_dialog.py theme_manager.py model updater utils views tools tests
+      - name: Type-check model and security-critical modules
+        run: python -m mypy model/ updater/manifest_signing.py utils/secure_excel.py utils/ui_experience_mode.py
+      - name: Architecture quality gate
+        run: python tools/architecture_quality_gate.py
+      - name: Security gate
+        run: python tools/bandit_release_gate.py --bandit-json audit_artifacts/BANDIT_CURRENT.json --summary-json audit_artifacts/BANDIT_RELEASE_GATE.json
+      - name: Tests with branch coverage
         shell: bash
         env:
           QT_QPA_PLATFORM: offscreen
@@ -68,79 +121,122 @@ jobs:
           PYTHONIOENCODING: utf-8
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
-          python -m pytest tests/ -v -ra --tb=short
-
+          mkdir -p audit_artifacts
+          python -m pytest tests/ -v -ra --tb=short -W error::ResourceWarning -W error::pytest.PytestUnraisableExceptionWarning --cov --cov-branch --cov-report=term-missing --cov-report=json:audit_artifacts/coverage_full.json --cov-report=xml:audit_artifacts/coverage_full.xml --cov-fail-under=40
+          python tools/coverage_gate.py --json audit_artifacts/coverage_full.json --summary-json audit_artifacts/coverage_gate_summary.json --overall-min 40
+      - name: Upload full coverage evidence
+        if: always()
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: coverage-${{ matrix.artifact_name }}
+          path: |
+            audit_artifacts/coverage_full.xml
+            audit_artifacts/coverage_full.json
+            audit_artifacts/coverage_gate_summary.json
+          if-no-files-found: warn
+      - name: Large database performance gate
+        if: runner.os == 'Linux'
+        run: python tools/performance_release_gate.py --rows 50000 --json-out audit_artifacts/performance_gate.json
+      - name: Upload release performance evidence
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        with:
+          name: release-large-database-performance
+          path: audit_artifacts/performance_gate.json
+          if-no-files-found: warn
       - name: Clean generated test artifacts
         run: python tools/clean_release_tree.py
-
-      - name: Verify lint and release procedure
+      - name: Verify release procedure
         run: python tools/lint_procedure_check.py
-
       - name: Build with PyInstaller
         run: pyinstaller BudgetManager.spec --noconfirm --clean
-
+      - name: Authenticode-sign Windows application
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PFX_B64: ${{ secrets.WINDOWS_CODESIGN_PFX_B64 }}
+          WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          if (-not $env:WINDOWS_CODESIGN_PFX_B64 -or -not $env:WINDOWS_CODESIGN_PASSWORD) { throw "Windows-Code-Signing-Secrets fehlen" }
+          $pfx = Join-Path $env:RUNNER_TEMP "budgetmanager-signing.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CODESIGN_PFX_B64))
+          $signtool = (Get-Command signtool.exe -ErrorAction Stop).Source
+          & $signtool sign /fd SHA256 /td SHA256 /tr https://timestamp.digicert.com /f $pfx /p $env:WINDOWS_CODESIGN_PASSWORD "dist\BudgetManager\BudgetManager.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Authenticode-Signatur fehlgeschlagen" }
+          & $signtool verify /pa /all "dist\BudgetManager\BudgetManager.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Authenticode-Verifikation fehlgeschlagen" }
+          Remove-Item -Force $pfx
       - name: Validate PyInstaller onedir output
         shell: bash
         run: |
           test -d "${{ matrix.pyinstaller_output }}"
           test -f "${{ matrix.pyinstaller_output }}/BudgetManager.exe" || test -f "${{ matrix.pyinstaller_output }}/BudgetManager"
           test -d "${{ matrix.pyinstaller_output }}/_internal"
-          ls -lah "${{ matrix.pyinstaller_output }}"
-
-      - name: Upload onedir artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.pyinstaller_output }}
           if-no-files-found: error
 
   installer:
+    name: Build and sign windows_installer
     needs: build
     runs-on: windows-latest
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Windows onedir artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: BudgetManager-windows
           path: dist/BudgetManager/
-
-      - name: Prepare installer input
-        shell: pwsh
-        run: |
-          if (-not (Test-Path "dist\BudgetManager\BudgetManager.exe")) {
-            throw "dist\BudgetManager\BudgetManager.exe fehlt; Installer kann nicht gebaut werden."
-          }
-          if (-not (Test-Path "dist\BudgetManager\_internal")) {
-            throw "dist\BudgetManager\_internal fehlt; Build ist nicht onedir."
-          }
-
       - name: Install Inno Setup
         shell: pwsh
-        run: |
-          choco install innosetup --no-progress -y
-
+        run: choco install innosetup --no-progress -y
       - name: Build Windows installer
         shell: pwsh
         run: |
-          $candidates = @(
-            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe",
-            "${env:ProgramFiles(x86)}\Inno Setup 7\ISCC.exe",
-            "${env:ProgramFiles}\Inno Setup 7\ISCC.exe"
-          )
-          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $iscc) { throw "ISCC.exe nicht gefunden." }
+          if (-not (Test-Path "dist\BudgetManager\BudgetManager.exe")) { throw "BudgetManager.exe fehlt" }
+          $iscc = @("${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe", "${env:ProgramFiles}\Inno Setup 6\ISCC.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe nicht gefunden" }
           & $iscc "installer\budgetmanager_setup.iss"
           $setup = Get-ChildItem -Path . -Filter "BudgetManager_Setup_*.exe" -Recurse | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $setup) { throw "Installer-EXE wurde nicht erzeugt." }
+          if (-not $setup) { throw "Installer-EXE fehlt" }
           Copy-Item -Force $setup.FullName "BudgetManager_Setup.exe"
-
-      - name: Upload installer artifact
-        uses: actions/upload-artifact@v4
+      - name: Authenticode-sign and verify installer
+        shell: pwsh
+        env:
+          WINDOWS_CODESIGN_PFX_B64: ${{ secrets.WINDOWS_CODESIGN_PFX_B64 }}
+          WINDOWS_CODESIGN_PASSWORD: ${{ secrets.WINDOWS_CODESIGN_PASSWORD }}
+        run: |
+          if (-not $env:WINDOWS_CODESIGN_PFX_B64 -or -not $env:WINDOWS_CODESIGN_PASSWORD) { throw "Windows-Code-Signing-Secrets fehlen" }
+          $pfx = Join-Path $env:RUNNER_TEMP "budgetmanager-signing.pfx"
+          [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:WINDOWS_CODESIGN_PFX_B64))
+          $signtool = (Get-Command signtool.exe -ErrorAction Stop).Source
+          & $signtool sign /fd SHA256 /td SHA256 /tr https://timestamp.digicert.com /f $pfx /p $env:WINDOWS_CODESIGN_PASSWORD "BudgetManager_Setup.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Installer-Signatur fehlgeschlagen" }
+          & $signtool verify /pa /all "BudgetManager_Setup.exe"
+          if ($LASTEXITCODE -ne 0) { throw "Installer-Signatur ungültig" }
+          Remove-Item -Force $pfx
+      - name: Silent install, launch and uninstall E2E
+        shell: pwsh
+        run: |
+          $installDir = Join-Path $env:RUNNER_TEMP "BudgetManager-E2E-App"
+          $dataDir = Join-Path $env:RUNNER_TEMP "BudgetManager-E2E-Data"
+          $args = @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", ('/DIR="{0}"' -f $installDir), ('/DATA_DIR="{0}"' -f $dataDir))
+          $install = Start-Process -FilePath (Resolve-Path "BudgetManager_Setup.exe") -ArgumentList $args -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer ExitCode $($install.ExitCode)" }
+          $exe = Join-Path $installDir "BudgetManager.exe"
+          if (-not (Test-Path $exe)) { throw "Installierte EXE fehlt" }
+          $env:QT_QPA_PLATFORM = "offscreen"
+          & $exe --release-self-test
+          if ($LASTEXITCODE -ne 0) { throw "GUI-Selbsttest fehlgeschlagen" }
+          & $exe --updater-self-test
+          if ($LASTEXITCODE -ne 0) { throw "Updater-Selbsttest fehlgeschlagen" }
+          $uninstaller = Get-ChildItem -Path $installDir -Filter "unins*.exe" | Select-Object -First 1
+          if (-not $uninstaller) { throw "Uninstaller fehlt" }
+          $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Uninstaller ExitCode $($uninstall.ExitCode)" }
+          if (-not (Test-Path $dataDir)) { throw "Nutzerdaten wurden gelöscht" }
+      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
         with:
           name: BudgetManager_Setup.exe
           path: BudgetManager_Setup.exe
@@ -149,83 +245,51 @@ jobs:
   manifest:
     needs: [build, installer]
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+      - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5
         with:
           python-version: '3.12'
-
-      - name: Download Windows artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: BudgetManager-windows
           path: artifacts/windows/
-
-      - name: Download Linux artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: BudgetManager-linux
           path: artifacts/linux/
-
-      - name: Download Windows installer artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: BudgetManager_Setup.exe
           path: artifacts/windows/
-
-      - name: Build release assets + updater manifest
+      - name: Build signed release assets, updater manifest and SBOM
+        env:
+          UPDATE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_B64 }}
+          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
         shell: bash
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
-
-          python tools/build_release_assets.py             --version "${VERSION}"             --release-tag "${TAG}"             --base-url "${BASE}"             --windows-build-dir artifacts/windows             --linux-build-dir artifacts/linux             --out-dir release_assets             --require-installer
-
-          echo "Release assets:"
-          ls -lah release_assets
-
+          python tools/build_release_assets.py --version "${VERSION}" --release-tag "${TAG}" --base-url "${BASE}" --windows-build-dir artifacts/windows --linux-build-dir artifacts/linux --out-dir release_assets --require-installer
+          test -s release_assets/latest.json.sig
+          test -s "release_assets/BudgetManager-v${VERSION}.cdx.json"
       - name: Verify updater manifest stays updater-safe
+        env:
+          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
         shell: bash
         run: |
-          python - <<'PY'
-          import json
-          import zipfile
-          from pathlib import Path
-
-          data = json.loads(Path('release_assets/latest.json').read_text(encoding='utf-8'))
-          assets = data['assets']
-          assert assets['windows']['type'] == 'portable-zip', assets['windows']
-          assert assets['linux']['type'] == 'portable-zip', assets['linux']
-          assert assets['windows']['url'].endswith('-portable-windows.zip'), assets['windows']
-          assert assets['linux']['url'].endswith('-portable-linux.zip'), assets['linux']
-          assert assets['windows_installer']['type'] == 'installer', assets['windows_installer']
-          assert assets['windows_installer_zip']['type'] == 'installer-zip', assets['windows_installer_zip']
-          assert 'direct_windows_exe' not in assets
-          assert 'direct_linux_binary' not in assets
-          assert Path('release_assets/SHA256SUMS.txt').is_file()
-
-          with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-windows.zip'))) as zf:
-              names = set(zf.namelist())
-              assert 'BudgetManager.exe' in names
-              assert 'start-windows.cmd' in names
-              assert 'data/.keep' in names
-              assert any(n.startswith('_internal/') for n in names), 'Windows-ZIP ohne _internal/'
-          with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-linux.zip'))) as zf:
-              names = set(zf.namelist())
-              assert 'BudgetManager' in names
-              assert 'start-linux.sh' in names
-              assert 'data/.keep' in names
-              assert any(n.startswith('_internal/') for n in names), 'Linux-ZIP ohne _internal/'
-          print('latest.json und portable ZIPs OK')
-          PY
-
+          python tools/verify_release_manifest.py release_assets/latest.json --signature release_assets/latest.json.sig
+      - name: Attest release provenance
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2
+        with:
+          subject-path: 'release_assets/*'
       - name: Upload to GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631 # v2
         with:
           generate_release_notes: true
           files: release_assets/*

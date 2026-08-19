@@ -13,7 +13,6 @@ Die Manifest-Keys ``windows`` und ``linux`` bleiben portable ZIPs. Der Installer
 ist ein separates Asset. Installer-Installationen duerfen den Key
 ``windows_installer`` bevorzugen; portable Fallbacks bleiben trotzdem erhalten.
 """
-
 from __future__ import annotations
 
 import argparse
@@ -31,6 +30,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app_info import APP_NAME, APP_VERSION  # noqa: E402
+from updater.manifest_signing import sign_manifest_file  # noqa: E402
+from tools.generate_sbom import generate_sbom  # noqa: E402
 
 WINDOWS_CANONICAL_EXE = "BudgetManager.exe"
 LINUX_CANONICAL_BINARY = "BudgetManager"
@@ -275,8 +276,7 @@ def _create_installer_zip(
     readme.write_text(
         "BudgetManager Windows-Download\n"
         "==============================\n\n"
-        "Windows SmartScreen oder der Browser kann neue, unsignierte Open-Source-Installer blockieren, "
-        "weil der Herausgeber noch keine ausreichende Reputation hat.\n\n"
+        "Windows SmartScreen oder der Browser kann einen neuen, korrekt signierten Installer bis zum Aufbau von Reputation trotzdem warnend anzeigen.\n\n"
         "Empfohlen:\n"
         "1. ZIP herunterladen und entpacken.\n"
         "2. SHA256 aus SHA256SUMS.txt mit dem Download vergleichen.\n"
@@ -381,6 +381,16 @@ def main() -> int:
         action="store_true",
         help="Fail if Windows installer EXE is missing",
     )
+    parser.add_argument(
+        "--signing-private-key-env",
+        default="UPDATE_SIGNING_PRIVATE_KEY_B64",
+        help="Environment variable containing the raw Ed25519 private key as Base64",
+    )
+    parser.add_argument(
+        "--signing-public-key-env",
+        default="UPDATE_SIGNING_PUBLIC_KEY_B64",
+        help="Environment variable containing the matching public key as Base64",
+    )
     args = parser.parse_args()
 
     version = str(args.version).lstrip("v")
@@ -417,10 +427,29 @@ def main() -> int:
         installer_zip,
     )
 
+    private_key_b64 = os.environ.get(args.signing_private_key_env, "").strip()
+    public_key_b64 = os.environ.get(args.signing_public_key_env, "").strip()
+    if not private_key_b64 or not public_key_b64:
+        _die(
+            "Update-Signierschlüssel fehlen. Release-Manifeste werden niemals unsigned erzeugt."
+        )
+    latest_signature = sign_manifest_file(
+        latest,
+        private_key_b64=private_key_b64,
+        expected_public_key_b64=public_key_b64,
+    )
+    sbom = generate_sbom(
+        ROOT / "requirements.lock",
+        out_dir / f"BudgetManager-v{version}.cdx.json",
+        app_version=version,
+    )
+
     files_for_sums = [
         portable_windows_zip,
         portable_linux_zip,
         latest,
+        latest_signature,
+        sbom,
     ]
     if installer_exe is not None:
         files_for_sums.append(installer_exe)

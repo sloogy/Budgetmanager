@@ -20,9 +20,12 @@
   "dropdown_bg": "#111c3a",
   "dropdown_text": "#e5e7eb",
   "dropdown_selection": "#3b82f6",
-  "dropdown_selection_text": "#ffffff",
+  "dropdown_selection_text": "#1e1e1e",
   "dropdown_border": "#22355a",
   "schriftgroesse": 10,
   "hover_hintergrund": "#1a315d",
-  "hover_text": "#e5e7eb"
+  "hover_text": "#e5e7eb",
+  "akzent_text": "#0b1224",
+  "akzent_panel_text": "#3b82f6",
+  "tabelle_header_text": "#e5e7eb"
 }

@@ -7,6 +7,7 @@
 
 Läuft ohne Qt/PySide6 (reine Datenschicht + Qt-freier Aggregations-Helfer).
 """
+
 from __future__ import annotations
 
 import os
@@ -38,8 +39,11 @@ def _months_between(d1: date, d2: date):
     out = []
     while cur <= end:
         out.append((cur.year, cur.month))
-        cur = date(cur.year + (1 if cur.month == 12 else 0),
-                   1 if cur.month == 12 else cur.month + 1, 1)
+        cur = date(
+            cur.year + (1 if cur.month == 12 else 0),
+            1 if cur.month == 12 else cur.month + 1,
+            1,
+        )
     return out
 
 
@@ -47,7 +51,11 @@ def _fresh():
     fd, p = tempfile.mkstemp(suffix=".db")
     os.close(fd)
     conn = open_db(p)
-    migrate_all(conn, db_path=p)
+    migrate_all(
+        conn,
+        db_path=p,
+        backup_dir=os.path.join(os.path.dirname(p), "migration_backups"),
+    )
     return conn, p
 
 
@@ -59,6 +67,7 @@ def _sum_for(sums: dict, typ: str) -> float:
 
 
 # ── 1. Donut-Budget bereichsbezogen ──────────────────────────────
+
 
 def test_range_budget_spans_window_months_not_single_month():
     conn, p = _fresh()
@@ -83,6 +92,7 @@ def test_range_budget_spans_window_months_not_single_month():
 
 
 # ── 2. Top-Buchungen-Aggregation ─────────────────────────────────
+
 
 @dataclass
 class _Row:
@@ -144,12 +154,16 @@ def test_aggregate_category_amounts_limits_and_groups_other():
         _Row(TYP_EXPENSES, "Kaffee", -30.0),
         _Row(TYP_INCOME, "Lohn", 5000.0),
     ]
-    ranked = aggregate_category_amounts(rows, TYP_EXPENSES, top_n=2, other_label="Übrige")
+    ranked = aggregate_category_amounts(
+        rows, TYP_EXPENSES, top_n=2, other_label="Übrige"
+    )
     assert ranked == [("Miete", 1500.0), ("Essen", 420.0), ("Übrige", 150.0)]
 
 
 def test_overview_keeps_main_donut_but_removes_misleading_neighbor_pies():
-    src = (ROOT / "views" / "tabs" / "overview_kpi_panel.py").read_text(encoding="utf-8")
+    src = (ROOT / "views" / "tabs" / "overview_kpi_panel.py").read_text(
+        encoding="utf-8"
+    )
     # Der bewährte Haupt-Donut bleibt als Plan/Ist-Status erhalten.
     assert "chart_overview_donut.create_nested_donut" in src
     # Die danebenliegenden/verwirrenden Verteilungs-Pies bleiben ersetzt.

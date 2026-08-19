@@ -1,4 +1,5 @@
-# BudgetManager — Release-Build (PyInstaller, Packaging)
--r requirements.lock
+# Komfortdatei für lokale Builds.
+# Release/CI: python -m pip install --require-hashes -r requirements-build.lock
+-r requirements.txt
 
-pyinstaller>=6.0.0
+pyinstaller==6.16.0

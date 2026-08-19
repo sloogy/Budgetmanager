@@ -1,4 +1,4 @@
-# Migration Guide — BudgetManager v2.2.6
+# Migration Guide — BudgetManager v2.2.60
 
 ## Grundsatz
 
@@ -23,7 +23,7 @@ Der Installer überschreibt bestehende `data/budgetmanager_settings.json` nicht.
 
 `settings.py` merged geladene Einstellungen über aktuelle Defaults. Dadurch bleiben ältere Teil-Settings kompatibel und neue Keys erhalten sinnvolle Standardwerte.
 
-## Wichtig für v2.2.6
+## Wichtig für v2.2.13
 
 - Unter Wayland nutzt die App standardmäßig `xcb`, um Qt-Textinput-Abstürze zu vermeiden.
 - Budgetwarnungen und Cockpit-Aktionen sind Teil des aktuellen Release-Stands.

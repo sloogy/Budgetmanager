@@ -62,7 +62,15 @@ def _month_back(year: int, month: int, n: int) -> list[tuple[int, int]]:
     return out
 
 
-def _cat(conn: sqlite3.Connection, typ: str, name: str, *, is_fix=False, is_recurring=False, forecast_mode="auto") -> int:
+def _cat(
+    conn: sqlite3.Connection,
+    typ: str,
+    name: str,
+    *,
+    is_fix=False,
+    is_recurring=False,
+    forecast_mode="auto",
+) -> int:
     return CategoryModel(conn).create(
         typ,
         name,
@@ -73,7 +81,14 @@ def _cat(conn: sqlite3.Connection, typ: str, name: str, *, is_fix=False, is_recu
     )
 
 
-def _budget(conn: sqlite3.Connection, year: int, month: int, typ: str, category: str, amount: float) -> None:
+def _budget(
+    conn: sqlite3.Connection,
+    year: int,
+    month: int,
+    typ: str,
+    category: str,
+    amount: float,
+) -> None:
     conn.execute(
         """
         INSERT INTO budget(year, month, typ, category, amount)
@@ -84,14 +99,23 @@ def _budget(conn: sqlite3.Connection, year: int, month: int, typ: str, category:
     )
 
 
-def _book(conn: sqlite3.Connection, year: int, month: int, typ: str, category: str, amount: float) -> None:
+def _book(
+    conn: sqlite3.Connection,
+    year: int,
+    month: int,
+    typ: str,
+    category: str,
+    amount: float,
+) -> None:
     conn.execute(
         "INSERT INTO tracking(date, typ, category, amount, details) VALUES(?,?,?,?,?)",
         (f"{year:04d}-{month:02d}-15", typ, category, float(amount), "deep-audit"),
     )
 
 
-def _install_fake_settings(*, zero_balance: bool = True, sign_ratio: float = 0.7) -> None:
+def _install_fake_settings(
+    *, zero_balance: bool = True, sign_ratio: float = 0.7
+) -> None:
     import settings as settings_module
 
     class FakeSettings:
@@ -143,7 +167,9 @@ def scenario_fixed_incremental_undercovered(rng: random.Random) -> None:
     res = BudgetSuggestionEngine(conn).compute_category_suggestion(
         TYP_EXPENSES, name, *target, months_back=6
     )
-    assert res is not None and res.delta > 0, "unterdeckte inkrementelle Fixkosten müssen erhöhen dürfen"
+    assert (
+        res is not None and res.delta > 0
+    ), "unterdeckte inkrementelle Fixkosten müssen erhöhen dürfen"
 
 
 def scenario_pot_partial_and_overuse(rng: random.Random) -> None:
@@ -164,7 +190,9 @@ def scenario_pot_partial_and_overuse(rng: random.Random) -> None:
     res2 = BudgetSuggestionEngine(conn).compute_category_suggestion(
         TYP_EXPENSES, name, *target, months_back=6
     )
-    assert res2 is not None and res2.delta > 0, "Pot-Überverbrauch muss Erhöhungsvorschlag erzeugen"
+    assert (
+        res2 is not None and res2.delta > 0
+    ), "Pot-Überverbrauch muss Erhöhungsvorschlag erzeugen"
 
 
 def scenario_zero_balance_type_guard() -> None:
@@ -241,7 +269,10 @@ def scenario_category_reassign_merge(rng: random.Random) -> None:
         (TYP_EXPENSES,),
     ).fetchone()[0]
     assert float(merged) == old_amt + new_amt
-    assert conn.execute("SELECT COUNT(*) FROM tracking WHERE category='Neu'").fetchone()[0] == 1
+    assert (
+        conn.execute("SELECT COUNT(*) FROM tracking WHERE category='Neu'").fetchone()[0]
+        == 1
+    )
     assert cm.get_by_id(old) is None
 
 
@@ -263,7 +294,9 @@ def run(loop_count: int, seed: int) -> dict:
             checks += 1
             try:
                 scenario(rng)
-            except Exception as exc:  # noqa: BLE001 - Audit sammelt Findings bewusst breit.
+            except (
+                Exception
+            ) as exc:  # noqa: BLE001 - Audit sammelt Findings bewusst breit.
                 findings.append(
                     {
                         "loop": i,

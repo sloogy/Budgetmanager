@@ -16,6 +16,7 @@ Schnittstelle zu OverviewTab:
     panel.overrun_details_requested.connect(...)
     panel.suggestions_requested.connect(...)
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,9 +30,21 @@ from typing import Callable
 from PySide6.QtCore import Qt, Signal, QSignalBlocker, QObject
 from PySide6.QtGui import QFont, QColor
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
-    QTabWidget, QTreeWidget, QTreeWidgetItem, QTableWidget, QTableWidgetItem,
-    QPushButton, QSizePolicy, QAbstractItemView, QHeaderView, QMessageBox,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QComboBox,
+    QTabWidget,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QTableWidget,
+    QTableWidgetItem,
+    QPushButton,
+    QSizePolicy,
+    QAbstractItemView,
+    QHeaderView,
+    QMessageBox,
 )
 
 from model.budget_model import BudgetModel
@@ -42,7 +55,12 @@ from utils.i18n import tr, trf, display_typ, db_typ_from_display, tr_category_na
 from utils.money import format_money as format_chf, parse_money
 from views.ui_colors import ui_colors
 
-from model.typ_constants import normalize_typ as _norm, TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.typ_constants import (
+    normalize_typ as _norm,
+    TYP_INCOME,
+    TYP_EXPENSES,
+    TYP_SAVINGS,
+)
 
 
 def _month_label(idx: int) -> str:
@@ -51,6 +69,7 @@ def _month_label(idx: int) -> str:
 
 def _month_range(y: int, m: int) -> tuple[date, date]:
     import calendar
+
     last = calendar.monthrange(y, m)[1]
     return (date(y, m, 1), date(y, m, last))
 
@@ -67,14 +86,19 @@ class OverviewBudgetPanel(QObject):
     Signale können normal mit .connect() verdrahtet werden.
     """
 
-    overrun_details_requested = Signal(list)   # list[dict] mit Überläufen
-    suggestions_dialog_requested = Signal()     # Vorschläge-Dialog öffnen
+    overrun_details_requested = Signal(list)  # list[dict] mit Überläufen
+    suggestions_dialog_requested = Signal()  # Vorschläge-Dialog öffnen
     budget_overview_edit_requested = Signal(str, str)  # typ, category
-    budget_data_changed = Signal()              # Budget in DB wurde geändert
+    budget_data_changed = Signal()  # Budget in DB wurde geändert
 
-    def __init__(self, conn: sqlite3.Connection, budget: BudgetModel,
-                 budget_overview: BudgetOverviewModel, settings: Settings,
-                 parent=None):
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        budget: BudgetModel,
+        budget_overview: BudgetOverviewModel,
+        settings: Settings,
+        parent=None,
+    ):
         super().__init__(parent)
         self.conn = conn
         self.budget = budget
@@ -91,8 +115,8 @@ class OverviewBudgetPanel(QObject):
 
         # 3 fertige Widget-Instanzen für das äussere Tab-Widget
         self.w_budget_overview = self._build_budget_overview_tab()
-        self.w_tabular         = self._build_tabular_tab()
-        self.w_budget_table    = self._build_budget_table_tab()
+        self.w_tabular = self._build_tabular_tab()
+        self.w_budget_table = self._build_budget_table_tab()
 
     def _build_budget_overview_tab(self) -> QWidget:
         """Tab 1: Budgetübersicht mit Übertrag."""
@@ -105,13 +129,21 @@ class OverviewBudgetPanel(QObject):
         toolbar = QHBoxLayout()
         toolbar.addWidget(QLabel(tr("lbl.type")))
         self.bo_typ_combo = QComboBox()
-        self.bo_typ_combo.addItems([tr("lbl.all"), display_typ(TYP_EXPENSES),
-                                    display_typ(TYP_SAVINGS), display_typ(TYP_INCOME)])
+        self.bo_typ_combo.addItems(
+            [
+                tr("lbl.all"),
+                display_typ(TYP_EXPENSES),
+                display_typ(TYP_SAVINGS),
+                display_typ(TYP_INCOME),
+            ]
+        )
         self.bo_typ_combo.setFixedWidth(130)
         toolbar.addWidget(self.bo_typ_combo)
         toolbar.addWidget(QLabel(tr("overview.lbl.view")))
         self.bo_filter_combo = QComboBox()
-        self.bo_filter_combo.addItems([tr("lbl.all"), tr("overview.filter.only_deviations")])
+        self.bo_filter_combo.addItems(
+            [tr("lbl.all"), tr("overview.filter.only_deviations")]
+        )
         self.bo_filter_combo.setFixedWidth(150)
         self.bo_filter_combo.setToolTip(tr("overview.tip.bo_filter"))
         toolbar.addWidget(self.bo_filter_combo)
@@ -136,24 +168,34 @@ class OverviewBudgetPanel(QObject):
         self.lbl_suggestions_banner.setTextInteractionFlags(Qt.TextBrowserInteraction)
         self.lbl_suggestions_banner.setOpenExternalLinks(False)
         self.lbl_suggestions_banner.linkActivated.connect(
-            lambda lnk: self.suggestions_dialog_requested.emit() if lnk == "details" else None
+            lambda lnk: (
+                self.suggestions_dialog_requested.emit() if lnk == "details" else None
+            )
         )
         lay.addWidget(self.lbl_suggestions_banner)
 
         # Tabelle
         self.tbl_budget_overview = QTableWidget()
         self.tbl_budget_overview.setAlternatingRowColors(True)
-        self.tbl_budget_overview.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tbl_budget_overview.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
         self.tbl_budget_overview.setEditTriggers(
             QAbstractItemView.EditTrigger.DoubleClicked
             | QAbstractItemView.EditTrigger.EditKeyPressed
             | QAbstractItemView.EditTrigger.SelectedClicked
         )
         self.tbl_budget_overview.verticalHeader().setVisible(False)
-        self.tbl_budget_overview.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.tbl_budget_overview.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Expanding
+        )
         self.tbl_budget_overview.setMinimumHeight(260)
-        self.tbl_budget_overview.cellDoubleClicked.connect(self._on_budget_overview_cell_double_clicked)
-        self.tbl_budget_overview.itemChanged.connect(self._on_budget_overview_item_changed)
+        self.tbl_budget_overview.cellDoubleClicked.connect(
+            self._on_budget_overview_cell_double_clicked
+        )
+        self.tbl_budget_overview.itemChanged.connect(
+            self._on_budget_overview_item_changed
+        )
         lay.addWidget(self.tbl_budget_overview, 1)
 
         # Zusammenfassung
@@ -184,8 +226,11 @@ class OverviewBudgetPanel(QObject):
             f"border-radius: 4px; color: {_bc.warning_text};"
         )
         self.lbl_overrun_banner.linkActivated.connect(
-            lambda lnk: self.overrun_details_requested.emit(list(self._last_budget_overruns))
-            if lnk == "details" else None
+            lambda lnk: (
+                self.overrun_details_requested.emit(list(self._last_budget_overruns))
+                if lnk == "details"
+                else None
+            )
         )
         self._last_budget_overruns: list[dict] = []
         lay.addWidget(self.lbl_overrun_banner)
@@ -193,9 +238,20 @@ class OverviewBudgetPanel(QObject):
         # Kategorie-Baum
         self.tree_maincats = QTreeWidget()
         self.tree_maincats.setColumnCount(6)
-        self.tree_maincats.setHeaderLabels([tr("header.type"), tr("header.category"), tr("header.budget"), tr("lbl.gebucht"), tr("lbl.rest"), "%"])
+        self.tree_maincats.setHeaderLabels(
+            [
+                tr("header.type"),
+                tr("header.category"),
+                tr("header.budget"),
+                tr("lbl.gebucht"),
+                tr("lbl.rest"),
+                "%",
+            ]
+        )
         self.tree_maincats.setAlternatingRowColors(True)
-        self.tree_maincats.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.tree_maincats.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
         self.tree_maincats.setSelectionMode(QAbstractItemView.SingleSelection)
         self.tree_maincats.setRootIsDecorated(True)
         self.tree_maincats.setIndentation(18)
@@ -220,12 +276,14 @@ class OverviewBudgetPanel(QObject):
         ctrl = QHBoxLayout()
         ctrl.addWidget(QLabel(tr("lbl.month_window")))
         self.month_window_combo = QComboBox()
-        self.month_window_combo.addItems([
-            tr("overview.window.selection"),
-            tr("overview.window.next"),
-            tr("overview.window.prev2"),
-            tr("overview.window.prev3"),
-        ])
+        self.month_window_combo.addItems(
+            [
+                tr("overview.window.selection"),
+                tr("overview.window.next"),
+                tr("overview.window.prev2"),
+                tr("overview.window.prev3"),
+            ]
+        )
         self.month_window_combo.setFixedWidth(200)
         ctrl.addWidget(self.month_window_combo)
         ctrl.addStretch()
@@ -233,9 +291,13 @@ class OverviewBudgetPanel(QObject):
 
         self.tbl_budget_table = QTableWidget()
         self.tbl_budget_table.setAlternatingRowColors(True)
-        self.tbl_budget_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.tbl_budget_table.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
         self.tbl_budget_table.verticalHeader().setVisible(True)
-        self.tbl_budget_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.tbl_budget_table.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Expanding
+        )
         lay.addWidget(self.tbl_budget_table)
         return w
 
@@ -246,7 +308,11 @@ class OverviewBudgetPanel(QObject):
         self.tbl_budget_table.cellDoubleClicked.connect(on_budget_cell)
         self.tree_maincats.itemDoubleClicked.connect(on_tree_item)
         self.tree_maincats.itemClicked.connect(
-            lambda item, col: item.setExpanded(not item.isExpanded()) if item.childCount() > 0 else None
+            lambda item, col: (
+                item.setExpanded(not item.isExpanded())
+                if item.childCount() > 0
+                else None
+            )
         )
 
     def connect_filter_signals(self, on_change: Callable) -> None:
@@ -301,29 +367,49 @@ class OverviewBudgetPanel(QObject):
     # ── Daten laden ─────────────────────────────────────────────────────────
 
     def refresh_budget_overview(
-        self, year: int, month_idx: int,
-        cat_caches: dict,   # _cat_name_to_id, etc.
+        self,
+        year: int,
+        month_idx: int,
+        cat_caches: dict,  # _cat_name_to_id, etc.
         tag_id: int | None = None,
     ) -> None:
         """Budgetübersicht-Tab (Tab 1) neu laden."""
         typ_sel_display = self.bo_typ_combo.currentText()
-        typ_sel = tr("lbl.all") if typ_sel_display == tr("lbl.all") else db_typ_from_display(typ_sel_display)
-        show_all = (self.bo_filter_combo.currentIndex() == 0)
+        typ_sel = (
+            tr("lbl.all")
+            if typ_sel_display == tr("lbl.all")
+            else db_typ_from_display(typ_sel_display)
+        )
+        show_all = self.bo_filter_combo.currentIndex() == 0
 
-        typen = ([TYP_EXPENSES, TYP_SAVINGS, TYP_INCOME]
-                 if typ_sel == tr("lbl.all") else [typ_sel])
-        single_month = (month_idx > 0)
+        typen = (
+            [TYP_EXPENSES, TYP_SAVINGS, TYP_INCOME]
+            if typ_sel == tr("lbl.all")
+            else [typ_sel]
+        )
+        single_month = month_idx > 0
         months = [month_idx] if single_month else list(range(1, 13))
 
         cat_rows, _, _ = self._collect_budget_overview_data(
-            year, typen, typ_sel, months, month_idx, single_month, show_all, tag_id=tag_id
+            year,
+            typen,
+            typ_sel,
+            months,
+            month_idx,
+            single_month,
+            show_all,
+            tag_id=tag_id,
         )
-        self._render_budget_overview_table(cat_rows, year, typ_sel, month_idx, single_month)
+        self._render_budget_overview_table(
+            cat_rows, year, typ_sel, month_idx, single_month
+        )
         self._render_budget_overview_summary(cat_rows, year, typ_sel, month_idx)
         self._update_suggestions_banner(year, month_idx)
 
     def refresh_tabular(
-        self, date_from: date, date_to: date,
+        self,
+        date_from: date,
+        date_to: date,
         cat_caches: dict,
         typ_filter_display: str,
         range_idx: int,
@@ -331,7 +417,9 @@ class OverviewBudgetPanel(QObject):
     ) -> None:
         """Kategorie-Baum (Tab 2) neu laden."""
         months = _months_between(date_from, date_to)
-        budget_raw, actual_raw = self._collect_main_cat_data(months, date_from, date_to, tag_id=tag_id)
+        budget_raw, actual_raw = self._collect_main_cat_data(
+            months, date_from, date_to, tag_id=tag_id
+        )
 
         wanted = None
         if typ_filter_display and typ_filter_display != tr("lbl.all"):
@@ -361,7 +449,8 @@ class OverviewBudgetPanel(QObject):
             pct_txt = f"{pct:.0f}%" if pct is not None else "—"
             return rest, pct, pct_txt
 
-        def _show(b, a): return abs(b) > eps or abs(a) > eps
+        def _show(b, a):
+            return abs(b) > eps or abs(a) > eps
 
         def _add_node(parent, cid: int, is_root: bool = False):
             typ, name = cat_caches.get("id_to_name_typ", {}).get(cid, ("", ""))
@@ -371,24 +460,49 @@ class OverviewBudgetPanel(QObject):
             if not _show(b, a):
                 return None
             rest, pct, pct_txt = _rp(typ, b, a)
-            cols = [typ if is_root else "", name,
-                    format_chf(b), format_chf(a), format_chf(rest), pct_txt]
+            cols = [
+                typ if is_root else "",
+                name,
+                format_chf(b),
+                format_chf(a),
+                format_chf(rest),
+                pct_txt,
+            ]
             item = QTreeWidgetItem(cols)
             item.setData(0, Qt.UserRole, int(cid))
             for col in (2, 3, 4, 5):
                 item.setTextAlignment(col, Qt.AlignRight | Qt.AlignVCenter)
             if is_root:
-                f = QFont(); f.setBold(True)
-                for col in range(6): item.setFont(col, f)
-            bad = (rest < 0) if typ == TYP_INCOME else (rest < 0 or (pct is not None and pct > 100))
+                f = QFont()
+                f.setBold(True)
+                for col in range(6):
+                    item.setFont(col, f)
+            bad = (
+                (rest < 0)
+                if typ == TYP_INCOME
+                else (rest < 0 or (pct is not None and pct > 100))
+            )
             if bad:
                 item.setForeground(4, QColor(_c.negative))
                 item.setForeground(5, QColor(_c.negative))
             status = "✓ OK"
             if bad:
-                status = tr("overview.target_missed") if typ == TYP_INCOME else tr("overview.budget_exceeded")
-            tip = trf("tip.budget_cell", typ=typ, name=name, budget=format_chf(b), actual=format_chf(a), rest=format_chf(rest), status=status)
-            for col in range(6): item.setToolTip(col, tip)
+                status = (
+                    tr("overview.target_missed")
+                    if typ == TYP_INCOME
+                    else tr("overview.budget_exceeded")
+                )
+            tip = trf(
+                "tip.budget_cell",
+                typ=typ,
+                name=name,
+                budget=format_chf(b),
+                actual=format_chf(a),
+                rest=format_chf(rest),
+                status=status,
+            )
+            for col in range(6):
+                item.setToolTip(col, tip)
             if parent is None:
                 self.tree_maincats.addTopLevelItem(item)
             else:
@@ -396,9 +510,29 @@ class OverviewBudgetPanel(QObject):
 
             children = sorted(
                 cat_caches.get("children", {}).get(cid, []),
-                key=lambda ch: (order.get(cat_caches.get("id_to_name_typ", {}).get(int(ch), ("",))[0], 9),
-                                -(actual_raw.get(cat_caches.get("id_to_name_typ", {}).get(int(ch), ("",""))[1:2], [0])[0] if False else _tot(int(ch))[1]),
-                                cat_caches.get("id_to_name_typ", {}).get(int(ch), ("",""))[1].lower() if len(cat_caches.get("id_to_name_typ", {}).get(int(ch), ())) > 1 else "")
+                key=lambda ch: (
+                    order.get(
+                        cat_caches.get("id_to_name_typ", {}).get(int(ch), ("",))[0], 9
+                    ),
+                    -(
+                        actual_raw.get(
+                            cat_caches.get("id_to_name_typ", {}).get(int(ch), ("", ""))[
+                                1:2
+                            ],
+                            [0],
+                        )[0]
+                        if False
+                        else _tot(int(ch))[1]
+                    ),
+                    (
+                        cat_caches.get("id_to_name_typ", {})
+                        .get(int(ch), ("", ""))[1]
+                        .lower()
+                        if len(cat_caches.get("id_to_name_typ", {}).get(int(ch), ()))
+                        > 1
+                        else ""
+                    ),
+                ),
             )
             for ch in children:
                 _add_node(item, int(ch), is_root=False)
@@ -406,10 +540,18 @@ class OverviewBudgetPanel(QObject):
 
         self.tree_maincats.clear()
         roots = sorted(
-            [int(cid) for cid, pid in cat_caches.get("parent", {}).items() if pid is None],
-            key=lambda cid: (order.get(cat_caches.get("id_to_name_typ", {}).get(cid, ("",))[0], 9),
-                             -_tot(cid)[1],
-                             (cat_caches.get("id_to_name_typ", {}).get(cid, ("",""))[1:2] or [""])[0].lower())
+            [
+                int(cid)
+                for cid, pid in cat_caches.get("parent", {}).items()
+                if pid is None
+            ],
+            key=lambda cid: (
+                order.get(cat_caches.get("id_to_name_typ", {}).get(cid, ("",))[0], 9),
+                -_tot(cid)[1],
+                (cat_caches.get("id_to_name_typ", {}).get(cid, ("", ""))[1:2] or [""])[
+                    0
+                ].lower(),
+            ),
         )
         for cid in roots:
             it = _add_node(None, int(cid), is_root=True)
@@ -420,40 +562,80 @@ class OverviewBudgetPanel(QObject):
         known = set(cat_caches.get("name_to_id", {}).keys())
         unknown = (set(budget_raw.keys()) | set(actual_raw.keys())) - known
         overruns = []
-        for (t, name) in unknown:
-            if wanted and t != wanted: continue
+        for t, name in unknown:
+            if wanted and t != wanted:
+                continue
             b = float(budget_raw.get((t, name), 0.0))
             a = float(actual_raw.get((t, name), 0.0))
-            if not _show(b, a): continue
+            if not _show(b, a):
+                continue
             rest, pct, pct_txt = _rp(t, b, a)
-            cols = [t, f"⚠ {name}", format_chf(b), format_chf(a), format_chf(rest), pct_txt]
+            cols = [
+                t,
+                f"⚠ {name}",
+                format_chf(b),
+                format_chf(a),
+                format_chf(rest),
+                pct_txt,
+            ]
             item = QTreeWidgetItem(cols)
-            for col in (2, 3, 4, 5): item.setTextAlignment(col, Qt.AlignRight | Qt.AlignVCenter)
-            bad = (rest < 0) if t == TYP_INCOME else (rest < 0 or (pct is not None and pct > 100))
+            for col in (2, 3, 4, 5):
+                item.setTextAlignment(col, Qt.AlignRight | Qt.AlignVCenter)
+            bad = (
+                (rest < 0)
+                if t == TYP_INCOME
+                else (rest < 0 or (pct is not None and pct > 100))
+            )
             if bad:
                 item.setForeground(4, QColor(_c.negative))
                 item.setForeground(5, QColor(_c.negative))
             self.tree_maincats.addTopLevelItem(item)
             if bad:
-                overruns.append({"typ": t, "category": name, "budget": b, "actual": a, "rest": rest, "pct": pct})
+                overruns.append(
+                    {
+                        "typ": t,
+                        "category": name,
+                        "budget": b,
+                        "actual": a,
+                        "rest": rest,
+                        "pct": pct,
+                    }
+                )
 
         # Warnbanner aktualisieren
         if range_idx == 0:
             for cid in roots:
                 typ, name = cat_caches.get("id_to_name_typ", {}).get(cid, ("", ""))
                 b, a = _tot(cid)
-                if not _show(b, a): continue
+                if not _show(b, a):
+                    continue
                 rest, pct, _ = _rp(typ, b, a)
-                bad = (rest < 0) if typ == TYP_INCOME else (rest < 0 or (pct is not None and pct > 100))
+                bad = (
+                    (rest < 0)
+                    if typ == TYP_INCOME
+                    else (rest < 0 or (pct is not None and pct > 100))
+                )
                 if bad:
-                    overruns.append({"typ": typ, "category": name, "budget": b, "actual": a, "rest": rest, "pct": pct})
+                    overruns.append(
+                        {
+                            "typ": typ,
+                            "category": name,
+                            "budget": b,
+                            "actual": a,
+                            "rest": rest,
+                            "pct": pct,
+                        }
+                    )
             self._update_overrun_banner(overruns, date_from=date_from, date_to=date_to)
         else:
             self._update_overrun_banner([])
 
     def refresh_budget_table(
-        self, date_from: date, date_to: date,
-        year: int, month_idx: int,
+        self,
+        date_from: date,
+        date_to: date,
+        year: int,
+        month_idx: int,
         range_idx: int,
         track,  # TrackingModel
         tag_id: int | None = None,
@@ -471,18 +653,28 @@ class OverviewBudgetPanel(QObject):
                         months = [(year, month_idx)]
                     elif mode == 1:
                         months = [(year, month_idx)]
-                        if month_idx < 12: months.append((year, month_idx + 1))
+                        if month_idx < 12:
+                            months.append((year, month_idx + 1))
                     elif mode == 2:
-                        months = [(year, m) for m in range(max(1, month_idx - 2), month_idx + 1)]
+                        months = [
+                            (year, m)
+                            for m in range(max(1, month_idx - 2), month_idx + 1)
+                        ]
                     else:
-                        months = [(year, m) for m in range(max(1, month_idx - 3), month_idx + 1)]
+                        months = [
+                            (year, m)
+                            for m in range(max(1, month_idx - 3), month_idx + 1)
+                        ]
             else:
                 cur = date(date_from.year, date_from.month, 1)
                 end = date(date_to.year, date_to.month, 1)
                 while cur <= end:
                     months.append((cur.year, cur.month))
-                    cur = date(cur.year + (1 if cur.month == 12 else 0),
-                               1 if cur.month == 12 else cur.month + 1, 1)
+                    cur = date(
+                        cur.year + (1 if cur.month == 12 else 0),
+                        1 if cur.month == 12 else cur.month + 1,
+                        1,
+                    )
         except Exception:
             months = [(date_from.year, date_from.month)]
 
@@ -493,9 +685,16 @@ class OverviewBudgetPanel(QObject):
 
         years_in_months = {y for y, _ in months}
         same_year = len(years_in_months) == 1
-        col_labels = [(_month_label(m) if same_year else f"{_month_label(m)} {y}") for y, m in months]
+        col_labels = [
+            (_month_label(m) if same_year else f"{_month_label(m)} {y}")
+            for y, m in months
+        ]
 
-        row_labels = [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS]  # DB-Schluessel (nicht uebersetzen)
+        row_labels = [
+            TYP_INCOME,
+            TYP_EXPENSES,
+            TYP_SAVINGS,
+        ]  # DB-Schluessel (nicht uebersetzen)
         _c = ui_colors(self)
 
         self.tbl_budget_table.clear()
@@ -503,8 +702,12 @@ class OverviewBudgetPanel(QObject):
         self.tbl_budget_table.setColumnCount(len(months))
         self.tbl_budget_table.setHorizontalHeaderLabels(col_labels)
         self.tbl_budget_table.setVerticalHeaderLabels(row_labels)
-        self.tbl_budget_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.tbl_budget_table.verticalHeader().setSectionResizeMode(QHeaderView.ResizeToContents)
+        self.tbl_budget_table.horizontalHeader().setSectionResizeMode(
+            QHeaderView.Stretch
+        )
+        self.tbl_budget_table.verticalHeader().setSectionResizeMode(
+            QHeaderView.ResizeToContents
+        )
 
         # Tracking einmal laden (O(1)-Lookup statt N×M DB-Calls)
         if months:
@@ -536,11 +739,23 @@ class OverviewBudgetPanel(QObject):
                     asum = sum(r.amount for r in trows if _norm(r.typ) == typ)
                     rest = bsum - asum
 
-                cell = QTableWidgetItem(trf('auto.views_tabs_overview_budget_panel.536_b_value_0_i_value_1_r_value_2_25a9e209', value_0=(format_chf(bsum)), value_1=(format_chf(asum)), value_2=(format_chf(rest))))
+                cell = QTableWidgetItem(
+                    trf(
+                        "auto.views_tabs_overview_budget_panel.536_b_value_0_i_value_1_r_value_2_25a9e209",
+                        value_0=(format_chf(bsum)),
+                        value_1=(format_chf(asum)),
+                        value_2=(format_chf(rest)),
+                    )
+                )
                 cell.setTextAlignment(Qt.AlignLeft | Qt.AlignVCenter)
                 cell.setToolTip(
-                    f"{typ} – {col_labels[ci]}\n" +
-                    trf("tip.budget_table_cell", budget=format_chf(bsum), actual=format_chf(asum), rest=format_chf(rest))
+                    f"{typ} – {col_labels[ci]}\n"
+                    + trf(
+                        "tip.budget_table_cell",
+                        budget=format_chf(bsum),
+                        actual=format_chf(asum),
+                        rest=format_chf(rest),
+                    )
                 )
                 if rest < 0:
                     cell.setForeground(QColor(_c.negative))
@@ -551,16 +766,24 @@ class OverviewBudgetPanel(QObject):
     # ── Budget-Übersicht Hilfsmethoden ───────────────────────────────────────
 
     def _collect_budget_overview_data(
-        self, year: int, typen: list, typ_sel: str,
-        months: list, month_idx: int, single_month: bool, show_all: bool,
+        self,
+        year: int,
+        typen: list,
+        typ_sel: str,
+        months: list,
+        month_idx: int,
+        single_month: bool,
+        show_all: bool,
         tag_id: int | None = None,
     ) -> tuple[list, float, float]:
         suggestion_map: dict[tuple[str, str], float] = {}
         try:
             min_months = int(self.settings.get("budget_suggestion_months", 3) or 3)
             suggs = self.budget_overview.get_suggestions(
-                year=year, current_month=month_idx or date.today().month,
-                min_consecutive_months=min_months, types=typen,
+                year=year,
+                current_month=month_idx or date.today().month,
+                min_consecutive_months=min_months,
+                types=typen,
             )
             for s in suggs:
                 suggestion_map[(s.typ, s.category)] = float(s.suggested_amount)
@@ -578,11 +801,17 @@ class OverviewBudgetPanel(QObject):
                 typ_db = typ
 
             try:
-                budget_cats = self.budget_overview.budget_by_category_range(year, months, typ_db)
+                budget_cats = self.budget_overview.budget_by_category_range(
+                    year, months, typ_db
+                )
                 if tag_id is None:
-                    actual_cats = self.budget_overview.actual_by_category_range(year, months, typ_db)
+                    actual_cats = self.budget_overview.actual_by_category_range(
+                        year, months, typ_db
+                    )
                 else:
-                    actual_cats = self._actual_by_category_for_tag(year, months, typ_db, tag_id)
+                    actual_cats = self._actual_by_category_for_tag(
+                        year, months, typ_db, tag_id
+                    )
             except Exception:
                 budget_cats, actual_cats = {}, {}
 
@@ -593,14 +822,22 @@ class OverviewBudgetPanel(QObject):
                     co_year_raw = int(self.settings.get("carryover_start_year", 0) or 0)
                     co_year = co_year_raw if co_year_raw > 0 else year
                     carry_cats = self.budget_overview.carry_over_by_category(
-                        year, month_idx, typ_db,
-                        start_month=co_start, start_year=co_year
+                        year,
+                        month_idx,
+                        typ_db,
+                        start_month=co_start,
+                        start_year=co_year,
                     )
                 except Exception as e:
                     # WICHTIG: nicht still schlucken — sonst fehlen Monatsüberträge
                     # in der Übersicht, ohne dass es jemand merkt.
-                    logger.warning("Monatsüberträge konnten nicht berechnet werden (%s/%s %s): %s",
-                                   month_idx, year, typ_db, e)
+                    logger.warning(
+                        "Monatsüberträge konnten nicht berechnet werden (%s/%s %s): %s",
+                        month_idx,
+                        year,
+                        typ_db,
+                        e,
+                    )
 
             for cat in sorted(set(budget_cats) | set(actual_cats) | set(carry_cats)):
                 b = budget_cats.get(cat, 0.0)
@@ -610,7 +847,8 @@ class OverviewBudgetPanel(QObject):
                 inc = is_income(typ_db)
                 rest = (a - bc) if inc else (bc - a)
                 sugg = suggestion_map.get((typ_db, cat))
-                total_budget += b; total_actual += a
+                total_budget += b
+                total_actual += a
 
                 if show_all:
                     if b > 0.01 or a > 0.01 or abs(co) > 0.01:
@@ -622,10 +860,14 @@ class OverviewBudgetPanel(QObject):
         return cat_rows, total_budget, total_actual
 
     def _render_budget_overview_table(
-        self, cat_rows: list, year: int, typ_sel: str,
-        month_idx: int, single_month: bool,
+        self,
+        cat_rows: list,
+        year: int,
+        typ_sel: str,
+        month_idx: int,
+        single_month: bool,
     ) -> None:
-        show_typ = (typ_sel == tr("lbl.all"))
+        show_typ = typ_sel == tr("lbl.all")
         self._bo_year = int(year)
         self._bo_month_idx = int(month_idx)
         self._bo_single_month = bool(single_month)
@@ -633,14 +875,23 @@ class OverviewBudgetPanel(QObject):
 
         if single_month:
             cols = ([tr("header.type")] if show_typ else []) + [
-                tr("header.category"), tr("lbl.carryover"), tr("header.budget"),
-                tr("lbl.budget_with_carry"), tr("lbl.gebucht"), tr("lbl.rest"),
-                tr("lbl.next_carryover"), tr("lbl.suggestion"),
+                tr("header.category"),
+                tr("lbl.carryover"),
+                tr("header.budget"),
+                tr("lbl.budget_with_carry"),
+                tr("lbl.gebucht"),
+                tr("lbl.rest"),
+                tr("lbl.next_carryover"),
+                tr("lbl.suggestion"),
             ]
             self._bo_budget_col = 3 if show_typ else 2
         else:
             cols = ([tr("header.type")] if show_typ else []) + [
-                tr("header.category"), tr("header.budget"), tr("lbl.gebucht"), tr("lbl.rest"), tr("lbl.suggestion"),
+                tr("header.category"),
+                tr("header.budget"),
+                tr("lbl.gebucht"),
+                tr("lbl.rest"),
+                tr("lbl.suggestion"),
             ]
             self._bo_budget_col = -1
 
@@ -650,7 +901,11 @@ class OverviewBudgetPanel(QObject):
                 sm = int(self.settings.get("carryover_start_month", 1) or 1)
                 sy = int(self.settings.get("carryover_start_year", 0) or 0) or year
                 self.lbl_bo_explain.setText(
-                    trf("tip.carryover_explain", from_month=_month_label(sm), from_year=sy)
+                    trf(
+                        "tip.carryover_explain",
+                        from_month=_month_label(sm),
+                        from_year=sy,
+                    )
                 )
             except Exception:
                 self.lbl_bo_explain.setText(tr("tip.carryover_short"))
@@ -681,18 +936,38 @@ class OverviewBudgetPanel(QObject):
                 monat_text = _month_label(month_idx)
                 _c = ui_colors(self)
 
-                for row_idx, (typ, cat, co, b, bc, a, rest, next_carry, sugg) in enumerate(cat_rows):
+                for row_idx, (
+                    typ,
+                    cat,
+                    co,
+                    b,
+                    bc,
+                    a,
+                    rest,
+                    next_carry,
+                    sugg,
+                ) in enumerate(cat_rows):
                     pct = (a / bc * 100) if bc > 0 else (0 if a == 0 else 999)
                     sugg_txt = format_chf(sugg) if sugg is not None else "\u2013"
 
                     if single_month:
                         vals = (["Typ=" + typ] if show_typ else []) + [
-                            cat, format_chf(co), format_chf(b), format_chf(bc),
-                            format_chf(a), format_chf(rest), format_chf(next_carry), sugg_txt,
+                            cat,
+                            format_chf(co),
+                            format_chf(b),
+                            format_chf(bc),
+                            format_chf(a),
+                            format_chf(rest),
+                            format_chf(next_carry),
+                            sugg_txt,
                         ]
                     else:
                         vals = (["Typ=" + typ] if show_typ else []) + [
-                            cat, format_chf(b), format_chf(a), format_chf(rest), sugg_txt,
+                            cat,
+                            format_chf(b),
+                            format_chf(a),
+                            format_chf(rest),
+                            sugg_txt,
                         ]
                     if show_typ:
                         vals[0] = typ
@@ -715,7 +990,9 @@ class OverviewBudgetPanel(QObject):
                         if col >= first_num:
                             item.setTextAlignment(Qt.AlignRight | Qt.AlignVCenter)
                         if show_typ and col == 0:
-                            item.setForeground(QColor(_c.type_colors.get(typ, _c.text_dim)))
+                            item.setForeground(
+                                QColor(_c.type_colors.get(typ, _c.text_dim))
+                            )
                             f = item.font()
                             f.setBold(True)
                             item.setFont(f)
@@ -747,13 +1024,17 @@ class OverviewBudgetPanel(QObject):
             self._bo_rendering = False
 
     def _render_budget_overview_summary(
-        self, cat_rows: list, year: int, typ_sel: str, month_idx: int,
+        self,
+        cat_rows: list,
+        year: int,
+        typ_sel: str,
+        month_idx: int,
     ) -> None:
         monat_text = _month_label(month_idx)
         _c = ui_colors(self)
-        n_deficit  = sum(1 for *_, r, _, _s in cat_rows if r < -0.01)
-        n_surplus  = sum(1 for *_, r, _, _s in cat_rows if r > 0.01)
-        n_even     = len(cat_rows) - n_deficit - n_surplus
+        n_deficit = sum(1 for *_, r, _, _s in cat_rows if r < -0.01)
+        n_surplus = sum(1 for *_, r, _, _s in cat_rows if r > 0.01)
+        n_even = len(cat_rows) - n_deficit - n_surplus
 
         if not cat_rows:
             self.lbl_bo_summary.setVisible(False)
@@ -777,20 +1058,25 @@ class OverviewBudgetPanel(QObject):
 
     def _update_suggestions_banner(self, year: int, month_idx: int) -> None:
         try:
-            current_month = month_idx if month_idx > 0 else (
-                date.today().month if year == date.today().year else 12
+            current_month = (
+                month_idx
+                if month_idx > 0
+                else (date.today().month if year == date.today().year else 12)
             )
             min_months = int(self.settings.get("budget_suggestion_months", 3) or 3)
             suggestions = self.budget_overview.get_suggestions(
-                year=year, current_month=current_month,
+                year=year,
+                current_month=current_month,
                 min_consecutive_months=min_months,
             )
             type_suggs = self.budget_overview.get_type_suggestions(
-                year=year, current_month=current_month,
+                year=year,
+                current_month=current_month,
                 min_consecutive_months=min_months,
             )
             balance_suggs = self.budget_overview.get_balance_suggestions(
-                year=year, current_month=current_month,
+                year=year,
+                current_month=current_month,
                 min_consecutive_months=min_months,
             )
 
@@ -840,7 +1126,9 @@ class OverviewBudgetPanel(QObject):
             )
             income_warn = ""
             try:
-                coverage = self.budget_overview.check_income_coverage(year, current_month, all_suggs)
+                coverage = self.budget_overview.check_income_coverage(
+                    year, current_month, all_suggs
+                )
                 if coverage:
                     income_warn = trf(
                         "overview.sugg.income_exceeded",
@@ -856,7 +1144,9 @@ class OverviewBudgetPanel(QObject):
             plural = "e" if count != 1 else ""
             text = (
                 trf("overview.sugg.title", count=count, plural=plural)
-                + ", ".join(preview) + more + income_warn
+                + ", ".join(preview)
+                + more
+                + income_warn
                 + f" – <a href='details'>{tr('overview.details_show')}</a>"
             )
             self.lbl_suggestions_banner.setText(text)
@@ -881,7 +1171,9 @@ class OverviewBudgetPanel(QObject):
         wanted_months = {int(m) for m in months}
         actual: dict[str, float] = {}
         try:
-            rows = TrackingModel(self.conn).list_filtered(year=int(year), tag_id=int(tag_id))
+            rows = TrackingModel(self.conn).list_filtered(
+                year=int(year), tag_id=int(tag_id)
+            )
         except Exception as exc:
             logger.warning("tag actuals load failed: %s", exc)
             return actual
@@ -897,7 +1189,10 @@ class OverviewBudgetPanel(QObject):
         return actual
 
     def _collect_main_cat_data(
-        self, months: list[tuple[int, int]], date_from: date, date_to: date,
+        self,
+        months: list[tuple[int, int]],
+        date_from: date,
+        date_to: date,
         tag_id: int | None = None,
     ) -> tuple[dict, dict]:
         budget_raw: dict[tuple[str, str], float] = {}
@@ -907,9 +1202,11 @@ class OverviewBudgetPanel(QObject):
             budget_raw[(t, cat_str)] = budget_raw.get((t, cat_str), 0.0) + val
 
         from model.tracking_model import TrackingModel
+
         # track is not stored; use budget_overview.conn
         try:
             from model.tracking_model import TrackingModel
+
             track = TrackingModel(self.conn)
             rows = track.get_entries_in_range(date_from, date_to, tag_id=tag_id)
         except Exception:
@@ -923,19 +1220,30 @@ class OverviewBudgetPanel(QObject):
 
         return budget_raw, actual_raw
 
-    def _update_overrun_banner(self, overruns: list[dict],
-                               date_from: date | None = None,
-                               date_to: date | None = None) -> None:
+    def _update_overrun_banner(
+        self,
+        overruns: list[dict],
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> None:
         self._last_budget_overruns = list(overruns or [])
         if not overruns:
             self.lbl_overrun_banner.setVisible(False)
             return
 
-        overruns_sorted = sorted(overruns, key=lambda o: float(o.get("rest", 0.0) or 0.0))
+        overruns_sorted = sorted(
+            overruns, key=lambda o: float(o.get("rest", 0.0) or 0.0)
+        )
         preview = []
         for o in overruns_sorted[:3]:
-            preview.append(f"{tr_category_name(str(o.get('category')))} ({format_chf(float(o.get('rest', 0.0) or 0.0))})")
-        extra = trf("overview.sugg.more", n=(len(overruns_sorted) - 3)) if len(overruns_sorted) > 3 else ""
+            preview.append(
+                f"{tr_category_name(str(o.get('category')))} ({format_chf(float(o.get('rest', 0.0) or 0.0))})"
+            )
+        extra = (
+            trf("overview.sugg.more", n=(len(overruns_sorted) - 3))
+            if len(overruns_sorted) > 3
+            else ""
+        )
 
         period = ""
         if date_from and date_to:
@@ -943,19 +1251,27 @@ class OverviewBudgetPanel(QObject):
 
         self.lbl_overrun_banner.setText(
             trf("overview.overrun.title", period=period)
-            + ", ".join(preview) + extra
+            + ", ".join(preview)
+            + extra
             + f" – <a href='details'>{tr('overview.details_show')}</a>"
         )
         self.lbl_overrun_banner.setVisible(True)
+
+
 # ── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
+
 def _months_between(d1: date, d2: date) -> list[tuple[int, int]]:
-    if d2 < d1: d1, d2 = d2, d1
+    if d2 < d1:
+        d1, d2 = d2, d1
     cur = date(d1.year, d1.month, 1)
     end = date(d2.year, d2.month, 1)
     out = []
     while cur <= end:
         out.append((cur.year, cur.month))
-        cur = date(cur.year + (1 if cur.month == 12 else 0),
-                   1 if cur.month == 12 else cur.month + 1, 1)
+        cur = date(
+            cur.year + (1 if cur.month == 12 else 0),
+            1 if cur.month == 12 else cur.month + 1,
+            1,
+        )
     return out

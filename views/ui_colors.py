@@ -11,6 +11,7 @@ Nutzung:
     label.setStyleSheet(f"color: {c.negative};")
     item.setForeground(QColor(c.type_colors.get(_TE, "#e74c3c")))
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,7 +27,11 @@ logger = logging.getLogger(__name__)
 # ── Standard-Farben (Hell-Modus Fallback) ──────────────────────────
 
 # TYP_* Konstanten als Schlüssel (DB-Werte = immer Deutsch, sprachunabhängig)
-from model.typ_constants import TYP_EXPENSES as _TE, TYP_INCOME as _TI, TYP_SAVINGS as _TS
+from model.typ_constants import (
+    TYP_EXPENSES as _TE,
+    TYP_INCOME as _TI,
+    TYP_SAVINGS as _TS,
+)
 
 _DEFAULT_TYPE_COLORS: Dict[str, str] = {
     _TI: "#2ecc71",
@@ -66,12 +71,17 @@ _DEFAULTS = {
 }
 
 
+from utils.color_shade import shade
+
+
 @dataclass(frozen=True)
 class UIColors:
     """Immutable Container für die aktiven Theme-Farben."""
 
     # Typ-Farben
-    type_colors: Dict[str, str] = field(default_factory=lambda: dict(_DEFAULT_TYPE_COLORS))
+    type_colors: Dict[str, str] = field(
+        default_factory=lambda: dict(_DEFAULT_TYPE_COLORS)
+    )
 
     # Semantische Farben
     negative: str = "#e74c3c"
@@ -114,7 +124,29 @@ class UIColors:
     success_bg: str = "#e8f5e9"
     success_text: str = "#2e7d32"
 
+    # Aus den Grundfarben berechnete Hover-Varianten.  Da die Dataclass
+    # bewusst frozen ist, werden diese Felder in __post_init__ über
+    # object.__setattr__ gesetzt.  Die explizite Deklaration hält Typprüfung,
+    # Serialisierung via vars() und Runtime-Verhalten konsistent.
+    accent_hover: str = field(init=False)
+    positive_hover: str = field(init=False)
+    warning_hover: str = field(init=False)
+    negative_hover: str = field(init=False)
+
     # ── Hilfsmethoden ──────────────────────────────────────────
+
+    def __post_init__(self) -> None:
+        """Leitet Hover-Farben aus dem Profil ab.
+
+        Vorher waren Hover-Zustaende in Login- und Kontodialog fest verdrahtet
+        (#1976D2, #219a52, #d35400). In dunklen Profilen ergab das
+        unvorhersehbare Kontraste. Die Varianten entstehen jetzt aus der
+        jeweiligen Grundfarbe.
+        """
+        object.__setattr__(self, "accent_hover", shade(self.accent, 0.82))
+        object.__setattr__(self, "positive_hover", shade(self.positive, 0.82))
+        object.__setattr__(self, "warning_hover", shade(self.warning, 0.82))
+        object.__setattr__(self, "negative_hover", shade(self.negative, 0.82))
 
     def type_color(self, typ: str) -> str:
         """Farbe für einen Budgettyp (Einnahmen/Ausgaben/Ersparnisse)."""
@@ -124,6 +156,7 @@ class UIColors:
         # Fallback: normalisieren
         try:
             from model.typ_constants import normalize_typ as _nt
+
             normed = _nt(typ)
             if normed in self.type_colors:
                 return self.type_colors[normed]
@@ -141,7 +174,9 @@ class UIColors:
 
     def severity_color(self, level: str) -> str:
         """Farbe für ok/warning/danger."""
-        return {"ok": self.ok, "warning": self.warning, "danger": self.danger}.get(level, self.text)
+        return {"ok": self.ok, "warning": self.warning, "danger": self.danger}.get(
+            level, self.text
+        )
 
     def amount_color(self, value: float) -> str:
         """Farbe für Beträge: negativ=rot, positiv=grün, null=neutral."""
@@ -289,6 +324,7 @@ def _lighten(hex_color: str, factor: float = 0.6) -> str:
 
 # ── Haupt-API ──────────────────────────────────────────────────────
 
+
 def ui_colors(widget: Optional[QWidget] = None) -> UIColors:
     """Holt die aktuellen Theme-Farben.
 
@@ -310,11 +346,28 @@ def ui_colors(widget: Optional[QWidget] = None) -> UIColors:
     if widget is None:
         return UIColors()
 
-    # Widget-Hierarchie hochgehen zum MainWindow. Manche Panels werden in
-    # Tests/Frühinitialisierung noch nicht als QWidget mit window() gesehen;
-    # das ist kein Fehler und soll kein Log-Spam erzeugen.
+    # Widget-Hierarchie hochgehen zum MainWindow.
+    #
+    # v2.2.46: Reine QObject-Container (z. B. OverviewBudgetPanel) besitzen
+    # kein window(). Bisher lieferte ui_colors() ihnen kommentarlos die
+    # Standardfarben — der Bereich ignorierte damit jedes Designprofil, und
+    # im Log stand nur "ui_colors fallback". Vor dem Aufgeben wird deshalb
+    # die Eltern-Kette abgeklopft: ein QObject ist fast immer an einem
+    # Widget verankert.
     if not hasattr(widget, "window"):
-        return UIColors()
+        anchor = widget
+        for _ in range(8):  # Deckel gegen Zyklen in kaputten Hierarchien
+            parent = getattr(anchor, "parent", None)
+            anchor = parent() if callable(parent) else None
+            if anchor is None:
+                break
+            if hasattr(anchor, "window"):
+                widget = anchor
+                break
+        else:
+            return UIColors()
+        if not hasattr(widget, "window"):
+            return UIColors()
 
     try:
         main = widget.window()
@@ -339,3 +392,21 @@ def ui_colors(widget: Optional[QWidget] = None) -> UIColors:
 def invalidate_color_cache() -> None:
     """Cache leeren (nach Theme-Wechsel aufrufen)."""
     _cache.clear()
+
+
+def themed(widget: Optional[QWidget], template: str) -> str:
+    """Ersetzt ``%(name)s``-Marken in einem Stylesheet durch Profilfarben.
+
+    Bewusst %-Formatierung statt f-String oder ``str.format``: QSS besteht aus
+    geschweiften Klammern, die dort sonst maskiert werden müssten. Fällt eine
+    Marke aus, bleibt das Stylesheet unverändert statt eine Ausnahme zu werfen –
+    ein Dialog darf an einer Farbe nicht scheitern.
+    """
+    colors = ui_colors(widget)
+    values = {
+        name: value for name, value in vars(colors).items() if isinstance(value, str)
+    }
+    try:
+        return template % values
+    except (KeyError, ValueError, TypeError):
+        return template

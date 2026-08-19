@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 
 logger = logging.getLogger(__name__)
+import re
 import sqlite3
 from dataclasses import dataclass
 from datetime import date, timedelta, datetime
@@ -26,9 +27,14 @@ from model.typ_constants import (
 from model.database import db_transaction
 from model.date_ranges import month_bounds, year_bounds
 from model.savings_goals_model import (
+    SavingsGoalBoundsError,
+    ACTION_CORRECTION,
+    ACTION_DEPOSIT,
+    ACTION_WITHDRAWAL,
     STATUS_RELEASED,
     STATUS_SAVING,
-    validate_savings_goal_bounds,
+    VALID_SAVINGS_ACTIONS,
+    validate_savings_goal_flow_bounds,
 )
 
 
@@ -83,6 +89,10 @@ class TrackingModel:
         cached = self._cols_cache.get(table)
         if cached is not None:
             return cached
+        # v2.2.25 (d1-Härtung): Identifier-Guard wie migrations._cols –
+        # Nicht-Identifier erreichen weder PRAGMA noch den Cache.
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", table):
+            return set()
         try:
             cols = {
                 str(r[1])
@@ -97,6 +107,104 @@ class TrackingModel:
     def _has_source_col(self) -> bool:
         return "source" in self._cols("tracking")
 
+    def _has_savings_action_col(self) -> bool:
+        return "savings_action" in self._cols("tracking")
+
+    @staticmethod
+    def _normalize_savings_action(
+        typ: str, amount: float, action: str | None
+    ) -> str | None:
+        if typ != TYP_SAVINGS:
+            return None
+        candidate = str(action or "").strip().lower()
+        if candidate in VALID_SAVINGS_ACTIONS:
+            if amount >= 0 and candidate == ACTION_WITHDRAWAL:
+                return ACTION_DEPOSIT
+            return candidate
+        return ACTION_WITHDRAWAL if amount < 0 else ACTION_DEPOSIT
+
+    def _source_select_expr(self) -> str:
+        return (
+            "COALESCE(source, 'manual') AS source"
+            if self._has_source_col()
+            else "'manual' AS source"
+        )
+
+    def _entry_tag_ids(self, entry_id: int) -> list[int]:
+        """Liest die vollständige Tag-Belegung einer Buchung für Undo/Redo."""
+        try:
+            rows = self.conn.execute(
+                "SELECT tag_id FROM entry_tags WHERE entry_id=? ORDER BY tag_id",
+                (int(entry_id),),
+            ).fetchall()
+            return [int(row[0]) for row in rows]
+        except sqlite3.OperationalError:
+            return []
+
+    def _category_tag_ids(self, typ: str, category: str) -> set[int]:
+        """Gibt die fest an einer Kategorie hinterlegten Tag-IDs zurück."""
+        try:
+            rows = self.conn.execute(
+                """
+                SELECT ct.tag_id
+                FROM category_tags ct
+                JOIN categories c ON c.id = ct.category_id
+                WHERE c.typ=? AND c.name=?
+                """,
+                (str(typ), str(category)),
+            ).fetchall()
+            return {int(row[0]) for row in rows}
+        except sqlite3.OperationalError:
+            return set()
+
+    def _sync_category_fixed_tags(
+        self,
+        entry_id: int,
+        *,
+        new_typ: str,
+        new_category: str,
+        old_typ: str | None = None,
+        old_category: str | None = None,
+    ) -> None:
+        """Synchronisiert feste Kategorie-Tags und bewahrt manuelle Tags.
+
+        Beim Kategorienwechsel werden nur Tags entfernt, die fest an der alten
+        Kategorie hingen und nicht ebenfalls an der neuen Kategorie fest sind.
+        Alle übrigen, manuell gesetzten Tags bleiben erhalten.
+        """
+        try:
+            new_fixed = self._category_tag_ids(new_typ, new_category)
+            old_fixed = (
+                self._category_tag_ids(old_typ, old_category)
+                if old_typ is not None and old_category is not None
+                else set()
+            )
+            for tag_id in sorted(old_fixed - new_fixed):
+                self.conn.execute(
+                    "DELETE FROM entry_tags WHERE entry_id=? AND tag_id=?",
+                    (int(entry_id), int(tag_id)),
+                )
+            for tag_id in sorted(new_fixed):
+                self.conn.execute(
+                    "INSERT OR IGNORE INTO entry_tags(entry_id, tag_id) VALUES(?, ?)",
+                    (int(entry_id), int(tag_id)),
+                )
+        except sqlite3.OperationalError:
+            # Alte/teilmigrierte DBs ohne Tag-Tabellen: Tracking darf nicht crashen.
+            return
+
+    def _apply_category_fixed_tags(
+        self, entry_id: int, typ: str, category: str
+    ) -> None:
+        """Heftet fix an der Kategorie definierte Tags an eine Buchung.
+
+        Zusätzliche manuelle Tags bleiben erhalten. Der Kategorienwechsel nutzt
+        ``_sync_category_fixed_tags`` und entfernt dabei veraltete feste Tags.
+        """
+        self._sync_category_fixed_tags(
+            int(entry_id), new_typ=str(typ), new_category=str(category)
+        )
+
     def add(
         self,
         d: date | str,
@@ -105,48 +213,52 @@ class TrackingModel:
         amount: float,
         details: str = "",
         source: str = "manual",
+        savings_action: str | None = None,
     ) -> int:
-        # Fachliche Sparziel-Grenzen vor dem INSERT prüfen.
-        if typ == TYP_SAVINGS:
-            self.validate_savings_goal_booking(category, float(amount))
+        from utils.money import require_finite_amount
 
-        # Atomare Transaktion: INSERT + Sparziel-Sync
+        amount = require_finite_amount(amount, field="Buchungsbetrag")
+        action = self._normalize_savings_action(typ, float(amount), savings_action)
+        if typ == TYP_SAVINGS:
+            self.validate_savings_goal_booking(category, float(amount), action)
+
         source = (source or "manual").strip() or "manual"
         with db_transaction(self.conn):
+            columns = ["date", "typ", "category", "amount", "details"]
+            values: list[object] = [
+                _to_date_iso(d),
+                typ,
+                category,
+                float(amount),
+                details or "",
+            ]
             if self._has_source_col():
-                cur = self.conn.execute(
-                    "INSERT INTO tracking(date, typ, category, amount, details, source) VALUES(?,?,?,?,?,?)",
-                    (
-                        _to_date_iso(d),
-                        typ,
-                        category,
-                        float(amount),
-                        details or "",
-                        source,
-                    ),
-                )
-            else:
-                # Fallback für sehr alte Datenbanken vor Migration.
-                cur = self.conn.execute(
-                    "INSERT INTO tracking(date, typ, category, amount, details) VALUES(?,?,?,?,?)",
-                    (_to_date_iso(d), typ, category, float(amount), details or ""),
-                )
+                columns.append("source")
+                values.append(source)
+            if self._has_savings_action_col():
+                columns.append("savings_action")
+                values.append(action)
+            placeholders = ",".join("?" for _ in values)
+            cur = self.conn.execute(
+                f"INSERT INTO tracking({','.join(columns)}) VALUES({placeholders})",  # nosec B608
+                tuple(values),
+            )
             rid = int(cur.lastrowid)
-            # Sparziel-Synchronisation innerhalb der Transaktion
+            self._apply_category_fixed_tags(rid, typ, category)
             if typ == TYP_SAVINGS:
-                self._sync_savings(category, amount, add=True)
+                self._sync_savings(category, amount, action=action, add=True)
 
-        # Undo/Redo: nach Commit (Metadaten, nicht geschäftskritisch)
         try:
             row = self.conn.execute(
-                "SELECT * FROM tracking WHERE id=?",
-                (rid,),
+                "SELECT * FROM tracking WHERE id=?", (rid,)
             ).fetchone()
             if row:
-                self.undo.record_operation("tracking", "INSERT", None, dict(row))
-        except Exception as e:
+                new_data = dict(row)
+                new_data["_tag_ids"] = self._entry_tag_ids(rid)
+                self.undo.record_operation("tracking", "INSERT", None, new_data)
+        except Exception as exc:
             logger.warning(
-                "Undo-Recording fehlgeschlagen nach INSERT (id=%s): %s", rid, e
+                "Undo-Recording fehlgeschlagen nach INSERT (id=%s): %s", rid, exc
             )
         return rid
 
@@ -158,125 +270,125 @@ class TrackingModel:
         category: str,
         amount: float,
         details: str = "",
+        savings_action: str | None = None,
     ) -> None:
-        # Alte Werte für Undo + Sparziel-Korrektur LESEN (vor Transaktion)
+        from utils.money import require_finite_amount
+
+        amount = require_finite_amount(amount, field="Buchungsbetrag")
+        new_action = self._normalize_savings_action(typ, float(amount), savings_action)
         old_full = self.conn.execute(
             "SELECT * FROM tracking WHERE id=?", (int(row_id),)
         ).fetchone()
+        old_tag_ids = self._entry_tag_ids(int(row_id)) if old_full else []
 
+        changes: dict[str, list[float]] = {}
         if old_full:
             old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(
                 old_full
             )
-            deltas: dict[str, float] = {}
+            old_action = self._tracking_row_savings_action(old_full)
             if old_typ == TYP_SAVINGS:
-                deltas[old_cat] = deltas.get(old_cat, 0.0) - old_amt
-            if typ == TYP_SAVINGS:
-                deltas[category] = deltas.get(category, 0.0) + float(amount)
-            for delta_category, delta in deltas.items():
-                if abs(delta) > 1e-9:
-                    self._validate_savings_goal_category_delta(delta_category, delta)
-
-        # Atomare Transaktion: UPDATE + Sparziel-Korrekturen
-        with db_transaction(self.conn):
-            self.conn.execute(
-                "UPDATE tracking SET date=?, typ=?, category=?, amount=?, details=? WHERE id=?",
-                (
-                    _to_date_iso(d),
-                    typ,
-                    category,
-                    float(amount),
-                    details or "",
-                    int(row_id),
-                ),
+                self._accumulate_savings_change(
+                    changes, old_cat, old_amt, old_action, factor=-1.0
+                )
+        if typ == TYP_SAVINGS:
+            self._accumulate_savings_change(
+                changes, category, float(amount), new_action, factor=1.0
             )
+        self._validate_savings_changes(changes)
 
-            # Sparziel-Synchronisation
+        with db_transaction(self.conn):
+            assignments = ["date=?", "typ=?", "category=?", "amount=?", "details=?"]
+            values: list[object] = [
+                _to_date_iso(d),
+                typ,
+                category,
+                float(amount),
+                details or "",
+            ]
+            if self._has_savings_action_col():
+                assignments.append("savings_action=?")
+                values.append(new_action)
+            values.append(int(row_id))
+            self.conn.execute(
+                f"UPDATE tracking SET {','.join(assignments)} WHERE id=?",  # nosec B608
+                tuple(values),
+            )
             if old_full:
-                if isinstance(old_full, sqlite3.Row):
-                    old_typ, old_cat, old_amt = (
-                        str(old_full["typ"]),
-                        str(old_full["category"]),
-                        float(old_full["amount"]),
-                    )
-                else:
-                    old_typ, old_cat, old_amt = (
-                        str(old_full[2]),
-                        str(old_full[3]),
-                        float(old_full[4]),
-                    )
-
+                old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(
+                    old_full
+                )
+                old_action = self._tracking_row_savings_action(old_full)
+                self._sync_category_fixed_tags(
+                    int(row_id),
+                    old_typ=old_typ,
+                    old_category=old_cat,
+                    new_typ=typ,
+                    new_category=category,
+                )
                 if old_typ == TYP_SAVINGS:
-                    self._sync_savings(old_cat, old_amt, add=False)
-                if typ == TYP_SAVINGS:
-                    self._sync_savings(category, amount, add=True)
+                    self._sync_savings(old_cat, old_amt, action=old_action, add=False)
+            else:
+                self._apply_category_fixed_tags(int(row_id), typ, category)
+            if typ == TYP_SAVINGS:
+                self._sync_savings(category, amount, action=new_action, add=True)
 
-        # Undo/Redo: nach Commit
         try:
             new_full = self.conn.execute(
                 "SELECT * FROM tracking WHERE id=?", (int(row_id),)
             ).fetchone()
             if old_full and new_full:
-                self.undo.record_operation(
-                    "tracking", "UPDATE", dict(old_full), dict(new_full)
-                )
-        except Exception as e:
+                old_data = dict(old_full)
+                old_data["_tag_ids"] = old_tag_ids
+                new_data = dict(new_full)
+                new_data["_tag_ids"] = self._entry_tag_ids(int(row_id))
+                self.undo.record_operation("tracking", "UPDATE", old_data, new_data)
+        except Exception as exc:
             logger.warning(
-                "Undo-Recording fehlgeschlagen nach UPDATE (id=%s): %s", row_id, e
+                "Undo-Recording fehlgeschlagen nach UPDATE (id=%s): %s", row_id, exc
             )
 
     def delete(self, row_id: int) -> None:
-        # Alte Werte lesen (vor Transaktion)
         old_full = self.conn.execute(
             "SELECT * FROM tracking WHERE id=?", (int(row_id),)
         ).fetchone()
-
+        old_tag_ids = self._entry_tag_ids(int(row_id)) if old_full else []
         if old_full:
             old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(
                 old_full
             )
+            old_action = self._tracking_row_savings_action(old_full)
+            changes: dict[str, list[float]] = {}
             if old_typ == TYP_SAVINGS:
-                self._validate_savings_goal_category_delta(old_cat, -old_amt)
+                self._accumulate_savings_change(
+                    changes, old_cat, old_amt, old_action, factor=-1.0
+                )
+            self._validate_savings_changes(changes)
 
-        # Atomare Transaktion: DELETE + Sparziel-Korrektur
         with db_transaction(self.conn):
-            # Defense-in-Depth: Tag-Verknüpfungen explizit lösen. Die FK-Regel
-            # entry_tags → tracking(id) ON DELETE CASCADE greift nur bei
-            # PRAGMA foreign_keys=ON. Damit ein Löschen auch auf einer ohne das
-            # Pragma geöffneten Verbindung keine verwaisten Verknüpfungen
-            # hinterlässt, wird hier zusätzlich aufgeräumt (wie beim Kategorie-Delete).
             try:
                 self.conn.execute(
                     "DELETE FROM entry_tags WHERE entry_id=?", (int(row_id),)
                 )
             except sqlite3.OperationalError:
-                # Sehr alte DB ohne entry_tags-Tabelle — nichts aufzuräumen.
                 pass
             self.conn.execute("DELETE FROM tracking WHERE id=?", (int(row_id),))
-
             if old_full:
-                if isinstance(old_full, sqlite3.Row):
-                    old_typ, old_cat, old_amt = (
-                        str(old_full["typ"]),
-                        str(old_full["category"]),
-                        float(old_full["amount"]),
-                    )
-                else:
-                    old_typ, old_cat, old_amt = (
-                        str(old_full[2]),
-                        str(old_full[3]),
-                        float(old_full[4]),
-                    )
+                old_typ, old_cat, old_amt = self._tracking_row_type_category_amount(
+                    old_full
+                )
+                old_action = self._tracking_row_savings_action(old_full)
                 if old_typ == TYP_SAVINGS:
-                    self._sync_savings(old_cat, old_amt, add=False)
+                    self._sync_savings(old_cat, old_amt, action=old_action, add=False)
 
-        # Undo/Redo: nach Commit
         try:
             if old_full:
-                self.undo.record_operation("tracking", "DELETE", dict(old_full), None)
-        except Exception as e:
+                old_data = dict(old_full)
+                old_data["_tag_ids"] = old_tag_ids
+                self.undo.record_operation("tracking", "DELETE", old_data, None)
+        except Exception as exc:
             logger.warning(
-                "Undo-Recording fehlgeschlagen nach DELETE (id=%s): %s", row_id, e
+                "Undo-Recording fehlgeschlagen nach DELETE (id=%s): %s", row_id, exc
             )
 
     def exists_in_month(
@@ -293,11 +405,21 @@ class TrackingModel:
 
     def list_recent_sorted(self, days: int = 14) -> list[TrackingRow]:
         cutoff = (date.today() - timedelta(days=int(days))).isoformat()
-        cur = self.conn.execute(
-            "SELECT id, date, typ, category, amount, COALESCE(details,'') AS details "
-            "FROM tracking WHERE date>=? ORDER BY date DESC, id DESC",
-            (cutoff,),
-        )
+        if self._has_source_col():
+            cur = self.conn.execute(
+                "SELECT id, date, typ, category, amount, "
+                "COALESCE(details,'') AS details, "
+                "COALESCE(source, 'manual') AS source "
+                "FROM tracking WHERE date>=? ORDER BY date DESC, id DESC",
+                (cutoff,),
+            )
+        else:
+            cur = self.conn.execute(
+                "SELECT id, date, typ, category, amount, "
+                "COALESCE(details,'') AS details, 'manual' AS source "
+                "FROM tracking WHERE date>=? ORDER BY date DESC, id DESC",
+                (cutoff,),
+            )
         out: list[TrackingRow] = []
         for r in cur.fetchall():
             out.append(
@@ -308,15 +430,25 @@ class TrackingModel:
                     str(r["category"]),
                     float(r["amount"]),
                     str(r["details"] or ""),
+                    str(r["source"] or "manual"),
                 )
             )
         return out
 
     def list_all_sorted(self) -> list[TrackingRow]:
-        cur = self.conn.execute(
-            "SELECT id, date, typ, category, amount, COALESCE(details,'') AS details "
-            "FROM tracking ORDER BY date DESC, id DESC"
-        )
+        if self._has_source_col():
+            cur = self.conn.execute(
+                "SELECT id, date, typ, category, amount, "
+                "COALESCE(details,'') AS details, "
+                "COALESCE(source, 'manual') AS source "
+                "FROM tracking ORDER BY date DESC, id DESC"
+            )
+        else:
+            cur = self.conn.execute(
+                "SELECT id, date, typ, category, amount, "
+                "COALESCE(details,'') AS details, 'manual' AS source "
+                "FROM tracking ORDER BY date DESC, id DESC"
+            )
         out: list[TrackingRow] = []
         for r in cur.fetchall():
             out.append(
@@ -327,6 +459,7 @@ class TrackingModel:
                     str(r["category"]),
                     float(r["amount"]),
                     str(r["details"] or ""),
+                    str(r["source"] or "manual"),
                 )
             )
         return out
@@ -417,11 +550,12 @@ class TrackingModel:
         where_clause = " AND ".join(where_parts) if where_parts else "1=1"
 
         query = f"""
-            SELECT id, date, typ, category, amount, COALESCE(details,'') AS details
+            SELECT id, date, typ, category, amount, COALESCE(details,'') AS details,
+                   {self._source_select_expr()}
             FROM tracking
             WHERE {where_clause}
             ORDER BY date DESC, id DESC
-        """
+        """  # nosec B608
 
         cur = self.conn.execute(query, tuple(params))
         out: list[TrackingRow] = []
@@ -434,6 +568,7 @@ class TrackingModel:
                     str(r["category"]),
                     float(r["amount"]),
                     str(r["details"] or ""),
+                    str(r["source"] or "manual"),
                 )
             )
         return out
@@ -487,7 +622,7 @@ class TrackingModel:
             LEFT JOIN categories c
               ON c.typ = t.typ AND c.name = t.category
             WHERE {' AND '.join(where)}
-            """,
+            """,  # nosec B608
             tuple(args),
         )
 
@@ -579,11 +714,23 @@ class TrackingModel:
         return prefix.strip() in month_names and suffix.strip() == cat
 
     def last_n_by_abs_amount(self, n: int = 5) -> list[TrackingRow]:
-        cur = self.conn.execute(
-            "SELECT id, date, typ, category, amount, COALESCE(details,'') AS details "
-            "FROM tracking ORDER BY ABS(amount) DESC, date DESC, id DESC LIMIT ?",
-            (int(n),),
-        )
+        if self._has_source_col():
+            cur = self.conn.execute(
+                "SELECT id, date, typ, category, amount, "
+                "COALESCE(details,'') AS details, "
+                "COALESCE(source, 'manual') AS source "
+                "FROM tracking "
+                "ORDER BY ABS(amount) DESC, date DESC, id DESC LIMIT ?",
+                (int(n),),
+            )
+        else:
+            cur = self.conn.execute(
+                "SELECT id, date, typ, category, amount, "
+                "COALESCE(details,'') AS details, 'manual' AS source "
+                "FROM tracking "
+                "ORDER BY ABS(amount) DESC, date DESC, id DESC LIMIT ?",
+                (int(n),),
+            )
         out: list[TrackingRow] = []
         for r in cur.fetchall():
             out.append(
@@ -594,6 +741,7 @@ class TrackingModel:
                     str(r["category"]),
                     float(r["amount"]),
                     str(r["details"] or ""),
+                    str(r["source"] or "manual"),
                 )
             )
         return out
@@ -617,7 +765,7 @@ class TrackingModel:
             args.append(f"{int(month):02d}")
         w = ("WHERE " + " AND ".join(where)) if where else ""
         cur = self.conn.execute(
-            f"SELECT typ, SUM(amount) AS s FROM tracking {w} GROUP BY typ",
+            f"SELECT typ, SUM(amount) AS s FROM tracking {w} GROUP BY typ",  # nosec B608
             tuple(args),
         )
         return {str(r["typ"]): float(r["s"] or 0.0) for r in cur.fetchall()}
@@ -652,7 +800,7 @@ class TrackingModel:
             args.append(f"{int(month):02d}")
         w = "WHERE " + " AND ".join(where)
         cur = self.conn.execute(
-            f"SELECT category, SUM(amount) AS s FROM tracking {w} GROUP BY category ORDER BY ABS(s) DESC",
+            f"SELECT category, SUM(amount) AS s FROM tracking {w} GROUP BY category ORDER BY ABS(s) DESC",  # nosec B608
             tuple(args),
         )
         return {str(r["category"]): float(r["s"] or 0.0) for r in cur.fetchall()}
@@ -666,7 +814,7 @@ class TrackingModel:
             args.append(typ)
         w = "WHERE " + " AND ".join(where)
         cur = self.conn.execute(
-            f"SELECT CAST(substr(date,6,2) AS INTEGER) AS m, SUM(amount) AS s "
+            f"SELECT CAST(substr(date,6,2) AS INTEGER) AS m, SUM(amount) AS s "  # nosec B608
             f"FROM tracking {w} GROUP BY m ORDER BY m",
             tuple(args),
         )
@@ -709,7 +857,7 @@ class TrackingModel:
             args.append(typ)
         w = ("WHERE " + " AND ".join(where)) if where else ""
         cur = self.conn.execute(
-            f"SELECT CAST(substr(date,6,2) AS INTEGER) AS m, SUM(amount) AS s FROM tracking {w} GROUP BY m ORDER BY m",
+            f"SELECT CAST(substr(date,6,2) AS INTEGER) AS m, SUM(amount) AS s FROM tracking {w} GROUP BY m ORDER BY m",  # nosec B608
             tuple(args),
         )
         out = {int(r["m"]): float(r["s"] or 0.0) for r in cur.fetchall()}
@@ -723,121 +871,193 @@ class TrackingModel:
             return str(row["typ"]), str(row["category"]), float(row["amount"])
         return str(row[2]), str(row[3]), float(row[4])
 
-    def _validate_savings_goal_category_delta(
-        self, category: str, delta: float
+    def _tracking_row_savings_action(self, row) -> str | None:
+        typ, _category, amount = self._tracking_row_type_category_amount(row)
+        raw = None
+        if self._has_savings_action_col():
+            try:
+                raw = row["savings_action"] if isinstance(row, sqlite3.Row) else None
+            except Exception:
+                raw = None
+        return self._normalize_savings_action(typ, amount, raw)
+
+    @staticmethod
+    def _flow_delta(
+        amount: float, action: str | None, factor: float
+    ) -> tuple[float, float, float]:
+        """Liefert (Bestand, Einzahlungen, Bezüge) für Hinzufügen/Entfernen."""
+        value = float(amount)
+        stock_delta = factor * value
+        if action == ACTION_WITHDRAWAL:
+            return stock_delta, 0.0, factor * abs(value)
+        return stock_delta, factor * value, 0.0
+
+    def _accumulate_savings_change(
+        self,
+        changes: dict[str, list[float]],
+        category: str,
+        amount: float,
+        action: str | None,
+        *,
+        factor: float,
     ) -> None:
-        goals = self.conn.execute(
-            """
-            SELECT name, current_amount, target_amount
+        bucket = changes.setdefault(str(category), [0.0, 0.0, 0.0])
+        deltas = self._flow_delta(float(amount), action, factor)
+        for index, delta in enumerate(deltas):
+            bucket[index] += delta
+
+    def _active_goal_rows(self, category: str):
+        cols = self._cols("savings_goals")
+        if {"contributed_amount", "withdrawn_amount"}.issubset(cols):
+            flow = "contributed_amount, withdrawn_amount"
+        else:
+            flow = "current_amount AS contributed_amount, 0 AS withdrawn_amount"
+        return self.conn.execute(
+            f"""
+            SELECT id, name, current_amount, target_amount, {flow}
             FROM savings_goals
-            WHERE category = ? AND status IN (?, ?)
-            """,
-            (category, STATUS_SAVING, STATUS_RELEASED),
-        ).fetchall()
-        for goal in goals:
-            current = float(goal[1])
-            target = float(goal[2])
-            validate_savings_goal_bounds(
-                goal_name=str(goal[0]),
-                target_amount=target,
-                current_amount=current,
-                resulting_amount=current + float(delta),
-                delta_amount=float(delta),
-            )
-
-    def _sync_savings(self, category: str, amount: float, *, add: bool) -> None:
-        """Synchronisiert aktive Sparziele innerhalb einer laufenden Transaktion.
-
-        Fachregel: Der Sparziel-Stand darf nicht unter 0 und nicht über den
-        Zielbetrag steigen. Die Validierung passiert vor dem UPDATE, damit die
-        komplette Buchungstransaktion sauber zurückgerollt wird.
-
-        Args:
-            category: Kategorie-Name
-            amount:   Betrag
-            add:      True = addieren, False = subtrahieren
-        """
-        delta = float(amount) if add else -float(amount)
-        self._validate_savings_goal_category_delta(category, delta)
-
-        goals = self.conn.execute(
-            """
-            SELECT id, current_amount
-            FROM savings_goals
-            WHERE category = ? AND status IN (?, ?)
-            """,
+            WHERE category=? AND status IN (?, ?)
+            """,  # nosec B608
             (category, STATUS_SAVING, STATUS_RELEASED),
         ).fetchall()
 
-        for goal in goals:
-            goal_id, current = goal[0], float(goal[1])
-            self.conn.execute(
-                "UPDATE savings_goals SET current_amount = ? WHERE id = ?",
-                (current + delta, goal_id),
-            )
-        # KEIN commit() – wird von db_transaction erledigt
+    def _validate_savings_changes(self, changes: dict[str, list[float]]) -> None:
+        for category, (
+            stock_delta,
+            contribution_delta,
+            withdrawal_delta,
+        ) in changes.items():
+            for goal in self._active_goal_rows(category):
+                validate_savings_goal_flow_bounds(
+                    goal_name=str(goal[1]),
+                    target_amount=float(goal[3]),
+                    current_stock=float(goal[2]),
+                    contributed_amount=float(goal[4]),
+                    stock_delta=stock_delta,
+                    contribution_delta=contribution_delta,
+                )
+                if float(goal[5]) + withdrawal_delta < -0.005:
+                    raise SavingsGoalBoundsError(
+                        "savings.bounds.withdrawal_history_negative",
+                        goal_name=str(goal[1]),
+                        current_amount=float(goal[5]),
+                        target_amount=float(goal[3]),
+                        attempted_amount=abs(withdrawal_delta),
+                        resulting_amount=float(goal[5]) + withdrawal_delta,
+                        max_allowed=float(goal[5]),
+                    )
 
-    def validate_savings_goal_booking(self, category: str, amount: float) -> None:
-        """Prüft eine geplante Ersparnisse-Buchung gegen aktive Sparziele.
+    def _validate_savings_goal_category_delta(
+        self, category: str, delta: float, action: str | None = None
+    ) -> None:
+        changes: dict[str, list[float]] = {}
+        normalized = self._normalize_savings_action(TYP_SAVINGS, float(delta), action)
+        self._accumulate_savings_change(
+            changes, category, float(delta), normalized, factor=1.0
+        )
+        self._validate_savings_changes(changes)
 
-        Wird von der UI vor der eigentlichen Buchung genutzt, damit eine klare
-        Meldung erscheint, bevor eine Bestätigung für Entnahmen abgefragt wird.
-        """
-        self._validate_savings_goal_category_delta(category, float(amount))
+    def _sync_savings(
+        self,
+        category: str,
+        amount: float,
+        *,
+        action: str | None = None,
+        add: bool,
+    ) -> None:
+        normalized = self._normalize_savings_action(TYP_SAVINGS, float(amount), action)
+        factor = 1.0 if add else -1.0
+        stock_delta, contribution_delta, withdrawal_delta = self._flow_delta(
+            float(amount), normalized, factor
+        )
+        changes = {str(category): [stock_delta, contribution_delta, withdrawal_delta]}
+        self._validate_savings_changes(changes)
+
+        flow_cols = {"contributed_amount", "withdrawn_amount"}.issubset(
+            self._cols("savings_goals")
+        )
+        for goal in self._active_goal_rows(category):
+            goal_id = int(goal[0])
+            if flow_cols:
+                self.conn.execute(
+                    """
+                    UPDATE savings_goals
+                    SET current_amount=current_amount+?,
+                        contributed_amount=contributed_amount+?,
+                        withdrawn_amount=withdrawn_amount+?
+                    WHERE id=?
+                    """,
+                    (stock_delta, contribution_delta, withdrawal_delta, goal_id),
+                )
+            else:
+                self.conn.execute(
+                    "UPDATE savings_goals SET current_amount=current_amount+? WHERE id=?",
+                    (stock_delta, goal_id),
+                )
+
+    def validate_savings_goal_booking(
+        self, category: str, amount: float, action: str | None = None
+    ) -> None:
+        normalized = self._normalize_savings_action(TYP_SAVINGS, float(amount), action)
+        changes: dict[str, list[float]] = {}
+        self._accumulate_savings_change(
+            changes, category, float(amount), normalized, factor=1.0
+        )
+        self._validate_savings_changes(changes)
 
     def check_savings_goal_conflict(self, category: str, amount: float) -> dict | None:
-        """Prüft ob eine negative Buchung auf eine Spar-Kategorie mit aktivem Sparziel kollidiert.
-
-        Wird VOR der Buchung von der UI aufgerufen, damit ein Dialog angezeigt werden kann.
-
-        Args:
-            category: Kategorie-Name
-            amount:   Betrag (negativ = Entnahme)
-
-        Returns:
-            None wenn kein Konflikt, sonst dict mit:
-            {
-                'goal_id': int,
-                'goal_name': str,
-                'goal_status': str,     # 'sparend' | 'freigegeben'
-                'current_amount': float,
-                'target_amount': float,
-            }
-        """
         if amount >= 0:
             return None
-
+        cols = self._cols("savings_goals")
+        contributed = (
+            "contributed_amount" if "contributed_amount" in cols else "current_amount"
+        )
+        withdrawn = "withdrawn_amount" if "withdrawn_amount" in cols else "0"
         row = self.conn.execute(
-            """
-            SELECT id, name, status, current_amount, target_amount
+            f"""
+            SELECT id, name, status, current_amount, target_amount,
+                   {contributed}, {withdrawn}, COALESCE(released_amount,0)
             FROM savings_goals
-            WHERE category = ? AND status IN ('sparend', 'freigegeben')
-            LIMIT 1
-            """,
-            (category,),
+            WHERE category=? AND status IN (?, ?)
+            ORDER BY id LIMIT 1
+            """,  # nosec B608
+            (category, STATUS_SAVING, STATUS_RELEASED),
         ).fetchone()
-
         if not row:
             return None
-
         return {
-            "goal_id": row[0],
-            "goal_name": row[1],
-            "goal_status": row[2],
+            "goal_id": int(row[0]),
+            "goal_name": str(row[1]),
+            "goal_status": str(row[2]),
             "current_amount": float(row[3]),
             "target_amount": float(row[4]),
+            "contributed_amount": float(row[5]),
+            "withdrawn_amount": float(row[6]),
+            "released_amount": float(row[7]),
         }
 
-    # Legacy-Aliases – VERALTET, nicht innerhalb db_transaction verwenden!
-    # Diese Methoden enthalten conn.commit() und brechen verschachtelte Transaktionen.
-    def _sync_savings_goals_add(self, category: str, amount: float) -> None:
-        """VERALTET: Nutze stattdessen _sync_savings(category, amount, add=True) innerhalb db_transaction."""
-        self._sync_savings(category, amount, add=True)
+    def get_savings_action(self, row_id: int) -> str | None:
+        if not self._has_savings_action_col():
+            return None
+        row = self.conn.execute(
+            "SELECT typ, amount, savings_action FROM tracking WHERE id=?",
+            (int(row_id),),
+        ).fetchone()
+        if not row:
+            return None
+        return self._normalize_savings_action(str(row[0]), float(row[1]), row[2])
+
+    # Legacy-Aliases
+    def _sync_savings_goals_add(
+        self, category: str, amount: float, action: str | None = None
+    ) -> None:
+        self._sync_savings(category, amount, action=action, add=True)
         self.conn.commit()
 
-    def _sync_savings_goals_remove(self, category: str, amount: float) -> None:
-        """VERALTET: Nutze stattdessen _sync_savings(category, amount, add=False) innerhalb db_transaction."""
-        self._sync_savings(category, amount, add=False)
+    def _sync_savings_goals_remove(
+        self, category: str, amount: float, action: str | None = None
+    ) -> None:
+        self._sync_savings(category, amount, action=action, add=False)
         self.conn.commit()
 
     def count(self) -> int:

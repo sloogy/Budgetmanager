@@ -3,6 +3,7 @@
 Qt-freie Logiktests (Ampel, Monatsabschluss-Model) plus statische
 Zusicherungen für die UI-Verdrahtung.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -214,14 +215,14 @@ def test_overview_has_four_tabs_and_status_line():
     assert "_build_trend_tab" in src
     assert "compute_month_status" in src
     # Konto-Vergleich hängt nicht mehr als eigener Reiter im TabWidget
-    assert 'addTab(self._build_typ_tab()' not in src
+    assert "addTab(self._build_typ_tab()" not in src
 
 
 def test_tracking_remembers_last_category_per_typ():
     qa = _src("views/quick_add_dialog.py")
-    tr_ = _src("views/tracker_dialog.py")
-    for src in (qa, tr_):
-        assert "tracking_last_category" in src
+    # v2.2.16 (K1): TrackerDialog entfaellt – Neu und Bearbeiten laufen
+    # ueber denselben QuickAddDialog.
+    assert "tracking_last_category" in qa
     st = _src("settings.py")
     assert '"tracking_last_category": {}' in st
     assert '"start_on_cockpit": True' in st

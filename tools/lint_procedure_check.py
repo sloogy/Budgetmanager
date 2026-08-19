@@ -30,6 +30,10 @@ EXCLUDED_DIRS = {
 }
 EXCLUDED_DIR_PREFIXES = (".venv", "venv")
 GENERATED_FILE_PATTERNS = (
+    # v2.2.20 (Audit-Fix B): Laufzeit-Settings & Theme-Profile sind
+    # Nutzerdaten und duerfen nie im Release-Baum liegen.
+    "data/budgetmanager_settings.json",
+    "data/theme_profiles/*",
     "*.pyc",
     "*.pyo",
     "*.log",
@@ -103,6 +107,19 @@ def check_versions() -> list[str]:
             f"requirements.lock Header fehlt/ist veraltet: erwartet {expected!r}"
         )
 
+    # v2.2.15 (M2): README enthaelt ein app_info-Codebeispiel; ein veraltetes
+    # Datum/eine veraltete Version dort fiel bisher durch keinen Check.
+    readme = _read(ROOT / "README.md")
+    if f'APP_VERSION = "{version}"' not in readme:
+        errors.append(f"README.md: APP_VERSION-Beispiel nicht auf {version}")
+    if f'APP_RELEASE_DATE = "{date}"' not in readme:
+        errors.append(f"README.md: APP_RELEASE_DATE-Beispiel nicht auf {date!r}")
+    build_req = _read(ROOT / "requirements-build.txt")
+    if "pyinstaller==" not in build_req:
+        errors.append(
+            "requirements-build.txt: pyinstaller ist nicht exakt gepinnt (==)"
+        )
+
     version_json = json.loads(_read(ROOT / "version.json"))
     if version_json.get("version") != version:
         errors.append("version.json ist nicht mit app_info.py synchron")
@@ -115,23 +132,51 @@ def check_versions() -> list[str]:
 
 
 def check_generated_artifacts() -> list[str]:
+    """Meldet generierte Verzeichnisse/Dateien, die nicht ins Release-ZIP gehoeren.
+
+    v2.2.31 (Deep-Audit-Fix A): Dieser Check war bis v2.2.30 beweisbar tot.
+    Er hat zuerst ``dirnames`` per ``_is_excluded_path()`` beschnitten – was
+    exakt die Namen aus ``EXCLUDED_DIRS`` entfernt – und danach die bereits
+    beschnittene Liste gegen ``EXCLUDED_DIRS - {".git"}`` geprueft. Die
+    Bedingung konnte deshalb fuer keinen einzigen Namen mehr wahr werden, und
+    ".git" war explizit ausgenommen. Ergebnis: ``__pycache__`` und
+    ``.pytest_cache`` wurden im v2.2.30-ZIP ausgeliefert, obwohl das Gate PASS
+    meldete.
+
+    Fix: Erkennung strikt VOR dem Pruning. Das Pruning bleibt erhalten, damit
+    nicht in die Ordner hinein abgestiegen und pro Unterordner erneut gemeldet
+    wird – gemeldet wird also der oberste Treffer, nicht jeder Nachfahre.
+
+    Zweiter toter Pfad: ``*.pyc``/``*.pyo``/``*.log`` wurden per
+    ``ROOT.glob(pattern)`` gesucht – nicht rekursiv. ``.pyc`` liegt aber
+    ausschliesslich in ``__pycache__``-Unterordnern und war damit ebenfalls
+    unauffindbar. Muster ohne Pfadtrenner werden jetzt rekursiv geprueft.
+    """
     errors: list[str] = []
     generated_dir_names = EXCLUDED_DIRS - {".git"}
 
     for dirpath, dirnames, _filenames in os.walk(ROOT):
         current = Path(dirpath)
-        dirnames[:] = [
-            dirname for dirname in dirnames if not _is_excluded_path(current / dirname)
-        ]
-        for dirname in dirnames:
+
+        # 1) ERKENNEN (vor jedem Pruning!)
+        for dirname in list(dirnames):
             if dirname in generated_dir_names:
                 path = current / dirname
                 errors.append(
                     f"generiertes Verzeichnis im Release-Baum: {path.relative_to(ROOT)}"
                 )
 
+        # 2) PRUNEN (nicht hineinsteigen: keine Doppelmeldung je Nachfahre,
+        #    keine Laufzeit in fremden venvs)
+        dirnames[:] = [
+            dirname for dirname in dirnames if not _is_excluded_path(current / dirname)
+        ]
+
     for pattern in GENERATED_FILE_PATTERNS:
-        for path in ROOT.glob(pattern):
+        # Muster mit Pfadtrenner sind bewusst wurzelrelativ (z. B.
+        # "data/users.json"); reine Namensmuster gelten baumweit.
+        globber = ROOT.glob(pattern) if "/" in pattern else ROOT.rglob(pattern)
+        for path in globber:
             if path.is_file() and not _is_excluded_path(path):
                 errors.append(
                     f"generierte/private Datei im Release-Baum: {path.relative_to(ROOT)}"
@@ -151,6 +196,7 @@ def check_workflow() -> list[str]:
     errors: list[str] = []
     workflow_path = ROOT / ".github" / "workflows" / "build.yml"
     workflow = _read(workflow_path)
+    dependency_workflow = _read(ROOT / ".github" / "workflows" / "dependency-audit.yml")
 
     # Eine zweite, harte Black-Version im Workflow ist ein Release-Risiko:
     # requirements-dev.txt ist die zentrale Quelle. Ein abweichendes
@@ -170,9 +216,17 @@ def check_workflow() -> list[str]:
         "python tools/sync_version.py --check",
         "python tools/verify_qt_translations.py",
         "python -m compileall -q .",
-        "python -m black --check model/",
+        "python -m black --check --workers 1 main.py",
         "python -m mypy model/",
+        "python tools/verify_hashed_lock.py",
+        "python tools/architecture_quality_gate.py",
+        "python tools/coverage_gate.py",
+        "tools/materialize_update_public_key.py",
+        "signtool sign",
+        "actions/attest-build-provenance@",
         "python -m pytest tests/ -v -ra --tb=short",
+        "python tools/enterprise_release_audit_10000.py",
+        "enterprise-release-audit-10000",
         "python tools/clean_release_tree.py",
         "python tools/lint_procedure_check.py",
         "pyinstaller BudgetManager.spec --noconfirm",
@@ -180,6 +234,17 @@ def check_workflow() -> list[str]:
     for snippet in required_snippets:
         if snippet not in workflow:
             errors.append(f"GitHub-Workflow fehlt Gate: {snippet}")
+
+    dependency_snippets = [
+        "python tools/bandit_release_gate.py",
+        "BANDIT_CURRENT.json",
+        "BANDIT_RELEASE_GATE.json",
+        "python -m pip_audit",
+        "python -m pip check",
+    ]
+    for snippet in dependency_snippets:
+        if snippet not in dependency_workflow:
+            errors.append(f"Dependency-Workflow fehlt Gate: {snippet}")
 
     pytest_pos = workflow.find("python -m pytest tests/ -v -ra --tb=short")
     clean_pos = workflow.find("python tools/clean_release_tree.py")
@@ -203,9 +268,14 @@ def check_release_docs() -> list[str]:
         "python -m compileall -q .",
         "python tools/i18n_audit.py",
         "python tools/dau_first_run_check.py",
-        "python -m black --check model/",
+        "python -m black --check --workers 1 main.py",
         "python -m mypy model/",
+        "python tools/verify_hashed_lock.py",
+        "python tools/architecture_quality_gate.py",
+        "python tools/coverage_gate.py",
+        "python tools/bandit_release_gate.py",
         "python -m pytest tests/ -v -ra --tb=short",
+        "python tools/enterprise_release_audit_10000.py",
         "python tools/clean_release_tree.py",
         "python tools/lint_procedure_check.py",
     ]
@@ -232,6 +302,16 @@ def check_required_regression_tests() -> list[str]:
             "test_account_lifecycle_quick_pin_password_delete",
             "test_security_labels_are_localized_for_de_en_fr",
             "test_lint_procedure_locks_required_regression_tests_into_release_gate",
+        ],
+        "tests/test_release_2225_enterprise_audit_gate.py": [
+            "test_tag_build_requires_enterprise_10000_audit",
+            "enterprise-release-audit-10000",
+            "--loops 10000",
+        ],
+        "tests/test_release_2225_bandit_delta_gate.py": [
+            "test_current_source_has_zero_medium_and_high_findings",
+            "test_any_medium_finding_blocks_release",
+            "bandit_release_gate.py",
         ],
     }
     for rel, markers in required_tests.items():

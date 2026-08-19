@@ -23,5 +23,5 @@ def test_qt_scaling_defaults_do_not_force_absolute_scale(monkeypatch):
 
 def test_portable_starters_set_fractional_scaling_policy():
     builder = Path("tools/build_release_assets.py").read_text(encoding="utf-8")
-    assert 'QT_SCALE_FACTOR_ROUNDING_POLICY=PassThrough' in builder
-    assert 'QT_SCALE_FACTOR_ROUNDING_POLICY:-PassThrough' in builder
+    assert "QT_SCALE_FACTOR_ROUNDING_POLICY=PassThrough" in builder
+    assert "QT_SCALE_FACTOR_ROUNDING_POLICY:-PassThrough" in builder

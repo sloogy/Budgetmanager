@@ -1,6 +1,7 @@
 from __future__ import annotations
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 import logging
+
 logger = logging.getLogger(__name__)
 
 from dataclasses import dataclass
@@ -77,7 +78,7 @@ class CopyYearDialog(QDialog):
         self.dst.setValue(default_src + 1)
 
         self.scope = QComboBox()
-        self.scope.addItem(tr('typ.Alle'), "")
+        self.scope.addItem(tr("typ.Alle"), "")
         self.scope.addItem(tr("kpi.expenses"), TYP_EXPENSES)
         self.scope.addItem(tr("kpi.income"), TYP_INCOME)
         self.scope.addItem(tr("typ.Ersparnisse"), TYP_SAVINGS)
@@ -109,7 +110,9 @@ class CopyYearDialog(QDialog):
         self.review.setAlternatingRowColors(True)
         self.review.verticalHeader().setVisible(False)
         self.review.horizontalHeader().setSectionResizeMode(2, QHeaderView.Stretch)
-        self.review.horizontalHeader().setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        self.review.horizontalHeader().setSectionResizeMode(
+            6, QHeaderView.ResizeToContents
+        )
 
         self.btn_ok = QPushButton(tr("btn.copy"))
         self.btn_cancel = QPushButton(tr("btn.cancel"))
@@ -154,9 +157,13 @@ class CopyYearDialog(QDialog):
             return
         typ = str(self.scope.currentData() or "") or None
         try:
-            self._review_rows = list_year_copy_review_rows(self.conn, int(self.src.value()), typ=typ)
+            self._review_rows = list_year_copy_review_rows(
+                self.conn, int(self.src.value()), typ=typ
+            )
         except Exception as exc:
-            logger.warning("Jahreswechsel-Prüfliste konnte nicht geladen werden: %s", exc)
+            logger.warning(
+                "Jahreswechsel-Prüfliste konnte nicht geladen werden: %s", exc
+            )
             self._review_rows = []
 
         try:
@@ -186,7 +193,9 @@ class CopyYearDialog(QDialog):
         self.review.setRowCount(len(self._review_rows))
         for row_idx, row in enumerate(self._review_rows):
             include = QTableWidgetItem("")
-            include.setFlags(Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            include.setFlags(
+                Qt.ItemIsUserCheckable | Qt.ItemIsEnabled | Qt.ItemIsSelectable
+            )
             include.setCheckState(Qt.Checked)
             self.review.setItem(row_idx, 0, include)
 
@@ -216,7 +225,11 @@ class CopyYearDialog(QDialog):
             include_item = self.review.item(row_idx, 0)
             include = include_item.checkState() == Qt.Checked if include_item else True
             spin = self.review.cellWidget(row_idx, 6)
-            annual = float(spin.value()) if isinstance(spin, QDoubleSpinBox) else row.budget_total
+            annual = (
+                float(spin.value())
+                if isinstance(spin, QDoubleSpinBox)
+                else row.budget_total
+            )
             overrides.append(
                 YearCopyOverride(
                     typ=row.typ,

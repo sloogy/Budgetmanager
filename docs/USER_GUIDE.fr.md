@@ -1,106 +1,183 @@
-# BudgetManager 2.2.6 – Guide utilisateur
+# BudgetManager 2.2.60 – Manuel utilisateur
 
-## 1. Idée générale
+Ce manuel décrit les fonctions réellement disponibles dans la version 2.2.60. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
 
-BudgetManager fonctionne localement sur votre ordinateur. L'application enregistre budgets, opérations, catégories, sauvegardes et paramètres dans le dossier de données. Dans la version portable, ce dossier se trouve à côté du programme sous `data/`.
+## Premier démarrage en quatre étapes
 
-Flux conseillé :
+1. Choisir langue, devise et format numérique.
+2. Créer un compte et conserver la clé de restauration séparément.
+3. Préparer les catégories par configuration express, import XLSX ou saisie manuelle.
+4. Enregistrer la première opération, puis utiliser budget ou mode apprentissage.
 
-1. Vérifier ou créer les catégories.
-2. Saisir le budget mensuel.
-3. Enregistrer les vraies opérations dans le suivi.
-4. Contrôler l'aperçu et les graphiques.
-5. Créer une sauvegarde avant les grands changements.
+## 1. Démarrage rapide
 
-## 2. Catégories
+1. Choisir langue, devise et format numérique.
+2. Créer un compte Quick, PIN ou mot de passe.
+3. Conserver la clé de restauration hors du dossier de l’application.
+4. Utiliser la configuration express ou créer les catégories.
+5. Saisir des budgets ou commencer avec le mode apprentissage du suivi.
+6. Suivre les prochaines étapes du cockpit.
 
-Les catégories appartiennent toujours à un type : revenus, dépenses ou épargne. Les sous-catégories ne peuvent être déplacées que dans le même type. Le glisser-déposer permet de placer une catégorie sous une catégorie principale ou de la remettre au niveau principal.
+## 2. Zones principales
 
-Options :
+La barre latérale ouvre Cockpit, Suivi, Budget, Objectifs d’épargne, Aperçu, Catégories optionnelles et Compte. La barre d’actions propose une entrée unique pour opération, charges fixes/récurrentes, catégories, épargne et recherche.
 
-- **Charge fixe** : coût planifié ou réserve, par exemple loyer, assurance, franchise ou participation médicale.
-- **Récurrent** : opération qui revient régulièrement.
-- **Fixe + récurrent** : vraie charge mensuelle. Le montant budgété du mois est utilisé à la saisie.
-- **Fixe sans récurrence** : réserve variable protégée. Le montant peut être modifié lors de la saisie.
-- **Récurrent sans fixe** : opération régulière mais variable. Le montant peut être modifié.
+## 3. Catégories
 
-## 3. Budget
+Chaque catégorie appartient aux revenus, dépenses ou épargne et peut être principale ou enfant. Un enfant ne se déplace que dans le même type.
 
-Dans l'onglet Budget, vous saisissez le montant prévu par catégorie et par mois. Un budget ne crée pas d'opération. Il représente seulement le plan.
+Propriétés : charge fixe, récurrente, jour d’échéance, mode de prévision (Auto, Normal/Flexible, POT/Provision, Incrémentiel), favori et tags fixes. Le renommage se propage dans budgets, suivi, favoris, alertes, récurrences et objectifs. La suppression peut effacer ou réaffecter les données ; sauvegardez d’abord.
 
-Règles importantes :
+L’assistant peut importer un modèle XLSX de catégories. La gestion quotidienne utilise **Ctrl+K**.
 
-- Les cellules vides valent 0.
-- Les catégories parentes affichent la somme des enfants plus leur propre marge.
-- La ligne de total affiche la somme de la zone visible.
-- Une année peut être copiée depuis une année existante, avec ou sans montants.
+## 4. Budget
 
-## 4. Suivi / opérations
+Le budget est une prévision et ne crée pas d’opération. Saisissez un mois, tous les mois ou une plage, éventuellement seulement dans les cellules vides.
 
-Le suivi enregistre les mouvements d'argent réels. Le choix de catégorie n'affiche que les catégories du type sélectionné. Les favoris et les catégories manuelles fréquentes apparaissent en haut ; les saisies automatiques de charges fixes ne faussent pas cet ordre. Les catégories parentes avec sous-catégories ne sont pas affichées comme lignes saisissables ; les sous-catégories restent courtes, p. ex. **Loyer** au lieu de **Logement › Loyer**.
+**Copier l’année** choisit années source/cible, tous les comptes ou un type, reprise ou non des montants et une liste de contrôle par catégorie. Charges fixes, récurrentes, POT, incrémentielles et apprentissage sont vérifiés. Le bouton **13e salaire** crée un revenu unique dans un seul mois de versement.
 
-Le bouton **Saisir les charges fixes/récurrentes** crée volontairement les écritures dues pour le mois choisi. Rien n'est saisi en secret en arrière-plan.
+Les prévisions utilisent les mois terminés et des modèles stables ; rien n’est appliqué automatiquement.
 
-## 5. Prévisions / suggestions de budget
+## 5. Prévisions — Modes de prévision et apprentissage
 
-Les suggestions sont des recommandations, pas des changements automatiques. L'application analyse uniquement les mois terminés et évite les suggestions basées sur un seul écart.
+- **Normal/Flexible :** dépenses variables courantes.
+- **POT/Provision :** dépenses attendues mais irrégulières, par exemple franchise, réparation ou facture annuelle. Une utilisation partielle ne réduit pas automatiquement le POT ; un dépassement peut produire une alerte.
+- **Incrémentiel :** coûts annuels ou trimestriels payés irrégulièrement ou par tranches.
+- **Mode apprentissage :** propose un budget initial seulement si aucun budget annuel positif n’existe. Réglage sous **Fichier → Paramètres → Comportement → Aperçu du budget**.
+- **Budget zéro souple :** vérifie **revenus − dépenses − épargne ≈ 0 CHF**. Il propose épargne/report en cas d’excédent, puis épargne et dépenses flexibles en cas de déficit. Charges fixes, récurrentes, POT et incrémentielles restent protégées.
 
-Logique :
+Un POT est une provision pour dépense attendue. Un objectif d’épargne possède un montant cible avec versements et retraits.
 
-- Un seul mois à zéro ne suffit jamais à réduire un budget.
-- Pour les catégories fixes ou récurrentes, les mois à zéro sont ignorés pour les réductions.
-- Les charges fixes nécessitent plusieurs vraies écritures avant une suggestion.
-- Les catégories flexibles peuvent apprendre de motifs répétés, même si certains mois sont à zéro.
-- Des écarts opposés, par exemple 450 CHF puis 350 CHF avec un budget de 400 CHF, ne déclenchent pas de suggestion.
+## 5.1 Choisir un mode de prévision
 
-## 6. Aperçu et graphiques
+Utilisez Normal/Flexible pour les dépenses courantes, POT/Provision pour les coûts attendus mais irréguliers, Incrémentiel pour les coûts annuels par étapes et l’apprentissage uniquement sans budget annuel positif.
 
-L'aperçu compare les valeurs prévues et réelles.
+## 6. Opérations / suivi
 
-Explication des graphiques :
+Une opération contient date, compte/type, catégorie, montant, remarque et tags. **Ctrl+N** ouvre le même dialogue complet depuis cockpit, barre d’actions et suivi. Enregistrer puis ajouter conserve les choix utiles comme le compte.
 
-- **Donut prévu/réalisé** : anneau extérieur revenus, anneau central dépenses, anneau intérieur épargne. Chaque anneau montre saisi, encore ouvert ou au-dessus du budget. C’est le contrôle mensuel principal.
-- **Classement catégories** : affiche les principales catégories de dépenses en barres. C’est plus lisible qu’un grand camembert.
-- **Comparaison comptes** : affiche revenus, dépenses et épargne en barres. Cela remplace le camembert voisin confus, car ces valeurs ne sont pas des parts d’un même total.
-- **Évolution mensuelle** : montre l'évolution sur plusieurs mois. Utile pour repérer les tendances.
-- **Solde mensuel** : montre revenus moins dépenses moins épargne par mois.
-- **Top opérations** : regroupe les catégories et trie par montant, afin que les loyers ou salaires répétés ne créent pas de doublons trompeurs.
+Les boutons/menu contextuel permettent modifier, dupliquer ou supprimer. **Ctrl+Maj+F** liste les charges fixes, récurrentes et attendues du mois choisi et n’enregistre que les lignes cochées.
 
-S'il n'y a pas de données, l'application affiche un message au lieu d'un graphique vide.
+Les filtres combinent type/compte, catégorie avec descendants, tags, période, montant et texte. Réinitialiser réaffiche tout. Les opérations d’épargne peuvent mettre à jour un objectif lié ; les retraits sont confirmés.
 
-## 7. Mises à jour
+Une **Charge fixe** est protégée des conseils de réduction flexible.
 
-Utilisez **Extras → Mises à jour…** pour rechercher une nouvelle version. La fenêtre de mise à jour montre chaque étape.
+## 7. Aperçu
 
-Chemins de mise à jour :
+Choisissez année, mois ou période personnalisée et combinez compte/type, catégorie avec enfants, tags, remarque et montant. L’aperçu contient KPI, tableaux prévu/réel, reste, pourcentage, dépassements, opérations filtrées et suggestions à valider.
 
-- **Portable Windows/Linux** : télécharge le ZIP portable, remplace les fichiers du programme et conserve `data/` et `updates/`.
-- **EXE Windows / binaire Linux direct** : migre les anciens fichiers de démarrage versionnés vers des noms stables.
-- **Installateur Windows** : télécharge la nouvelle EXE d'installation, attend la fermeture de l'application et lance l'installateur en mode mise à jour. Le dossier de données choisi est conservé.
+### Explication des graphiques
 
-## 8. Sauvegarde et clé de restauration
+Graphiques : donut prévu/réel, classement, comparaison des types, évolution mensuelle, bilan et principales opérations. Un clic applique des filtres ; un double-clic sur une ligne de budget ouvre sa modification.
 
-La clé de restauration est importante pour les bases chiffrées et la récupération. Conservez-la hors du dossier BudgetManager, par exemple dans Bitwarden.
+## 8. Objectifs d’épargne
 
-Avant les grands changements, créez une sauvegarde. Le dossier de données et `data/backups/` ne sont pas écrasés par les mises à jour.
+Un objectif est un flux de projet. L’application sépare **cible**, **versé**, **utilisé/retiré**, **solde actuel** et **reste à verser**. Exemple : cible `50 000`, versé `30 000`, utilisé `15 000` donne un solde de `15 000` et `20 000` encore à verser. Une opération négative est par défaut un **retrait**. Choisissez explicitement **correction** pour une erreur afin qu’elle ne compte pas comme utilisation. Une **libération partielle** rend disponible un montant choisi sans fermer l’objectif.
 
-## 5.1 Mode apprentissage du suivi
+## 9. Cockpit
 
-Le mode apprentissage aide lorsqu’aucun budget n’a encore été défini. Il utilise uniquement les écritures manuelles du suivi et propose un budget de départ.
+Le cockpit montre feu, prochaines étapes, KPI, échéances, alertes, restes de POT, favoris, objectifs et opérations récentes. Vous pouvez choisir l’ordre et la visibilité des cartes.
 
-Lors du premier démarrage, le mode apprentissage actif permet de continuer sans saisir de valeur de budget. C’est volontaire : vous pouvez d’abord suivre vos écritures, puis laisser l’application proposer des budgets à partir des données réelles. Si le mode apprentissage est désactivé, le premier démarrage exige toujours au moins une valeur de budget.
+### 9.1 Indicateurs et tendance
 
-Le mode apprentissage et la logique normale de suggestion sont séparés :
+Les quatre tuiles du haut affichent recettes, dépenses, épargne et montant libre. En bas à droite de chaque tuile, une flèche et un montant comparent au mois précédent. La couleur suit le sens et non le signe : plus de recettes est vert, plus de dépenses est rouge. Le premier mois, sans données antérieures, la flèche reste masquée.
 
-- Aucun budget dans l’année choisie : le mode apprentissage peut proposer un budget de départ.
-- Budget existant dans l’année choisie : le mode apprentissage se termine et la logique normale prend le relais.
-- Une suggestion ne modifie jamais les données automatiquement.
-- Lors de la reprise, le type de budget doit d’abord être confirmé.
+### 9.2 Analyse
 
-Dans le dialogue des suggestions, un clic droit permet de continuer l’observation, ignorer la suggestion, marquer la catégorie comme irrégulière/réserve ou réinitialiser le statut d’apprentissage. C’est utile pour les frais de santé, franchises, réparations et autres dépenses irrégulières.
+La section **Analyse** contient deux graphiques. L'anneau montre les dépenses du mois par catégorie avec le total au centre ; au-delà de cinq catégories, le reste est regroupé. Le graphique en aires affiche les dépenses cumulées du mois et révèle si elles se concentrent en début ou en fin de mois.
 
-Dans le bandeau de l’aperçu, les nouveaux budgets de départ appris utilisent **🆕**. Les vraies alertes de déficit/augmentation gardent **📉**, tandis que les suggestions d’excédent/réduction utilisent **📈**.
+### 9.3 Disposition automatique ou figée
 
-## 5.2 Copie annuelle avec mode apprentissage
+Par défaut, le mode **automatique** est actif : les sections sans contenu se réduisent à leur en-tête et descendent sous les sections remplies. Dès qu'une section retrouve du contenu, elle revient à sa position enregistrée.
 
-Lors de la copie d’une année, BudgetManager vérifie aussi les catégories suivies mais jamais budgétées dans l’année source. Elles apparaissent comme budgets de départ possibles pour la nouvelle année et peuvent être reprises ou désélectionnées.
+Pour créer votre propre disposition, activez **Affichage → Disposition du cockpit → Organiser librement les tuiles** ou le bouton correspondant en haut du cockpit. **Tout l’en-tête** de chaque tuile devient alors une zone de glisser-déposer ; la poignée `≡` reste également disponible. Les colonnes gauche et droite sont des piles indépendantes : une tuile à droite peut donc monter tout en haut sans dépendre de la hauteur des tuiles à gauche. Un **emplacement de dépôt** mis en évidence montre la position exacte pendant le déplacement. L’ordre et la colonne sont enregistrés dès que la tuile est déposée. Les tableaux, boutons et graphiques restent utilisables car le contenu de la tuile n’est pas une zone de déplacement. **Affichage → Disposition du cockpit → Réinitialiser** rétablit le mode automatique, l’ordre et les colonnes par défaut.
+
+Les deux à la fois sont volontairement exclus : le tri automatique écraserait une disposition faite à la main au prochain rafraîchissement.
+
+### 9.4 Une ou deux colonnes
+
+En mode automatique, le cockpit passe à deux colonnes à partir d’environ 1180 pixels. En mode manuel, deux colonnes cibles de largeur égale sont disponibles dès 720 pixels afin de déplacer librement les tuiles entre gauche et droite avec une fenêtre normale. Avec une largeur encore plus faible, la vue peut défiler horizontalement tout en conservant la disposition enregistrée.
+
+### 9.5 Apparence
+
+Les couleurs et la forme des tuiles proviennent entièrement du profil de design actif. **Paramètres → Apparence** propose 26 profils et permet d'en créer. **Minuit – Violet** correspond au rendu des tableaux de bord modernes : fond presque noir, tuiles détachées, accent violet.
+
+## 10. Tags
+
+Les tags ajoutent un contexte aux catégories. Les tags fixes sont ajoutés automatiquement ; les tags manuels restent lors d’un changement de catégorie.
+
+## 11. Comptes
+
+BudgetManager conserve toujours les trois types de comptes **Revenus**, **Dépenses** et **Épargne**. Des comptes supplémentaires peuvent être créés, colorés et fermés dans la gestion des comptes/catégories, tandis que les types de base restent disponibles.
+
+Le compte décrit le flux d’argent ; la catégorie décrit son usage. Le choix du compte/type limite les catégories proposées. Les comptes utilisateur pour connexion et chiffrement sont expliqués plus loin.
+
+## 12. Clôture mensuelle
+
+Ouvrez **Cockpit → Clôture du mois…**. Le calcul réel est **revenus − dépenses − épargne**. Un excédent peut être versé à l’épargne, un déficit couvert par une épargne disponible à la fin de ce mois. Seuls les budgets flexibles sont mentionnés pour une éventuelle réduction future.
+
+**Marquer comme clôturé** est seulement un rappel du cockpit. Cela ne verrouille ni budget ni opération. Après correction, rouvrez l’assistant pour recalculer.
+
+## 13. Favoris et recherche
+
+Les favoris sont les catégories contrôlées fréquemment et sont disponibles via le cockpit/tableau F12.
+
+**Extras → Recherche globale / Ctrl+F** recherche opérations, budgets et catégories. Saisissez au moins deux caractères et double-cliquez pour naviguer.
+
+## 14. Export, PDF et impression
+
+**Extras → Exporter / Ctrl+E** exporte le suivi, le budget et éventuellement les catégories pour une année ou toute la période.
+
+Les formats disponibles sont CSV avec BOM UTF-8 optionnel, TXT tabulé, XLSX avec feuilles séparées et un rapport PDF A4 prêt à imprimer. XLSX contient des filtres et des en-têtes figés. L’aperçu interactif avant impression ne fait pas partie du dialogue.
+
+L’export n’est pas une sauvegarde ; utilisez `.bmr` pour la restauration.
+## 15. Compte utilisateur, clé et données
+
+Niveaux de sécurité : Quick, PIN et mot de passe. Nom, secret et niveau peuvent être modifiés ; les actions sensibles peuvent exiger une nouvelle authentification.
+
+Conservez la clé de restauration séparément des sauvegardes. Une personne possédant clé et base `.enc` peut déchiffrer les données.
+
+La page **Compte** ou **Fichier → Paramètres → Compte et données** affiche le dossier actif, déplace les données avec sauvegarde de sécurité et ouvre sauvegarde/restauration et gestion de base. Le nouveau chemin est pleinement actif après redémarrage.
+
+Les sauvegardes `.bmr` peuvent contenir la base, les réglages et le compte utilisateur associé à cette base. Si plusieurs comptes locaux existent, seul le compte correspondant est inclus. Intervalle, rétention et nettoyage automatiques sont réglables. La gestion de base affiche statistiques/migrations, nettoie les résidus et contient l’unique réinitialisation normale, avec nouvelle authentification si le compte est protégé.
+
+Depuis la version 2.2.48, la base, les réglages et les métadonnées du compte possèdent chacun leur propre contrôle SHA-256. Les éléments endommagés ou modifiés sont refusés et une ancienne sauvegarde confirmée peut être convertie en copie entièrement contrôlée. Ces contrôles détectent une corruption mais ne prouvent pas l’origine du fichier ; restaurez une sauvegarde complète de compte uniquement depuis une source fiable. Une sauvegarde de compte Quick peut contenir la clé locale de la base ; traitez donc le fichier `.bmr` comme un mot de passe et ne le déposez pas sans protection dans un dossier cloud public.
+
+Un démarrage source ou portable peut utiliser le dossier standard `data/`. Avec plusieurs dossiers du programme, fiez-vous au chemin affiché dans la barre d’état.
+
+## 16. Réglages et apparence
+
+**Fichier → Paramètres / Ctrl+,** couvre langue/démarrage, comportement, suivi, apprentissage, budget zéro souple, report, apparence, raccourcis et compte/données.
+
+BudgetManager utilise ses propres profils. Depuis v2.2.33, la barre latérale prend sa couleur dans le profil de l’application ; un thème GNOME sombre ne doit pas remplacer un profil clair. Le changement de langue est complet après redémarrage.
+
+### Mode simple et avancé
+
+Utilisez **Affichage → Mode d’utilisation** pour basculer à tout moment :
+
+- **Simple :** cockpit, budget, suivi et aperçu ; catégories et objectifs restent accessibles via les dialogues ou après changement de mode.
+- **Avancé :** affiche tous les onglets principaux et le cockpit standard complet.
+
+Les onglets ou panneaux modifiés manuellement sont reconnus comme **Personnalisé**. Aucune donnée ni fonction n’est supprimée.
+
+## 17. Raccourcis importants
+
+F1 aide, Ctrl+F1 liste, Ctrl+N opération, Ctrl+F recherche, Ctrl+S enregistrer, Ctrl+K catégories, Ctrl+T tags, Ctrl+E export, Ctrl+0…5 navigation, Ctrl+Z/Ctrl+Maj+Z annuler/rétablir, Ctrl+Maj+F charges fixes/récurrentes, F5 actualiser, F10/F11 agrandir/plein écran. Tous sont modifiables.
+
+## 18. Mises à jour et diagnostic
+
+**Extras → Mises à jour / Ctrl+U** vérifie manifeste et intégrité, télécharge le paquet adapté et prépare l’installation sans remplacer le dossier de données.
+
+Le menu Aide ouvre journaux, dossier de diagnostic et crée un ZIP. Il exclut volontairement base et sauvegardes ; vérifiez-le avant partage.
+
+## 19. Bonne routine
+
+Chaque jour : saisir les opérations. Chaque semaine : vérifier filtres et aperçu. Chaque mois : saisir les échéances, contrôler clôture et suggestions, créer une sauvegarde. Chaque année : copier l’année, vérifier catégories fixes/POT/incrémentielles et saisir le 13e salaire séparément.
+
+## Relations et schémas graphiques
+
+Ouvrez **Aide → Relations et schémas** pour une page hors ligne avec trois schémas : parcours complet, flux Budget/Suivi et boucle de retour par aperçu, alertes et adaptation. Le **?** en haut à droite de la barre de menus – juste à côté de réduire/agrandir/fermer – ouvre le manuel consultable. Le bouton **? Aide** en bas de la barre latérale fait de même. Les deux utilisent du texte normal plutôt qu'un emoji, afin de rester visibles sous Linux sans police emoji.
+
+Depuis la version 2.2.41, les tuiles vides du cockpit descendent automatiquement en fin de colonne. Pour conserver votre propre disposition, activez **Épingler les tuiles** : l'ordre est alors figé et les tuiles se déplacent à la souris par leur en-tête, y compris d'une colonne à l'autre.
+
+Depuis la version 2.2.38, le menu **Aide** est réparti en cinq groupes : consultation (manuel, base de connaissances, vues d'ensemble visuelles), apprentissage (raccourcis clavier, premiers pas), un sous-menu **Dépannage** (journal de l'application, journal de plantage, dossier de diagnostic, rapport de diagnostic, clé de récupération), version (rechercher des mises à jour, nouveautés) et enfin À propos. La recherche de mises à jour se trouvait auparavant sous Extras.

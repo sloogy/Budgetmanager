@@ -11,6 +11,7 @@ Schnittstelle zu OverviewTab:
     panel.load(date_from, date_to, categories_list, tags_list)
     panel.typ_filter_changed.connect(...)
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,10 +24,23 @@ from datetime import date, timedelta
 from PySide6.QtCore import Qt, QDate, Signal
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QComboBox,
-    QFrame, QTabWidget, QLineEdit, QCheckBox, QSpinBox,
-    QPushButton, QTableWidget, QTableWidgetItem, QHeaderView,
-    QAbstractItemView, QDateEdit,
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QGridLayout,
+    QLabel,
+    QComboBox,
+    QFrame,
+    QTabWidget,
+    QLineEdit,
+    QCheckBox,
+    QSpinBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QHeaderView,
+    QAbstractItemView,
+    QDateEdit,
 )
 
 from model.tracking_model import TrackingModel, TrackingRow
@@ -39,7 +53,12 @@ from views.ui_colors import ui_colors
 # Normalisierung für Typ-Strings (Alias-Mapping)
 from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, normalize_typ
 
-from model.typ_constants import normalize_typ as _norm_typ, TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.typ_constants import (
+    normalize_typ as _norm_typ,
+    TYP_INCOME,
+    TYP_EXPENSES,
+    TYP_SAVINGS,
+)
 
 
 def _to_qdate(d: date) -> QDate:
@@ -49,11 +68,12 @@ def _to_qdate(d: date) -> QDate:
 def _typ_items() -> list[tuple[str, str]]:
     """Gibt (Anzeigetext, DB-Schlüssel) zurück. DB-Schlüssel leer = 'Alle'."""
     from utils.i18n import display_typ
+
     return [
         (tr("lbl.all"), ""),
         (display_typ(TYP_EXPENSES), TYP_EXPENSES),
-        (display_typ(TYP_INCOME),   TYP_INCOME),
-        (display_typ(TYP_SAVINGS),  TYP_SAVINGS),
+        (display_typ(TYP_INCOME), TYP_INCOME),
+        (display_typ(TYP_SAVINGS), TYP_SAVINGS),
     ]
 
 
@@ -67,11 +87,14 @@ class OverviewRightPanel(QWidget):
     # Emittiert wenn Filter zurückgesetzt
     filters_reset = Signal()
 
-    def __init__(self, conn: sqlite3.Connection,
-                 track: TrackingModel,
-                 categories: CategoryModel,
-                 tags: TagsModel,
-                 parent=None):
+    def __init__(
+        self,
+        conn: sqlite3.Connection,
+        track: TrackingModel,
+        categories: CategoryModel,
+        tags: TagsModel,
+        parent=None,
+    ):
         super().__init__(parent)
         self.conn = conn
         self.track = track
@@ -145,13 +168,31 @@ class OverviewRightPanel(QWidget):
         form.addWidget(self.search_edit, 5, 1)
 
         # Betrag
-        form.addWidget(QLabel(trf('auto.views_tabs_overview_right_panel.145_min_value_0_b5706b16', value_0=(currency_header()))), 6, 0)
+        form.addWidget(
+            QLabel(
+                trf(
+                    "auto.views_tabs_overview_right_panel.145_min_value_0_b5706b16",
+                    value_0=(currency_header()),
+                )
+            ),
+            6,
+            0,
+        )
         self.min_amount = QLineEdit()
         self.min_amount.setPlaceholderText(tr("overview.amount.min_placeholder"))
         self.min_amount.setValidator(QDoubleValidator(0.0, 1e12, 2, self))
         form.addWidget(self.min_amount, 6, 1)
 
-        form.addWidget(QLabel(trf('auto.views_tabs_overview_right_panel.151_max_value_0_f4d06ed5', value_0=(currency_header()))), 7, 0)
+        form.addWidget(
+            QLabel(
+                trf(
+                    "auto.views_tabs_overview_right_panel.151_max_value_0_f4d06ed5",
+                    value_0=(currency_header()),
+                )
+            ),
+            7,
+            0,
+        )
         self.max_amount = QLineEdit()
         self.max_amount.setPlaceholderText(tr("overview.amount.max_placeholder"))
         self.max_amount.setValidator(QDoubleValidator(0.0, 1e12, 2, self))
@@ -190,9 +231,16 @@ class OverviewRightPanel(QWidget):
 
         self.tbl_transactions = QTableWidget()
         self.tbl_transactions.setColumnCount(6)
-        self.tbl_transactions.setHorizontalHeaderLabels([
-            tr("header.date"), tr("header.type"), tr("header.category"), tr("header.amount"), tr("header.description"), tr("header.tags")
-        ])
+        self.tbl_transactions.setHorizontalHeaderLabels(
+            [
+                tr("header.date"),
+                tr("header.type"),
+                tr("header.category"),
+                tr("header.amount"),
+                tr("header.description"),
+                tr("header.tags"),
+            ]
+        )
 
         header = self.tbl_transactions.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
@@ -204,8 +252,12 @@ class OverviewRightPanel(QWidget):
         header.setMinimumSectionSize(50)
 
         self.tbl_transactions.setAlternatingRowColors(True)
-        self.tbl_transactions.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.tbl_transactions.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.tbl_transactions.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
+        self.tbl_transactions.setEditTriggers(
+            QAbstractItemView.EditTrigger.NoEditTriggers
+        )
         self.tbl_transactions.verticalHeader().setVisible(False)
         layout.addWidget(self.tbl_transactions)
         return widget
@@ -234,8 +286,12 @@ class OverviewRightPanel(QWidget):
         """
         self.date_from.dateChanged.connect(lambda *_: self.filters_changed.emit())
         self.date_to.dateChanged.connect(lambda *_: self.filters_changed.emit())
-        self.category_combo.currentIndexChanged.connect(lambda *_: self.filters_changed.emit())
-        self.tag_combo.currentIndexChanged.connect(lambda *_: self.filters_changed.emit())
+        self.category_combo.currentIndexChanged.connect(
+            lambda *_: self.filters_changed.emit()
+        )
+        self.tag_combo.currentIndexChanged.connect(
+            lambda *_: self.filters_changed.emit()
+        )
         self.search_edit.textChanged.connect(lambda *_: self.filters_changed.emit())
         self.min_amount.textChanged.connect(lambda *_: self.filters_changed.emit())
         self.max_amount.textChanged.connect(lambda *_: self.filters_changed.emit())
@@ -246,6 +302,7 @@ class OverviewRightPanel(QWidget):
     def update_categories(self, typ_filter: str, cat_names: list[str]) -> None:
         """Kategorien-Dropdown aktualisieren und aktive Auswahl erhalten."""
         from PySide6.QtCore import QSignalBlocker
+
         previous = self.category_combo.currentText()
         with QSignalBlocker(self.category_combo):
             self.category_combo.clear()
@@ -261,6 +318,7 @@ class OverviewRightPanel(QWidget):
     def update_tags(self, tag_map: dict[str, int]) -> None:
         """Tag-Dropdown aktualisieren und aktive Auswahl erhalten."""
         from PySide6.QtCore import QSignalBlocker
+
         previous = self.tag_combo.currentText()
         self._tag_name_to_id = tag_map
         with QSignalBlocker(self.tag_combo):
@@ -282,6 +340,7 @@ class OverviewRightPanel(QWidget):
         """
         from PySide6.QtCore import QSignalBlocker
         from model.typ_constants import normalize_typ
+
         db_key = normalize_typ(typ_db_or_display)
         # Suche per userData (DB-Schlüssel) – sprachunabhängig
         idx = self.typ_combo.findData(db_key)
@@ -399,4 +458,6 @@ class OverviewRightPanel(QWidget):
                 tag_names = ""
             self.tbl_transactions.setItem(i, 5, QTableWidgetItem(tag_names))
         self.tbl_transactions.resizeRowsToContents()
-        self.lbl_count.setText(trf("overview.count.transactions_limit", n=len(rows), limit=limit))
+        self.lbl_count.setText(
+            trf("overview.count.transactions_limit", n=len(rows), limit=limit)
+        )

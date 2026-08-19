@@ -10,8 +10,10 @@ Führt in einem Fenster durch den Monatsabschluss:
 
 Es wird nichts automatisch gebucht; jede Aktion braucht einen Klick.
 """
+
 from __future__ import annotations
 
+from utils.notifications import show_info, show_warning
 import logging
 import sqlite3
 
@@ -50,7 +52,9 @@ class MonthCloseDialog(QDialog):
         self.model = MonthCloseModel(conn)
         self._booked_something = False
 
-        self.setWindowTitle(trf("month_close.title", month=tr(f"month.{self.month}"), year=self.year))
+        self.setWindowTitle(
+            trf("month_close.title", month=tr(f"month.{self.month}"), year=self.year)
+        )
         self.setMinimumWidth(560)
         self.setToolTip(tr("help.month_close"))
         self._build_ui()
@@ -155,7 +159,9 @@ class MonthCloseDialog(QDialog):
         status = compute_month_status(
             info.income_actual, info.expense_actual, exp_budget, info.savings_actual
         )
-        closed_suffix = f"  ({tr('month_close.already_closed')})" if info.already_closed else ""
+        closed_suffix = (
+            f"  ({tr('month_close.already_closed')})" if info.already_closed else ""
+        )
         self.lbl_status.setText(f"{status.icon} {tr(status.text_key)}{closed_suffix}")
 
         self.lbl_income.setText(format_money(info.income_actual))
@@ -196,13 +202,16 @@ class MonthCloseDialog(QDialog):
             self.cmb_deficit_source.clear()
             for cat, saldo in info.savings_with_funds:
                 self.cmb_deficit_source.addItem(
-                    f"{cat} ({trf('month_close.available', amount=format_money(saldo))})", cat
+                    f"{cat} ({trf('month_close.available', amount=format_money(saldo))})",
+                    cat,
                 )
             self.spn_deficit_amount.setValue(round(need, 2))
             self.btn_cover_deficit.setEnabled(bool(info.savings_with_funds))
             if not info.savings_with_funds:
                 self.lbl_deficit_info.setText(
-                    self.lbl_deficit_info.text() + "\n" + tr("month_close.no_savings_available")
+                    self.lbl_deficit_info.text()
+                    + "\n"
+                    + tr("month_close.no_savings_available")
                 )
             if info.reduction_hints:
                 lines = [tr("month_close.reduction_intro")]
@@ -227,34 +236,47 @@ class MonthCloseDialog(QDialog):
 
     # ── Aktionen ─────────────────────────────────────────────────
     def _on_book_surplus(self) -> None:
-        cat = self.cmb_surplus_target.currentData() or self.cmb_surplus_target.currentText()
+        cat = (
+            self.cmb_surplus_target.currentData()
+            or self.cmb_surplus_target.currentText()
+        )
         amount = float(self.spn_surplus_amount.value())
         if not cat or amount <= 0:
             return
-        details = trf("month_close.booking_details", month=tr(f"month.{self.month}"), year=self.year)
+        details = trf(
+            "month_close.booking_details",
+            month=tr(f"month.{self.month}"),
+            year=self.year,
+        )
         try:
             self.model.book_surplus(self.year, self.month, amount, str(cat), details)
             self._booked_something = True
-            QMessageBox.information(self, tr("month_close.title_short"), tr("month_close.booked_ok"))
+            show_info(self, tr("month_close.title_short"), tr("month_close.booked_ok"))
             self._reload()
         except Exception as e:
             logger.warning("book_surplus: %s", e)
-            QMessageBox.warning(self, tr("month_close.title_short"), str(e))
+            show_warning(self, tr("month_close.title_short"), str(e))
 
     def _on_cover_deficit(self) -> None:
         cat = self.cmb_deficit_source.currentData()
         amount = float(self.spn_deficit_amount.value())
         if not cat or amount <= 0:
             return
-        details = trf("month_close.booking_details", month=tr(f"month.{self.month}"), year=self.year)
+        details = trf(
+            "month_close.booking_details",
+            month=tr(f"month.{self.month}"),
+            year=self.year,
+        )
         try:
-            self.model.cover_deficit_from_savings(self.year, self.month, amount, str(cat), details)
+            self.model.cover_deficit_from_savings(
+                self.year, self.month, amount, str(cat), details
+            )
             self._booked_something = True
-            QMessageBox.information(self, tr("month_close.title_short"), tr("month_close.booked_ok"))
+            show_info(self, tr("month_close.title_short"), tr("month_close.booked_ok"))
             self._reload()
         except Exception as e:
             logger.warning("cover_deficit: %s", e)
-            QMessageBox.warning(self, tr("month_close.title_short"), str(e))
+            show_warning(self, tr("month_close.title_short"), str(e))
 
     def _on_close_clicked(self) -> None:
         marked_closed = False
