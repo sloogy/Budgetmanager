@@ -3,6 +3,7 @@ Datum: 19. August 2026
 
 ENTERPRISE AUDIT FIXED 2.2.60
 -------------------------------------------------------------
+- Tag-Release publiziert nur BudgetManager-Artefakte; LifePlanner bleibt im eigenen Online-Releaseweg.
 - Finaler Fedora-/Wayland-QtCharts-Absturzpfad ohne removeAllSeries behoben.
 - Diagnose-Logs entfernen freie Nutztexte und maskieren Home-Pfade.
 - Black-, Mypy-, Bandit- und Online-Abhängigkeits-Gates lokal grün.

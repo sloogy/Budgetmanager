@@ -44,10 +44,16 @@ def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset()
     assert "tools/build_release_assets.py" in workflow
     assert "release_assets/*" in workflow
     assert "windows_installer" in workflow
+    assert "push:" in workflow and "tags:" in workflow and "'v*'" in workflow
+    assert "BudgetManager-windows" in workflow
+    assert "BudgetManager-linux" in workflow
+    assert ".lpmodule" not in workflow
     builder = (ROOT / "tools" / "build_release_assets.py").read_text(encoding="utf-8")
     assert "BudgetManager_Setup_{version}.exe" in builder
     assert "BudgetManager_Setup_{version}.zip" in builder
     assert "SHA256SUMS.txt" in builder
+    assert "BudgetManager-v{version}-portable-windows.zip" in builder
+    assert "BudgetManager-v{version}-portable-linux.zip" in builder
 
     for rel in ["latest.json.template", "docs/latest.json.template"]:
         data = json.loads((ROOT / rel).read_text(encoding="utf-8"))

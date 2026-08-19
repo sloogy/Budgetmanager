@@ -19,11 +19,12 @@
     "fragile_dialog_count_gate",
     "black_format_gate_failures",
     "mypy_type_gate_failures",
-    "cryptography_cve_2026_69247"
+    "cryptography_cve_2026_69247",
+    "lifeplanner_workflows_mixed_into_budgetmanager_release"
   ],
   "tests": {
     "test_files": 131,
-    "passed": 838,
+    "passed": 839,
     "skipped_tests": 0,
     "skipped_gui_modules": 0,
     "failed": 0,
@@ -66,7 +67,6 @@
     "black-format-gate",
     "mypy-type-gate",
     "windows-installer-smoke",
-    "lifeplanner-module-install-smoke",
     "authenticode-and-update-signature-verification"
   ]
 }
