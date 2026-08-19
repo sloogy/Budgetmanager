@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir -p audit_artifacts
           python tools/enterprise_release_audit_10000.py --loops 10000 --seed 20260718 --json-out audit_artifacts/ENTERPRISE_RELEASE_AUDIT_10000.json
-      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: enterprise-release-audit-10000
           path: audit_artifacts/ENTERPRISE_RELEASE_AUDIT_10000.json
@@ -58,7 +58,7 @@ jobs:
         run: |
           mkdir -p audit_artifacts
           python tools/run_killcritic_usability_10000.py --loops 10000 --seed 20260718 --json audit_artifacts/KILLCRITIC_USABILITY_10000.json --csv audit_artifacts/KILLCRITIC_USABILITY_10000.csv
-      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: killcritic-usability-audit-10000
           path: |
@@ -126,7 +126,7 @@ jobs:
           python tools/coverage_gate.py --json audit_artifacts/coverage_full.json --summary-json audit_artifacts/coverage_gate_summary.json --overall-min 40
       - name: Upload full coverage evidence
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: coverage-${{ matrix.artifact_name }}
           path: |
@@ -139,7 +139,7 @@ jobs:
         run: python tools/performance_release_gate.py --rows 50000 --json-out audit_artifacts/performance_gate.json
       - name: Upload release performance evidence
         if: always() && runner.os == 'Linux'
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: release-large-database-performance
           path: audit_artifacts/performance_gate.json
@@ -172,7 +172,7 @@ jobs:
           test -d "${{ matrix.pyinstaller_output }}"
           test -f "${{ matrix.pyinstaller_output }}/BudgetManager.exe" || test -f "${{ matrix.pyinstaller_output }}/BudgetManager"
           test -d "${{ matrix.pyinstaller_output }}/_internal"
-      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.pyinstaller_output }}
@@ -236,7 +236,7 @@ jobs:
           $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Uninstaller ExitCode $($uninstall.ExitCode)" }
           if (-not (Test-Path $dataDir)) { throw "Nutzerdaten wurden gelöscht" }
-      - uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: BudgetManager_Setup.exe
           path: BudgetManager_Setup.exe

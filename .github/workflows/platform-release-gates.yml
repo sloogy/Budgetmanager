@@ -67,7 +67,7 @@ jobs:
 
       - name: Upload Fedora visual smoke evidence
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: visual-smoke-fedora-${{ matrix.fedora }}-scale-${{ matrix.scale }}
           path: audit_artifacts/
@@ -104,7 +104,7 @@ jobs:
 
       - name: Upload Windows visual smoke evidence
         if: always()
-        uses: actions/upload-artifact@65462800fd760344b1a7b4382951275a0abb4808 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v4
         with:
           name: visual-smoke-windows-scale-${{ matrix.scale }}
           path: audit_artifacts/
