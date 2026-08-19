@@ -28,6 +28,10 @@ def test_app_icon_assets_and_build_config_are_wired():
     assert "{app}\\data\\budgetmanager_settings.json" not in iss
     assert "CloseApplications=force" in iss
     assert "RestartApplications=no" in iss
+    assert "ArchitecturesAllowed=x64compatible" in iss
+    assert "ArchitecturesInstallIn64BitMode=x64compatible" in iss
+    assert "OnlyBelowVersion" not in iss
+    assert "quicklaunchicon" not in iss
     assert "InstallerUpdateMode" in iss
     assert "ExpandConstant('{param:DATA_DIR|}')" in iss
     assert "ShouldSkipPage(PageID: Integer)" in iss

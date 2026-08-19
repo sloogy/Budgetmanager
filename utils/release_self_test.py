@@ -11,6 +11,8 @@ import sys
 import traceback
 from typing import TextIO
 
+MIN_SAMPLE_COLOURS = 4
+
 
 def _emit_result(result: dict[str, object], *, stream: TextIO | None) -> None:
     """Gibt das Ergebnis auch bei einer Windows-GUI-EXE zuverlässig aus."""
@@ -42,7 +44,7 @@ def _pixmap_render_metrics(pixmap) -> dict[str, object]:
             colours.add(pixel.rgba())
             opaque_samples += int(pixel.alpha() > 0)
             sample_count += 1
-    if len(colours) < 8:
+    if len(colours) < MIN_SAMPLE_COLOURS:
         raise RuntimeError(
             f"Fensterbild ist nahezu einfarbig ({len(colours)} Stichprobenfarben)"
         )

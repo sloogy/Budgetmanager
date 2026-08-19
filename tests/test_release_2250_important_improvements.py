@@ -154,7 +154,7 @@ def test_large_database_benchmark_smoke() -> None:
 
 def test_visual_render_metrics_reject_blank_and_accept_real_content() -> None:
     pytest.importorskip("PySide6")
-    from PySide6.QtGui import QColor, QImage, QPixmap
+    from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
     from PySide6.QtWidgets import QApplication
     from utils.release_self_test import _pixmap_render_metrics
 
@@ -163,6 +163,14 @@ def test_visual_render_metrics_reject_blank_and_accept_real_content() -> None:
     blank.fill(0xFF101010)
     with pytest.raises(RuntimeError, match="einfarbig"):
         _pixmap_render_metrics(QPixmap.fromImage(blank))
+
+    low_diversity = QImage(800, 500, QImage.Format_ARGB32)
+    painter = QPainter(low_diversity)
+    for index, colour in enumerate(("#101010", "#202020", "#303030")):
+        painter.fillRect(index * 267, 0, 267, 500, QColor(colour))
+    painter.end()
+    with pytest.raises(RuntimeError, match="einfarbig"):
+        _pixmap_render_metrics(QPixmap.fromImage(low_diversity))
 
     image = QImage(800, 500, QImage.Format_ARGB32)
     for y in range(image.height()):
