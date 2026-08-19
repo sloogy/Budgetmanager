@@ -49,6 +49,9 @@ def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset()
     assert "BudgetManager-windows" in workflow
     assert "BudgetManager-linux" in workflow
     assert ".lpmodule" not in workflow
+    assert "https://archive.ubuntu.com/ubuntu" in workflow
+    assert "Acquire::http::Timeout=20" in workflow
+    assert "--no-install-recommends" in workflow
     assert "Test silent install, app start and uninstall" in workflow
     assert "/VERYSILENT" in workflow
     assert workflow.count("Start-Process") >= 3

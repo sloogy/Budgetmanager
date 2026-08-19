@@ -43,7 +43,21 @@ jobs:
 
       - name: Install Qt offscreen dependencies (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mirror_list=/etc/apt/apt-mirrors.txt
+          if [ -f "$mirror_list" ]; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' "$mirror_list"
+          fi
+          apt_options=(
+            -o Acquire::Retries=3
+            -o Acquire::http::Timeout=20
+            -o Acquire::https::Timeout=20
+          )
+          sudo apt-get "${apt_options[@]}" update
+          sudo apt-get "${apt_options[@]}" install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1
 
       - name: Check version consistency
         run: python tools/sync_version.py --check
