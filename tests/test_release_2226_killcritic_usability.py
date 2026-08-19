@@ -100,15 +100,12 @@ def test_critical_action_targets_have_minimum_size():
     assert "self.btn_manage.setMinimumSize(32, 32)" in budget_entry
 
 
-def test_killcritic_usability_audit_is_required_by_tag_build():
+def test_killcritic_usability_audit_remains_a_local_tool():
     workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
         encoding="utf-8"
     )
-    assert "killcritic-usability-audit-10000:" in workflow
-    assert "python tools/run_killcritic_usability_10000.py" in workflow
-    assert "--loops 10000" in workflow
-    assert "KILLCRITIC_USABILITY_10000.json" in workflow
-    assert "killcritic-usability-audit-10000" in workflow.split("needs:", 1)[1]
+    assert "killcritic-usability-audit-10000:" not in workflow
+    assert (ROOT / "tools" / "run_killcritic_usability_10000.py").is_file()
 
 
 def test_isolated_killcritic_worker_smoke(tmp_path):

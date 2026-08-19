@@ -2,9 +2,9 @@
   "application": "Budgetmanager",
   "version": "2.2.60",
   "date": "2026-08-19",
-  "status": "local_go_github_release_gates_required",
+  "status": "local_go_single_tag_workflow_required",
   "source_release": "go",
-  "public_binary_release": "blocked_until_github_platform_and_signing_gates_pass",
+  "public_binary_release": "blocked_until_build_executables_succeeds",
   "fixed_findings": [
     "version_and_release_date_mismatch",
     "main_window_architecture_limit_exceeded",
@@ -20,11 +20,12 @@
     "black_format_gate_failures",
     "mypy_type_gate_failures",
     "cryptography_cve_2026_69247",
-    "lifeplanner_workflows_mixed_into_budgetmanager_release"
+    "lifeplanner_workflows_mixed_into_budgetmanager_release",
+    "multiple_github_release_workflows"
   ],
   "tests": {
     "test_files": 131,
-    "passed": 839,
+    "passed": 840,
     "skipped_tests": 0,
     "skipped_gui_modules": 0,
     "failed": 0,
@@ -62,11 +63,9 @@
     "qt_runtime": "pass"
   },
   "required_external_gates": [
-    "platform-release-gates",
-    "dependency-security-gate",
-    "black-format-gate",
-    "mypy-type-gate",
-    "windows-installer-smoke",
-    "authenticode-and-update-signature-verification"
+    "build-executables-windows",
+    "build-executables-linux",
+    "build-executables-installer",
+    "build-executables-release-upload"
   ]
 }

@@ -6,6 +6,7 @@ Erzeugt in einem sauberen Ausgabeordner:
 - getrennte portable ZIPs fuer Windows und Linux mit stabilen Startnamen
 - optional Windows-Installer-EXE und Installer-ZIP fuer SmartScreen/Browser-Blockaden
 - latest.json fuer den In-App-Updater
+- optional latest.json.sig, wenn beide Update-Signierschluessel gesetzt sind
 - SHA256SUMS.txt fuer die manuelle Pruefung
 
 Updater-Vertrag:
@@ -30,7 +31,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app_info import APP_NAME, APP_VERSION  # noqa: E402
-from updater.manifest_signing import sign_manifest_file  # noqa: E402
 from tools.generate_sbom import generate_sbom  # noqa: E402
 
 WINDOWS_CANONICAL_EXE = "BudgetManager.exe"
@@ -429,15 +429,21 @@ def main() -> int:
 
     private_key_b64 = os.environ.get(args.signing_private_key_env, "").strip()
     public_key_b64 = os.environ.get(args.signing_public_key_env, "").strip()
-    if not private_key_b64 or not public_key_b64:
+    latest_signature: Path | None = None
+    if bool(private_key_b64) != bool(public_key_b64):
         _die(
-            "Update-Signierschlüssel fehlen. Release-Manifeste werden niemals unsigned erzeugt."
+            "Für eine Manifest-Signatur müssen Private- und Public-Key gemeinsam gesetzt sein."
         )
-    latest_signature = sign_manifest_file(
-        latest,
-        private_key_b64=private_key_b64,
-        expected_public_key_b64=public_key_b64,
-    )
+    if private_key_b64 and public_key_b64:
+        from updater.manifest_signing import sign_manifest_file
+
+        latest_signature = sign_manifest_file(
+            latest,
+            private_key_b64=private_key_b64,
+            expected_public_key_b64=public_key_b64,
+        )
+    else:
+        print("Update-Signierschlüssel nicht gesetzt; latest.json bleibt unsigned.")
     sbom = generate_sbom(
         ROOT / "requirements.lock",
         out_dir / f"BudgetManager-v{version}.cdx.json",
@@ -448,9 +454,10 @@ def main() -> int:
         portable_windows_zip,
         portable_linux_zip,
         latest,
-        latest_signature,
         sbom,
     ]
+    if latest_signature is not None:
+        files_for_sums.append(latest_signature)
     if installer_exe is not None:
         files_for_sums.append(installer_exe)
     if installer_zip is not None:

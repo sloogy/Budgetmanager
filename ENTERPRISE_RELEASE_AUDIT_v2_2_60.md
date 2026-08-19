@@ -45,7 +45,7 @@ Die Regressionen decken die wesentlichen fachlichen Bereiche ab:
 ### Pytest-Ergebnis
 
 - **131 Testdateien geprüft**
-- **839 Tests bestanden**
+- **840 Tests bestanden**
 - **0 Tests übersprungen**
 - **PySide6-/QtCharts-Laufzeit aktiv**, einschließlich 250 Cockpit-Diagramm-Refreshes
 - **0 fehlgeschlagen**
@@ -146,14 +146,10 @@ Die Workflows dafür sind vorhanden und fail-closed. Sie bleiben verpflichtende 
 
 ### Öffentliches Windows-/Linux-Release
 
-**GO nach grünen GitHub-Gates.** Vor Veröffentlichung müssen zwingend folgende Punkte bestanden sein:
-
-1. GitHub `platform-release-gates` vollständig grün.
-2. GitHub `dependency-security-gate` mit Bandit und pip-audit grün.
-3. Black- und Mypy-Gates als unabhängige Wiederholung grün.
-4. Windows-Installer installieren, starten, aktualisieren und deinstallieren.
-5. Portable Windows- und Linux-Pakete auf sauberen Systemen starten.
-6. Update-Signatur, SHA-256, SBOM, Provenance und Authenticode kontrollieren.
+**GO nach grünem `Build Executables`-Workflow.** Der einzige Tag-Workflow muss
+Windows- und Linux-onedir-Build, Windows-Installer, portable ZIPs, Manifest,
+Prüfsummen und GitHub-Release vollständig erzeugen. Danach Windows-Setup sowie
+beide portablen Pakete stichprobenartig starten und `SHA256SUMS.txt` prüfen.
 
 ## 10. Wichtigste Änderungen gegenüber v2.2.59
 
@@ -166,7 +162,7 @@ Die Workflows dafür sind vorhanden und fail-closed. Sie bleiben verpflichtende 
 - LifePlanner-Warnungen nicht-modal gemacht und das Dialog-Tastatur-Gate robust erweitert.
 - LifePlanner-GitHub-Checks und `.lpmodule`-Uploads aus dem BudgetManager-Release entfernt; der externe LifePlanner-Onlineweg bleibt zuständig.
 - Black-, Mypy-, Bandit- und Dependency-Gates lokal grün; `cryptography` 50.0.0 schließt CVE-2026-69247.
-- Vollständige PySide6-Suite: 839 Tests bestanden, 0 übersprungen, 0 fehlgeschlagen.
+- Vollständige PySide6-Suite: 840 Tests bestanden, 0 übersprungen, 0 fehlgeschlagen.
 - Neue v2.2.60-Auditmatrix und JSON-Nachweise erzeugt.
 - Historische Root-Auditdateien ins Dokumentationsarchiv verschoben.
 - Releasebaum vollständig von Laufzeit- und Cache-Artefakten bereinigt.

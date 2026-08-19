@@ -3,13 +3,14 @@
 ## 2.2.60 – 19. August 2026
 
 ### Finale Release-Härtung
+- GitHub Actions auf genau einen Tag-Workflow reduziert: `build.yml` baut Windows und Linux, erzeugt den Windows-Installer, prüft die portablen Pakete und veröffentlicht alle Release-Assets.
 - BudgetManager-Tag-Releases sind wieder klar abgegrenzt: portable Windows-/Linux-Pakete, Windows-Setup, Updater-Dateien und GitHub-Quellcodearchive; LifePlanner-Checks und `.lpmodule`-Uploads laufen nicht in diesem Repository.
 - Nativen Fedora-/Wayland-Abort in `CompactChart` behoben: Diagramme werden atomar ersetzt und erst im nächsten Event-Loop-Durchlauf entsorgt; `removeAllSeries()` wird im Refresh-Pfad nicht mehr verwendet.
 - Diagnose-ZIPs geben keine rohen App-Logmeldungen mit Kategorien, Beträgen, Kommentaren oder externen IDs mehr weiter; technische Metadaten bleiben erhalten und Home-Pfade werden maskiert.
 - LifePlanner-Import verwendet nicht-modale, barrierearme Warnhinweise; das Tastatur-Gate wächst ohne fragile Dialog-Zählkonstante mit.
 - Vollständige Black-Formatierung und alle Mypy-Befunde des verpflichtenden Tag-Workflows behoben.
 - `cryptography` von 49.0.0 auf 50.0.0 aktualisiert; CVE-2026-69247 ist damit geschlossen, Hash-Locks für Linux und Windows sind erneuert.
-- Reale lokale PySide6-/QtCharts-Suite: 839 Tests bestanden; Bandit und Online-`pip-audit` ohne Blocker.
+- Reale lokale PySide6-/QtCharts-Suite: 840 Tests bestanden; Bandit und Online-`pip-audit` ohne Blocker.
 
 ### Enterprise-, Funktions- und DAU-Härtung
 - Einstellungsworkflow aus dem 3.600-Zeilen-Hauptfenster in `views/main_window_settings.py` ausgelagert; Architektur-Gate wieder grün.

@@ -6,19 +6,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_release_workflow_uses_least_privilege_and_pinned_actions() -> None:
+def test_release_workflow_is_single_tag_pipeline_with_release_permission() -> None:
+    workflow_dir = ROOT / ".github" / "workflows"
+    assert sorted(path.name for path in workflow_dir.glob("*.yml")) == ["build.yml"]
     workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
-    assert "permissions:\n  contents: read" in workflow
-    manifest = workflow.split("  manifest:\n", 1)[1]
-    assert (
-        "permissions:\n      contents: write\n      id-token: write\n      attestations: write"
-        in manifest
-    )
+    assert "permissions:\n  contents: write" in workflow
+    assert "tags:\n      - 'v*'" in workflow
     for line in workflow.splitlines():
-        if "uses:" in line and not "./.github/workflows/" in line:
+        if "uses:" in line:
             ref = line.split("@", 1)[1].split()[0]
-            assert len(ref) == 40
-            int(ref, 16)
+            assert ref in {"v2", "v4", "v5"}
 
 
 def test_manifest_gate_is_fail_closed_without_public_key() -> None:

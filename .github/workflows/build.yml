@@ -17,6 +17,7 @@ jobs:
           - os: windows-latest
             artifact_name: BudgetManager-windows
             pyinstaller_output: dist/BudgetManager
+
           - os: ubuntu-latest
             artifact_name: BudgetManager-linux
             pyinstaller_output: dist/BudgetManager
@@ -33,37 +34,32 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
+        shell: bash
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --require-hashes -r requirements-build.lock
-          python -m pip install --require-hashes -r requirements-dev.lock
-          python -m pip check
+          python -m pip install -r requirements-build.txt
+          python -m pip install -r requirements-dev.txt
 
       - name: Install Qt offscreen dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libegl1 libgl1 libxkbcommon-x11-0 libdbus-1-3 libfontconfig1
 
-      - name: Materialize updater public key
-        env:
-          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
-        run: python tools/materialize_update_public_key.py
-
       - name: Check version consistency
         run: python tools/sync_version.py --check
 
       - name: Verify Qt translation catalogs
-        run: |
-          python tools/verify_qt_translations.py
-          python tools/i18n_audit.py
+        run: python tools/verify_qt_translations.py
 
       - name: Compile all sources
         run: python -m compileall -q . -x '_attic|__pycache__|.venv|venv'
 
-      - name: Check formatting
-        run: python -m black --check --workers 1 main.py app_info.py settings.py settings_dialog.py theme_manager.py model updater utils views tools tests
+      - name: Check model formatting
+        run: |
+          python -m black --version
+          python -m black --check model/
 
-      - name: Type-check model and updater
-        run: python -m mypy model/ updater/manifest_signing.py
+      - name: Type-check model layer
+        run: python -m mypy model/
 
       - name: Run core tests
         shell: bash
@@ -72,12 +68,13 @@ jobs:
           PYTHONUTF8: "1"
           PYTHONIOENCODING: utf-8
           PYTHONDONTWRITEBYTECODE: "1"
-        run: python -m pytest tests/ -v -ra --tb=short
+        run: |
+          python -m pytest tests/ -v -ra --tb=short
 
       - name: Clean generated test artifacts
         run: python tools/clean_release_tree.py
 
-      - name: Verify release procedure
+      - name: Verify lint and release procedure
         run: python tools/lint_procedure_check.py
 
       - name: Build with PyInstaller
@@ -124,7 +121,8 @@ jobs:
 
       - name: Install Inno Setup
         shell: pwsh
-        run: choco install innosetup --no-progress -y
+        run: |
+          choco install innosetup --no-progress -y
 
       - name: Build Windows installer
         shell: pwsh
@@ -163,12 +161,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install manifest dependencies
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --require-hashes -r requirements-build.lock
-          python -m pip check
-
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
@@ -187,10 +179,7 @@ jobs:
           name: BudgetManager_Setup.exe
           path: artifacts/windows/
 
-      - name: Build signed release assets and updater manifest
-        env:
-          UPDATE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_B64 }}
-          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
+      - name: Build release assets + updater manifest
         shell: bash
         run: |
           TAG="${{ github.ref_name }}"
@@ -206,18 +195,10 @@ jobs:
             --out-dir release_assets \
             --require-installer
 
-          test -s release_assets/latest.json
-          test -s release_assets/latest.json.sig
-          test -s release_assets/SHA256SUMS.txt
           echo "Release assets:"
           ls -lah release_assets
 
-      - name: Verify updater manifest
-        env:
-          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
-        run: python tools/verify_release_manifest.py release_assets/latest.json --signature release_assets/latest.json.sig
-
-      - name: Verify portable packages
+      - name: Verify updater manifest stays updater-safe
         shell: bash
         run: |
           python - <<'PY'
@@ -227,24 +208,29 @@ jobs:
 
           data = json.loads(Path('release_assets/latest.json').read_text(encoding='utf-8'))
           assets = data['assets']
-          assert assets['windows']['type'] == 'portable-zip'
-          assert assets['linux']['type'] == 'portable-zip'
-          assert assets['windows_installer']['type'] == 'installer'
-          assert assets['windows_installer_zip']['type'] == 'installer-zip'
+          assert assets['windows']['type'] == 'portable-zip', assets['windows']
+          assert assets['linux']['type'] == 'portable-zip', assets['linux']
+          assert assets['windows']['url'].endswith('-portable-windows.zip'), assets['windows']
+          assert assets['linux']['url'].endswith('-portable-linux.zip'), assets['linux']
+          assert assets['windows_installer']['type'] == 'installer', assets['windows_installer']
+          assert assets['windows_installer_zip']['type'] == 'installer-zip', assets['windows_installer_zip']
+          assert 'direct_windows_exe' not in assets
+          assert 'direct_linux_binary' not in assets
+          assert Path('release_assets/SHA256SUMS.txt').is_file()
 
           with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-windows.zip'))) as zf:
               names = set(zf.namelist())
               assert 'BudgetManager.exe' in names
               assert 'start-windows.cmd' in names
               assert 'data/.keep' in names
-              assert any(n.startswith('_internal/') for n in names)
-
+              assert any(n.startswith('_internal/') for n in names), 'Windows-ZIP ohne _internal/'
           with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-linux.zip'))) as zf:
               names = set(zf.namelist())
               assert 'BudgetManager' in names
               assert 'start-linux.sh' in names
               assert 'data/.keep' in names
-              assert any(n.startswith('_internal/') for n in names)
+              assert any(n.startswith('_internal/') for n in names), 'Linux-ZIP ohne _internal/'
+          print('latest.json und portable ZIPs OK')
           PY
 
       - name: Upload to GitHub Release

@@ -194,9 +194,20 @@ def _dev_black_pin() -> str | None:
 
 def check_workflow() -> list[str]:
     errors: list[str] = []
-    workflow_path = ROOT / ".github" / "workflows" / "build.yml"
+    workflow_dir = ROOT / ".github" / "workflows"
+    workflow_path = workflow_dir / "build.yml"
     workflow = _read(workflow_path)
-    dependency_workflow = _read(ROOT / ".github" / "workflows" / "dependency-audit.yml")
+
+    workflow_files = sorted(
+        path.name
+        for pattern in ("*.yml", "*.yaml")
+        for path in workflow_dir.glob(pattern)
+    )
+    if workflow_files != ["build.yml"]:
+        errors.append(
+            "Es darf genau einen GitHub-Workflow geben: build.yml; gefunden: "
+            + ", ".join(workflow_files)
+        )
 
     # Eine zweite, harte Black-Version im Workflow ist ein Release-Risiko:
     # requirements-dev.txt ist die zentrale Quelle. Ein abweichendes
@@ -213,38 +224,29 @@ def check_workflow() -> list[str]:
         )
 
     required_snippets = [
+        "tags:\n      - 'v*'",
+        "permissions:\n  contents: write",
+        "python -m pip install -r requirements-build.txt",
+        "python -m pip install -r requirements-dev.txt",
         "python tools/sync_version.py --check",
         "python tools/verify_qt_translations.py",
         "python -m compileall -q .",
-        "python -m black --check --workers 1 main.py",
+        "python -m black --check model/",
         "python -m mypy model/",
-        "python tools/verify_hashed_lock.py",
-        "python tools/architecture_quality_gate.py",
-        "python tools/coverage_gate.py",
-        "tools/materialize_update_public_key.py",
-        "signtool sign",
-        "actions/attest-build-provenance@",
         "python -m pytest tests/ -v -ra --tb=short",
-        "python tools/enterprise_release_audit_10000.py",
-        "enterprise-release-audit-10000",
         "python tools/clean_release_tree.py",
         "python tools/lint_procedure_check.py",
         "pyinstaller BudgetManager.spec --noconfirm",
+        "windows-latest",
+        "ubuntu-latest",
+        "Build Windows installer",
+        "tools/build_release_assets.py",
+        "Verify updater manifest stays updater-safe",
+        "softprops/action-gh-release@v2",
     ]
     for snippet in required_snippets:
         if snippet not in workflow:
             errors.append(f"GitHub-Workflow fehlt Gate: {snippet}")
-
-    dependency_snippets = [
-        "python tools/bandit_release_gate.py",
-        "BANDIT_CURRENT.json",
-        "BANDIT_RELEASE_GATE.json",
-        "python -m pip_audit",
-        "python -m pip check",
-    ]
-    for snippet in dependency_snippets:
-        if snippet not in dependency_workflow:
-            errors.append(f"Dependency-Workflow fehlt Gate: {snippet}")
 
     pytest_pos = workflow.find("python -m pytest tests/ -v -ra --tb=short")
     clean_pos = workflow.find("python tools/clean_release_tree.py")
@@ -304,9 +306,9 @@ def check_required_regression_tests() -> list[str]:
             "test_lint_procedure_locks_required_regression_tests_into_release_gate",
         ],
         "tests/test_release_2225_enterprise_audit_gate.py": [
-            "test_tag_build_requires_enterprise_10000_audit",
-            "enterprise-release-audit-10000",
-            "--loops 10000",
+            "test_tag_build_uses_only_the_single_release_workflow",
+            'glob("*.yml")',
+            '"build.yml"',
         ],
         "tests/test_release_2225_bandit_delta_gate.py": [
             "test_current_source_has_zero_medium_and_high_findings",

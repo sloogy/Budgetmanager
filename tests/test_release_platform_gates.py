@@ -1,67 +1,121 @@
-"""Release-Regressionsschutz für Plattform-, Installer- und CVE-Gates."""
+"""Regressionsschutz für den einzigen, taggesteuerten Release-Workflow."""
 
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+WORKFLOW_DIR = ROOT / ".github" / "workflows"
+WORKFLOW = WORKFLOW_DIR / "build.yml"
 
 
-def test_platform_workflow_covers_fedora_wayland_windows_and_accessibility() -> None:
-    workflow = (ROOT / ".github/workflows/platform-release-gates.yml").read_text(
-        encoding="utf-8"
+def _workflow() -> str:
+    return WORKFLOW.read_text(encoding="utf-8")
+
+
+def test_exactly_one_tag_only_release_workflow_exists() -> None:
+    files = sorted(
+        path.name
+        for pattern in ("*.yml", "*.yaml")
+        for path in WORKFLOW_DIR.glob(pattern)
     )
+    assert files == ["build.yml"]
+    workflow = _workflow()
+    assert "push:" in workflow
+    assert "tags:" in workflow
+    assert "- 'v*'" in workflow
+    assert "pull_request:" not in workflow
+    assert "workflow_call:" not in workflow
+
+
+def test_single_workflow_builds_windows_linux_installer_and_release() -> None:
+    workflow = _workflow()
     for marker in (
-        'fedora: ["42", "latest"]',
-        "container: fedora:${{ matrix.fedora }}",
-        "QT_QPA_PLATFORM=wayland",
-        "BM_ALLOW_WAYLAND=1",
-        'scale: ["1.0", "1.25", "1.5", "2.0"]',
         "windows-latest",
-        'QT_QPA_PLATFORM = "windows"',
-        "QT_LINUX_ACCESSIBILITY_ALWAYS_ON",
-        "--release-self-test",
+        "ubuntu-latest",
+        "BudgetManager-windows",
+        "BudgetManager-linux",
+        "pyinstaller BudgetManager.spec --noconfirm --clean",
+        "Build Windows installer",
+        "choco install innosetup",
+        "BudgetManager_Setup.exe",
+        "tools/build_release_assets.py",
+        "Verify updater manifest stays updater-safe",
+        "softprops/action-gh-release@v2",
+        "release_assets/*",
     ):
         assert marker in workflow
 
 
-def test_installer_workflow_performs_real_silent_e2e() -> None:
-    workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
+def test_single_workflow_runs_core_quality_checks_before_build() -> None:
+    workflow = _workflow()
     for marker in (
-        "Silent install, launch and uninstall E2E",
-        "/VERYSILENT",
-        "/DATA_DIR=",
-        "BudgetManager.exe",
-        "--release-self-test",
-        "unins*.exe",
+        "python tools/sync_version.py --check",
+        "python tools/verify_qt_translations.py",
+        "python -m compileall -q .",
+        "python -m black --check model/",
+        "python -m mypy model/",
+        "python -m pytest tests/ -v -ra --tb=short",
+        "python tools/clean_release_tree.py",
+        "python tools/lint_procedure_check.py",
     ):
         assert marker in workflow
 
 
-def test_online_dependency_audit_and_dependabot_are_mandatory() -> None:
-    workflow = (ROOT / ".github/workflows/dependency-audit.yml").read_text(
-        encoding="utf-8"
+def test_release_jobs_have_one_clear_dependency_chain() -> None:
+    workflow = _workflow()
+    assert "installer:\n    needs: build" in workflow
+    assert "manifest:\n    needs: [build, installer]" in workflow
+
+
+def test_release_asset_builder_works_without_signing_secrets(
+    monkeypatch, tmp_path: Path
+) -> None:
+    from tools import build_release_assets
+
+    windows = tmp_path / "windows"
+    linux = tmp_path / "linux"
+    for bundle in (windows, linux):
+        (bundle / "_internal").mkdir(parents=True)
+        (bundle / "_internal" / "runtime.dat").write_bytes(b"runtime")
+    (windows / "BudgetManager.exe").write_bytes(b"windows")
+    (windows / "BudgetManager_Setup.exe").write_bytes(b"installer")
+    (linux / "BudgetManager").write_bytes(b"linux")
+    out = tmp_path / "release_assets"
+
+    monkeypatch.delenv("UPDATE_SIGNING_PRIVATE_KEY_B64", raising=False)
+    monkeypatch.delenv("UPDATE_SIGNING_PUBLIC_KEY_B64", raising=False)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "build_release_assets.py",
+            "--version",
+            "9.9.9",
+            "--release-tag",
+            "v9.9.9",
+            "--base-url",
+            "https://example.invalid/releases/download/v9.9.9",
+            "--windows-build-dir",
+            str(windows),
+            "--linux-build-dir",
+            str(linux),
+            "--out-dir",
+            str(out),
+            "--require-installer",
+        ],
     )
-    dependabot = (ROOT / ".github/dependabot.yml").read_text(encoding="utf-8")
-    dev_input = (ROOT / "requirements-dev.in").read_text(encoding="utf-8")
-    dev_lock = (ROOT / "requirements-dev.lock").read_text(encoding="utf-8")
-    assert "pip-audit==2.10.1" in dev_input
-    assert "pip_audit==2.10.1" in dev_lock
-    assert "--require-hashes -r requirements-dev.lock" in workflow
-    assert "--requirement requirements.lock" in workflow
-    assert "PIP_AUDIT_ONLINE.json" in workflow
-    assert 'package-ecosystem: "pip"' in dependabot
-    assert 'package-ecosystem: "github-actions"' in dependabot
+
+    assert build_release_assets.main() == 0
+    assert (out / "BudgetManager-v9.9.9-portable-windows.zip").is_file()
+    assert (out / "BudgetManager-v9.9.9-portable-linux.zip").is_file()
+    assert (out / "BudgetManager_Setup_9.9.9.exe").is_file()
+    assert (out / "BudgetManager_Setup_9.9.9.zip").is_file()
+    assert (out / "latest.json").is_file()
+    assert (out / "SHA256SUMS.txt").is_file()
+    assert not (out / "latest.json.sig").exists()
 
 
-def test_updater_self_test_is_wired_into_source_and_installed_build() -> None:
-    root = Path(__file__).resolve().parents[1]
-    main = (root / "main.py").read_text(encoding="utf-8")
-    platform_workflow = (
-        root / ".github/workflows/platform-release-gates.yml"
-    ).read_text(encoding="utf-8")
-    build_workflow = (root / ".github/workflows/build.yml").read_text(encoding="utf-8")
+def test_updater_self_test_remains_available() -> None:
+    main = (ROOT / "main.py").read_text(encoding="utf-8")
     assert "--updater-self-test" in main
-    assert "--updater-self-test" in platform_workflow
-    assert "& $exe --updater-self-test" in build_workflow
 
 
 def test_find_staged_root_ignores_update_marker(tmp_path: Path) -> None:
@@ -78,22 +132,3 @@ def test_updater_e2e_sandbox() -> None:
     from utils.updater_self_test import run_updater_self_test
 
     assert run_updater_self_test() == 0
-
-
-def test_tag_build_is_blocked_by_platform_dependency_and_10000_loop_gates() -> None:
-    root = Path(__file__).resolve().parents[1]
-    platform = (root / ".github/workflows/platform-release-gates.yml").read_text(
-        encoding="utf-8"
-    )
-    dependency = (root / ".github/workflows/dependency-audit.yml").read_text(
-        encoding="utf-8"
-    )
-    build = (root / ".github/workflows/build.yml").read_text(encoding="utf-8")
-    assert "workflow_call:" in platform
-    assert "workflow_call:" in dependency
-    assert "uses: ./.github/workflows/platform-release-gates.yml" in build
-    assert "uses: ./.github/workflows/dependency-audit.yml" in build
-    assert (
-        "needs: [platform-release-gates, dependency-security-gate, "
-        "enterprise-release-audit-10000, killcritic-usability-audit-10000]"
-    ) in build

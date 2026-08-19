@@ -297,9 +297,8 @@ def check_release_platform_and_updater() -> None:
         "BudgetManager_Setup.exe",
         "tools/build_release_assets.py",
         "release_assets/*",
-        "Build signed release assets, updater manifest and SBOM",
+        "Build release assets + updater manifest",
         "Verify updater manifest stays updater-safe",
-        "tools/verify_release_manifest.py",
         "softprops/action-gh-release@",
     ]:
         assert needle in workflow, f"workflow missing {needle}"

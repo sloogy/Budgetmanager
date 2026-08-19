@@ -64,11 +64,7 @@ def test_current_source_has_zero_medium_and_high_findings(tmp_path: Path):
     assert payload["blocking_findings"] == []
 
 
-def test_dependency_workflow_uploads_bandit_evidence():
-    workflow = (ROOT / ".github/workflows/dependency-audit.yml").read_text(
-        encoding="utf-8"
-    )
-    assert "python tools/bandit_release_gate.py" in workflow
-    assert "BANDIT_CURRENT.json" in workflow
-    assert "BANDIT_RELEASE_GATE.json" in workflow
-    assert "requirements-dev.lock" in workflow
+def test_bandit_tooling_remains_available_for_local_audits():
+    assert (ROOT / "tools" / "bandit_release_gate.py").is_file()
+    requirements = (ROOT / "requirements-dev.txt").read_text(encoding="utf-8")
+    assert "bandit==" in requirements

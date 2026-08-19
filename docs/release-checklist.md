@@ -21,20 +21,20 @@ python tools/lint_procedure_check.py
 ```
 
 
-## Vor dem ersten Release einmalig konfigurieren
+## Einziger automatisierter Release-Workflow
 
-Siehe `docs/release-signing.md`. Update-Signierschlüssel und Windows-Code-Signing-Zertifikat müssen als GitHub Variable/Secrets hinterlegt sein. Ohne diese Vertrauensanker bricht der Release-Build absichtlich ab.
+Im Repository existiert ausschließlich `.github/workflows/build.yml`. Er wird nur
+durch einen Tag `v*` gestartet und erledigt die gesamte Veröffentlichung:
 
-## Verpflichtende automatisierte Release-Gates
+1. Windows- und Linux-onedir-Build mit PyInstaller.
+2. Windows-Installer mit Inno Setup.
+3. Portable ZIPs für Windows und Linux.
+4. `latest.json`, `SHA256SUMS.txt` und SBOM.
+5. Upload aller Dateien in den GitHub-Release.
 
-Der Tag-Build startet diese beiden wiederverwendbaren Workflows und wartet auf sie:
-
-- `platform-release-gates.yml`: Fedora 42 und latest unter Wayland bei 100/125/150/200 %, Windows bei 100/125/150/200 %, Qt-Accessibility, GUI- und Updater-Selbsttest.
-- `dependency-audit.yml`: Bandit-Gate mit Nulltoleranz für MEDIUM/HIGH, Online-`pip-audit` des Lockfiles, `pip check` und Audit-Artefakte.
-- `enterprise-release-audit-10000`: reproduzierbare 10.000 Zustands-Loops mit 112.000 Datenintegritätsprüfungen und JSON-Nachweis.
-- `killcritic-usability-audit-10000`: 10.000 dynamische Qt-Usability-Loops über Navigation, Dialoge, Tastatur, Accessibility, Skalierung, Meldungen und End-to-End-Abläufe.
-
-Ohne grünen Status aller vier Gates werden keine Release-Binaries gebaut.
+Die umfangreichen Enterprise-, Security- und Usability-Audits bleiben als lokale
+Werkzeuge erhalten, einschließlich des 10.000er Enterprise-Audits, starten aber
+keine eigenen GitHub-Workflows mehr.
 
 ## Funktionale Freigabe prüfen
 
@@ -59,10 +59,9 @@ git push origin v2.2.60
 
 ## Nach GitHub Actions
 
-- Kontrollieren, dass `platform-release-gates`, `dependency-security-gate` und `enterprise-release-audit-10000` und `killcritic-usability-audit-10000` grün sind.
-- Das hochgeladene 10.000-Loop-JSON als Release-Nachweis archivieren.
-- Das KILLCRITIC-Usability-JSON und die Loop-Matrix als Release-Nachweis archivieren.
-- Das hochgeladene Online-`pip-audit`-JSON als Release-Nachweis archivieren.
-- Windows-EXE und Linux-Binary stichprobenartig starten.
+- Kontrollieren, dass der Workflow `Build Executables` grün ist.
+- Windows- und Linux-Portable-ZIP stichprobenartig starten.
+- `BudgetManager_Setup_<Version>.exe` unter Windows testen.
 - Von GitHub Actions erzeugte `latest.json` prüfen: Version, URLs und SHA256-Werte müssen zum Tag passen.
+- `SHA256SUMS.txt` gegen die veröffentlichten Assets prüfen.
 - Release-Beschreibung aus `CHANGELOG.md` übernehmen.

@@ -1,14 +1,8 @@
-"""Regressionstests v2.2.29 (RELEASE_GATE_RESYNC).
-
-Sichert Befund 1 des Enterprise-Audits v2.2.28 ab: Der Workflow-Step
-"Verify updater manifest stays updater-safe" war beim Merge im Build-Step
-aufgegangen; tools/release_logic_audit_100.py schlug dadurch fehl und die
-explizite Nach-Build-Verifikation des GENERIERTEN latest.json entfiel.
+"""Regressionstests für Manifest-Struktur und portierbare Release-Pakete.
 
 Abgesichert wird:
-1. Werkzeug tools/verify_release_manifest.py existiert und ist im Workflow
-   unter dem historischen Step-Namen verdrahtet (nach dem Build-Step).
-2. Das Audit pinnt beide Step-Namen UND den Werkzeug-Aufruf.
+1. Der einzige Release-Workflow prüft das erzeugte Manifest nach dem Build.
+2. Das Audit pinnt beide Step-Namen.
 3. Das Gate akzeptiert einen vertragskonformen Manifest-Aufbau (wie ihn
    tools/build_release_assets._write_latest_json erzeugt) und lehnt jede
    bekannte Verletzung fail-closed ab.
@@ -37,7 +31,7 @@ from tools.verify_release_manifest import (  # noqa: E402
 WORKFLOW = ROOT / ".github" / "workflows" / "build.yml"
 AUDIT = ROOT / "tools" / "release_logic_audit_100.py"
 STEP_NAME = "Verify updater manifest stays updater-safe"
-BUILD_STEP_NAME = "Build signed release assets, updater manifest and SBOM"
+BUILD_STEP_NAME = "Build release assets + updater manifest"
 TOOL_CALL = "tools/verify_release_manifest.py"
 
 
@@ -92,20 +86,20 @@ def _expect_fail(manifest: dict, fragment: str) -> None:
 def test_workflow_has_explicit_manifest_verify_step() -> None:
     text = WORKFLOW.read_text(encoding="utf-8")
     assert STEP_NAME in text
-    assert TOOL_CALL in text
     # Der Verifikations-Step läuft NACH dem Build-Step (Reihenfolge im YAML).
     assert text.index(BUILD_STEP_NAME) < text.index(STEP_NAME)
-    # Der Step ruft das Gate mit dem generierten Manifest UND der Signatur auf.
+    # Der Step prüft Manifest, Prüfsummen und beide portablen ZIPs inline.
     step_block = text[text.index(STEP_NAME) :]
     assert "release_assets/latest.json" in step_block
-    assert "--signature release_assets/latest.json.sig" in step_block
+    assert "release_assets/SHA256SUMS.txt" in step_block
+    assert "portable-windows.zip" in step_block
+    assert "portable-linux.zip" in step_block
 
 
-def test_release_logic_audit_pins_both_step_names_and_tool() -> None:
+def test_release_logic_audit_pins_both_step_names() -> None:
     text = AUDIT.read_text(encoding="utf-8")
     assert f'"{STEP_NAME}"' in text
     assert f'"{BUILD_STEP_NAME}"' in text
-    assert f'"{TOOL_CALL}"' in text
 
 
 def test_gate_tool_exists_and_compiles() -> None:

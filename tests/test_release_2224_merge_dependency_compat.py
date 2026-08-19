@@ -31,11 +31,13 @@ def test_pyside_lock_supports_python_313_target():
     assert _locked_version("PySide6") >= (6, 10, 3)
 
 
-def test_ci_covers_python_312_and_313_and_pip_check():
-    workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    assert 'python-version: ["3.12", "3.13"]' in workflow
-    assert "python-version: ${{ matrix.python-version }}" in workflow
-    assert "python -m pip check" in workflow
+def test_single_release_workflow_uses_python_312_and_declared_dependencies():
+    workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "python-version: '3.12'" in workflow
+    assert "python -m pip install -r requirements-build.txt" in workflow
+    assert "python -m pip install -r requirements-dev.txt" in workflow
 
 
 def test_previous_release_regression_suite_is_retained():

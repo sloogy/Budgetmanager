@@ -118,15 +118,14 @@ def test_apply_source_has_no_continue_after_backup_failure():
     ), "Abbruch muss in BEIDEN Pfaden (Win+Linux) greifen"
 
 
-# ── M4: CI vor dem Tag ─────────────────────────────────────────────────────
-def test_ci_workflow_runs_before_release_tags():
-    ci = ROOT / ".github" / "workflows" / "ci.yml"
-    assert ci.is_file(), "ci.yml fehlt – Fehler wuerden erst nach dem Tag auffallen"
-    text = ci.read_text(encoding="utf-8")
-    assert "pull_request" in text
-    assert "branches: [main]" in text
-    for step in ("compileall", "sync_version.py --check", "i18n_audit", "pytest"):
-        assert step in text, f"CI-Schritt fehlt: {step}"
+# ── M4: Qualitätschecks im einzigen Tag-Workflow ───────────────────────────
+def test_single_tag_workflow_runs_quality_checks_before_packaging():
+    workflows = ROOT / ".github" / "workflows"
+    assert sorted(path.name for path in workflows.glob("*.yml")) == ["build.yml"]
+    text = (workflows / "build.yml").read_text(encoding="utf-8")
+    for step in ("compileall", "sync_version.py --check", "pytest", "black", "mypy"):
+        assert step in text, f"Release-Schritt fehlt: {step}"
+    assert text.index("python -m pytest") < text.index("pyinstaller BudgetManager.spec")
 
 
 # ── M5: Mindestlaengen fuer neue Geheimnisse ───────────────────────────────

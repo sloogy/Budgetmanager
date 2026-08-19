@@ -6,16 +6,16 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_tag_build_requires_enterprise_10000_audit():
+def test_tag_build_uses_only_the_single_release_workflow():
+    workflow_dir = ROOT / ".github" / "workflows"
+    assert sorted(path.name for path in workflow_dir.glob("*.yml")) == ["build.yml"]
     workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
         encoding="utf-8"
     )
-    assert "enterprise-release-audit-10000:" in workflow
-    assert "python tools/enterprise_release_audit_10000.py" in workflow
-    assert "--loops 10000" in workflow
-    assert "--seed 20260718" in workflow
-    assert "enterprise-release-audit-10000" in workflow.split("needs:", 1)[1]
-    assert "if-no-files-found: error" in workflow
+    assert "build:" in workflow
+    assert "installer:" in workflow
+    assert "manifest:" in workflow
+    assert "enterprise-release-audit-10000:" not in workflow
 
 
 def test_release_checklist_requires_enterprise_10000_audit():
