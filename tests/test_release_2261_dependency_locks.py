@@ -17,6 +17,12 @@ def test_release_locks_match_all_direct_and_included_pins() -> None:
         assert validate(ROOT / lock, ROOT / direct) == []
 
 
+def test_build_lock_pins_pyinstaller_windows_dependencies() -> None:
+    lock = (ROOT / "requirements-build.lock").read_text(encoding="utf-8")
+    assert "pefile==2024.8.26" in lock
+    assert "pywin32-ctypes==0.2.3" in lock
+
+
 def test_lock_validator_rejects_direct_version_drift(tmp_path: Path) -> None:
     runtime = tmp_path / "runtime.in"
     runtime.write_text("example-package==2.0\n", encoding="utf-8")
