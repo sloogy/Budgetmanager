@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import stat
 import zipfile
 from pathlib import Path
@@ -130,7 +131,9 @@ def test_settings_extraction_is_verified_atomic_and_private(tmp_path: Path) -> N
     assert extract_settings(bundle, destination) is True
     assert json.loads(destination.read_text(encoding="utf-8")) == {"theme": "light"}
     assert not destination.with_suffix(".json.restore_tmp").exists()
-    if hasattr(stat, "S_IMODE"):
+    # Windows st_mode bildet keine ACLs ab und meldet normale Dateien als
+    # 0666. Die exakte 0600-Prüfung ist deshalb ausschließlich POSIX-sinnig.
+    if os.name != "nt":
         assert stat.S_IMODE(destination.stat().st_mode) & 0o077 == 0
 
 

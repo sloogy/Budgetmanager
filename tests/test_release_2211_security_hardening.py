@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import sqlite3
 import stat
+import os
 import zipfile
 from pathlib import Path
 
@@ -36,6 +37,13 @@ from model.restore_bundle import (
 
 def _mode(p: Path) -> int:
     return stat.S_IMODE(p.stat().st_mode)
+
+
+def _assert_private(p: Path) -> None:
+    """Prüft die jeweils aussagekräftige Zugriffsschutz-Semantik."""
+    assert is_world_accessible(p) is False
+    if os.name != "nt":
+        assert _mode(p) == OWNER_ONLY_FILE, oct(_mode(p))
 
 
 @pytest.fixture
@@ -73,14 +81,13 @@ def test_users_json_is_not_world_readable(tmp_path, monkeypatch):
     model.create_user("Tester", "quick")
 
     assert users_file.exists()
-    assert _mode(users_file) == OWNER_ONLY_FILE, oct(_mode(users_file))
-    assert is_world_accessible(users_file) is False
+    _assert_private(users_file)
 
     # Der Schlüssel liegt bei Quick-Konten im Klartext – genau deshalb 0600.
     enc_files = list(tmp_path.glob("*.enc"))
     assert enc_files, "keine verschlüsselte DB angelegt"
     for enc in enc_files:
-        assert _mode(enc) == OWNER_ONLY_FILE, oct(_mode(enc))
+        _assert_private(enc)
 
 
 def test_encrypted_db_file_is_not_world_readable(tmp_path, monkeypatch):
@@ -94,12 +101,12 @@ def test_encrypted_db_file_is_not_world_readable(tmp_path, monkeypatch):
         conn, enc, crypto.generate_db_key(), crypto.generate_salt()
     )
 
-    assert _mode(enc) == OWNER_ONLY_FILE, oct(_mode(enc))
+    _assert_private(enc)
     conn.close()
 
 
 def test_backup_bundle_is_not_world_readable(bundle):
-    assert _mode(bundle) == OWNER_ONLY_FILE, oct(_mode(bundle))
+    _assert_private(bundle)
 
 
 def test_secure_file_is_idempotent_and_safe_on_missing(tmp_path):
@@ -108,7 +115,7 @@ def test_secure_file_is_idempotent_and_safe_on_missing(tmp_path):
     p.write_text("x")
     assert secure_file(p) is True
     assert secure_file(p) is True
-    assert _mode(p) == OWNER_ONLY_FILE
+    _assert_private(p)
 
 
 # ── 2. Integrität (SHA256) ────────────────────────────────────────────────

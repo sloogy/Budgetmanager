@@ -72,7 +72,10 @@ def export_sections_xlsx(
     tmp = out_path.with_name(f".{out_path.stem}.tmp{out_path.suffix}")
     try:
         workbook.save(tmp)
-        with tmp.open("rb") as handle:
+        # Windows' os.fsync() uses the CRT _commit() call, which rejects a
+        # read-only descriptor with EBADF.  Keep the descriptor writable on
+        # every platform; no bytes are modified here.
+        with tmp.open("rb+") as handle:
             os.fsync(handle.fileno())
         os.replace(tmp, out_path)
     finally:

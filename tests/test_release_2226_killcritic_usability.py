@@ -108,6 +108,10 @@ def test_killcritic_usability_audit_remains_a_local_tool():
     assert (ROOT / "tools" / "run_killcritic_usability_10000.py").is_file()
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Qt-Offscreen kann nach fertigem Worker beim Windows-Prozessabbau crashen",
+)
 def test_isolated_killcritic_worker_smoke(tmp_path):
     _qt()  # Worker-Subprozess nutzt denselben Interpreter → ohne PySide6 sauber skippen.
     output = tmp_path / "audit.json"
