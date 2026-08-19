@@ -26,6 +26,7 @@ Nach den Korrekturen sind die Funktions-, Datenintegritäts-, DAU-, Architektur-
 | R-09 | Diagnose-ZIPs enthielten rohe App- und Crash-Logs | Offenlegung von Home-Pfaden, Kategorien, Beträgen, Kommentaren oder IDs | Freie App-Logtexte werden entfernt; technische Crash-Pfade werden maskiert | **Behoben** |
 | R-10 | LifePlanner-Import nutzte blockierende Warnfenster; Dialogtest erwartete eine starre Anzahl | Bedien- und Regressionstor nicht robust | Nicht-modale Warnung und struktureller Tastaturtest ohne Zählkonstante | **Behoben** |
 | R-11 | Black, Mypy und der Dependency-Audit waren nicht releasegrün; `cryptography` 49.0.0 war verwundbar | CI- und Sicherheitsblocker | Format-/Typfehler behoben, `cryptography` auf 50.0.0 aktualisiert und Lock-Hashes erneuert | **Behoben** |
+| R-12 | LifePlanner-Checks und ein eigener `.lpmodule`-Tag-Workflow waren im BudgetManager-Repository verdrahtet | Fremder CI-Fehler und unvollständige beziehungsweise vermischte Releases | LifePlanner-Workflows entfernt; BudgetManager-Tag veröffentlicht ausschließlich BudgetManager-Artefakte | **Behoben** |
 
 ## 3. Funktionsaudit
 
@@ -38,13 +39,13 @@ Die Regressionen decken die wesentlichen fachlichen Bereiche ab:
 - Sparziele als Flussbestand mit Einzahlung, Bezug, Korrektur und Teilfreigabe.
 - Backup/Restore, Mehrbenutzerkonten, Wiederherstellungscode und atomare Datenübernahme.
 - Updater-Integrität, SHA-256-Fail-Closed-Verhalten, Staging-Bereinigung und Signaturvertrag.
-- LifePlanner-Hostvertrag, getrennte Daten-/Bridge-Ordner, Review-Inbox, FPM-Outbox und duale `.lpmodule`-Pakete.
+- LifePlanner-Hostvertrag, getrennte Daten-/Bridge-Ordner, Review-Inbox und FPM-Outbox; Veröffentlichung bleibt strikt im externen LifePlanner-Releaseweg.
 - Cockpit-Kachellayout, Lohnzyklus-Monatsstatus, QtCharts-Lebensdauer und Setup-Absturzschutz.
 
 ### Pytest-Ergebnis
 
 - **131 Testdateien geprüft**
-- **838 Tests bestanden**
+- **839 Tests bestanden**
 - **0 Tests übersprungen**
 - **PySide6-/QtCharts-Laufzeit aktiv**, einschließlich 250 Cockpit-Diagramm-Refreshes
 - **0 fehlgeschlagen**
@@ -133,7 +134,6 @@ Nur in den GitHub-Plattform- und Signatur-Jobs vollständig prüfbar:
 
 - Fedora/Wayland-Screenshots bei 100/125/150/200 Prozent,
 - Windows-Skalierung und Installer-Lauf,
-- echter LifePlanner-Start mit installierter `.lpmodule`,
 - Authenticode-Prüfung der Windows-Artefakte.
 
 Die Workflows dafür sind vorhanden und fail-closed. Sie bleiben verpflichtende Freigabebedingungen.
@@ -153,8 +153,7 @@ Die Workflows dafür sind vorhanden und fail-closed. Sie bleiben verpflichtende 
 3. Black- und Mypy-Gates als unabhängige Wiederholung grün.
 4. Windows-Installer installieren, starten, aktualisieren und deinstallieren.
 5. Portable Windows- und Linux-Pakete auf sauberen Systemen starten.
-6. LifePlanner-Modul auf Windows und Linux installieren und die getrennten Profilordner prüfen.
-7. Update-Signatur, SHA-256, SBOM, Provenance und Authenticode kontrollieren.
+6. Update-Signatur, SHA-256, SBOM, Provenance und Authenticode kontrollieren.
 
 ## 10. Wichtigste Änderungen gegenüber v2.2.59
 
@@ -165,8 +164,9 @@ Die Workflows dafür sind vorhanden und fail-closed. Sie bleiben verpflichtende 
 - Fedora-/Wayland-QtCharts-Absturz beim Refresh behoben und mit 250 Aktualisierungen regressionsgetestet.
 - Diagnose-ZIP gegen Kategorien-, Betrags-, Kommentar-, ID- und Home-Pfad-Leaks gehärtet.
 - LifePlanner-Warnungen nicht-modal gemacht und das Dialog-Tastatur-Gate robust erweitert.
+- LifePlanner-GitHub-Checks und `.lpmodule`-Uploads aus dem BudgetManager-Release entfernt; der externe LifePlanner-Onlineweg bleibt zuständig.
 - Black-, Mypy-, Bandit- und Dependency-Gates lokal grün; `cryptography` 50.0.0 schließt CVE-2026-69247.
-- Vollständige PySide6-Suite: 838 Tests bestanden, 0 übersprungen, 0 fehlgeschlagen.
+- Vollständige PySide6-Suite: 839 Tests bestanden, 0 übersprungen, 0 fehlgeschlagen.
 - Neue v2.2.60-Auditmatrix und JSON-Nachweise erzeugt.
 - Historische Root-Auditdateien ins Dokumentationsarchiv verschoben.
 - Releasebaum vollständig von Laufzeit- und Cache-Artefakten bereinigt.

@@ -57,12 +57,12 @@ def test_signed_dual_platform_builder_emits_checksum(tmp_path, monkeypatch) -> N
     assert metadata["version"] == "2.2.60"
 
 
-def test_workflow_builds_windows_and_linux_and_publishes_checksums() -> None:
-    workflow = (ROOT / ".github/workflows/lifeplanner-module-release.yml").read_text(
-        encoding="utf-8"
-    )
-    assert "windows-x86_64" in workflow
-    assert "linux-x86_64" in workflow
-    assert "budgetmanager_2.2.60_${{ matrix.platform }}.lpmodule" in workflow
-    assert "release/*.lpmodule*" in workflow
-    assert "LIFEPLANNER_UPDATE_PRIVATE_KEY_B64" in workflow
+def test_budgetmanager_tag_does_not_publish_lifeplanner_module_assets() -> None:
+    workflows = ROOT / ".github" / "workflows"
+    assert not (workflows / "lifeplanner-module-release.yml").exists()
+    assert not (workflows / "lifeplanner-contract.yml").exists()
+
+    workflow = (workflows / "build.yml").read_text(encoding="utf-8")
+    assert "BudgetManager-v${VERSION}-portable" not in workflow
+    assert ".lpmodule" not in workflow
+    assert "LIFEPLANNER_UPDATE_PRIVATE_KEY_B64" not in workflow

@@ -1,6 +1,6 @@
-# LifePlanner-Repositoryvertrag – BudgetManager
+# LifePlanner-Integrationsgrenze – BudgetManager
 
-BudgetManager 2.2.58 bleibt ein eigenständiges Git-Repository und eine eigenständig startbare Anwendung. LifePlanner übernimmt keinen BudgetManager-Quellcode.
+BudgetManager bleibt ein eigenständiges Git-Repository und eine eigenständig startbare Anwendung. LifePlanner übernimmt keinen BudgetManager-Quellcode und veröffentlicht keine Artefakte im BudgetManager-Release.
 
 ## Vom BudgetManager-Repository bereitgestellt
 
@@ -15,15 +15,10 @@ BudgetManager 2.2.58 bleibt ein eigenständiges Git-Repository und eine eigenst�
 
 Alle Änderungen an Budgetfachlogik, Import-Inbox, Datenbank oder UI werden hier committet und getestet. LifePlanner pinnt nur eine veröffentlichte Version oder einen Git-Ref.
 
-## Eigenständiges Installer-Asset
+## Veröffentlichungsgrenze
 
-Dieses Repository veröffentlicht bei einem Versionstag zusätzlich ein eigenes, signiertes LifePlanner-Modulpaket:
+Ein BudgetManager-Versionstag veröffentlicht ausschließlich BudgetManager-Artefakte: portable Pakete für Windows und Linux, Windows-Setup, Updater-Metadaten und die von GitHub automatisch erzeugten Quellcodearchive.
 
-```text
-budgetmanager_<version>_Windows_x86_64.lpmodule
-```
+LifePlanner prüft und bezieht seinen Online-Stand über den eigenen Update- und Veröffentlichungsweg. Deshalb gibt es in diesem Repository weder einen LifePlanner-GitHub-Check noch einen Tag-Workflow, der `.lpmodule`-Dateien in ein BudgetManager-Release hochlädt.
 
-Der Workflow `.github/workflows/lifeplanner-module-release.yml` baut das Windows-Programm aus diesem Repository, verpackt `module.json` und die PyInstaller-Ausgabe und lädt das `.lpmodule` in genau dieses GitHub-Release hoch. Der LifePlanner-Windows-Installer fragt dieses Repository zur Installationszeit direkt ab.
-
-Das Secret `LIFEPLANNER_UPDATE_PRIVATE_KEY_B64` muss mit dem Vertrauensanker des LifePlanner-Core übereinstimmen. Unsignierte Pakete werden vom Online-Installer abgelehnt.
-
+`module.json` und die lokalen Paketwerkzeuge bleiben als technischer Laufzeit- und Entwicklungsvertrag erhalten. Sie gehören nicht zum automatischen BudgetManager-GitHub-Release.

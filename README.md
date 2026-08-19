@@ -44,7 +44,7 @@ Alternativ:
 - **Kein Auto-Buchen:** Externe Finanzdaten werden niemals ungeprüft als Buchung gespeichert. Fremdwährungen benötigen eine ausdrückliche Bestätigung.
 - **Bidirektionale Bridge:** FPM-Ausgaben und Sparziele können weiterhin getrennt in die Outbox geschrieben werden.
 - **Monatsstatus nach Lohn:** Der Cockpit-Zeitraum beginnt beim tatsächlichen beziehungsweise hinterlegten Lohneingang und endet am Tag vor dem nächsten Lohntag.
-- **Windows und Linux:** Der Modul-Workflow baut signierte `.lpmodule`-Pakete für beide Systeme und erzeugt zusätzliche SHA256-Dateien.
+- **Klare Release-Grenze:** Der BudgetManager-Tag veröffentlicht nur BudgetManager-Artefakte. LifePlanner prüft seinen Online-Stand über den eigenen Veröffentlichungsweg; `.lpmodule`-Dateien werden hier nicht hochgeladen.
 - **Cockpit und Sparziele:** Freie Kachelspalten, Drop-Platzhalter, QtCharts-Härtung sowie Sparziel-Flussbestand mit Bezug, Korrektur und Teilfreigabe bleiben erhalten.
 
 ## Neu in v2.2.55
