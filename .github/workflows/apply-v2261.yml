@@ -14,18 +14,23 @@ jobs:
     if: github.event.head_commit.message == '[apply-v2.2.61] Bootstrap audited release integration'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout exact bootstrap commit
+      - name: Checkout exact bootstrap chain
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Verify expected stable base
+      - name: Verify expected stable base and bootstrap-only delta
         shell: bash
         run: |
           set -euo pipefail
           expected='bce30df750e988ad7bd87acb97fdebbe5caafde1'
-          actual="$(git rev-parse HEAD^)"
-          test "$actual" = "$expected"
+          git merge-base --is-ancestor "$expected" HEAD
+          unexpected="$(git diff --name-only "$expected"..HEAD | grep -vE '^\.github/(release-bootstrap/v2261/|workflows/apply-v2261\.yml$)' || true)"
+          if [ -n "$unexpected" ]; then
+            echo 'Unerwartete Änderungen vor Patch-Anwendung:' >&2
+            echo "$unexpected" >&2
+            exit 1
+          fi
 
       - name: Reconstruct and verify audited patch
         shell: bash
