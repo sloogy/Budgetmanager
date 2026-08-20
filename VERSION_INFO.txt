@@ -1,5 +1,13 @@
-Budgetmanager Version 2.2.61
-Datum: 19. August 2026
+Budgetmanager Version 2.2.62
+Datum: 20. August 2026
+
+LIFEPLANNER MODULE RELEASE 2.2.62
+-------------------------------------------------------------
+- Unsigned .lpmodule-Pakete für Windows x86_64 und Linux x86_64.
+- Eigene SHA256-Datei für jedes LifePlanner-Modulpaket.
+- Paketstruktur, Payload-Hash und eingebetteter Laufzeitvertrag werden vor dem Upload geprüft.
+- Lokale Installation erfolgt nach manueller Vertrauensbestätigung im Host.
+- Veröffentlichung bleibt im einzigen taggesteuerten BudgetManager-Releaseworkflow.
 
 QTCHARTS + INSTALLER HOTFIX 2.2.61
 -------------------------------------------------------------

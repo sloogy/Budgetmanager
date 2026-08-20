@@ -1,3 +1,9 @@
+## Neu in v2.2.62
+
+- Unsigned LifePlanner-/LiveManager-`.lpmodule`-Pakete für Windows x86_64 und Linux x86_64 mit manueller Vertrauensbestätigung beim lokalen Import.
+- Eigene SHA-256-Datei und Paketstrukturprüfung für jedes Modulrelease.
+- Gemeinsamer taggesteuerter Releaseweg für Desktop-, Installer- und Modulpakete.
+
 ## Neu in v2.2.61
 
 - Sicherer QtCharts-Lebenszyklus beim Aktualisieren aller Übersichtsdiagramme.

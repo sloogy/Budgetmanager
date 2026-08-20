@@ -52,7 +52,8 @@ def test_github_workflow_builds_windows_installer_and_publishes_manifest_asset()
     assert "push:" in workflow and "tags:" in workflow and "'v*'" in workflow
     assert "BudgetManager-windows" in workflow
     assert "BudgetManager-linux" in workflow
-    assert ".lpmodule" not in workflow
+    assert "tools/build_lifeplanner_module.py" in workflow
+    assert "release/*.lpmodule*" in workflow
     assert "https://archive.ubuntu.com/ubuntu" in workflow
     assert "Acquire::http::Timeout=20" in workflow
     assert "--no-install-recommends" in workflow

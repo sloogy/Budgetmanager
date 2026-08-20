@@ -244,6 +244,9 @@ def check_workflow() -> list[str]:
         "Test silent install, app start and uninstall",
         "--release-self-test",
         "tools/build_release_assets.py",
+        "tools/build_lifeplanner_module.py",
+        "--allow-unsigned",
+        "release/*.lpmodule*",
         "Verify updater manifest stays updater-safe",
         "softprops/action-gh-release@v2",
     ]

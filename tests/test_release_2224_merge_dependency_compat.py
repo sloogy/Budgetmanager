@@ -36,7 +36,9 @@ def test_single_release_workflow_uses_python_312_and_declared_dependencies():
         encoding="utf-8"
     )
     assert "python-version: '3.12'" in workflow
-    assert "python -m pip install --require-hashes -r requirements-build.lock" in workflow
+    assert (
+        "python -m pip install --require-hashes -r requirements-build.lock" in workflow
+    )
     assert "python -m pip install --require-hashes -r requirements-dev.lock" in workflow
 
 

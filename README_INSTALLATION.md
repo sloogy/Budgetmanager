@@ -1,7 +1,7 @@
-# 📦 BudgetManager v2.2.61 — Installation, Start & Update
+# 📦 BudgetManager v2.2.62 — Installation, Start & Update
 
 
-## Diagramm-Hinweis v2.2.61
+## Diagramm-Hinweis v2.2.62
 
 Für eine eigene Kachelanordnung oben im Cockpit **Kacheln frei anordnen** aktivieren. Danach die Kachel an ihrer gesamten Kopfzeile oder am Griff `≡` nach oben, unten oder in die andere Spalte ziehen. Die Anordnung wird automatisch gespeichert.
 
@@ -17,18 +17,19 @@ Auch die Übersichtsdiagramme werden beim Aktualisieren atomar ausgetauscht und
 verzögert freigegeben. Das verhindert eine native QtCharts-/Shiboken-Freigabe
 während laufender Paint- oder Layout-Ereignisse.
 
-## Hinweis zu v2.2.61
+## Hinweis zu v2.2.62
 
-Diese README gehört zur gehärteten Vorab-Release-Version v2.2.61. Sie enthält zusätzlich den Einfach-/Erweitert-Modus, XLSX-/PDF-Berichte, erweiterte Diagnose- und visuelle Plattformprüfungen sowie die atomare Restore-Kopie. Designprofile bleiben vollständig über den DesignManager steuerbar. Die zentrale Versionsquelle ist `app_info.py`.
+Diese README gehört zur gehärteten Vorab-Release-Version v2.2.62. Sie enthält zusätzlich unsigned LifePlanner-/LiveManager-Modulpakete, den Einfach-/Erweitert-Modus, XLSX-/PDF-Berichte, erweiterte Diagnose- und visuelle Plattformprüfungen sowie die atomare Restore-Kopie. Designprofile bleiben vollständig über den DesignManager steuerbar. Die zentrale Versionsquelle ist `app_info.py`.
 
 ## Windows: empfohlener Download
 
 Für Windows gibt es im GitHub Release mehrere Dateien:
 
-- `BudgetManager_Setup_2.2.61.zip` — empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren.
-- `BudgetManager_Setup_2.2.61.exe` — direkter Installer.
-- `BudgetManager-v2.2.61-portable-windows.zip` — portable Windows-Version ohne Installation.
-- `BudgetManager-v2.2.61-portable-linux.zip` — portable Linux-Version.
+- `BudgetManager_Setup_2.2.62.zip` — empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren.
+- `BudgetManager_Setup_2.2.62.exe` — direkter Installer.
+- `BudgetManager-v2.2.62-portable-windows.zip` — portable Windows-Version ohne Installation.
+- `BudgetManager-v2.2.62-portable-linux.zip` — portable Linux-Version.
+- `budgetmanager_2.2.62_Windows_x86_64.lpmodule` / `budgetmanager_2.2.62_Linux_x86_64.lpmodule` — unsigned LifePlanner-/LiveManager-Module; beim lokalen Import ist die Vertrauenswarnung zu bestätigen.
 - `latest.json` — Manifest für die veröffentlichten Pakete.
 - `SHA256SUMS.txt` — Prüfsummen zur Kontrolle.
 
@@ -44,7 +45,7 @@ oder gestartet werden.
 PowerShell im Download-Ordner öffnen:
 
 ```powershell
-Get-FileHash .\BudgetManager_Setup_2.2.61.exe -Algorithm SHA256
+Get-FileHash .\BudgetManager_Setup_2.2.62.exe -Algorithm SHA256
 ```
 
 Den angezeigten Hash mit `SHA256SUMS.txt` vergleichen.
@@ -52,15 +53,15 @@ Den angezeigten Hash mit `SHA256SUMS.txt` vergleichen.
 Falls Windows die Datei nach dem Download blockiert:
 
 ```powershell
-Unblock-File .\BudgetManager_Setup_2.2.61.exe
+Unblock-File .\BudgetManager_Setup_2.2.62.exe
 ```
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.2.61.zip` herunterladen.
+1. `BudgetManager_Setup_2.2.62.zip` herunterladen.
 2. ZIP entpacken.
 3. Optional: SHA256 gegen `SHA256SUMS.txt` prüfen.
-4. `BudgetManager_Setup_2.2.61.exe` starten.
+4. `BudgetManager_Setup_2.2.62.exe` starten.
 5. Datenverzeichnis wählen.
 6. Sprache, Währung und bevorzugten Buchungstag auswählen.
 7. BudgetManager starten.
@@ -69,7 +70,7 @@ Der Installer schreibt `installation.json` in den Programmordner und nutzt den g
 
 ## Windows Portable
 
-1. `BudgetManager-v2.2.61-portable-windows.zip` herunterladen.
+1. `BudgetManager-v2.2.62-portable-windows.zip` herunterladen.
 2. ZIP in einen normalen Benutzerordner entpacken, zum Beispiel `Dokumente\BudgetManager` oder auf einen USB-Stick.
 3. `start-windows.cmd` oder `BudgetManager.exe` starten.
 
@@ -96,7 +97,7 @@ pip install -r requirements.txt
 python3 main.py
 ```
 
-Für Releases gibt es zusätzlich `BudgetManager-v2.2.61-portable-linux.zip`. Darin startet Linux über `./start-linux.sh`; die Binary heißt stabil `BudgetManager`.
+Für Releases gibt es zusätzlich `BudgetManager-v2.2.62-portable-linux.zip`. Darin startet Linux über `./start-linux.sh`; die Binary heißt stabil `BudgetManager`.
 
 ## Update aus der App
 

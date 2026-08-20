@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.2.61
+# 💰 BudgetManager v2.2.62
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.2.61-blue)
+![Version](https://img.shields.io/badge/version-2.2.62-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -35,6 +35,12 @@ Alternativ:
 ```
 
 ---
+
+## Neu in v2.2.62
+
+- **LifePlanner-/LiveManager-Installation:** Der GitHub-Release enthält bewusst unsigned `.lpmodule`-Pakete für Windows x86_64 und Linux x86_64; lokal ist eine manuelle Vertrauensbestätigung erforderlich.
+- **Integritätsnachweis:** Jedes Modulpaket erhält eine eigene SHA-256-Datei und wird vor dem Upload strukturell geprüft.
+- **Ein Releaseweg:** Portable Pakete, Windows-Setup, Updater-Dateien, SBOM und LifePlanner-Module entstehen aus demselben Tag-Workflow.
 
 ## Neu in v2.2.61
 
@@ -284,8 +290,8 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.2.61"
-APP_RELEASE_DATE = "19. August 2026"
+APP_VERSION = "2.2.62"
+APP_RELEASE_DATE = "20. August 2026"
 ```
 
 Vor einem Release prüfen:
@@ -323,16 +329,16 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.2.61 \
-  --release-tag v2.2.61 \
+  --version 2.2.62 \
+  --release-tag v2.2.62 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.2.61-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.2.61-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.61 \
+  --windows-zip dist/BudgetManager-v2.2.62-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.2.62-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.62 \
   --out latest.json
 ```
 
-Die Datei `latest.json` muss zusammen mit den Plattform-ZIPs, Installer-Artefakten und `SHA256SUMS.txt` in das GitHub-Release hochgeladen werden.
+Die Datei `latest.json` wird zusammen mit den Plattform-ZIPs, Installer-Artefakten, unsigned `.lpmodule`-Paketen und Prüfsummen in das GitHub-Release hochgeladen.
 
 ---
 

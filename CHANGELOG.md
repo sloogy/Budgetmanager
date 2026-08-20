@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.62 – 20. August 2026
+
+### LifePlanner-Modulrelease
+- Der taggesteuerte GitHub-Workflow baut BudgetManager zusätzlich als installierbares `.lpmodule` für Windows x86_64 und Linux x86_64.
+- Beide Modulpakete werden bewusst unsigned für die lokale LifePlanner-/LiveManager-Installation veröffentlicht; der Host verlangt dabei eine manuelle Vertrauensbestätigung.
+- Der Release prüft Paketstruktur, Payload-Hash, eingebettetes `module.json` und plattformspezifische Runtime vor dem Upload; jedes Paket erhält zusätzlich eine eigene SHA-256-Datei.
+- Portable Pakete, Windows-Setup, Updater-Manifest und SBOM bleiben unverändert Bestandteil desselben einzigen Releaseworkflows.
+
 ## 2.2.61 – 19. August 2026
 
 ### QtCharts- und Release-Hotfix

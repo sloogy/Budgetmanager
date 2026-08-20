@@ -17,10 +17,14 @@ jobs:
           - os: windows-latest
             artifact_name: BudgetManager-windows
             pyinstaller_output: dist/BudgetManager
+            module_platform: windows-x86_64
+            module_label: Windows_x86_64
 
           - os: ubuntu-latest
             artifact_name: BudgetManager-linux
             pyinstaller_output: dist/BudgetManager
+            module_platform: linux-x86_64
+            module_label: Linux_x86_64
 
     runs-on: ${{ matrix.os }}
 
@@ -103,11 +107,29 @@ jobs:
           test -d "${{ matrix.pyinstaller_output }}/_internal"
           ls -lah "${{ matrix.pyinstaller_output }}"
 
+      - name: Build unsigned LifePlanner module package
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          python tools/build_lifeplanner_module.py \
+            --runtime-dir "${{ matrix.pyinstaller_output }}" \
+            --runtime-name BudgetManager \
+            --platform "${{ matrix.module_platform }}" \
+            --output "release/budgetmanager_${VERSION}_${{ matrix.module_label }}.lpmodule" \
+            --allow-unsigned
+
       - name: Upload onedir artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
           path: ${{ matrix.pyinstaller_output }}
+          if-no-files-found: error
+
+      - name: Upload LifePlanner module artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BudgetManager-lpmodule-${{ matrix.module_label }}
+          path: release/*.lpmodule*
           if-no-files-found: error
 
   installer:
@@ -274,6 +296,18 @@ jobs:
           echo "Release assets:"
           ls -lah release_assets
 
+      - name: Download Windows LifePlanner module
+        uses: actions/download-artifact@v4
+        with:
+          name: BudgetManager-lpmodule-Windows_x86_64
+          path: release_assets/
+
+      - name: Download Linux LifePlanner module
+        uses: actions/download-artifact@v4
+        with:
+          name: BudgetManager-lpmodule-Linux_x86_64
+          path: release_assets/
+
       - name: Verify updater manifest stays updater-safe
         shell: bash
         run: |
@@ -293,6 +327,16 @@ jobs:
           assert 'direct_windows_exe' not in assets
           assert 'direct_linux_binary' not in assets
           assert Path('release_assets/SHA256SUMS.txt').is_file()
+
+          module_packages = sorted(Path('release_assets').glob('budgetmanager_*.lpmodule'))
+          assert len(module_packages) == 2, module_packages
+          for package in module_packages:
+              assert package.with_suffix(package.suffix + '.sha256').is_file(), package
+              with zipfile.ZipFile(package) as zf:
+                  names = set(zf.namelist())
+                  assert 'component.json.sig' not in names, package
+                  assert 'component.json' in names, package
+                  assert 'payload/module.json' in names, package
 
           with zipfile.ZipFile(next(Path('release_assets').glob('*-portable-windows.zip'))) as zf:
               names = set(zf.namelist())

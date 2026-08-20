@@ -1,6 +1,12 @@
-# BudgetManager v2.2.61 — Feature-Übersicht
+# BudgetManager v2.2.62 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
+
+## LifePlanner-Modulpakete (seit v2.2.62)
+
+- Unsigned `.lpmodule`-Pakete für Windows x86_64 und Linux x86_64; der lokale Import erfordert eine manuelle Vertrauensbestätigung.
+- Eigene SHA-256-Datei je Paket und strukturelle Prüfung vor Veröffentlichung.
+- Profilbezogene Daten- und Bridge-Pfade über den bestehenden LifePlanner-Laufzeitvertrag.
 
 ## Freie Cockpit-Anordnung (seit v2.2.60)
 

@@ -1,4 +1,4 @@
-# Release-Checkliste — BudgetManager v2.2.61
+# Release-Checkliste — BudgetManager v2.2.62
 
 ## Lokal prüfen
 
@@ -29,8 +29,9 @@ durch einen Tag `v*` gestartet und erledigt die gesamte Veröffentlichung:
 1. Windows- und Linux-onedir-Build mit PyInstaller.
 2. Windows-Installer mit Inno Setup.
 3. Portable ZIPs für Windows und Linux.
-4. `latest.json`, `SHA256SUMS.txt` und SBOM.
-5. Upload aller Dateien in den GitHub-Release.
+4. Unsigned `.lpmodule`-Pakete für Windows und Linux samt SHA-256-Dateien.
+5. `latest.json`, `SHA256SUMS.txt` und SBOM.
+6. Upload aller Dateien in den GitHub-Release.
 
 Für nicht-kommerzielle Vorab-Releases darf `latest.json` ohne
 `latest.json.sig` veröffentlicht werden. Der signaturpflichtige In-App-Updater
@@ -57,10 +58,10 @@ keine eigenen GitHub-Workflows mehr.
 ```bash
 git status
 git add .
-git commit -m "Release v2.2.61"
+git commit -m "Release v2.2.62"
 git push origin main
-git tag -a v2.2.61 -m "BudgetManager v2.2.61"
-git push origin v2.2.61
+git tag -a v2.2.62 -m "BudgetManager v2.2.62"
+git push origin v2.2.62
 ```
 
 ## Nach GitHub Actions
@@ -70,4 +71,5 @@ git push origin v2.2.61
 - `BudgetManager_Setup_<Version>.exe` unter Windows testen.
 - Von GitHub Actions erzeugte `latest.json` prüfen: Version, URLs und SHA256-Werte müssen zum Tag passen.
 - `SHA256SUMS.txt` gegen die veröffentlichten Assets prüfen.
+- Windows- und Linux-`.lpmodule` mit LifePlanner/LiveManager prüfen; Status muss „Nicht signiert“ lauten und die manuelle Vertrauensbestätigung funktionieren.
 - Release-Beschreibung aus `CHANGELOG.md` übernehmen.
