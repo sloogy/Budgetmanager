@@ -1,4 +1,4 @@
-# Release-Checkliste — BudgetManager v2.2.62
+# Release-Checkliste — BudgetManager v2.2.63
 
 ## Lokal prüfen
 
@@ -58,10 +58,10 @@ keine eigenen GitHub-Workflows mehr.
 ```bash
 git status
 git add .
-git commit -m "Release v2.2.62"
+git commit -m "Release v2.2.63"
 git push origin main
-git tag -a v2.2.62 -m "BudgetManager v2.2.62"
-git push origin v2.2.62
+git tag -a v2.2.63 -m "BudgetManager v2.2.63"
+git push origin v2.2.63
 ```
 
 ## Nach GitHub Actions

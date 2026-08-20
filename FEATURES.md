@@ -1,3 +1,9 @@
+## Neu in v2.2.63
+
+- **Zentrale Darstellung:** Im LifePlanner übernimmt BudgetManager das dort gewählte Designprofil beim Start (`LIFEPLANNER_THEME_FILE`, Format `lifeplanner.theme.v1`).
+- **Standalone unverändert:** Die lokal gespeicherte Profilwahl wird dabei nicht überschrieben und gilt weiterhin beim Start ohne Host.
+- **Fremde Profile darstellbar:** Ein Profil, das nur der Host mitbringt, wird aus dessen Farbwerten aufgebaut statt zu scheitern.
+
 ## Neu in v2.2.62
 
 - Unsigned LifePlanner-/LiveManager-`.lpmodule`-Pakete für Windows x86_64 und Linux x86_64 mit manueller Vertrauensbestätigung beim lokalen Import.

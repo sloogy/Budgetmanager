@@ -5,12 +5,12 @@ Du nutzt das, wenn du ein neues Release-ZIP gebaut hast.
 Beispiel (Windows + Linux ZIPs):
 
   python -m updater.generate_manifest \
-    --version 2.2.62 \
-    --release-tag v2.2.62 \
+    --version 2.2.63 \
+    --release-tag v2.2.63 \
     --channel stable \
-    --windows-zip dist/BudgetManager-v2.2.62-portable-windows.zip \
-    --linux-zip dist/BudgetManager-v2.2.62-portable-linux.zip \
-    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.62 \
+    --windows-zip dist/BudgetManager-v2.2.63-portable-windows.zip \
+    --linux-zip dist/BudgetManager-v2.2.63-portable-linux.zip \
+    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.63 \
     --out latest.json
 
 Danach lädst du die ZIP(s), latest.json und latest.json.sig als Release-Assets hoch.
@@ -46,8 +46,8 @@ def main() -> int:
     p = argparse.ArgumentParser(
         description="Generate latest.json manifest for BudgetManager releases"
     )
-    p.add_argument("--version", required=True, help="App version, e.g. 2.2.62")
-    p.add_argument("--release-tag", required=True, help="Git tag, e.g. v2.2.62")
+    p.add_argument("--version", required=True, help="App version, e.g. 2.2.63")
+    p.add_argument("--release-tag", required=True, help="Git tag, e.g. v2.2.63")
     p.add_argument(
         "--channel", default="stable", choices=["stable", "dev"], help="Update channel"
     )

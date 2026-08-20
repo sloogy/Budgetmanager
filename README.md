@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.2.62
+# 💰 BudgetManager v2.2.63
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.2.62-blue)
+![Version](https://img.shields.io/badge/version-2.2.63-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -35,6 +35,12 @@ Alternativ:
 ```
 
 ---
+
+## Neu in v2.2.63
+
+- **Zentrale Darstellung:** Im LifePlanner übernimmt BudgetManager das dort gewählte Designprofil beim Start (`LIFEPLANNER_THEME_FILE`, Format `lifeplanner.theme.v1`).
+- **Standalone unverändert:** Die lokal gespeicherte Profilwahl wird dabei nicht überschrieben und gilt weiterhin beim Start ohne Host.
+- **Fremde Profile darstellbar:** Ein Profil, das nur der Host mitbringt, wird aus dessen Farbwerten aufgebaut statt zu scheitern.
 
 ## Neu in v2.2.62
 
@@ -290,7 +296,7 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.2.62"
+APP_VERSION = "2.2.63"
 APP_RELEASE_DATE = "20. August 2026"
 ```
 
@@ -329,12 +335,12 @@ Für GitHub-Releases wird `latest.json` aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.2.62 \
-  --release-tag v2.2.62 \
+  --version 2.2.63 \
+  --release-tag v2.2.63 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.2.62-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.2.62-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.62 \
+  --windows-zip dist/BudgetManager-v2.2.63-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.2.63-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.63 \
   --out latest.json
 ```
 

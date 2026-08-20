@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.63 – 20. August 2026
+
+### Zentrale Darstellung im LifePlanner
+- BudgetManager übernimmt beim Start im LifePlanner das dort zentral gewählte Designprofil. Der Host legt es im Austauschformat `lifeplanner.theme.v1` ab und nennt den Pfad in `LIFEPLANNER_THEME_FILE`.
+- Die lokal gespeicherte Profilwahl (`active_design_profile`) wird dabei **nicht** überschrieben: im Standalone-Betrieb gilt weiterhin das eigene Profil. Wer im Host manuell umstellt, bleibt für die laufende Sitzung dabei.
+- Ein Profil, das nur der Host mitbringt, bleibt darstellbar — die Farbwerte kommen aus der Datei, nicht aus dem lokalen Profilordner.
+- Ohne LifePlanner ist die Umgebungsvariable leer und es ändert sich nichts.
+
 ## 2.2.62 – 20. August 2026
 
 ### LifePlanner-Modulrelease

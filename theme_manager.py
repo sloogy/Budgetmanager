@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 import json
 import logging
+import os
 from utils.i18n import tr, trf
 import re
 
@@ -131,6 +132,41 @@ ALIASES: Dict[str, str] = {
 }
 
 
+# --- LifePlanner-Host ------------------------------------------------------
+# Der Host legt das zentral gewaehlte Designprofil ab und nennt den Pfad in der
+# Umgebung. Ohne Host ist die Variable leer und hier passiert nichts; der
+# Standalone-Betrieb bleibt unveraendert.
+HOST_THEME_ENV = "LIFEPLANNER_THEME_FILE"
+HOST_THEME_SCHEMA = "lifeplanner.theme.v1"
+
+
+def load_host_theme() -> Optional[ThemeProfile]:
+    """Vom LifePlanner vorgegebenes Designprofil, sonst ``None``."""
+    path = (os.environ.get(HOST_THEME_ENV) or "").strip()
+    if not path:
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            raw = json.load(handle)
+    except (OSError, json.JSONDecodeError) as e:
+        logger.warning("Host-Theme nicht lesbar (%s): %s", path, e)
+        return None
+    if not isinstance(raw, dict) or raw.get("schema") != HOST_THEME_SCHEMA:
+        logger.warning("Host-Theme hat ein unerwartetes Schema: %r", path)
+        return None
+    name = str(raw.get("name") or "").strip()
+    if not name:
+        return None
+    data: Dict[str, Any] = {
+        "modus": str(raw.get("modus", "hell")).strip().lower(),
+        "schriftgroesse": raw.get("schriftgroesse", 10),
+    }
+    farben = raw.get("farben")
+    if isinstance(farben, dict):
+        data.update({k: v for k, v in farben.items() if _is_hex_color(v)})
+    return ThemeProfile(name=name, data=data)
+
+
 class ThemeManager:
     def __init__(self, settings):
         self.settings = settings
@@ -150,6 +186,7 @@ class ThemeManager:
         self.user_dir.mkdir(parents=True, exist_ok=True)
 
         self._current_profile: Optional[ThemeProfile] = None
+        self._host_profile: Optional[ThemeProfile] = load_host_theme()
 
         # Cache
         self._bundled_index: Dict[str, Path] = {}
@@ -283,6 +320,10 @@ class ThemeManager:
         if base:
             return ThemeProfile(name=name, data=dict(base))
 
+        # Ein Profil, das nur der Host mitbringt, bleibt darstellbar.
+        if self._host_profile is not None and self._host_profile.name == name:
+            return self._host_profile
+
         return None
 
     def _load_json_file(self, path: Path) -> Optional[Dict[str, Any]]:
@@ -375,6 +416,12 @@ class ThemeManager:
 
     def get_current_profile(self) -> Optional[ThemeProfile]:
         if not self._current_profile:
+            if self._host_profile is not None:
+                # Im LifePlanner gibt die zentrale Darstellung den Ton an. Die
+                # lokal gespeicherte Wahl wird nicht ueberschrieben, damit der
+                # Standalone-Start weiterhin das eigene Profil verwendet.
+                self._current_profile = self._host_profile
+                return self._current_profile
             saved = (
                 self.settings.get("active_design_profile") or ""
             ).strip() or "Standard Hell"

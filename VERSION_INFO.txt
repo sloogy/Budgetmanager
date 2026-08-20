@@ -1,5 +1,12 @@
-Budgetmanager Version 2.2.62
+Budgetmanager Version 2.2.63
 Datum: 20. August 2026
+
+ZENTRALE DARSTELLUNG IM LIFEPLANNER 2.2.63
+-------------------------------------------------------------
+- BudgetManager übernimmt im LifePlanner das zentral gewählte Designprofil.
+- Der Host legt es als lifeplanner.theme.v1 ab und nennt den Pfad in LIFEPLANNER_THEME_FILE.
+- Die lokale Profilwahl bleibt unangetastet und gilt weiterhin im Standalone-Betrieb.
+- Ein nur vom Host mitgebrachtes Profil bleibt über dessen Farbwerte darstellbar.
 
 LIFEPLANNER MODULE RELEASE 2.2.62
 -------------------------------------------------------------
