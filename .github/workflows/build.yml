@@ -48,7 +48,8 @@ jobs:
             docs/architecture.md docs/DAU_TEST_ERSTSTART.md docs/features.md \
             docs/latest.json.template docs/migration-guide.md docs/open-tasks.md \
             docs/package-overview.md docs/release-checklist.md docs/themes.md \
-            docs/USER_GUIDE.de.md docs/USER_GUIDE.en.md docs/USER_GUIDE.fr.md
+            docs/USER_GUIDE.de.md docs/USER_GUIDE.en.md docs/USER_GUIDE.fr.md \
+            docs/help/README.md docs/help/index.html
           git commit -m "chore: sync release metadata for v$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
           git push origin "HEAD:${{ github.ref_name }}"
 
