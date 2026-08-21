@@ -289,6 +289,12 @@ class MainWindow(QMainWindow):
         # Es wird ausschließlich ein Zähler angezeigt; nie automatisch gebucht.
         QTimer.singleShot(500, self._update_lifeplanner_import_badge)
 
+        # Einmal beim Start herausschreiben. Damit ist die Brücke aktuell,
+        # sobald BudgetManager läuft - auch wenn zuletzt außerhalb der
+        # Oberfläche etwas geändert wurde oder ein Lauf ohne sauberes Beenden
+        # endete.
+        QTimer.singleShot(1500, self._sync_bridge_outboxes_safely)
+
         # Auto-Backup wird via QTimer.singleShot aus main.py gestartet,
         # damit _encrypted_session korrekt gesetzt ist.
 
@@ -3195,6 +3201,62 @@ class MainWindow(QMainWindow):
             traceback.print_exc()
         finally:
             self._refresh_all_tabs_running = False
+        # Ein Voll-Refresh folgt auf eine Datenaenderung. Genau dann soll die
+        # Bruecke nachziehen, damit FPM den neuen Stand sieht.
+        self._schedule_bridge_outbox_sync(reason="refresh_all_tabs")
+
+    # ── Bruecke zu FPM ───────────────────────────────────────────────────
+    def _schedule_bridge_outbox_sync(self, *, reason: str = "") -> None:
+        """Schreibt Ausgabenvorschlaege und Sparziele traege in die Bruecke.
+
+        Bis hierher geschah das nur, wenn jemand im LifePlanner-Dialog
+        ausdruecklich darauf drueckte. Wer ein Sparziel anlegte und den Dialog
+        nie oeffnete, dessen Ziel erreichte FPM nie - ohne Fehlermeldung, es
+        blieb einfach leer. FPM haelt seine Seite umgekehrt seit jeher nach
+        jeder Aenderung aktuell.
+
+        Traege, weil beide Exporte die vollstaendigen Tabellen lesen. Mehrere
+        Aenderungen kurz hintereinander sollen einen Lauf ergeben, nicht zehn.
+        """
+        if getattr(self, "_bridge_sync_pending", False):
+            return
+        self._bridge_sync_pending = True
+
+        def _run() -> None:
+            self._bridge_sync_pending = False
+            self._sync_bridge_outboxes_safely()
+
+        try:
+            logger.debug("Bridge-Abgleich geplant (%s).", reason)
+            QTimer.singleShot(1500, _run)
+        except Exception:
+            self._bridge_sync_pending = False
+            self._sync_bridge_outboxes_safely()
+
+    def _sync_bridge_outboxes_safely(self) -> None:
+        """Ein Fehler hier bleibt folgenlos.
+
+        Die Bruecke ist eine Spiegelung. Ein getrenntes Netzlaufwerk oder ein
+        falsch gesetztes LIFEPLANNER_BRIDGE_DIR darf die Buchhaltung nicht
+        stoeren - der Fehler gehoert ins Log, nicht vor den Nutzer.
+        """
+        if getattr(self, "_is_closing", False) and not getattr(
+            self, "_bridge_sync_on_close", False
+        ):
+            return
+        try:
+            from model.lifeplanner_import_service import sync_default_outboxes
+
+            expenses, savings = sync_default_outboxes(self.conn)
+        except Exception:
+            logger.warning("Bridge-Outbox konnte nicht geschrieben werden", exc_info=True)
+            return
+        logger.debug(
+            "Bridge-Outbox geschrieben: %s Ausgaben, %s Sparziele nach %s",
+            expenses.count,
+            savings.count,
+            expenses.path.parent,
+        )
 
     def _toggle_fullscreen(self, checked):
         """Toggle Vollbildmodus (F11)"""
@@ -3254,6 +3316,12 @@ class MainWindow(QMainWindow):
 
         # Tab-Reihenfolge speichern
         self._save_tab_order()
+
+        # Letzter Stand in die Bruecke. Wer ein Sparziel anlegt und gleich
+        # schliesst, wartet sonst bis zum naechsten Start darauf, dass FPM es
+        # sieht. Der traege Zeitgeber kaeme hier nicht mehr zum Zug.
+        self._bridge_sync_on_close = True
+        self._sync_bridge_outboxes_safely()
 
         # Wenn Auto-Save aktiv: Einfach speichern und schließen
         if hasattr(self, "settings") and self.settings.auto_save:
