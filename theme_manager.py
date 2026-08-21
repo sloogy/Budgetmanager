@@ -555,6 +555,18 @@ class ThemeManager:
         negative = p.get("negativ_text", p.get("typ_ausgaben", "#e74c3c"))
 
         font_size = p.get("schriftgroesse", 10)
+        try:
+            scale = max(0.85, min(1.50, float(font_size) / 10.0))
+        except (TypeError, ValueError):
+            scale = 1.0
+        # Groessen wachsen mit der eingestellten Schrift. Vorher standen hier
+        # feste Pixelwerte: Wer die Schrift zur besseren Lesbarkeit hochstellte,
+        # bekam groesseren Text in unveraendert engen Feldern, und einzelne
+        # Beschriftungen - der Cockpit-Titel etwa - wuchsen gar nicht mit, weil
+        # ihr font-size die Profilschrift ueberschrieb. FPM und
+        # FreizeitManager rechnen seit jeher so; 10 bedeutet unveraendert.
+        def px(wert: float) -> int:
+            return max(1, round(wert * scale))
 
         return f"""
 * {{ font-size: {font_size}pt; }}
@@ -579,12 +591,12 @@ QPushButton#sidebarNavButton:checked {{ background-color: {sel_bg}; color: {sel_
 QToolBar#unifiedActionToolbar {{ background-color: {bg_panel}; border-bottom: 1px solid {table_grid}; }}
 QPushButton {{ background-color: {accent}; color: {accent_text}; border: none; padding: 8px 16px; border-radius: 6px; }}
 QPushButton:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
-QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; border-radius: 4px; padding: 4px 8px; min-height: 22px; }}
-QComboBox {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; border-radius: 4px; padding: 4px 8px; min-height: 22px; }}
+QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; border-radius: 4px; padding: 4px 8px; min-height: {px(22)}px; }}
+QComboBox {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; border-radius: 4px; padding: 4px 8px; min-height: {px(22)}px; }}
 QComboBox::drop-down {{ border: none; width: 22px; }}
 QSpinBox::up-button, QDoubleSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::down-button {{ width: 18px; }}
 QComboBox QAbstractItemView {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; selection-background-color: {dropdown_sel}; selection-color: {dropdown_sel_text}; }}
-QComboBox QAbstractItemView::item {{ padding: 6px; min-height: 24px; background-color: {dropdown_bg}; color: {dropdown_text}; }}
+QComboBox QAbstractItemView::item {{ padding: 6px; min-height: {px(24)}px; background-color: {dropdown_bg}; color: {dropdown_text}; }}
 QComboBox QAbstractItemView::item:selected {{ background-color: {dropdown_sel}; color: {dropdown_sel_text}; }}
 QTableWidget {{ background-color: {table_bg}; alternate-background-color: {table_alt}; gridline-color: {table_grid}; selection-background-color: {sel_bg}; selection-color: {sel_text}; }}
 	/* Kategorien-Tab nutzt QTreeWidget */
@@ -636,28 +648,28 @@ QMenuBar::item:selected {{ background-color: {accent}; color: {accent_text}; bor
    das Zeichen verschwindet optisch in der Leiste. */
 /* v2.2.42 Kartenoptik: Kacheln bekommen Radius, Rand und Innenabstand aus
    dem Profil. Vorher waren es schlichte QFrame-Panels ohne eigene Sprache. */
-QLabel#cockpitTitle {{ color: {text}; font-size: 22px; font-weight: 700; }}
+QLabel#cockpitTitle {{ color: {text}; font-size: {px(22)}px; font-weight: 700; }}
 QLabel#cockpitSubtitle, QLabel#cockpitModeHint, QLabel#cockpitNextSteps {{ color: {text_dim}; }}
-QLabel#cockpitMonthStatus {{ color: {text}; font-size: 15px; font-weight: 600; }}
-QLabel#cockpitNextSteps {{ font-size: 12px; }}
+QLabel#cockpitMonthStatus {{ color: {text}; font-size: {px(15)}px; font-weight: 600; }}
+QLabel#cockpitNextSteps {{ font-size: {px(12)}px; }}
 QFrame#cockpitSection {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: 12px; }}
 QFrame#cockpitCard {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: 12px; }}
-QLabel#cockpitCardIcon {{ background-color: {hover_bg}; color: {accent}; border-radius: 9px; font-size: 15px; padding: 6px; }}
+QLabel#cockpitCardIcon {{ background-color: {hover_bg}; color: {accent}; border-radius: {px(9)}px; font-size: {px(15)}px; padding: {px(6)}px; }}
 QLabel#cockpitCardLabel {{ color: {text_dim}; font-weight: 600; }}
-QLabel#cockpitCardValue {{ color: {text}; font-size: 26px; font-weight: 700; }}
-QLabel#cockpitCardCaption {{ color: {text_dim}; font-size: 11px; }}
+QLabel#cockpitCardValue {{ color: {text}; font-size: {px(26)}px; font-weight: 700; }}
+QLabel#cockpitCardCaption {{ color: {text_dim}; font-size: {px(11)}px; }}
 QLabel#cockpitCardTrend {{ font-weight: 700; }}
 QLabel#cockpitCardTrend[trendState="good"] {{ color: {positive}; }}
 QLabel#cockpitCardTrend[trendState="bad"] {{ color: {negative}; }}
 QLabel#cockpitSectionTitle, QLabel#cockpitInnerTitle {{ color: {text}; font-weight: 700; }}
 QLabel#cockpitSectionCount {{ color: {text_dim}; font-weight: 600; }}
 QLabel#cockpitSectionEmpty {{ color: {text_dim}; }}
-QToolButton#cockpitSectionGrip {{ color: {text_dim}; background: transparent; border: none; font-size: 14px; padding: 2px 5px; }}
+QToolButton#cockpitSectionGrip {{ color: {text_dim}; background: transparent; border: none; font-size: {px(14)}px; padding: 2px 5px; }}
 QToolButton#cockpitSectionGrip:hover {{ color: {accent}; background-color: {hover_bg}; }}
-QFrame#cockpitDropPlaceholder {{ background-color: {hover_bg}; border: 2px dashed {accent}; border-radius: 10px; min-height: 58px; }}
+QFrame#cockpitDropPlaceholder {{ background-color: {hover_bg}; border: 2px dashed {accent}; border-radius: 10px; min-height: {px(58)}px; }}
 QLabel#cockpitDropPlaceholderText {{ color: {accent}; font-weight: 700; background: transparent; border: none; }}
 QChartView#cockpitChartView {{ background: transparent; border: none; }}
-QToolButton#menuBarHelpButton {{ background-color: {accent}; color: {accent_text}; border: 1px solid {accent}; border-radius: 11px; font-size: 15px; font-weight: 700; min-width: 26px; min-height: 22px; padding: 0 9px; margin: 2px 8px 2px 4px; }}
+QToolButton#menuBarHelpButton {{ background-color: {accent}; color: {accent_text}; border: 1px solid {accent}; border-radius: {px(22) // 2}px; font-size: {px(15)}px; font-weight: 700; min-width: {px(26)}px; min-height: {px(22)}px; padding: 0 9px; margin: 2px 8px 2px 4px; }}
 QToolButton#menuBarHelpButton:hover {{ background-color: {hover_bg}; color: {hover_text}; border: 1px solid {hover_bg}; }}
 QToolButton#menuBarHelpButton:focus {{ border: 2px solid {text}; }}
 QMenu {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; }}
@@ -666,18 +678,18 @@ QMenu::item:selected {{ background-color: {accent}; color: {accent_text}; }}
 QProgressBar {{ border: 1px solid {table_grid}; border-radius: 3px; text-align: center; background: {bg_panel}; color: {text}; }}
 
 QScrollBar:vertical {{ background: {bg_app}; width: 12px; border: none; }}
-QScrollBar::handle:vertical {{ background: {table_grid}; border-radius: 6px; min-height: 20px; }}
+QScrollBar::handle:vertical {{ background: {table_grid}; border-radius: {px(6)}px; min-height: {px(20)}px; }}
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
 QScrollBar:horizontal {{ background: {bg_app}; height: 12px; border: none; }}
-QScrollBar::handle:horizontal {{ background: {table_grid}; border-radius: 6px; min-width: 20px; }}
+QScrollBar::handle:horizontal {{ background: {table_grid}; border-radius: {px(6)}px; min-width: {px(20)}px; }}
 QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
 
 QToolTip {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; padding: 4px; }}
 
 QCheckBox, QRadioButton {{ color: {text}; spacing: 6px; }}
-QCheckBox::indicator {{ width: 16px; height: 16px; border: 1px solid {table_grid}; border-radius: 3px; background: {bg_panel}; }}
+QCheckBox::indicator {{ width: {px(16)}px; height: {px(16)}px; border: 1px solid {table_grid}; border-radius: {px(3)}px; background: {bg_panel}; }}
 QCheckBox::indicator:checked {{ background-color: {accent}; border-color: {accent}; }}
-QRadioButton::indicator {{ width: 16px; height: 16px; border: 1px solid {table_grid}; border-radius: 8px; background: {bg_panel}; }}
+QRadioButton::indicator {{ width: {px(16)}px; height: {px(16)}px; border: 1px solid {table_grid}; border-radius: {px(16) // 2}px; background: {bg_panel}; }}
 QRadioButton::indicator:checked {{ background-color: {accent}; border-color: {accent}; }}
 
 QStatusBar {{ background-color: {bg_panel}; color: {text_dim}; border-top: 1px solid {table_grid}; }}

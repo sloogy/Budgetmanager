@@ -73,7 +73,45 @@ def test_help_corner_button_is_themed_in_all_profiles():
 
 
 def test_help_corner_button_has_geometry_rules():
-    qss = THEME.read_text(encoding="utf-8")
+    """Der Knopf ist rund und bleibt es bei jeder Schriftgroesse.
+
+    Die Masse stehen nicht mehr fest im Quelltext, sondern wachsen mit der
+    eingestellten Schrift. Ein fester Radius neben mitwachsender Breite haette
+    aus dem Kreis ein Oval gemacht - darum wird hier das erzeugte Stylesheet
+    geprueft, nicht die Schreibweise.
+    """
+    import re
+
+    from theme_manager import ThemeManager
+
+    class _Settings(dict):
+        def set(self, key, value):
+            self[key] = value
+
+    manager = ThemeManager(_Settings())
+    profile = manager.get_current_profile()
+
+    for groesse in (8, 10, 16):
+        profile.data["schriftgroesse"] = groesse
+        qss = manager.build_stylesheet(profile)
+        block = re.search(
+            r"QToolButton#menuBarHelpButton \{[^}]*\}", qss
+        )
+        assert block, "Regel fuer den Hilfe-Knopf fehlt"
+        radius = int(re.search(r"border-radius:\s*(\d+)px", block.group()).group(1))
+        hoehe = int(re.search(r"min-height:\s*(\d+)px", block.group()).group(1))
+        breite = int(re.search(r"min-width:\s*(\d+)px", block.group()).group(1))
+        # Kapselform: der Radius ist die halbe Hoehe, die Breite ist groesser.
+        # Ein Pixel Abweichung ist unvermeidlich - bei ungerader Hoehe geht die
+        # Haelfte nicht auf, und Qt begrenzt den Radius ohnehin darauf.
+        assert abs(radius * 2 - hoehe) <= 1, (
+            f"bei {groesse}pt: Radius {radius}, Hoehe {hoehe} - keine Kapsel mehr"
+        )
+        assert breite >= hoehe
+
+    # Bei Standardgroesse bleiben die bisherigen Werte erhalten.
+    profile.data["schriftgroesse"] = 10
+    qss = manager.build_stylesheet(profile)
     assert "border-radius: 11px;" in qss
     assert "min-width: 26px;" in qss
 
