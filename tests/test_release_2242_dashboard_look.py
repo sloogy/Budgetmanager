@@ -64,7 +64,10 @@ def test_card_and_section_styling_comes_from_the_profile():
     block = qss.split("QFrame#cockpitSection {{", 1)[1].split(
         "QToolButton#menuBarHelpButton", 1
     )[0]
-    assert "border-radius: 12px" in block
+    # Die Radien stehen nicht mehr fest im Quelltext, sondern wachsen mit der
+    # eingestellten Schrift. Bei Standardgroesse kommen dieselben 12px heraus -
+    # geprueft wird darum das erzeugte Stylesheet, nicht die Schreibweise.
+    assert "border-radius: {px(12)}px" in block
     assert not re.search(r"#[0-9a-fA-F]{3,8}(?![A-Za-z0-9_-])", block), "feste Hexfarbe"
 
 
@@ -163,3 +166,22 @@ def test_current_version_is_2244():
     from app_info import APP_VERSION
 
     assert re.fullmatch(r"\d+\.\d+\.\d+", APP_VERSION)
+
+
+def test_die_karten_behalten_bei_standardgroesse_ihre_rundung():
+    """BudgetManager ist die Design-Vorlage der Suite - sein Aussehen bei
+    10pt ist der Massstab. Die Skalierung darf daran nichts aendern."""
+    from theme_manager import ThemeManager
+
+    class _Settings(dict):
+        def set(self, key, value):
+            self[key] = value
+
+    manager = ThemeManager(_Settings())
+    profil = manager.get_current_profile()
+    profil.data["schriftgroesse"] = 10
+    qss = manager.build_stylesheet(profil)
+    block = qss.split("QFrame#cockpitSection {", 1)[1].split(
+        "QToolButton#menuBarHelpButton", 1
+    )[0]
+    assert "border-radius: 12px" in block

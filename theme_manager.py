@@ -589,14 +589,14 @@ QPushButton#sidebarNavButton, QPushButton#sidebarUtilityButton {{ background: tr
 QPushButton#sidebarNavButton:hover, QPushButton#sidebarUtilityButton:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 QPushButton#sidebarNavButton:checked {{ background-color: {sel_bg}; color: {sel_text}; }}
 QToolBar#unifiedActionToolbar {{ background-color: {bg_panel}; border-bottom: 1px solid {table_grid}; }}
-QPushButton {{ background-color: {accent}; color: {accent_text}; border: none; padding: 8px 16px; border-radius: 6px; }}
+QPushButton {{ background-color: {accent}; color: {accent_text}; border: none; padding: {px(8)}px {px(16)}px; border-radius: {px(6)}px; }}
 QPushButton:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
-QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; border-radius: 4px; padding: 4px 8px; min-height: {px(22)}px; }}
-QComboBox {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; border-radius: 4px; padding: 4px 8px; min-height: {px(22)}px; }}
-QComboBox::drop-down {{ border: none; width: 22px; }}
-QSpinBox::up-button, QDoubleSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::down-button {{ width: 18px; }}
+QLineEdit, QTextEdit, QSpinBox, QDoubleSpinBox, QDateEdit {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; border-radius: {px(4)}px; padding: {px(4)}px {px(8)}px; min-height: {px(22)}px; }}
+QComboBox {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; border-radius: {px(4)}px; padding: {px(4)}px {px(8)}px; min-height: {px(22)}px; }}
+QComboBox::drop-down {{ border: none; width: {px(22)}px; }}
+QSpinBox::up-button, QDoubleSpinBox::up-button, QSpinBox::down-button, QDoubleSpinBox::down-button {{ width: {px(18)}px; }}
 QComboBox QAbstractItemView {{ background-color: {dropdown_bg}; color: {dropdown_text}; border: 1px solid {dropdown_border}; selection-background-color: {dropdown_sel}; selection-color: {dropdown_sel_text}; }}
-QComboBox QAbstractItemView::item {{ padding: 6px; min-height: {px(24)}px; background-color: {dropdown_bg}; color: {dropdown_text}; }}
+QComboBox QAbstractItemView::item {{ padding: {px(6)}px; min-height: {px(24)}px; background-color: {dropdown_bg}; color: {dropdown_text}; }}
 QComboBox QAbstractItemView::item:selected {{ background-color: {dropdown_sel}; color: {dropdown_sel_text}; }}
 QTableWidget {{ background-color: {table_bg}; alternate-background-color: {table_alt}; gridline-color: {table_grid}; selection-background-color: {sel_bg}; selection-color: {sel_text}; }}
 	/* Kategorien-Tab nutzt QTreeWidget */
@@ -618,11 +618,11 @@ QTableWidget {{ background-color: {table_bg}; alternate-background-color: {table
 		selection-color: {sel_text};
 		outline: 0;
 	}}
-	QListWidget::item, QListView::item {{ padding: 4px 6px; }}
+	QListWidget::item, QListView::item {{ padding: {px(4)}px {px(6)}px; }}
 	QListWidget::item:hover, QListView::item:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 	QListWidget::item:selected, QListView::item:selected {{ background-color: {sel_bg}; color: {sel_text}; }}
 	QListWidget::item:selected:hover, QListView::item:selected:hover {{ background-color: {sel_bg}; color: {sel_text}; }}
-	QTreeWidget::item, QTreeView::item {{ padding: 4px 6px; }}
+	QTreeWidget::item, QTreeView::item {{ padding: {px(4)}px {px(6)}px; }}
 	QTreeWidget::item:alternate, QTreeView::item:alternate {{ background-color: {table_alt}; }}
 	QTreeWidget::item:hover, QTreeView::item:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 	QTreeWidget::item:selected, QTreeView::item:selected {{ background-color: {sel_bg}; color: {sel_text}; }}
@@ -630,17 +630,17 @@ QTableWidget {{ background-color: {table_bg}; alternate-background-color: {table
 QTableWidget::item:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 QTableWidget::item:selected {{ background-color: {sel_bg}; color: {sel_text}; }}
 QTableWidget::item:selected:hover {{ background-color: {sel_bg}; color: {sel_text}; }}
-QHeaderView::section {{ background-color: {table_header}; color: {table_header_text}; border: 1px solid {table_grid}; padding: 6px; }}
-QGroupBox {{ background-color: {bg_panel}; border: 1px solid {table_grid}; border-radius: 8px; padding: 12px; margin-top: 12px; }}
+QHeaderView::section {{ background-color: {table_header}; color: {table_header_text}; border: 1px solid {table_grid}; padding: {px(6)}px; }}
+QGroupBox {{ background-color: {bg_panel}; border: 1px solid {table_grid}; border-radius: {px(8)}px; padding: {px(12)}px; margin-top: 12px; }}
 QGroupBox::title {{ color: {accent_panel_text}; padding: 0 8px; }}
 
-QTabWidget::pane {{ border: 1px solid {table_grid}; border-radius: 10px; }}
-QTabBar::tab {{ background-color: {bg_panel}; color: {text}; padding: 8px 14px; margin: 2px; border-radius: 10px; border: 1px solid {table_grid}; }}
+QTabWidget::pane {{ border: 1px solid {table_grid}; border-radius: {px(10)}px; }}
+QTabBar::tab {{ background-color: {bg_panel}; color: {text}; padding: {px(8)}px {px(14)}px; margin: 2px; border-radius: {px(10)}px; border: 1px solid {table_grid}; }}
 QTabBar::tab:selected {{ background-color: {accent}; color: {accent_text}; border: 1px solid {accent}; }}
 QTabBar::tab:hover {{ background-color: {hover_bg}; color: {hover_text}; }}
 
 QMenuBar {{ background-color: {bg_panel}; color: {text}; }}
-QMenuBar::item:selected {{ background-color: {accent}; color: {accent_text}; border-radius: 6px; }}
+QMenuBar::item:selected {{ background-color: {accent}; color: {accent_text}; border-radius: {px(6)}px; }}
 /* Hilfe-'?' oben rechts in der Menueleiste (Corner-Widget).
    Farben kommen aus dem aktiven Profil, damit der Knopf in hellen wie
    dunklen Themes kontrastreich bleibt. Ohne diese Regel greift auf
@@ -652,8 +652,8 @@ QLabel#cockpitTitle {{ color: {text}; font-size: {px(22)}px; font-weight: 700; }
 QLabel#cockpitSubtitle, QLabel#cockpitModeHint, QLabel#cockpitNextSteps {{ color: {text_dim}; }}
 QLabel#cockpitMonthStatus {{ color: {text}; font-size: {px(15)}px; font-weight: 600; }}
 QLabel#cockpitNextSteps {{ font-size: {px(12)}px; }}
-QFrame#cockpitSection {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: 12px; }}
-QFrame#cockpitCard {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: 12px; }}
+QFrame#cockpitSection {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: {px(12)}px; }}
+QFrame#cockpitCard {{ background-color: {bg_panel}; border: 1px solid {border}; border-radius: {px(12)}px; }}
 QLabel#cockpitCardIcon {{ background-color: {hover_bg}; color: {accent}; border-radius: {px(9)}px; font-size: {px(15)}px; padding: {px(6)}px; }}
 QLabel#cockpitCardLabel {{ color: {text_dim}; font-weight: 600; }}
 QLabel#cockpitCardValue {{ color: {text}; font-size: {px(26)}px; font-weight: 700; }}
@@ -664,9 +664,9 @@ QLabel#cockpitCardTrend[trendState="bad"] {{ color: {negative}; }}
 QLabel#cockpitSectionTitle, QLabel#cockpitInnerTitle {{ color: {text}; font-weight: 700; }}
 QLabel#cockpitSectionCount {{ color: {text_dim}; font-weight: 600; }}
 QLabel#cockpitSectionEmpty {{ color: {text_dim}; }}
-QToolButton#cockpitSectionGrip {{ color: {text_dim}; background: transparent; border: none; font-size: {px(14)}px; padding: 2px 5px; }}
+QToolButton#cockpitSectionGrip {{ color: {text_dim}; background: transparent; border: none; font-size: {px(14)}px; padding: {px(2)}px {px(5)}px; }}
 QToolButton#cockpitSectionGrip:hover {{ color: {accent}; background-color: {hover_bg}; }}
-QFrame#cockpitDropPlaceholder {{ background-color: {hover_bg}; border: 2px dashed {accent}; border-radius: 10px; min-height: {px(58)}px; }}
+QFrame#cockpitDropPlaceholder {{ background-color: {hover_bg}; border: 2px dashed {accent}; border-radius: {px(10)}px; min-height: {px(58)}px; }}
 QLabel#cockpitDropPlaceholderText {{ color: {accent}; font-weight: 700; background: transparent; border: none; }}
 QChartView#cockpitChartView {{ background: transparent; border: none; }}
 QToolButton#menuBarHelpButton {{ background-color: {accent}; color: {accent_text}; border: 1px solid {accent}; border-radius: {px(22) // 2}px; font-size: {px(15)}px; font-weight: 700; min-width: {px(26)}px; min-height: {px(22)}px; padding: 0 9px; margin: 2px 8px 2px 4px; }}
@@ -675,16 +675,16 @@ QToolButton#menuBarHelpButton:focus {{ border: 2px solid {text}; }}
 QMenu {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; }}
 QMenu::item:selected {{ background-color: {accent}; color: {accent_text}; }}
 
-QProgressBar {{ border: 1px solid {table_grid}; border-radius: 3px; text-align: center; background: {bg_panel}; color: {text}; }}
+QProgressBar {{ border: 1px solid {table_grid}; border-radius: {px(3)}px; text-align: center; background: {bg_panel}; color: {text}; }}
 
-QScrollBar:vertical {{ background: {bg_app}; width: 12px; border: none; }}
+QScrollBar:vertical {{ background: {bg_app}; width: {px(12)}px; border: none; }}
 QScrollBar::handle:vertical {{ background: {table_grid}; border-radius: {px(6)}px; min-height: {px(20)}px; }}
-QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: 0px; }}
-QScrollBar:horizontal {{ background: {bg_app}; height: 12px; border: none; }}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{ height: {px(0)}px; }}
+QScrollBar:horizontal {{ background: {bg_app}; height: {px(12)}px; border: none; }}
 QScrollBar::handle:horizontal {{ background: {table_grid}; border-radius: {px(6)}px; min-width: {px(20)}px; }}
-QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0px; }}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: {px(0)}px; }}
 
-QToolTip {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; padding: 4px; }}
+QToolTip {{ background-color: {bg_panel}; color: {text}; border: 1px solid {table_grid}; padding: {px(4)}px; }}
 
 QCheckBox, QRadioButton {{ color: {text}; spacing: 6px; }}
 QCheckBox::indicator {{ width: {px(16)}px; height: {px(16)}px; border: 1px solid {table_grid}; border-radius: {px(3)}px; background: {bg_panel}; }}
