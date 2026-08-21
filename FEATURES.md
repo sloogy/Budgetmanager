@@ -1,3 +1,7 @@
+## Neu in v2.2.64
+
+- Siehe VERSION_INFO.txt und CHANGELOG.md.
+
 ## Neu in v2.2.63
 
 - **Zentrale Darstellung:** Im LifePlanner übernimmt BudgetManager das dort gewählte Designprofil beim Start (`LIFEPLANNER_THEME_FILE`, Format `lifeplanner.theme.v1`).

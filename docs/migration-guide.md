@@ -1,4 +1,4 @@
-# Migration Guide — BudgetManager v2.2.63
+# Migration Guide — BudgetManager v2.2.64
 
 ## Grundsatz
 

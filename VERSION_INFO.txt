@@ -1,5 +1,24 @@
-Budgetmanager Version 2.2.63
+Budgetmanager Version 2.2.64
 Datum: 20. August 2026
+
+GEMEINSAMER DESIGNKATALOG 2.2.64
+-------------------------------------------------------------
+- LifePlanner, BudgetManager, FountainPen Manager und FreizeitManager liefern
+  denselben Satz von 26 Designs aus - byteweise dieselben Profildateien.
+- Grund: Vorher kannten BudgetManager und LifePlanner 26 Designs mit 29 Rollen,
+  die beiden anderen Module sieben mit 38-40. Ein Design, das ein Modul nicht
+  selbst mitbrachte, wurde dort nur halb dargestellt.
+- Jedes Profil fuehrt jetzt 55 Rollen. Fehlende wurden aus vorhandenen Farben
+  desselben Profils abgeleitet; handverlesene Werte blieben unangetastet.
+- Die 26 bestehenden Profile aendern sich kaum: je Profil kamen 30 Rollen hinzu,
+  geaendert wurden null bis drei Werte.
+- Lesbarkeit ist jetzt Bedingung: 4.5:1 fuer jede Schrift auf jedem Grund,
+  Signalfarben heben sich von der Karte ab, gedimmte Schrift unterscheidet sich
+  messbar von der normalen.
+- tools/design_sync.py erzeugt und prueft den Katalog, tests/test_shared_design.py
+  haelt ihn zusammen.
+- tools/sync_version.py zieht jetzt auch README, Installationsanleitung,
+  FEATURES und die Release-Notizen nach.
 
 ZENTRALE DARSTELLUNG IM LIFEPLANNER 2.2.63
 -------------------------------------------------------------

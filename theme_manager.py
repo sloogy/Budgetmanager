@@ -122,6 +122,10 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {
 
 # Kompatibilität: alte Namen → neue Namen (falls Einstellungen noch alte Werte enthalten)
 ALIASES: Dict[str, str] = {
+    # Die eingebauten Rueckfallprofile heissen ohne Bindestrich, der
+    # gemeinsame Katalog mit. Ohne diese Zeilen stuenden beide in der Liste.
+    "Standard Hell": "Standard - Hell",
+    "Standard Dunkel": "Standard - Dunkel",
     "Solarized Hell": "Solarized - Hell",
     "Solarized Dunkel": "Solarized - Dunkel",
     "Nord Dunkel": "Nord - Dunkel",
