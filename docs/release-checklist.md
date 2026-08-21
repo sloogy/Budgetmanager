@@ -1,4 +1,4 @@
-# Release-Checkliste — BudgetManager v2.2.66
+# Release-Checkliste — BudgetManager v2.2.67
 
 ## Lokal prüfen
 
