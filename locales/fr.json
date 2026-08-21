@@ -1460,6 +1460,11 @@
   "lifeplanner_import": {
     "accept": "Accepter la sélection",
     "amount_in_budget_currency": "Montant dans la devise du budget",
+    "bridge_status_entries": "{name} : {anzahl} entrées",
+    "bridge_status_folder": "Dossier : {pfad}",
+    "bridge_status_hint": "Le dossier dépend du mode de lancement de BudgetManager : dans LifePlanner, c'est l'hôte qui le fixe ; lancé seul, il se trouve dans votre dossier personnel. Utiliser les deux revient à avoir deux passerelles distinctes.",
+    "bridge_status_missing": "{name} : rien d'écrit pour l'instant",
+    "bridge_status_title": "État de la passerelle",
     "category_required": "Veuillez sélectionner une catégorie.",
     "central_updater": "Dans ce mode de lancement, les mises à jour sont gérées centralement par LifePlanner.",
     "create_category_question": "La catégorie « {category} » n’existe pas. La créer ?",

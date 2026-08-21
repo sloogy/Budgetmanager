@@ -1460,6 +1460,11 @@
   "lifeplanner_import": {
     "accept": "Auswahl übernehmen",
     "amount_in_budget_currency": "Betrag in Budget-Währung",
+    "bridge_status_entries": "{name}: {anzahl} Einträge",
+    "bridge_status_folder": "Ordner: {pfad}",
+    "bridge_status_hint": "Der Ordner hängt davon ab, wie BudgetManager gestartet wurde: Im LifePlanner gibt ihn der Host vor, eigenständig liegt er im Benutzerverzeichnis. Wer beides nutzt, hat zwei getrennte Brücken.",
+    "bridge_status_missing": "{name}: noch nichts geschrieben",
+    "bridge_status_title": "Zustand der Brücke",
     "category_required": "Bitte eine Kategorie auswählen.",
     "central_updater": "Updates werden in diesem Startmodus zentral durch LifePlanner verwaltet.",
     "create_category_question": "Die Kategorie „{category}“ existiert noch nicht. Als neue Kategorie anlegen?",

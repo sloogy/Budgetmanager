@@ -663,5 +663,60 @@ def export_savings_goals(conn, path: str | Path | None = None) -> BridgeExportRe
     return BridgeExportResult(out, count)
 
 
+@dataclass(frozen=True)
+class BridgeDateiBefund:
+    """Was in einer der drei Brückendateien steht."""
+
+    name: str
+    pfad: Path
+    vorhanden: bool
+    eintraege: int
+
+
+def bridge_zustand() -> tuple[Path, tuple[BridgeDateiBefund, ...]]:
+    """Der aktive Brückenordner und was darin liegt.
+
+    Warum das sichtbar sein muss: Der Ordner hängt davon ab, wie BudgetManager
+    gestartet wurde. Im LifePlanner gibt ihn der Host über
+    LIFEPLANNER_BRIDGE_DIR vor, eigenständig liegt er im Benutzerverzeichnis.
+    Wer beides gemischt nutzt, hat zwei getrennte Brücken - und wundert sich,
+    warum nichts ankommt.
+
+    Unterschieden wird zwischen "Datei fehlt" (das andere Programm hat noch
+    nichts geschrieben) und "leer": Fehlt sie, liegt es dort und nicht hier.
+
+    Gegenstück zu FPM/logic/budget_export_service.py, bridge_zustand().
+    """
+    ordner = default_bridge_dir()
+    befunde = []
+    for name, dateiname, schemas in (
+        ("FPM → BudgetManager", BRIDGE_FILE, {SCHEMA}),
+        ("BudgetManager → FPM", FPM_OUTBOX_FILE, {"fpm.import.v1", "fpm.expense.v1"}),
+        (
+            "Sparziele → FPM",
+            SAVINGS_GOALS_OUTBOX_FILE,
+            {"fpm.savings-goal.v1", "fpm.savings_goal.v1"},
+        ),
+    ):
+        pfad = ordner / dateiname
+        if not pfad.is_file():
+            befunde.append(BridgeDateiBefund(name, pfad, False, 0))
+            continue
+        anzahl = 0
+        for zeile in pfad.read_text(encoding="utf-8", errors="replace").splitlines():
+            if not zeile.strip():
+                continue
+            try:
+                eintrag = json.loads(zeile)
+            except json.JSONDecodeError:
+                # Eine unlesbare Zeile soll die Anzeige nicht sprengen; dass
+                # etwas nicht stimmt, sieht man an der Zahl.
+                continue
+            if isinstance(eintrag, dict) and eintrag.get("schema") in schemas:
+                anzahl += 1
+        befunde.append(BridgeDateiBefund(name, pfad, True, anzahl))
+    return ordner, tuple(befunde)
+
+
 def sync_default_outboxes(conn) -> tuple[BridgeExportResult, BridgeExportResult]:
     return export_fpm_expense_proposals(conn), export_savings_goals(conn)

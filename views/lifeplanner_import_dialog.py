@@ -29,6 +29,7 @@ from PySide6.QtWidgets import (
 
 from model.category_model import CategoryModel
 from model.lifeplanner_import_service import (
+    bridge_zustand,
     ImportDraft,
     ImportRecord,
     LifePlannerImportError,
@@ -321,6 +322,9 @@ class LifePlannerImportDialog(QDialog):
         self.reject_btn.clicked.connect(self._reject_selected)
         self.sync_btn.clicked.connect(self._sync_outboxes)
         close_btn.clicked.connect(self.accept)
+        self._bridge_status = QLabel()
+        self._bridge_status.setWordWrap(True)
+        self._bridge_status.setObjectName("bridgeStatus")
         for button in (
             self.reload_btn,
             self.edit_btn,
@@ -332,6 +336,14 @@ class LifePlannerImportDialog(QDialog):
         actions.addStretch(1)
         actions.addWidget(close_btn)
         layout.addLayout(actions)
+        # Zustand der Bruecke unter den Schaltflaechen: Wer hier steht, will
+        # wissen, ob und wo der Austausch stattfindet.
+        layout.addWidget(self._bridge_status)
+        hinweis = QLabel(tr("lifeplanner_import.bridge_status_hint"))
+        hinweis.setWordWrap(True)
+        hinweis.setObjectName("bridgeStatusHint")
+        layout.addWidget(hinweis)
+        self._refresh_bridge_status()
         self.reload()
         configure_dialog_tab_order(self)
 
@@ -344,6 +356,7 @@ class LifePlannerImportDialog(QDialog):
             self.records = []
             self._records_by_id = {}
         self._populate_table()
+        self._refresh_bridge_status()
 
     def _visible_records(self) -> list[ImportRecord]:
         if self.filter_combo.currentData() == "all":
@@ -461,6 +474,25 @@ class LifePlannerImportDialog(QDialog):
         if errors:
             show_warning(self, tr("dlg.hinweis"), "\n".join(errors[:10]))
 
+    def _refresh_bridge_status(self) -> None:
+        """Zeigt Ordner und Inhalt der drei Brückendateien.
+
+        Ohne diese Anzeige ist nicht zu erkennen, ob der Austausch überhaupt
+        stattfindet - und vor allem nicht, welcher Ordner gerade gilt.
+        """
+        try:
+            ordner, befunde = bridge_zustand()
+        except OSError as fehler:
+            self._bridge_status.setText(str(fehler))
+            return
+        zeilen = [trf("lifeplanner_import.bridge_status_folder", pfad=ordner)]
+        for befund in befunde:
+            schluessel = ("lifeplanner_import.bridge_status_entries"
+                          if befund.vorhanden
+                          else "lifeplanner_import.bridge_status_missing")
+            zeilen.append(trf(schluessel, name=befund.name, anzahl=befund.eintraege))
+        self._bridge_status.setText("\n".join(zeilen))
+
     def _sync_outboxes(self, *_args) -> None:
         """Schreibt FPM-Ausgaben und Sparziele kontrolliert in die Bridge-Outbox."""
         try:
@@ -469,6 +501,7 @@ class LifePlannerImportDialog(QDialog):
             logger.exception("LifePlanner outbox sync failed")
             show_warning(self, tr("dlg.hinweis"), str(exc))
             return
+        self._refresh_bridge_status()
         show_info(
             self,
             tr("lifeplanner_import.sync_done_title"),

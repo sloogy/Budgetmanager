@@ -249,3 +249,47 @@ def test_der_ausgabevorschlag_traegt_die_felder_die_fpm_liest(ausgabe_datei: Pat
     # FPM liest "category" oder "category_path" - eines davon muss da sein.
     assert vorschlag.get("category") or vorschlag.get("category_path")
     assert vorschlag["date"]
+
+
+# ── Der Zustand der Bruecke ist sichtbar ────────────────────────────────────
+
+def test_der_zustand_nennt_alle_drei_dateien(tmp_path, monkeypatch):
+    """Ohne diese Anzeige ist nicht zu erkennen, ob der Austausch stattfindet -
+    und vor allem nicht, welcher Ordner gerade gilt. Gegenstueck zu FPM."""
+    from model.lifeplanner_import_service import bridge_zustand
+
+    monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(tmp_path))
+    ordner, befunde = bridge_zustand()
+
+    assert ordner == tmp_path
+    assert len(befunde) == 3
+    assert all(not b.vorhanden for b in befunde)
+
+
+def test_der_zustand_zaehlt_die_eintraege(tmp_path, monkeypatch):
+    from model.lifeplanner_import_service import bridge_zustand
+
+    monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(tmp_path))
+    (tmp_path / "fpm_to_budgetmanager.jsonl").write_text(
+        json.dumps(FPM_MANIFEST) + "\n" + json.dumps(FPM_AUSGABE) + "\n",
+        encoding="utf-8",
+    )
+
+    _, befunde = bridge_zustand()
+    nach_name = {b.name: b for b in befunde}
+
+    assert nach_name["FPM → BudgetManager"].eintraege == 1
+    # Die anderen gibt es noch nicht - das ist etwas anderes als leer.
+    assert not nach_name["Sparziele → FPM"].vorhanden
+
+
+def test_eine_kaputte_zeile_sprengt_die_anzeige_nicht(tmp_path, monkeypatch):
+    from model.lifeplanner_import_service import bridge_zustand
+
+    monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(tmp_path))
+    (tmp_path / "fpm_to_budgetmanager.jsonl").write_text(
+        "kein json\n" + json.dumps(FPM_AUSGABE) + "\n", encoding="utf-8")
+
+    _, befunde = bridge_zustand()
+    nach_name = {b.name: b for b in befunde}
+    assert nach_name["FPM → BudgetManager"].eintraege == 1
