@@ -52,44 +52,8 @@ jobs:
           git commit -m "chore: sync release metadata for v$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
           git push origin "HEAD:${{ github.ref_name }}"
 
-  tag_release:
-    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout merged release
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Read version
-        id: version
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
-          test -n "$VERSION"
-          case "$VERSION" in
-            *[!0-9.]*|'') echo "Ungueltige Release-Version: $VERSION"; exit 1 ;;
-          esac
-          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Create tag only once
-        shell: bash
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
-        run: |
-          set -euo pipefail
-          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
-            echo "Tag $TAG existiert bereits; nichts zu tun."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "BudgetManager $TAG"
-          git push origin "$TAG"
-
   build:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
     strategy:
       fail-fast: false
       matrix:
@@ -195,7 +159,7 @@ jobs:
       - name: Build unsigned LifePlanner module package
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#v}"
+          VERSION="$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
           python tools/build_lifeplanner_module.py \
             --runtime-dir "${{ matrix.pyinstaller_output }}" \
             --runtime-name BudgetManager \
@@ -218,7 +182,7 @@ jobs:
           if-no-files-found: error
 
   installer:
-    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))) && needs.build.result == 'success'
     needs: build
     runs-on: windows-latest
 
@@ -290,7 +254,9 @@ jobs:
           }
 
           $marker = Get-Content -Raw $markerPath | ConvertFrom-Json
-          $expectedVersion = "${{ github.ref_name }}" -replace '^v', ''
+          $versionLine = Select-String -Path "app_info.py" -Pattern '^APP_VERSION = "([^"]+)"'
+          if (-not $versionLine) { throw "APP_VERSION nicht gefunden." }
+          $expectedVersion = $versionLine.Matches[0].Groups[1].Value
           if ($marker.version -ne $expectedVersion) {
             throw "Installierte Version $($marker.version) passt nicht zu $expectedVersion."
           }
@@ -333,7 +299,7 @@ jobs:
           if-no-files-found: error
 
   manifest:
-    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success' && needs.installer.result == 'success'
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))) && needs.build.result == 'success' && needs.installer.result == 'success'
     needs: [build, installer]
     runs-on: ubuntu-latest
 
@@ -371,14 +337,28 @@ jobs:
           name: BudgetManager_Setup.exe
           path: artifacts/windows/
 
+      - name: Resolve release metadata
+        id: release_meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
+          TAG="v${VERSION}"
+          if [[ "${GITHUB_REF}" == refs/tags/v* && "${GITHUB_REF_NAME}" != "${TAG}" ]]; then
+            echo "Tag ${GITHUB_REF_NAME} passt nicht zu APP_VERSION ${VERSION}" >&2
+            exit 1
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+
       - name: Build release assets + updater manifest
         shell: bash
         env:
           UPDATE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_B64 }}
           UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
         run: |
-          TAG="${{ github.ref_name }}"
-          VERSION="${TAG#v}"
+          TAG="${{ steps.release_meta.outputs.tag }}"
+          VERSION="${{ steps.release_meta.outputs.version }}"
           BASE="https://github.com/${{ github.repository }}/releases/download/${TAG}"
 
           python tools/build_release_assets.py \
@@ -464,5 +444,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           files: release_assets/*
