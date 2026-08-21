@@ -84,12 +84,24 @@ class BridgeExportResult:
 
 
 def default_bridge_dir() -> Path:
+    """Gemeinsamer Brückenordner.
+
+    Im LifePlanner gibt der Host den Ordner vor; er liegt dann im bereits
+    geschützten Profil. Eigenständig landet er im Benutzerverzeichnis - dort
+    wird er beim Anlegen auf 0700 gesetzt, denn was darin liegt, sind
+    Buchungen und Sparziele.
+    """
     override = os.environ.get("LIFEPLANNER_BRIDGE_DIR", "").strip()
     if override:
         path = Path(override).expanduser().resolve()
     else:
         path = Path.home() / "fpm_budgetmanager_bridge"
+    neu = not path.exists()
     path.mkdir(parents=True, exist_ok=True)
+    if neu:
+        from model.file_permissions import secure_dir
+
+        secure_dir(path)
     return path
 
 
@@ -577,6 +589,10 @@ def export_fpm_expense_proposals(
             }
             handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
             count += 1
+    # Die Datei trägt Beträge und Sparziele - dieselben Rechte wie der Ordner.
+    from model.file_permissions import secure_file
+
+    secure_file(out)
     return BridgeExportResult(out, count)
 
 
@@ -640,6 +656,10 @@ def export_savings_goals(conn, path: str | Path | None = None) -> BridgeExportRe
             }
             handle.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
             count += 1
+    # Die Datei trägt Beträge und Sparziele - dieselben Rechte wie der Ordner.
+    from model.file_permissions import secure_file
+
+    secure_file(out)
     return BridgeExportResult(out, count)
 
 
