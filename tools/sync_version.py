@@ -161,11 +161,6 @@ def _swap_version(text: str, old_series: str) -> str:
     return re.sub(rf"(?<![\d.]){re.escape(old_series)}\.\d+(?!\.?\d)", APP_VERSION, text)
 
 
-# Dateien, die die Version in ihrem Kopf nennen, mit der Anzahl Zeilen, die
-# dazu gehoert. Weiter unten steht in denselben Dateien die Versionshistorie
-# ("Neu in v2.2.41") - die darf nicht mitwandern. Die Release-Gates in
-# tests/test_release_integrity.py pruefen genau diese Liste; bisher musste sie
-# bei jedem Release von Hand nachgezogen werden.
 VERSION_BEARING: tuple[tuple[str, int], ...] = (
     ("README.md", 5),
     ("README_INSTALLATION.md", 5),
@@ -184,16 +179,15 @@ VERSION_BEARING: tuple[tuple[str, int], ...] = (
     ("docs/USER_GUIDE.fr.md", 5),
 )
 
-# In README.md steht die Version zusaetzlich als Codebeispiel.
 EXTRA_PATTERNS: tuple[tuple[str, str, str], ...] = (
     ("README.md", r'APP_VERSION = "[^"]*"', 'APP_VERSION = "{version}"'),
+    ("README.md", r'APP_RELEASE_DATE = "[^"]*"', 'APP_RELEASE_DATE = "{release_date}"'),
 )
 
 _VERSION_IN_SERIES = r"(?<![\d.]){series}\.\d+(?!\.?\d)"
 
 
 def _head_version(lines: list[str], series: str) -> str | None:
-    """Die Version, die der Kopf der Datei als die aktuelle fuehrt."""
     pattern = re.compile(_VERSION_IN_SERIES.format(series=re.escape(series)))
     for line in lines:
         found = pattern.search(line)
@@ -203,11 +197,6 @@ def _head_version(lines: list[str], series: str) -> str | None:
 
 
 def sync_module_manifest(check: bool) -> bool:
-    """module.json traegt die Version fuer den LifePlanner-Modulbau.
-
-    Sie fehlte hier bisher - der Modulbau lieferte deshalb nach jedem Bump
-    einmal die vorige Version aus, bis jemand die Datei von Hand nachzog.
-    """
     p = ROOT / "module.json"
     if not p.exists():
         return True
@@ -225,7 +214,6 @@ def sync_module_manifest(check: bool) -> bool:
 
 
 def sync_lock_headers(check: bool) -> bool:
-    """Die Lockfiles nennen den Stand in ihrer ersten Zeile."""
     ok = True
     for name in ("requirements.lock", "requirements-dev.lock", "requirements-build.lock"):
         p = ROOT / name
@@ -245,11 +233,6 @@ def sync_lock_headers(check: bool) -> bool:
 
 
 def sync_markdown_headings(check: bool) -> bool:
-    """Zieht die Version im Kopf jeder Datei nach - und nur dort.
-
-    ``docs/help/README.md`` und ``docs/help/index.html`` entstehen aus diesen
-    Quellen; ``tools/build_handbook_static.py`` baut sie neu.
-    """
     series = APP_VERSION.rsplit(".", 1)[0]
     ok = True
     for rel, head_lines in VERSION_BEARING:
@@ -265,7 +248,7 @@ def sync_markdown_headings(check: bool) -> bool:
             new = head + "".join(lines[head_lines:])
         for target, pattern, replacement in EXTRA_PATTERNS:
             if target == rel:
-                new = re.sub(pattern, replacement.format(version=APP_VERSION), new)
+                new = re.sub(pattern, replacement.format(version=APP_VERSION, release_date=APP_RELEASE_DATE), new)
         if new == src:
             continue
         if check:
@@ -275,12 +258,29 @@ def sync_markdown_headings(check: bool) -> bool:
     return ok
 
 
-def sync_features(check: bool) -> bool:
-    """FEATURES.md sammelt je Release einen Abschnitt "Neu in vX".
+def sync_changelog(check: bool) -> bool:
+    """Fuegt die aktuellen Release-Notizen einmalig oben in CHANGELOG.md ein."""
+    changelog = ROOT / "CHANGELOG.md"
+    notes = ROOT / "release_notes" / "current.md"
+    if not changelog.exists() or not notes.exists():
+        return True
+    src = changelog.read_text(encoding="utf-8")
+    heading = f"## {APP_VERSION} "
+    if heading in src:
+        return True
+    block = notes.read_text(encoding="utf-8").strip()
+    if not block.startswith(f"## {APP_VERSION} "):
+        return False
+    marker = "# Changelog\n\n"
+    if marker not in src:
+        return False
+    if check:
+        return False
+    changelog.write_text(src.replace(marker, marker + block + "\n\n", 1), encoding="utf-8")
+    return True
 
-    Hier wird nichts umbenannt - ein fehlender Abschnitt wird vorangestellt,
-    damit die Liste der vorigen Releases erhalten bleibt.
-    """
+
+def sync_features(check: bool) -> bool:
     p = ROOT / "FEATURES.md"
     if not p.exists():
         return True
@@ -296,12 +296,6 @@ def sync_features(check: bool) -> bool:
 
 
 def sync_release_notes(check: bool) -> bool:
-    """VERSION_INFO.txt beginnt mit den Notizen der aktuellen Version.
-
-    Der erste Block traegt einen Titel in Grossbuchstaben mit Trennlinie und
-    nennt die Version. Steht dort noch die vorige, wird ihre Nummer im Titel
-    nachgezogen - der Text bleibt, er beschreibt ja dieselbe Auslieferung.
-    """
     p = ROOT / "VERSION_INFO.txt"
     if not p.exists():
         return True
@@ -337,6 +331,7 @@ def main() -> int:
             "docs/latest.json.template", check
         ),
         "Versionskoepfe in Doku und Updater": sync_markdown_headings(check),
+        "CHANGELOG.md": sync_changelog(check),
         "FEATURES.md": sync_features(check),
         "VERSION_INFO.txt (Release-Notizen)": sync_release_notes(check),
         "module.json": sync_module_manifest(check),

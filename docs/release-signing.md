@@ -1,10 +1,20 @@
 # Release-Signierung und Vertrauenskette
 
-## Aktueller Vorab-Release-Modus
+## Aktueller Release-Modus
 
-Bis zum finalen Release werden Builds bewusst ohne Update-Signatur erzeugt.
-Fehlende `UPDATE_SIGNING_*`-Werte blockieren den Build daher nicht. Der Updater
-kann in diesen Builds keine signierten Online-Updates verifizieren.
+Alle per `v*`-Tag erzeugten Windows-/Linux-Builds muessen einen eingebetteten
+Update-Vertrauensanker enthalten. Fehlt `UPDATE_SIGNING_PUBLIC_KEY_B64`, bricht
+der Build absichtlich ab. Auch `latest.json.sig` ist fuer den Release zwingend.
+Damit wird verhindert, dass erneut eine Version ausgeliefert wird, die spaeter
+keine sicheren automatischen Updates verifizieren kann.
+
+BudgetManager v2.2.61 kann den Vertrauensanker bereits aus
+``_internal/resources/update_signing_public_key.b64`` lesen. Fuer diese Version
+wird deshalb im Release ein einmaliger ``BudgetManager-v2.2.61-Trust-Bridge.ps1``
+mitgeliefert. Er schreibt ausschliesslich den oeffentlichen Key in diesen bereits
+unterstuetzten Pfad und startet danach den normalen signaturpruefenden Updater.
+Die Signaturpruefung wird zu keinem Zeitpunkt abgeschaltet und es ist keine
+Neuinstallation notwendig.
 
 ## Einmalige GitHub-Konfiguration für den finalen Release
 
