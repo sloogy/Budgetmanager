@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.2.69 – 21. August 2026
+
+### Radien und Abstände wachsen ebenfalls mit
+
+Schriftgrössen und Mindesthöhen folgten seit 2.2.68 der Einstellung, die
+Radien und Innenabstände noch nicht. Bei grosser Schrift wirkten die Rundungen
+dadurch verloren. Bei 10pt bleibt das Aussehen unverändert.
+
 ## 2.2.68 – 21. August 2026
 
 ### Die Brücke zu FPM zieht von selbst nach
