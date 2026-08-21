@@ -71,8 +71,31 @@ class Settings:
                 return defaults
             except Exception as e:
                 logger.error("Fehler beim Laden der Einstellungen: %s", e)
+                self._beiseitelegen(e)
                 return defaults
         return defaults
+
+    def _beiseitelegen(self, grund: Exception) -> None:
+        """Rettet eine unlesbare Einstellungsdatei, statt sie zu überschreiben.
+
+        Ohne das war sie beim nächsten Speichern endgültig weg - samt Datenpfad,
+        Regionseinstellungen und Cockpit-Aufteilung. Oft ist nur ein Zeichen
+        falsch und die Datei ließe sich von Hand retten; dafür muss sie aber
+        noch da sein.
+        """
+        from datetime import datetime
+
+        pfad = Path(self.settings_file)
+        marke = datetime.now().strftime("%Y%m%d-%H%M%S")
+        ziel = pfad.with_name(f"{pfad.name}.kaputt-{marke}")
+        try:
+            pfad.replace(ziel)
+        except OSError as fehler:
+            logger.warning("Beschädigte %s ließ sich nicht sichern: %s",
+                           pfad.name, fehler)
+            return
+        logger.warning("%s war unlesbar (%s) - beiseitegelegt als %s, "
+                       "es gelten die Standardwerte", pfad.name, grund, ziel.name)
 
     def _defaults(self) -> dict[str, Any]:
         """Standard-Einstellungen"""
