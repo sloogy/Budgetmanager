@@ -68,8 +68,10 @@ def test_single_workflow_runs_core_quality_checks_before_build() -> None:
 
 def test_release_jobs_have_one_clear_dependency_chain() -> None:
     workflow = _workflow()
-    assert "installer:\n    needs: build" in workflow
-    assert "manifest:\n    needs: [build, installer]" in workflow
+    installer = workflow.split("  installer:\n", 1)[1].split("\n  manifest:\n", 1)[0]
+    manifest = workflow.split("  manifest:\n", 1)[1]
+    assert "\n    needs: build\n" in "\n" + installer
+    assert "\n    needs: [build, installer]\n" in "\n" + manifest
 
 
 def test_release_asset_builder_works_without_signing_secrets(
