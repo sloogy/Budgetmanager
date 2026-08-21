@@ -1972,6 +1972,8 @@
     "table_density": "Tabellendichte",
     "theme_dark": "Dunkel",
     "theme_light": "Hell",
+    "theme_system": "Wie das System",
+    "theme_system_hint": "Stellt das Betriebssystem auf dunkel um, wechselt BudgetManager mit.",
     "tracking_learning_auto_end": "Lernmodus nach langer stabiler Phase automatisch ausblenden",
     "tracking_learning_auto_end_tip": "Optional: Wenn ein Lernvorschlag länger als die stabile Lernphase plus zwei aktive Monate nicht übernommen wird, wird er ausgeblendet. Ein positives Jahresbudget beendet den Lernmodus unabhängig davon immer.",
     "tracking_learning_show_report": "Lernvorschläge im Budgetvorschlagsbericht anzeigen",

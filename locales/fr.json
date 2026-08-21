@@ -1972,6 +1972,8 @@
     "table_density": "Densité du tableau",
     "theme_dark": "Sombre",
     "theme_light": "Clair",
+    "theme_system": "Comme le système",
+    "theme_system_hint": "Lorsque le système passe en sombre, BudgetManager suit.",
     "tracking_learning_auto_end": "Masquer le mode apprentissage après une longue phase stable",
     "tracking_learning_auto_end_tip": "Optionnel : si une suggestion apprise n’est pas reprise pendant plus que la phase stable plus deux mois actifs, elle est masquée. Un budget annuel positif termine toujours le mode apprentissage indépendamment de cette option.",
     "tracking_learning_show_report": "Afficher les suggestions apprises dans le rapport de suggestions de budget",

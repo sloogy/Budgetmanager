@@ -1972,6 +1972,8 @@
     "table_density": "Table Density",
     "theme_dark": "Dark",
     "theme_light": "Light",
+    "theme_system": "Match the system",
+    "theme_system_hint": "When the operating system switches to dark, BudgetManager follows.",
     "tracking_learning_auto_end": "Hide learning mode after a long stable phase",
     "tracking_learning_auto_end_tip": "Optional: if a learned suggestion is not accepted for more than the stable learning phase plus two active months, it is hidden. A positive yearly budget always ends learning mode regardless of this option.",
     "tracking_learning_show_report": "Show learned suggestions in the budget suggestion report",

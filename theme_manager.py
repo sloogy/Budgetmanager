@@ -63,6 +63,28 @@ def _is_hex_color(v: str) -> bool:
 
 
 # Nur 2 Fallback-Profile im Code (wie gewünscht)
+def system_mode() -> Optional[str]:
+    """"hell" oder "dunkel" nach dem Betriebssystem - None, wenn es nichts sagt.
+
+    Qt meldet ``Unknown``, solange die Plattform keine Auskunft gibt. Dann
+    bleibt es bei der bisherigen Vorgabe, statt auf gut Glueck umzuschalten.
+    """
+    try:
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QGuiApplication
+    except ImportError:
+        return None
+    app = QGuiApplication.instance()
+    if app is None:
+        return None
+    scheme = app.styleHints().colorScheme()
+    if scheme == Qt.ColorScheme.Dark:
+        return "dunkel"
+    if scheme == Qt.ColorScheme.Light:
+        return "hell"
+    return None
+
+
 BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {
     "Standard Hell": {
         "modus": "hell",
@@ -441,6 +463,10 @@ class ThemeManager:
         v = (
             self.settings.get("theme") if hasattr(self.settings, "get") else None
         ) or "light"
+        if isinstance(v, str) and v.lower() in ("system", "auto"):
+            # Dem Betriebssystem folgen. Meldet es nichts, bleibt es hell -
+            # das ist der Zustand, den BudgetManager immer schon hatte.
+            return system_mode() or "hell"
         if isinstance(v, str) and v.lower() in ("dark", "dunkel"):
             return "dunkel"
         return "hell"

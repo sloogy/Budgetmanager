@@ -513,7 +513,15 @@ class SettingsDialog(QDialog):
         fl = QFormLayout(gb_theme)
         self.cmb_theme = QComboBox()
         # System-Option würde aktuell wie "Hell" wirken (ThemeManager kennt nur light/dark)
-        self.cmb_theme.addItems([tr("settings.theme_light"), tr("settings.theme_dark")])
+        # Die dritte Wahl folgt dem Betriebssystem. Sie nutzt dieselbe
+        # Mechanik: _current_mode() liefert dann hell oder dunkel, und die
+        # Profilliste filtert wie gehabt danach.
+        self.cmb_theme.addItems([
+            tr("settings.theme_light"),
+            tr("settings.theme_dark"),
+            tr("settings.theme_system"),
+        ])
+        self.cmb_theme.setToolTip(tr("settings.theme_system_hint"))
         fl.addRow(tr("settings.design"), self.cmb_theme)
 
         # Design-Profil Dropdown und Manager-Button
@@ -856,9 +864,13 @@ class SettingsDialog(QDialog):
         theme = (self.settings.theme or "light").lower()
         # Hell/Dunkel Dropdown auf Settings spiegeln
         blocker = QSignalBlocker(self.cmb_theme)
-        self.cmb_theme.setCurrentText(
-            tr("settings.theme_dark") if theme == "dark" else tr("settings.theme_light")
-        )
+        if theme in ("system", "auto"):
+            self.cmb_theme.setCurrentText(tr("settings.theme_system"))
+        else:
+            self.cmb_theme.setCurrentText(
+                tr("settings.theme_dark") if theme == "dark"
+                else tr("settings.theme_light")
+            )
         del blocker
 
         # Profil-Dropdown anhand Hell/Dunkel filtern
@@ -1268,11 +1280,19 @@ class SettingsDialog(QDialog):
     # -----------------------------------------------------------------
     def _current_mode(self) -> str:
         """ "hell" oder "dunkel" basierend auf dem UI-Dropdown."""
-        return (
-            "dunkel"
-            if self.cmb_theme.currentText() == tr("settings.theme_dark")
-            else "hell"
-        )
+        chosen = self.cmb_theme.currentText()
+        if chosen == tr("settings.theme_system"):
+            from theme_manager import system_mode
+
+            return system_mode() or "hell"
+        return "dunkel" if chosen == tr("settings.theme_dark") else "hell"
+
+    def _theme_setting_value(self) -> str:
+        """Der Wert, der in den Einstellungen landet - inklusive "system"."""
+        chosen = self.cmb_theme.currentText()
+        if chosen == tr("settings.theme_system"):
+            return "system"
+        return "dark" if chosen == tr("settings.theme_dark") else "light"
 
     def _on_fontsize_changed(self, _val: int) -> None:
         """Schnelleinstellung: Schriftgröße direkt im aktiven Profil speichern.
@@ -1321,7 +1341,9 @@ class SettingsDialog(QDialog):
     def _persist_design_selection(self) -> None:
         """Persistiert Hell/Dunkel + aktives Profil + letztes Profil pro Modus."""
         mode = self._current_mode()
-        theme_value = "dark" if mode == "dunkel" else "light"
+        # "system" muss als solches gespeichert werden - aus dem aufgeloesten
+        # Modus liesse sich die Wahl nicht zurueckgewinnen.
+        theme_value = self._theme_setting_value()
 
         # 1) Theme-Key für Rückwärtskompatibilität
         try:
