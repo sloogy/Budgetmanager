@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - fix/v2.2.67-release-gates
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: write
