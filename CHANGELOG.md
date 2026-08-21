@@ -1,5 +1,40 @@
 # Changelog
 
+## 2.2.68 – 21. August 2026
+
+### Die Brücke zu FPM zieht von selbst nach
+
+Ein im BudgetManager angelegtes Sparziel kam in FPM nie an. Die Ursache lag
+nicht im Export, sondern darin, wann er lief: BudgetManager schrieb seine
+Outboxen — Ausgabenvorschläge *und* Sparziele — ausschliesslich dann, wenn
+jemand im LifePlanner-Dialog ausdrücklich auf den Knopf drückte. Wer diesen
+Dialog nie öffnete, dessen Daten erreichten die Brücke nie, und in FPM blieb
+die Anzeige einfach leer.
+
+- Die Brücke wird jetzt nach jeder Datenänderung nachgezogen, beim Schliessen
+  und einmal beim Start.
+- Träge gebündelt: Zehn Änderungen kurz hintereinander ergeben einen Lauf,
+  nicht zehn.
+- Ein Fehler dabei bleibt folgenlos und geht ins Log. Die Brücke ist eine
+  Spiegelung und darf die Buchhaltung nie blockieren.
+
+### Der Kontrakt zu FPM ist jetzt geprüft
+
+Beide Programme haben ihre Seite der Brücke bisher mit selbst erzeugten Daten
+getestet. Jede Seite war grün — gesprochen haben sie trotzdem aneinander
+vorbei: Sparziele gehen als `fpm.savings-goal.v1` heraus, FPM las nur die
+Unterstrich-Form. Neue Kontrakttests prüfen beide Richtungen gegen Proben aus
+der Gegenseite.
+
+### Das Design folgt auf Wunsch dem Betriebssystem
+
+- Neue Wahl „Wie das System" im Design-Dropdown. Stellt das Betriebssystem auf
+  dunkel um, wechselt BudgetManager mit.
+- Gespeichert wird die Wahl selbst, nicht der aufgelöste Modus — sonst stünde
+  nach dem Neustart wieder „Hell" da.
+- Der übersetzte Hinweistext hängt jetzt als Tooltip am Dropdown; er war in
+  allen drei Sprachen vorhanden, wurde aber nirgends angezeigt.
+
 ## 2.2.67 – 21. August 2026
 
 ### Hotfix: Theme-Editor und Update-Diagnose

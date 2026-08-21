@@ -1,3 +1,7 @@
+## Neu in v2.2.68
+
+- Siehe VERSION_INFO.txt und CHANGELOG.md.
+
 ## Neu in v2.2.67
 
 - Siehe VERSION_INFO.txt und CHANGELOG.md.
