@@ -202,6 +202,48 @@ def _head_version(lines: list[str], series: str) -> str | None:
     return None
 
 
+def sync_module_manifest(check: bool) -> bool:
+    """module.json traegt die Version fuer den LifePlanner-Modulbau.
+
+    Sie fehlte hier bisher - der Modulbau lieferte deshalb nach jedem Bump
+    einmal die vorige Version aus, bis jemand die Datei von Hand nachzog.
+    """
+    p = ROOT / "module.json"
+    if not p.exists():
+        return True
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return False
+    if data.get("version") == APP_VERSION:
+        return True
+    if check:
+        return False
+    data["version"] = APP_VERSION
+    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return True
+
+
+def sync_lock_headers(check: bool) -> bool:
+    """Die Lockfiles nennen den Stand in ihrer ersten Zeile."""
+    ok = True
+    for name in ("requirements.lock", "requirements-dev.lock", "requirements-build.lock"):
+        p = ROOT / name
+        if not p.exists():
+            continue
+        src = p.read_text(encoding="utf-8")
+        new = re.sub(r"^# Stand: v[\d.]+ / .*$",
+                     f"# Stand: v{APP_VERSION} / {APP_RELEASE_DATE}",
+                     src, count=1, flags=re.MULTILINE)
+        if new == src:
+            continue
+        if check:
+            ok = False
+            continue
+        p.write_text(new, encoding="utf-8")
+    return ok
+
+
 def sync_markdown_headings(check: bool) -> bool:
     """Zieht die Version im Kopf jeder Datei nach - und nur dort.
 
@@ -297,6 +339,8 @@ def main() -> int:
         "Versionskoepfe in Doku und Updater": sync_markdown_headings(check),
         "FEATURES.md": sync_features(check),
         "VERSION_INFO.txt (Release-Notizen)": sync_release_notes(check),
+        "module.json": sync_module_manifest(check),
+        "requirements*.lock": sync_lock_headers(check),
     }
     if check:
         bad = [name for name, ok in results.items() if not ok]

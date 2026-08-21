@@ -1,5 +1,21 @@
-Budgetmanager Version 2.2.64
+Budgetmanager Version 2.2.65
 Datum: 20. August 2026
+
+UPDATE-SIGNATUR WIEDER VOLLSTAENDIG 2.2.65
+-------------------------------------------------------------
+- Das eingebaute Update lehnte bisher JEDE Version ab: "Kein eingebetteter
+  Update-Public-Key gefunden" beziehungsweise fehlende latest.json.sig.
+- Ursache: Die Signaturkette war zwar vollstaendig gebaut - Schluesselgenerator,
+  Signierung, Pruefung -, aber an keiner Stelle verbunden. Im Repository fehlten
+  Secret und Variable, der Workflow reichte beide nirgends durch, und der
+  gebaute Programmordner enthielt keinen Vertrauensanker.
+- Jetzt: "Embed update trust anchor" legt den oeffentlichen Schluessel vor dem
+  PyInstaller-Lauf ab, der Release-Schritt bekommt beide Schluessel und erzeugt
+  latest.json.sig, und das Release-Gate laesst ein Release ohne Signatur nicht
+  mehr durch.
+- Wichtig fuer den Umstieg: Erst ab dieser Version traegt das Programm den
+  Vertrauensanker. Eine aeltere Installation muss einmal von Hand auf 2.2.65
+  aktualisiert werden; danach laeuft das Update wieder von selbst.
 
 GEMEINSAMER DESIGNKATALOG 2.2.64
 -------------------------------------------------------------

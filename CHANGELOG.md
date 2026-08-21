@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.2.65 – 21. August 2026
+
+### Update-Signatur wieder vollständig
+
+Das eingebaute Update lehnte bisher **jede** Version ab — mit „Kein eingebetteter
+Update-Public-Key gefunden“ beziehungsweise einer fehlenden `latest.json.sig`.
+
+Die Ursache war nicht die letzte Version, sondern eine nie verbundene Kette: Der
+Schlüsselgenerator, die Signierung in `tools/build_release_assets.py` und die
+Prüfung in `updater/manifest_signing.py` waren vollständig da — aber im
+Repository fehlten Secret und Variable, der Workflow reichte beide nirgends
+durch, und der gebaute Programmordner enthielt gar keinen Vertrauensanker.
+
+- **Vor dem PyInstaller-Lauf** legt der Schritt „Embed update trust anchor“ den
+  öffentlichen Schlüssel aus der CI-Variable in `resources/` ab. Fehlt die
+  Variable, bricht der Build ab — ein Programm ohne Vertrauensanker ist ein
+  Programm, das sich nie aktualisieren lässt.
+- **Beim Erzeugen der Release-Dateien** stehen beide Schlüssel in der Umgebung,
+  sodass `latest.json.sig` entsteht.
+- **Das Release-Gate** lässt ein Release ohne Signatur nicht mehr durch.
+- `resources/update_signing_public_key.b64` und das Schlüsselverzeichnis sind
+  von der Versionsverwaltung ausgenommen.
+
+> **Einmalig nötig:** Erst ab 2.2.65 trägt das Programm den Vertrauensanker. Eine
+> ältere Installation muss einmal von Hand auf 2.2.65 gebracht werden; danach
+> funktioniert das eingebaute Update wieder von selbst.
+
 ## 2.2.64 – 21. August 2026
 
 ### Ein gemeinsamer Designkatalog

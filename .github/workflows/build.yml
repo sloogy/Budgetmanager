@@ -96,6 +96,15 @@ jobs:
       - name: Verify lint and release procedure
         run: python tools/lint_procedure_check.py
 
+      # Ohne diesen Schritt enthaelt das Programm keinen oeffentlichen Schluessel
+      # und lehnt danach jedes Update ab - "Kein eingebetteter Update-Public-Key
+      # gefunden". Das Werkzeug bricht ab, wenn die Variable fehlt: ein Build
+      # ohne Vertrauensanker waere ein Build, der sich nie aktualisieren laesst.
+      - name: Embed update trust anchor
+        env:
+          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
+        run: python tools/materialize_update_public_key.py
+
       - name: Build with PyInstaller
         run: pyinstaller BudgetManager.spec --noconfirm --clean
 
@@ -279,6 +288,11 @@ jobs:
 
       - name: Build release assets + updater manifest
         shell: bash
+        # Ohne diese beiden entsteht kein latest.json.sig, und der Updater
+        # lehnt das Manifest als unsigniert ab.
+        env:
+          UPDATE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_B64 }}
+          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
         run: |
           TAG="${{ github.ref_name }}"
           VERSION="${TAG#v}"
@@ -327,6 +341,10 @@ jobs:
           assert 'direct_windows_exe' not in assets
           assert 'direct_linux_binary' not in assets
           assert Path('release_assets/SHA256SUMS.txt').is_file()
+          # Ohne Signatur ist das Release fuer den eingebauten Updater wertlos.
+          assert Path('release_assets/latest.json.sig').is_file(), (
+              'latest.json.sig fehlt - sind UPDATE_SIGNING_PRIVATE_KEY_B64 '
+              '(Secret) und UPDATE_SIGNING_PUBLIC_KEY_B64 (Variable) gesetzt?')
 
           module_packages = sorted(Path('release_assets').glob('budgetmanager_*.lpmodule'))
           assert len(module_packages) == 2, module_packages

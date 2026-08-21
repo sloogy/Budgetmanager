@@ -64,3 +64,10 @@ data/*.log
 data/*crash*.log
 data/i18n_audit_report.txt
 data/*.txt
+
+# Der Vertrauensanker fuer Updates entsteht im Build aus der CI-Variable
+# UPDATE_SIGNING_PUBLIC_KEY_B64. Er gehoert nicht in den Quellbaum - sonst
+# waere unklar, welcher Schluessel gilt.
+resources/update_signing_public_key.b64
+# Das Schluesselpaar selbst gehoert nie ins Repository.
+update-signing-key/
