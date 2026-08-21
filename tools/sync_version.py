@@ -177,6 +177,8 @@ VERSION_BEARING: tuple[tuple[str, int], ...] = (
     ("docs/USER_GUIDE.de.md", 5),
     ("docs/USER_GUIDE.en.md", 5),
     ("docs/USER_GUIDE.fr.md", 5),
+    ("docs/help/README.md", 40),
+    ("docs/help/index.html", 50),
 )
 
 EXTRA_PATTERNS: tuple[tuple[str, str, str], ...] = (
