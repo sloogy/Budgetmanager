@@ -1,0 +1,73 @@
+name: Temporary v2.2.67 final 1000-loop audit
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit/v2.2.67-final
+          fetch-depth: 0
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install release test dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python tools/verify_hashed_lock.py
+          python -m pip install --require-hashes -r requirements-build.lock
+          python -m pip install --require-hashes -r requirements-dev.lock
+
+      - name: Regenerate final 1000-loop release audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f FINAL_RELEASE_AUDIT_1000_MATRIX_v2_2_67.csv
+          python tools/final_release_audit_1000.py | tee FINAL_RELEASE_AUDIT_1000_RESULT_v2_2_67.txt
+          test -s FINAL_RELEASE_AUDIT_1000_MATRIX_v2_2_67.csv
+          grep -q 'fail=0' FINAL_RELEASE_AUDIT_1000_RESULT_v2_2_67.txt
+
+      - name: Run prior failing release gates again
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python -m pytest \
+            tests/test_release_2217_documentation_alignment.py::test_html_help_was_regenerated \
+            tests/test_release_2225_final_audit.py::test_audit_csv_matrix_present_for_current_version \
+            tests/test_release_2235_handbook_completeness.py::test_handbook_completeness_audit_passes \
+            tests/test_release_integrity.py::test_active_release_docs_are_version_synced \
+            tests/test_release_platform_gates.py::test_release_jobs_have_one_clear_dependency_chain \
+            -v --tb=short
+
+      - name: Record validated audit evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo
+            echo "validated_commit=$(git rev-parse HEAD)"
+            sha256sum FINAL_RELEASE_AUDIT_1000_MATRIX_v2_2_67.csv
+          } >> FINAL_RELEASE_AUDIT_1000_RESULT_v2_2_67.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- FINAL_RELEASE_AUDIT_1000_MATRIX_v2_2_67.csv FINAL_RELEASE_AUDIT_1000_RESULT_v2_2_67.txt
+          if git diff --cached --quiet; then
+            echo "Audit-Evidence unverändert."
+            exit 0
+          fi
+          git commit -m "audit: regenerate v2.2.67 final 1000-loop evidence"
+          git pull --rebase origin audit/v2.2.67-final
+          git push origin HEAD:audit/v2.2.67-final
