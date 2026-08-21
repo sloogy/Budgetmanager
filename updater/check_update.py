@@ -2,6 +2,8 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+from updater.manifest_signing import ManifestSignatureError
+
 logger = logging.getLogger(__name__)
 
 from updater.common import (
@@ -39,9 +41,34 @@ def main() -> int:
 
     try:
         manifest = fetch_manifest(DEFAULT_MANIFEST_URL)
+    except ManifestSignatureError as e:
+        # Das Manifest kann erreichbar sein; hier ist die Vertrauenskette das
+        # Problem. Eine pauschale Netzwerk-Meldung waere irrefuehrend.
+        print(f"❌ Update-Sicherheitsprüfung fehlgeschlagen: {e}")
+        if "Kein eingebetteter Update-Public-Key" in str(e):
+            print("   Diese installierte Version besitzt keinen Update-Vertrauensanker.")
+            print("   Bei v2.2.61 kann der offizielle Trust Bridge den Public Key einmalig")
+            print("   hinterlegen; danach kann diese Installation das signierte Update")
+            print("   ohne Neuinstallation pruefen und einspielen.")
+        write_check_result(
+            {
+                "available": False,
+                "error": str(e),
+                "error_type": "manifest_signature",
+                "current": current,
+            }
+        )
+        return 2
     except Exception as e:
-        print(f"❌ Manifest nicht erreichbar: {e}")
-        write_check_result({"available": False, "error": str(e), "current": current})
+        print(f"❌ Update-Manifest konnte nicht geladen werden: {e}")
+        write_check_result(
+            {
+                "available": False,
+                "error": str(e),
+                "error_type": "manifest_fetch",
+                "current": current,
+            }
+        )
         return 2
 
     platform_key = detect_platform_key()

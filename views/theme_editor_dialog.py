@@ -57,13 +57,6 @@ class ThemeEditorDialog(QDialog):
         self._load_themes()
         configure_dialog_tab_order(self)
 
-        # v2.2.25 (KILLCRITIC k9): expliziter Schliessen-Weg statt nur
-        # Esc/Fenster-X – Editor-Dialoge brauchen eine sichtbare Leiste.
-        buttons = QDialogButtonBox()
-        self.btn_close = buttons.addButton(tr("btn.close"), QDialogButtonBox.RejectRole)
-        buttons.rejected.connect(self.reject)
-        outer.addWidget(buttons)
-
     def _setup_ui(self):
         """Setup UI"""
         outer = QVBoxLayout(self)
@@ -219,6 +212,15 @@ class ThemeEditorDialog(QDialog):
         right.addWidget(scroll)
 
         layout.addLayout(right, 2)
+
+        # v2.2.66 FIX: Die Schliessen-Leiste muss in dem Scope angelegt werden,
+        # in dem auch das Hauptlayout ``outer`` existiert. Zuvor wurde in
+        # __init__ auf die lokale Variable aus _setup_ui() zugegriffen und der
+        # Dialog brach beim Öffnen mit NameError ab.
+        buttons = QDialogButtonBox()
+        self.btn_close = buttons.addButton(tr("btn.close"), QDialogButtonBox.RejectRole)
+        buttons.rejected.connect(self.reject)
+        outer.addWidget(buttons)
 
         # Signals verbinden
         self.btn_new.clicked.connect(self._new_theme)

@@ -4,12 +4,92 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - 'release/**'
+      - main
 
 permissions:
   contents: write
 
 jobs:
+  sync_release_metadata:
+    if: startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout release branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Synchronize release metadata
+        run: python tools/sync_version.py
+
+      - name: Commit synchronized metadata when needed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "Release-Metadaten bereits synchron."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- \
+            README.md README_INSTALLATION.md CHANGELOG.md FEATURES.md VERSION_INFO.txt \
+            version.json module.json latest.json.template \
+            requirements.lock requirements-dev.lock requirements-build.lock \
+            installer/budgetmanager_setup.iss updater/README.md updater/generate_manifest.py \
+            docs/architecture.md docs/DAU_TEST_ERSTSTART.md docs/features.md \
+            docs/latest.json.template docs/migration-guide.md docs/open-tasks.md \
+            docs/package-overview.md docs/release-checklist.md docs/themes.md \
+            docs/USER_GUIDE.de.md docs/USER_GUIDE.en.md docs/USER_GUIDE.fr.md
+          git commit -m "chore: sync release metadata for v$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
+          git push origin "HEAD:${{ github.ref_name }}"
+
+  tag_release:
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout merged release
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
+          test -n "$VERSION"
+          case "$VERSION" in
+            *[!0-9.]*|'') echo "Ungueltige Release-Version: $VERSION"; exit 1 ;;
+          esac
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create tag only once
+        shell: bash
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          set -euo pipefail
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null 2>&1; then
+            echo "Tag $TAG existiert bereits; nichts zu tun."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "BudgetManager $TAG"
+          git push origin "$TAG"
+
   build:
+    if: startsWith(github.ref, 'refs/tags/v')
     strategy:
       fail-fast: false
       matrix:
@@ -96,10 +176,6 @@ jobs:
       - name: Verify lint and release procedure
         run: python tools/lint_procedure_check.py
 
-      # Ohne diesen Schritt enthaelt das Programm keinen oeffentlichen Schluessel
-      # und lehnt danach jedes Update ab - "Kein eingebetteter Update-Public-Key
-      # gefunden". Das Werkzeug bricht ab, wenn die Variable fehlt: ein Build
-      # ohne Vertrauensanker waere ein Build, der sich nie aktualisieren laesst.
       - name: Embed update trust anchor
         env:
           UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
@@ -142,6 +218,7 @@ jobs:
           if-no-files-found: error
 
   installer:
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success'
     needs: build
     runs-on: windows-latest
 
@@ -256,6 +333,7 @@ jobs:
           if-no-files-found: error
 
   manifest:
+    if: startsWith(github.ref, 'refs/tags/v') && needs.build.result == 'success' && needs.installer.result == 'success'
     needs: [build, installer]
     runs-on: ubuntu-latest
 
@@ -268,10 +346,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      # Nur fuer die Manifest-Signatur. Ohne dieses Paket bricht der Schritt
-      # "Build release assets" mit ModuleNotFoundError ab - und ein Release
-      # ohne latest.json.sig laesst der Updater nicht zu. Die Version kommt aus
-      # requirements.txt, damit hier keine zweite Wahrheit entsteht.
       - name: Install signing dependency
         shell: bash
         run: |
@@ -299,8 +373,6 @@ jobs:
 
       - name: Build release assets + updater manifest
         shell: bash
-        # Ohne diese beiden entsteht kein latest.json.sig, und der Updater
-        # lehnt das Manifest als unsigniert ab.
         env:
           UPDATE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.UPDATE_SIGNING_PRIVATE_KEY_B64 }}
           UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
@@ -320,6 +392,14 @@ jobs:
 
           echo "Release assets:"
           ls -lah release_assets
+
+      - name: Build one-time v2.2.61 trust bridge
+        shell: bash
+        env:
+          UPDATE_SIGNING_PUBLIC_KEY_B64: ${{ vars.UPDATE_SIGNING_PUBLIC_KEY_B64 }}
+        run: |
+          python tools/build_legacy_trust_bridge.py \
+            --out release_assets/BudgetManager-v2.2.61-Trust-Bridge.ps1
 
       - name: Download Windows LifePlanner module
         uses: actions/download-artifact@v4
@@ -352,7 +432,6 @@ jobs:
           assert 'direct_windows_exe' not in assets
           assert 'direct_linux_binary' not in assets
           assert Path('release_assets/SHA256SUMS.txt').is_file()
-          # Ohne Signatur ist das Release fuer den eingebauten Updater wertlos.
           assert Path('release_assets/latest.json.sig').is_file(), (
               'latest.json.sig fehlt - sind UPDATE_SIGNING_PRIVATE_KEY_B64 '
               '(Secret) und UPDATE_SIGNING_PUBLIC_KEY_B64 (Variable) gesetzt?')
