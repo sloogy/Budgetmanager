@@ -1,6 +1,6 @@
 # Portable Updater (GitHub Releases)
 
-Stand: BudgetManager v2.2.65
+Stand: BudgetManager v2.2.66
 
 Der Updater ersetzt Programmdateien, aber keine Nutzerdaten:
 

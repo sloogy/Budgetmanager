@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.66 – 21. August 2026
+
+### Signierung braucht cryptography
+
+Der Releaselauf zu 2.2.65 brach im Schritt „Build release assets“ ab:
+`ModuleNotFoundError: No module named 'cryptography'`. Der `manifest`-Job
+installierte bisher gar keine Abhängigkeiten — er brauchte vorher keine. Er
+installiert die Bibliothek jetzt mit der Version aus `requirements.txt`.
+
 ## 2.2.65 – 21. August 2026
 
 ### Update-Signatur wieder vollständig

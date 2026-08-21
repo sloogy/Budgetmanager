@@ -268,6 +268,17 @@ jobs:
         with:
           python-version: '3.12'
 
+      # Nur fuer die Manifest-Signatur. Ohne dieses Paket bricht der Schritt
+      # "Build release assets" mit ModuleNotFoundError ab - und ein Release
+      # ohne latest.json.sig laesst der Updater nicht zu. Die Version kommt aus
+      # requirements.txt, damit hier keine zweite Wahrheit entsteht.
+      - name: Install signing dependency
+        shell: bash
+        run: |
+          PIN="$(grep -m1 '^cryptography==' requirements.txt)"
+          test -n "${PIN}" || { echo "cryptography fehlt in requirements.txt"; exit 1; }
+          python -m pip install --disable-pip-version-check "${PIN}"
+
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:

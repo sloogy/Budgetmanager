@@ -1,4 +1,4 @@
-# Architektur & Systemanalyse — BudgetManager v2.2.65
+# Architektur & Systemanalyse — BudgetManager v2.2.66
 
 Stand: 30. Juli 2026
 

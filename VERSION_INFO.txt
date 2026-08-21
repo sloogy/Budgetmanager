@@ -1,5 +1,13 @@
-Budgetmanager Version 2.2.65
+Budgetmanager Version 2.2.66
 Datum: 20. August 2026
+
+SIGNIERUNG BRAUCHT CRYPTOGRAPHY 2.2.66
+-------------------------------------------------------------
+- Der Releaselauf zu 2.2.65 brach im Schritt "Build release assets" ab:
+  ModuleNotFoundError: No module named 'cryptography'. Der manifest-Job
+  installierte bisher gar keine Abhaengigkeiten, weil er vorher keine brauchte.
+- Der Job installiert die Bibliothek jetzt - mit der Version, die in
+  requirements.txt steht, damit hier keine zweite Wahrheit entsteht.
 
 UPDATE-SIGNATUR WIEDER VOLLSTAENDIG 2.2.65
 -------------------------------------------------------------
