@@ -1,5 +1,26 @@
 # Changelog
 
+## 2.2.70 – 22. August 2026
+
+### Sicherheit
+
+- **Die Brücke zu FPM** liegt eigenständig offen im Benutzerverzeichnis.
+  Ordner und Dateien bekommen jetzt 0700 bzw. 0600 — es sind dieselben
+  Buchungen und Sparziele wie in der Datenbank.
+- **Update-Archive** werden beim Entpacken auch auf die Zahl der Einträge
+  geprüft; die übrigen Grenzen galten hier schon.
+
+### Stabilität
+
+- **Eine unlesbare Einstellungsdatei** wird als `.kaputt-<zeitstempel>`
+  beiseitegelegt, statt beim nächsten Speichern überschrieben zu werden. Oft
+  ist nur ein Zeichen falsch und sie liesse sich von Hand retten.
+
+### Darstellung
+
+- Radien und Innenabstände wachsen mit der eingestellten Schrift, wie schon
+  die Schriftgrössen und Mindesthöhen seit 2.2.68.
+
 ## 2.2.69 – 21. August 2026
 
 ### Radien und Abstände wachsen ebenfalls mit

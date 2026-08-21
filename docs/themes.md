@@ -1,4 +1,4 @@
-# Theme-System — BudgetManager v2.2.69
+# Theme-System — BudgetManager v2.2.70
 
 ## Überblick
 
