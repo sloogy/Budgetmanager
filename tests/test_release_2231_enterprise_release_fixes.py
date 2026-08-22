@@ -5,6 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+
 def _erlaubte_workflows() -> list[str]:
     """Liest die erlaubte Liste aus dem Werkzeug, statt sie abzuschreiben.
 
@@ -22,10 +23,12 @@ def _erlaubte_workflows() -> list[str]:
     return list(modul.ERLAUBTE_WORKFLOWS)
 
 
-
 def test_release_workflow_is_single_tag_pipeline_with_release_permission() -> None:
     workflow_dir = ROOT / ".github" / "workflows"
-    assert sorted(path.name for path in workflow_dir.glob("*.yml")) == _erlaubte_workflows()
+    assert (
+        sorted(path.name for path in workflow_dir.glob("*.yml"))
+        == _erlaubte_workflows()
+    )
     workflow = (ROOT / ".github/workflows/build.yml").read_text(encoding="utf-8")
     assert "permissions:\n  contents: write" in workflow
     assert "tags:\n      - 'v*'" in workflow

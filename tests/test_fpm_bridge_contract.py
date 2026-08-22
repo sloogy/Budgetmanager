@@ -132,6 +132,7 @@ def test_das_manifest_zaehlt_nicht_als_buchung(tmp_path: Path):
 
 # ── BudgetManager schreibt, FPM liest ───────────────────────────────────────
 
+
 def _sparziel_anlegen(conn: sqlite3.Connection) -> None:
     spalten = {row["name"] for row in conn.execute("PRAGMA table_info(savings_goals)")}
     werte = {
@@ -155,7 +156,9 @@ def _sparziel_anlegen(conn: sqlite3.Connection) -> None:
 
 def _zeilen(pfad: Path) -> list[dict]:
     return [
-        json.loads(z) for z in pfad.read_text(encoding="utf-8").splitlines() if z.strip()
+        json.loads(z)
+        for z in pfad.read_text(encoding="utf-8").splitlines()
+        if z.strip()
     ]
 
 
@@ -231,9 +234,7 @@ def ausgabe_datei(tmp_path: Path) -> Path:
 
 
 def test_der_ausgabevorschlag_traegt_ein_schema_das_fpm_kennt(ausgabe_datei: Path):
-    vorschlaege = [
-        z for z in _zeilen(ausgabe_datei) if "manifest" not in z["schema"]
-    ]
+    vorschlaege = [z for z in _zeilen(ausgabe_datei) if "manifest" not in z["schema"]]
     assert vorschlaege, "Es wurde kein Vorschlag geschrieben"
     for vorschlag in vorschlaege:
         assert vorschlag["schema"] in FPM_EXPENSE_SCHEMAS, vorschlag["schema"]
@@ -241,9 +242,7 @@ def test_der_ausgabevorschlag_traegt_ein_schema_das_fpm_kennt(ausgabe_datei: Pat
 
 def test_der_ausgabevorschlag_traegt_die_felder_die_fpm_liest(ausgabe_datei: Path):
     """FPM verwirft eine Zeile ohne externe ID oder mit Betrag 0 stillschweigend."""
-    vorschlag = next(
-        z for z in _zeilen(ausgabe_datei) if "manifest" not in z["schema"]
-    )
+    vorschlag = next(z for z in _zeilen(ausgabe_datei) if "manifest" not in z["schema"])
     assert vorschlag["external_id"]
     assert float(vorschlag["amount"]) > 0
     # FPM liest "category" oder "category_path" - eines davon muss da sein.
@@ -252,6 +251,7 @@ def test_der_ausgabevorschlag_traegt_die_felder_die_fpm_liest(ausgabe_datei: Pat
 
 
 # ── Der Zustand der Bruecke ist sichtbar ────────────────────────────────────
+
 
 def test_der_zustand_nennt_alle_drei_dateien(tmp_path, monkeypatch):
     """Ohne diese Anzeige ist nicht zu erkennen, ob der Austausch stattfindet -
@@ -288,7 +288,8 @@ def test_eine_kaputte_zeile_sprengt_die_anzeige_nicht(tmp_path, monkeypatch):
 
     monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(tmp_path))
     (tmp_path / "fpm_to_budgetmanager.jsonl").write_text(
-        "kein json\n" + json.dumps(FPM_AUSGABE) + "\n", encoding="utf-8")
+        "kein json\n" + json.dumps(FPM_AUSGABE) + "\n", encoding="utf-8"
+    )
 
     _, befunde = bridge_zustand()
     nach_name = {b.name: b for b in befunde}

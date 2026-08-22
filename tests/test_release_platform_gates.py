@@ -6,6 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW_DIR = ROOT / ".github" / "workflows"
 WORKFLOW = WORKFLOW_DIR / "build.yml"
 
+
 def _erlaubte_workflows() -> list[str]:
     """Liest die erlaubte Liste aus dem Werkzeug, statt sie abzuschreiben.
 
@@ -21,7 +22,6 @@ def _erlaubte_workflows() -> list[str]:
     modul = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(modul)
     return list(modul.ERLAUBTE_WORKFLOWS)
-
 
 
 def _workflow() -> str:

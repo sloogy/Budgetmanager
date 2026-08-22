@@ -114,6 +114,9 @@ jobs:
       - name: Verify Qt translation catalogs
         run: python tools/verify_qt_translations.py
 
+      - name: Audit translation keys
+        run: python tools/i18n_audit.py
+
       - name: Compile all sources
         run: python -m compileall -q . -x '_attic|__pycache__|.venv|venv'
 

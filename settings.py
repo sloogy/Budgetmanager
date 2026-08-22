@@ -93,18 +93,22 @@ class Settings:
         # urspruengliche Fassung war weg.
         zaehler = 1
         while ziel.exists():
-            ziel = pfad.with_name(
-                f"{pfad.name}.kaputt-{marke}-{zaehler}"
-            )
+            ziel = pfad.with_name(f"{pfad.name}.kaputt-{marke}-{zaehler}")
             zaehler += 1
         try:
             pfad.replace(ziel)
         except OSError as fehler:
-            logger.warning("Beschädigte %s ließ sich nicht sichern: %s",
-                           pfad.name, fehler)
+            logger.warning(
+                "Beschädigte %s ließ sich nicht sichern: %s", pfad.name, fehler
+            )
             return
-        logger.warning("%s war unlesbar (%s) - beiseitegelegt als %s, "
-                       "es gelten die Standardwerte", pfad.name, grund, ziel.name)
+        logger.warning(
+            "%s war unlesbar (%s) - beiseitegelegt als %s, "
+            "es gelten die Standardwerte",
+            pfad.name,
+            grund,
+            ziel.name,
+        )
         self._kaputte_ausduennen()
 
     def _kaputte_ausduennen(self, behalten: int = 10) -> None:
@@ -128,7 +132,6 @@ class Settings:
                 veraltet.unlink()
             except OSError as fehler:
                 logger.debug("%s bleibt liegen: %s", veraltet.name, fehler)
-
 
     def _defaults(self) -> dict[str, Any]:
         """Standard-Einstellungen"""

@@ -338,6 +338,14 @@ class LifePlannerImportDialog(QDialog):
         layout.addLayout(actions)
         # Zustand der Bruecke unter den Schaltflaechen: Wer hier steht, will
         # wissen, ob und wo der Austausch stattfindet.
+        titel = QLabel(tr("lifeplanner_import.bridge_status_title"))
+        titel_schrift = titel.font()
+        # Nur fett, keine feste Punktzahl: Die Schriftgroesse folgt seit
+        # 2.2.68 der Einstellung, eine gesetzte Zahl waere davon abgekoppelt.
+        titel_schrift.setBold(True)
+        titel.setFont(titel_schrift)
+        titel.setObjectName("bridgeStatusTitle")
+        layout.addWidget(titel)
         layout.addWidget(self._bridge_status)
         hinweis = QLabel(tr("lifeplanner_import.bridge_status_hint"))
         hinweis.setWordWrap(True)
@@ -487,9 +495,11 @@ class LifePlannerImportDialog(QDialog):
             return
         zeilen = [trf("lifeplanner_import.bridge_status_folder", pfad=ordner)]
         for befund in befunde:
-            schluessel = ("lifeplanner_import.bridge_status_entries"
-                          if befund.vorhanden
-                          else "lifeplanner_import.bridge_status_missing")
+            schluessel = (
+                "lifeplanner_import.bridge_status_entries"
+                if befund.vorhanden
+                else "lifeplanner_import.bridge_status_missing"
+            )
             zeilen.append(trf(schluessel, name=befund.name, anzahl=befund.eintraege))
         self._bridge_status.setText("\n".join(zeilen))
 
