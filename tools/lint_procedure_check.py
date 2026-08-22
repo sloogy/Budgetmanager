@@ -107,8 +107,6 @@ def check_versions() -> list[str]:
             f"requirements.lock Header fehlt/ist veraltet: erwartet {expected!r}"
         )
 
-    # v2.2.15 (M2): README enthaelt ein app_info-Codebeispiel; ein veraltetes
-    # Datum/eine veraltete Version dort fiel bisher durch keinen Check.
     readme = _read(ROOT / "README.md")
     if f'APP_VERSION = "{version}"' not in readme:
         errors.append(f"README.md: APP_VERSION-Beispiel nicht auf {version}")
@@ -132,49 +130,23 @@ def check_versions() -> list[str]:
 
 
 def check_generated_artifacts() -> list[str]:
-    """Meldet generierte Verzeichnisse/Dateien, die nicht ins Release-ZIP gehoeren.
-
-    v2.2.31 (Deep-Audit-Fix A): Dieser Check war bis v2.2.30 beweisbar tot.
-    Er hat zuerst ``dirnames`` per ``_is_excluded_path()`` beschnitten – was
-    exakt die Namen aus ``EXCLUDED_DIRS`` entfernt – und danach die bereits
-    beschnittene Liste gegen ``EXCLUDED_DIRS - {".git"}`` geprueft. Die
-    Bedingung konnte deshalb fuer keinen einzigen Namen mehr wahr werden, und
-    ".git" war explizit ausgenommen. Ergebnis: ``__pycache__`` und
-    ``.pytest_cache`` wurden im v2.2.30-ZIP ausgeliefert, obwohl das Gate PASS
-    meldete.
-
-    Fix: Erkennung strikt VOR dem Pruning. Das Pruning bleibt erhalten, damit
-    nicht in die Ordner hinein abgestiegen und pro Unterordner erneut gemeldet
-    wird – gemeldet wird also der oberste Treffer, nicht jeder Nachfahre.
-
-    Zweiter toter Pfad: ``*.pyc``/``*.pyo``/``*.log`` wurden per
-    ``ROOT.glob(pattern)`` gesucht – nicht rekursiv. ``.pyc`` liegt aber
-    ausschliesslich in ``__pycache__``-Unterordnern und war damit ebenfalls
-    unauffindbar. Muster ohne Pfadtrenner werden jetzt rekursiv geprueft.
-    """
+    """Meldet generierte Verzeichnisse/Dateien, die nicht ins Release-ZIP gehoeren."""
     errors: list[str] = []
     generated_dir_names = EXCLUDED_DIRS - {".git"}
 
     for dirpath, dirnames, _filenames in os.walk(ROOT):
         current = Path(dirpath)
-
-        # 1) ERKENNEN (vor jedem Pruning!)
         for dirname in list(dirnames):
             if dirname in generated_dir_names:
                 path = current / dirname
                 errors.append(
                     f"generiertes Verzeichnis im Release-Baum: {path.relative_to(ROOT)}"
                 )
-
-        # 2) PRUNEN (nicht hineinsteigen: keine Doppelmeldung je Nachfahre,
-        #    keine Laufzeit in fremden venvs)
         dirnames[:] = [
             dirname for dirname in dirnames if not _is_excluded_path(current / dirname)
         ]
 
     for pattern in GENERATED_FILE_PATTERNS:
-        # Muster mit Pfadtrenner sind bewusst wurzelrelativ (z. B.
-        # "data/users.json"); reine Namensmuster gelten baumweit.
         globber = ROOT.glob(pattern) if "/" in pattern else ROOT.rglob(pattern)
         for path in globber:
             if path.is_file() and not _is_excluded_path(path):
@@ -192,15 +164,10 @@ def _dev_black_pin() -> str | None:
     return None
 
 
-# Feste Liste statt "genau einer": build.yml ist der Release-Weg,
-# push-checks.yml der schnelle Lauf bei jedem main-Push. Die Regel bleibt
-# scharf - ein dritter Workflow faellt weiterhin auf, und damit auch die
-# Frage, welcher davon der massgebliche ist. Vier Tests lesen diese Liste,
-# statt sie abzuschreiben; vorher stand ["build.yml"] viermal im Testbaum und
-# musste bei jeder Aenderung an vier Stellen nachgezogen werden.
-ERLAUBTE_WORKFLOWS = ["build.yml", "push-checks.yml"]
-
-# Nur dieser Workflow darf am Tag haengen und veroeffentlichen.
+# build.yml ist weiterhin der einzige taggesteuerte Publisher. push-checks.yml
+# prueft main schnell; release-prepare.yml darf ausschliesslich den reproduzierbaren
+# Versions-/Tag-Vorlauf erledigen und niemals selbst Assets veroeffentlichen.
+ERLAUBTE_WORKFLOWS = ["build.yml", "push-checks.yml", "release-prepare.yml"]
 RELEASE_WORKFLOW = "build.yml"
 
 
@@ -223,9 +190,24 @@ def check_workflow() -> list[str]:
             + ", ".join(workflow_files)
         )
 
-    # Eine zweite, harte Black-Version im Workflow ist ein Release-Risiko:
-    # requirements-dev.txt ist die zentrale Quelle. Ein abweichendes
-    # force-reinstall kann GitHub Actions brechen, obwohl lokale Checks grün sind.
+    prepare_path = workflow_dir / "release-prepare.yml"
+    if prepare_path.is_file():
+        prepare = _read(prepare_path)
+        forbidden_publish_markers = (
+            "softprops/action-gh-release",
+            "gh release create",
+            "gh release upload",
+        )
+        for marker in forbidden_publish_markers:
+            if marker in prepare:
+                errors.append(
+                    f"release-prepare.yml darf nicht veroeffentlichen: Marker {marker!r} gefunden"
+                )
+        if "release-trigger/v*" not in prepare:
+            errors.append("release-prepare.yml fehlt der reproduzierbare release-trigger/v*-Branch")
+        if "git ls-remote --exit-code --tags" not in prepare:
+            errors.append("release-prepare.yml muss existierende Tags fail-closed ablehnen")
+
     if "--force-reinstall" in workflow and "black==" in workflow:
         errors.append(
             "GitHub-Workflow darf Black nicht separat per --force-reinstall pinnen; "
