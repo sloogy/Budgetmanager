@@ -6,24 +6,23 @@ CLI-/Updater-Pfaden und vor dem GUI-Start sicher verwendbar sind.
 
 from __future__ import annotations
 
-from datetime import datetime
 import json
 import logging
 import os
-from pathlib import Path
-
-logger = logging.getLogger(__name__)
 import platform
 import re
-import shutil
 import sqlite3
 import sys
 import tempfile
-from typing import cast
 import zipfile
+from datetime import datetime
+from pathlib import Path
+from typing import cast
 
 from app_info import APP_NAME, APP_VERSION
 from model.app_paths import app_dir, data_dir, installation_marker_path, settings_path
+
+logger = logging.getLogger(__name__)
 
 LOG_FILENAME = "budgetmanager.log"
 CRASH_LOG_FILENAME = "budgetmanager_crash.log"
@@ -217,9 +216,7 @@ def read_text_tail(path: Path, *, max_bytes: int = TAIL_BYTES_DEFAULT) -> str:
             if size > max_bytes:
                 fh.seek(-max_bytes, os.SEEK_END)
                 raw = fh.read()
-                prefix = f"… gekürzt: letzte {max_bytes // 1000} KB von {size // 1000} KB …\n\n".encode(
-                    "utf-8"
-                )
+                prefix = f"… gekürzt: letzte {max_bytes // 1000} KB von {size // 1000} KB …\n\n".encode()
             else:
                 raw = fh.read()
                 prefix = b""
@@ -458,9 +455,7 @@ def _sanitize_application_log(text: str) -> str:
             sanitized.append(f"{prefix.group('prefix')} <message redacted>")
         elif not line.strip():
             sanitized.append("")
-        elif _SAFE_TRACEBACK_LINE_RE.match(line):
-            sanitized.append(line)
-        elif line.strip() in {
+        elif _SAFE_TRACEBACK_LINE_RE.match(line) or line.strip() in {
             "Traceback (most recent call last):",
             "During handling of the above exception, another exception occurred:",
         }:

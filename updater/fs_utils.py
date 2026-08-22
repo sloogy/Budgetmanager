@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
 import hashlib
+import logging
 import os
 import shutil
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
+
+logger = logging.getLogger(__name__)
 
 
 def sha256_file(path: Path) -> str:

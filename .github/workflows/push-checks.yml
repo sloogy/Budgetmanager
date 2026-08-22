@@ -69,7 +69,11 @@ jobs:
 
       - name: Statische Analyse
         run: |
-          python -m ruff check . --select E9,F63,F7,F82
+          # Ohne --select: die Auswahl steht in ruff.toml, begruendet und
+          # fuer lokale Laeufe und CI dieselbe. Vorher galt hier nur die
+          # Syntax-Klasse, waehrend lokal die globale Ruff-Konfiguration
+          # des Entwicklerrechners etwas anderes sagte.
+          python -m ruff check .
           # black prueft das ganze Projekt, nicht nur model/. Vorher waren
           # tools/ und tests/ zwar formatiert, aber ungeprueft - eine Aenderung
           # dort brach die Formatierung, ohne dass ein Gate anschlug.

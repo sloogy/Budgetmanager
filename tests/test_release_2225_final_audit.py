@@ -103,8 +103,9 @@ def test_tracking_model_cols_rejects_non_identifier():
 
 
 def test_undo_push_to_other_stack_rejects_foreign_table():
-    from model.undo_redo_model import UndoRedoModel, UndoRow
     import pytest
+
+    from model.undo_redo_model import UndoRedoModel, UndoRow
 
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
@@ -226,6 +227,7 @@ def test_app_version_is_semver():
 
 def test_version_json_in_sync():
     import json
+
     from app_info import APP_VERSION
 
     data = json.loads((ROOT / "version.json").read_text("utf-8"))

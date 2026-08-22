@@ -10,42 +10,39 @@ Funktionen:
 
 from __future__ import annotations
 
-from utils.notifications import show_info, show_warning
 import logging
 import sqlite3
 
+from utils.notifications import show_info, show_warning
+
 logger = logging.getLogger(__name__)
 from dataclasses import dataclass
-from typing import Optional
 
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialog,
     QFormLayout,
-    QHBoxLayout,
-    QVBoxLayout,
-    QGridLayout,
-    QLabel,
-    QSpinBox,
-    QComboBox,
-    QLineEdit,
-    QCheckBox,
-    QPushButton,
-    QMessageBox,
-    QGroupBox,
-    QWidget,
-    QToolButton,
-    QMenu,
-    QInputDialog,
-    QDialogButtonBox,
     QFrame,
+    QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QToolButton,
+    QVBoxLayout,
+    QWidget,
 )
 
-from model.category_model import CategoryModel, Category
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from model.budget_modes import (
-    BUDGET_MODE_MONTH,
     BUDGET_MODE_ALL,
+    BUDGET_MODE_MONTH,
     BUDGET_MODE_RANGE,
     normalize_budget_mode,
 )
@@ -55,6 +52,8 @@ from model.category_forecast_mode import (
     FORECAST_MODE_NORMAL,
     FORECAST_MODE_POT,
 )
+from model.category_model import Category, CategoryModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from utils.icons import get_icon
 
 
@@ -63,8 +62,8 @@ def _get_months():
     return [tr(f"month_short.{i}") for i in range(1, 13)]
 
 
-from utils.money import parse_money, currency_header, format_short
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.i18n import tr, trf
+from utils.money import currency_header, format_short, parse_money
 from views.category_delete_dialog import ask_category_delete_decision
 
 
@@ -742,7 +741,7 @@ class BudgetEntryDialogExtended(QDialog):
         conn: sqlite3.Connection,
         default_year: int,
         default_typ: str,
-        preset: Optional[dict] = None,
+        preset: dict | None = None,
     ):
         super().__init__(parent)
         self.setWindowTitle(tr("dlg.budget_entry"))

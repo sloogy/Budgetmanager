@@ -1,29 +1,31 @@
 """Erstes-Start Sprach-Auswahl Dialog."""
 
 from __future__ import annotations
-from utils.i18n import tr, trf, set_language
-from PySide6.QtCore import Qt, QSignalBlocker
+
+from PySide6.QtCore import QSignalBlocker, Qt
 from PySide6.QtWidgets import (
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QFormLayout,
-    QPushButton,
     QListWidget,
     QListWidgetItem,
-    QComboBox,
-    QGroupBox,
+    QPushButton,
+    QVBoxLayout,
 )
-from views.ui_colors import ui_colors
+
+from utils.i18n import set_language, tr, trf
 from utils.money import (
     CURRENCIES,
     CURRENCY_CODES,
-    NUMBER_FORMATS,
-    NUMBER_FORMAT_CODES,
     LANGUAGE_NUMBER_FORMAT_DEFAULTS,
+    NUMBER_FORMAT_CODES,
+    NUMBER_FORMATS,
     normalize_number_format,
 )
+from views.ui_colors import ui_colors
 
 
 class LanguageSelectDialog(QDialog):
@@ -80,7 +82,7 @@ class LanguageSelectDialog(QDialog):
         lay = QVBoxLayout(self)
         lay.setSpacing(12)
 
-        c = ui_colors(self)
+        ui_colors(self)
         self.lbl_welcome = QLabel()
         self.lbl_welcome.setTextFormat(Qt.RichText)
         lay.addWidget(self.lbl_welcome)

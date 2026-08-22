@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Rückstellungs-/POT-Auswertung für Kategorien wie Franchise/Selbstbehalt.
 
 Ein POT ist fachlich kein normales Monatsbudget. Der sichtbare Rest ist deshalb
 nicht nur Budget minus Ist des aktuellen Monats, sondern der Topfstand seit dem
 Startmonat bis zum gewählten Monat.
 """
+
+from __future__ import annotations
 
 import calendar
 import logging

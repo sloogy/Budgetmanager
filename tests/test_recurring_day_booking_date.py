@@ -24,12 +24,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.database import open_db  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.category_model import CategoryModel  # noqa: E402
-from model.budget_model import BudgetModel  # noqa: E402
-from model.tracking_model import TrackingModel  # noqa: E402
-from model.typ_constants import TYP_EXPENSES  # noqa: E402
+from model.budget_model import BudgetModel
+from model.category_model import CategoryModel
+from model.database import open_db
+from model.migrations import migrate_all
+from model.tracking_model import TrackingModel
+from model.typ_constants import TYP_EXPENSES
 
 
 def _booking_day(year: int, month: int, recurring_day: int) -> int:

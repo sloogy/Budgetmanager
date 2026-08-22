@@ -1,23 +1,17 @@
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 import sqlite3
 from dataclasses import dataclass
-from typing import List, Dict, Optional
 from datetime import date
 
 from model.budget_suggestion_engine import BudgetSuggestionEngine
 from model.date_ranges import month_bounds
 from model.typ_constants import (
-    TYP_INCOME,
-    TYP_EXPENSES,
-    TYP_SAVINGS,
-    normalize_typ,
     is_income,
-    rest_sign,
-    ALL_TYPEN,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -43,7 +37,7 @@ class BudgetExceedance:
     spent: float
     threshold_percent: int
     percent_used: float
-    suggestion: Optional[float] = None  # Vorgeschlagenes Budget
+    suggestion: float | None = None  # Vorgeschlagenes Budget
     exceed_count: int = 0  # Wie oft überschritten in letzten Monaten
 
 
@@ -105,7 +99,7 @@ class BudgetWarningsModelExtended:
 
     def get_warnings(
         self, year: int, month: int, typ: str | None = None
-    ) -> List[BudgetWarning]:
+    ) -> list[BudgetWarning]:
         """Gibt alle Warnungen für Jahr/Monat zurück"""
         if typ:
             cur = self.conn.execute(
@@ -141,7 +135,7 @@ class BudgetWarningsModelExtended:
 
     def check_warnings_extended(
         self, year: int, month: int, lookback_months: int = 6
-    ) -> List[BudgetExceedance]:
+    ) -> list[BudgetExceedance]:
         """
         Prüft alle Warnungen und gibt überschrittene zurück mit erweiterten Infos
 
@@ -485,7 +479,7 @@ class BudgetWarningsModelExtended:
             logger.warning("get_accepted_for_month fehlgeschlagen: %s", e)
             return set()
 
-    def get_exceed_statistics(self, typ: str, category: str, months: int = 6) -> Dict:
+    def get_exceed_statistics(self, typ: str, category: str, months: int = 6) -> dict:
         """
         Gibt Statistiken über Budget-Überschreitungen zurück
 
@@ -580,7 +574,7 @@ class BudgetWarningsModelExtended:
             "suggestion": suggestion,
         }
 
-    def list_all(self) -> List[BudgetWarning]:
+    def list_all(self) -> list[BudgetWarning]:
         """Liste alle Warnungen"""
         cur = self.conn.execute(
             """

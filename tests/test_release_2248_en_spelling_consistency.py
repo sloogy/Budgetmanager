@@ -1,8 +1,8 @@
-from __future__ import annotations
-
 """Regression v2.2.48: EN-Oberfläche und EN-Doku nutzen durchgängig
 US-Schreibweise ("favorite"), passend zu locales/en.json und den
 KILLCRITIC-Kernbegriffen (k4_guide_coverage)."""
+
+from __future__ import annotations
 
 from pathlib import Path
 

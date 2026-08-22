@@ -21,47 +21,42 @@ import sqlite3
 
 logger = logging.getLogger(__name__)
 
-from datetime import date, timedelta
 import calendar
+from datetime import date, timedelta
 
-from PySide6.QtCore import Qt, QTimer, Signal, QDate, QSignalBlocker
+from PySide6.QtCore import QDate, QSignalBlocker, Qt, QTimer, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
     QComboBox,
     QFrame,
-    QScrollArea,
     QGroupBox,
-    QSizePolicy,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
     QPushButton,
+    QScrollArea,
     QSplitter,
     QTabWidget,
-    QMessageBox,
     QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 from model.budget_model import BudgetModel
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, normalize_typ
-from model.tracking_model import TrackingModel
-from model.category_model import CategoryModel
-from model.tags_model import TagsModel
-from model.savings_goals_model import SavingsGoalsModel
 from model.budget_overview_model import BudgetOverviewModel
+from model.category_model import CategoryModel
+from model.savings_goals_model import SavingsGoalsModel
+from model.tags_model import TagsModel
+from model.tracking_model import TrackingModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS, normalize_typ
 from settings import Settings
-
+from utils.i18n import display_typ, tr, trf
 from utils.icons import get_icon
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
-from utils.money import format_money as format_chf, currency_header
-
-from views.ui_colors import ui_colors
-from views.tabs.overview_kpi_panel import OverviewKpiPanel
+from utils.money import format_money as format_chf
 from views.tabs.overview_budget_panel import OverviewBudgetPanel, _months_between
-from views.tabs.overview_savings_panel import OverviewSavingsPanel
+from views.tabs.overview_kpi_panel import OverviewKpiPanel
 from views.tabs.overview_right_panel import OverviewRightPanel
-
+from views.tabs.overview_savings_panel import OverviewSavingsPanel
 
 # ── Hilfsfunktionen ─────────────────────────────────────────────────────────
 
@@ -95,11 +90,7 @@ def _month_range(y: int, m: int) -> tuple[date, date]:
 
 from model.typ_constants import (
     normalize_typ as _norm_typ,
-    TYP_INCOME,
-    TYP_EXPENSES,
-    TYP_SAVINGS,
 )
-
 
 # ── OverviewTab ──────────────────────────────────────────────────────────────
 
@@ -382,7 +373,6 @@ class OverviewTab(QWidget):
 
     def _on_range_changed(self) -> None:
         idx = self.range_combo.currentIndex()
-        is_custom = idx == 4
         is_ym = idx == 0
 
         self.year_combo.setEnabled(is_ym)
@@ -751,7 +741,7 @@ class OverviewTab(QWidget):
             from views.budget_adjustment_dialog import BudgetAdjustmentDialog
 
             warnings_model = BudgetWarningsModelExtended(self.conn)
-            min_months = int(self.settings.get("budget_suggestion_months", 3) or 3)
+            int(self.settings.get("budget_suggestion_months", 3) or 3)
 
             # KILLCRITIC v2.2.5: NICHT mehr nur klassische Budgetwarnungen als
             # Türsteher verwenden. Lernvorschläge, Null-Bilanz-Vorschläge und

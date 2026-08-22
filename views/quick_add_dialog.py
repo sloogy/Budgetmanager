@@ -1,42 +1,41 @@
 from __future__ import annotations
-from utils.notifications import show_info, show_warning
+
+import logging
 import sqlite3
 from datetime import date, datetime
-from typing import Optional
-from PySide6.QtCore import QTimer, Qt
+
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
+    QComboBox,
+    QDateEdit,
     QDialog,
-    QVBoxLayout,
+    QDoubleSpinBox,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
-    QComboBox,
-    QDoubleSpinBox,
-    QDateEdit,
-    QPushButton,
-    QMessageBox,
     QListWidget,
     QListWidgetItem,
-    QInputDialog,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
 
 from model.category_model import CategoryModel
-from model.tracking_model import TrackingModel
-from model.tags_model import TagsModel
 from model.savings_goals_model import (
     ACTION_CORRECTION,
     ACTION_DEPOSIT,
     ACTION_WITHDRAWAL,
     SavingsGoalBoundsError,
 )
+from model.tags_model import TagsModel
+from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS, normalize_typ
-from utils.money import currency_header, format_money
-from views.savings_goal_messages import show_savings_goal_bounds_warning
-
-
-import logging
 from settings import Settings
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.i18n import db_typ_from_display, tr, trf
+from utils.money import currency_header, format_money
+from utils.notifications import show_warning
+from views.savings_goal_messages import show_savings_goal_bounds_warning
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +48,8 @@ class QuickAddDialog(QDialog):
         conn: sqlite3.Connection,
         parent=None,
         *,
-        preset: Optional[dict] = None,
-        edit_row_id: Optional[int] = None,
+        preset: dict | None = None,
+        edit_row_id: int | None = None,
     ):
         # v2.2.0: merkt sich je Konto (Typ) die zuletzt gebuchte Kategorie.
         # v2.2.16 (K1): Edit-Modus – derselbe Dialog fuer Neu UND Bearbeiten.

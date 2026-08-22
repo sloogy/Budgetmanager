@@ -1,15 +1,11 @@
 from __future__ import annotations
 
 import logging
-
-logger = logging.getLogger(__name__)
-
 import os
 import shutil
 import stat
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 from packaging import version as _version
@@ -19,17 +15,19 @@ from updater.common import (
     backup_current_zip,
     current_exe_filename,
     enable_utf8_console,
-    stable_exe_filename,
-    update_target_exe_filename,
     find_staged_root,
     installation_marker_path,
     is_windows,
     read_check_result,
-    staging_dir_for,
-    updates_dir,
+    stable_exe_filename,
     staged_tree_sha256,
+    staging_dir_for,
+    update_target_exe_filename,
+    updates_dir,
     validate_staged_payload,
 )
+
+logger = logging.getLogger(__name__)
 
 
 EXCLUDE = (

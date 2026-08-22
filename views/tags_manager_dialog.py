@@ -1,35 +1,37 @@
-from __future__ import annotations
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
-import logging
-
-logger = logging.getLogger(__name__)
-
 """
 Tag-Verwaltungsdialog für Budgetmanager
 Ermöglicht das Erstellen, Bearbeiten, Löschen und Zusammenführen von Tags
 """
 
+from __future__ import annotations
+
+import logging
+
+from utils.accessibility import configure_dialog_tab_order
+from utils.notifications import show_info, show_warning
+
+logger = logging.getLogger(__name__)
+
+import sqlite3
+
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QColorDialog,
     QDialog,
-    QVBoxLayout,
+    QDialogButtonBox,
     QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QMenu,
+    QMessageBox,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QMessageBox,
-    QInputDialog,
-    QAbstractItemView,
-    QColorDialog,
-    QLabel,
-    QLineEdit,
-    QDialogButtonBox,
-    QMenu,
+    QVBoxLayout,
 )
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor, QBrush
-import sqlite3
 
 from model.tags_model import TagsModel
 from utils.icons import get_icon
@@ -645,5 +647,6 @@ class TagsManagerDialog(QDialog):
 
 
 from PySide6.QtWidgets import QWidget
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+
+from utils.i18n import tr, trf
 from views.ui_colors import ui_colors

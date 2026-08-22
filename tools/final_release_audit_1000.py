@@ -48,7 +48,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app_info import APP_VERSION  # noqa: E402
+from app_info import APP_VERSION
 
 LOOPS_PER_DOMAIN = 100
 
@@ -80,7 +80,7 @@ def _literal_return_methods(tree: ast.AST) -> frozenset:
 
 
 def _literal_only_names(
-    nodes: "list[ast.AST]", literal_methods: frozenset = frozenset()
+    nodes: list[ast.AST], literal_methods: frozenset = frozenset()
 ) -> set[str]:
     """Namen eines flachen Funktions-Scopes, deren sämtliche Zuweisungen UND
     Listen-Mutationen nachweislich sichere String-Ausdrücke sind.
@@ -298,7 +298,7 @@ def _literal_only_names(
     # in jeder Runde neu geprüft, s. u.)
     for_loops = [n for n in nodes if isinstance(n, ast.For)]
 
-    def loop_targets(node: ast.For) -> "list[ast.Name]":
+    def loop_targets(node: ast.For) -> list[ast.Name]:
         if isinstance(node.target, ast.Name):
             return [node.target]
         return [e for e in getattr(node.target, "elts", []) if isinstance(e, ast.Name)]
@@ -361,7 +361,7 @@ def _literal_only_names(
     return safe | guarded | safe_lists | loop_safe
 
 
-def _flat_scope(root: ast.AST) -> "list[ast.AST]":
+def _flat_scope(root: ast.AST) -> list[ast.AST]:
     """Alle Nodes eines Scopes ohne Abstieg in verschachtelte Funktionen."""
     out: list[ast.AST] = []
 
@@ -496,7 +496,7 @@ def d3_file_permissions(i: int) -> tuple[int, str, str]:
         return 1, "PASS", "Windows: chmod folgenlos (dokumentiert)"
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / f"users_{i}.json"
-        p.write_text('{"k": %d}' % i, encoding="utf-8")
+        p.write_text(f'{{"k": {i}}}', encoding="utf-8")
         os.chmod(p, 0o644)
         if not is_world_accessible(p):
             return 3, "FAIL", "0644 nicht als world-accessible erkannt"
@@ -648,7 +648,7 @@ def d6_migration_idempotent(i: int) -> tuple[int, str, str]:
             snap1 = _schema_snapshot(conn)
             run(conn, db_path=None)  # zweiter Lauf: muss folgenlos sein
             snap2 = _schema_snapshot(conn)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             conn.close()
             return 2, "FAIL", f"Migration wirft: {type(exc).__name__}: {exc}"
         conn.close()
@@ -733,7 +733,7 @@ def d8_i18n_format_safety(i: int) -> tuple[int, str, str]:
     keys = sorted(de)
     chunk = keys[i::LOOPS_PER_DOMAIN]
     fmt = string.Formatter()
-    ph = lambda s: {"{%s}" % f for _, f, _, _ in fmt.parse(s) if f}  # noqa: E731
+    ph = lambda s: {"{" + f + "}" for _, f, _, _ in fmt.parse(s) if f}  # noqa: E731
     checks = 0
     for k in chunk:
         for lang, cat in (("de", de), ("en", en), ("fr", fr)):
@@ -845,7 +845,7 @@ def main() -> int:
             loop += 1
             try:
                 checks, status, msg = fn(i)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 checks, status, msg = 1, "FAIL", f"{type(exc).__name__}: {exc}"
             totals["checks"] += checks
             totals[status] += 1

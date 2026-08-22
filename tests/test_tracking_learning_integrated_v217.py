@@ -15,11 +15,11 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_learning import KIND_IRREGULAR, KIND_VARIABLE_POT  # noqa: E402
-from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
-from model.category_model import CategoryModel  # noqa: E402
-from model.migrations import CURRENT_VERSION, migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES  # noqa: E402
+from model.budget_learning import KIND_IRREGULAR, KIND_VARIABLE_POT
+from model.budget_overview_model import BudgetOverviewModel
+from model.category_model import CategoryModel
+from model.migrations import CURRENT_VERSION, migrate_all
+from model.typ_constants import TYP_EXPENSES
 
 
 def _add_category(conn: sqlite3.Connection, name: str) -> None:

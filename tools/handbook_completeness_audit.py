@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app_info import APP_VERSION  # noqa: E402
+from app_info import APP_VERSION
 
 
 @dataclass(frozen=True)

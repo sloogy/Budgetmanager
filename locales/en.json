@@ -553,6 +553,7 @@
       "delete_row_this_year": "🗑️ Remove budget row (this year only)",
       "delete_rows_this_year_count": "Delete {count} budget rows for this year",
       "edit_budget": "💰 Edit budget…",
+      "edit_properties_count": "⚙️ Edit {count} categories…",
       "favorite": "⭐ Mark as favorite",
       "fix_disable": "📌 Disable fixed cost",
       "fix_enable": "📌 Enable fixed cost",

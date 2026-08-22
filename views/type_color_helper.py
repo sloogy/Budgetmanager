@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from PySide6.QtGui import QColor, QBrush
-from utils.money import parse_money, CURRENCIES
-
-
 import logging
-from utils.i18n import tr, trf, db_typ_from_display
+
+from PySide6.QtGui import QBrush, QColor
+
+from utils.i18n import db_typ_from_display
+from utils.money import CURRENCIES, parse_money
 
 logger = logging.getLogger(__name__)
 

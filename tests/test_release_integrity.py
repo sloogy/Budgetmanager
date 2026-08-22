@@ -5,7 +5,6 @@ import re
 import sys
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -97,9 +96,9 @@ def test_update_check_writes_success_result_for_gui(monkeypatch, tmp_path):
     monkeypatch.setattr(
         check_update,
         "write_staged_marker",
-        lambda remote, manifest, asset: (
+        lambda remote, manifest, asset, *, tree_sha256="": (
             tmp_path / "staging" / remote / "_update_marker.json"
-        ).write_text("{}", encoding="utf-8"),
+        ).write_text(json.dumps({"tree_sha256": tree_sha256}), encoding="utf-8"),
     )
     monkeypatch.setattr(
         check_update, "write_check_result", lambda data: writes.append(dict(data))
@@ -121,8 +120,8 @@ def test_apply_uses_checked_version_not_highest_stale_staging(monkeypatch, tmp_p
     Reproduziert den Fall: ein alter, höher nummerierter Staging-Ordner
     (z.B. Beta 2.1.0) liegt herum, während Stable gerade 2.0.9 vorbereitet hat.
     """
-    import updater.common as common
     import updater.apply_update as apply_update
+    import updater.common as common
 
     updates = tmp_path / "updates"
     (updates / "staging").mkdir(parents=True, exist_ok=True)

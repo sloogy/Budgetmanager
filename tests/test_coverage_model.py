@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sqlite3
+from dataclasses import dataclass
 
 import pytest
 
-from model.migrations import migrate_all
-
-from model.coverage_model import coverage_from_tracking_rows, budget_year_coverage
 from model.budget_model import BudgetModel
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.coverage_model import budget_year_coverage, coverage_from_tracking_rows
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 
 @dataclass(frozen=True)

@@ -13,16 +13,15 @@ from __future__ import annotations
 # bewusst nicht mehr nutzt. Es verbleiben die Tabellen-CRUD (für Backward-
 # Compat der `recurring_transactions`-Tabelle) und die reinen Datums-Helfer.
 import sqlite3
-from datetime import date, datetime
 from dataclasses import dataclass
-from typing import Optional
+from datetime import date, datetime
 
 
 @dataclass
 class RecurringTransaction:
     """Wiederkehrende Transaktion mit Soll-Buchungsdatum"""
 
-    id: Optional[int]
+    id: int | None
     typ: str  # 'Einkommen' oder 'Ausgaben'
     category: str
     amount: float
@@ -30,9 +29,9 @@ class RecurringTransaction:
     day_of_month: int  # Tag im Monat (1-31)
     is_active: bool
     start_date: date
-    end_date: Optional[date]
+    end_date: date | None
     created_date: datetime
-    last_booking_date: Optional[date]
+    last_booking_date: date | None
 
 
 class RecurringTransactionsModel:
@@ -49,7 +48,7 @@ class RecurringTransactionsModel:
         details: str,
         day_of_month: int,
         start_date: date,
-        end_date: Optional[date] = None,
+        end_date: date | None = None,
         is_active: bool = True,
     ) -> int:
         """Erstellt eine neue wiederkehrende Transaktion"""
@@ -104,10 +103,9 @@ class RecurringTransactionsModel:
             return date(year, month, trans.day_of_month)
         except ValueError:
             # Falls Tag nicht existiert (z.B. 31. Februar), nimm letzten Tag des Monats
-            if month == 12:
-                next_month = date(year + 1, 1, 1)
-            else:
-                next_month = date(year, month + 1, 1)
+            next_month = (
+                date(year + 1, 1, 1) if month == 12 else date(year, month + 1, 1)
+            )
             from datetime import timedelta
 
             last_day = next_month - timedelta(days=1)
@@ -120,10 +118,7 @@ class RecurringTransactionsModel:
         if booking_date < trans.start_date:
             return False
 
-        if trans.end_date and booking_date > trans.end_date:
-            return False
-
-        return True
+        return not (trans.end_date and booking_date > trans.end_date)
 
     def update_recurring_transaction(
         self,
@@ -135,7 +130,7 @@ class RecurringTransactionsModel:
         day_of_month: int,
         is_active: bool,
         start_date: date,
-        end_date: Optional[date] = None,
+        end_date: date | None = None,
     ) -> None:
         """Aktualisiert eine wiederkehrende Transaktion"""
         self.conn.execute(

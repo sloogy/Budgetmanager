@@ -10,50 +10,47 @@ Startlogik:
 """
 
 from __future__ import annotations
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
+
 import logging
-
-logger = logging.getLogger(__name__)
-
 from dataclasses import dataclass
-from typing import Optional
 
-from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
-    QComboBox,
     QMessageBox,
-    QFrame,
-    QStackedWidget,
-    QWidget,
-    QFormLayout,
+    QPushButton,
     QRadioButton,
-    QButtonGroup,
-    QSpinBox,
     QTextEdit,
-    QCheckBox,
-    QGroupBox,
-    QSizePolicy,
+    QVBoxLayout,
 )
 
 from model.user_model import (
-    UserModel,
-    User,
-    SECURITY_QUICK,
-    SECURITY_PIN,
+    PASSWORD_MIN_LENGTH,
+    PIN_MAX_LENGTH,
+    PIN_MIN_LENGTH,
     SECURITY_PASSWORD,
+    SECURITY_PIN,
+    SECURITY_QUICK,
+    User,
+    UserModel,
 )
-from model.user_model import PIN_MIN_LENGTH, PIN_MAX_LENGTH, PASSWORD_MIN_LENGTH
+from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import display_security_label, tr, trf
 from utils.icons import get_icon
+from utils.notifications import show_info, show_warning
 from views.ui_colors import themed, ui_colors
-from utils.i18n import tr, trf, display_typ, db_typ_from_display, display_security_label
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

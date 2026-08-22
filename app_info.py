@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Zentrale App-Metadaten (Name/Version/Release-Datum).
 
 Best Practice:
@@ -9,6 +7,8 @@ Best Practice:
 Hinweis:
 Die Versionsnummer ist die zentrale Release-Nummer für App, Installer, Updater und Anzeige.
 """
+
+from __future__ import annotations
 
 APP_NAME = "Budgetmanager"
 

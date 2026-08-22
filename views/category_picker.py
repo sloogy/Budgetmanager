@@ -12,6 +12,7 @@ Die Kopfzeilen sind nicht auswählbar und tauchen nicht als Kategorie auf.
 from __future__ import annotations
 
 import logging
+
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QComboBox, QCompleter
 
@@ -205,13 +206,16 @@ def resolve_combo_category(combo: QComboBox) -> str:
 
     # 2) currentData ist nur vertrauenswürdig, wenn der Text zum aktuellen
     #    Eintrag passt oder das Suchfeld leer ist.
-    if isinstance(current_data, str) and current_data.strip():
-        if (
+    if (
+        isinstance(current_data, str)
+        and current_data.strip()
+        and (
             not text
             or _same_text(text, current_label)
             or _same_text(text, _clean_category_label(current_label))
-        ):
-            return current_data.strip()
+        )
+    ):
+        return current_data.strip()
 
     # 3) Direkter Treffer auf itemData (Benutzer tippt den echten Namen).
     if text:

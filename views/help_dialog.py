@@ -13,8 +13,6 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger(__name__)
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
@@ -38,6 +36,8 @@ from views.help_content import (
     help_topic_haystack,
     help_topic_title,
 )
+
+logger = logging.getLogger(__name__)
 
 _ROLE_TOPIC = Qt.UserRole + 1
 

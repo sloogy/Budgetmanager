@@ -1,16 +1,17 @@
 from __future__ import annotations
-import logging
 
+import logging
 import sys
 from pathlib import Path
-from utils.secure_excel import load_workbook_safely
+
 from openpyxl.utils import range_boundaries
 
+from model.budget_model import BudgetModel
+from model.category_model import CategoryModel
 from model.database import open_db
 from model.migrations import migrate_all
-from model.category_model import CategoryModel
-from model.budget_model import BudgetModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from utils.secure_excel import load_workbook_safely
 
 MONTH_COLS = list(range(5, 17))  # E..P -> 12 Monate
 
@@ -77,7 +78,7 @@ def main() -> int:
                 if typ == TYP_EXPENSES:
                     flag = ws.cell(row=r, column=2).value
                     is_fix = bool(flag and str(flag).strip())
-                cats.upsert(typ, name.strip(), is_fix, True if is_fix else False)
+                cats.upsert(typ, name.strip(), is_fix, bool(is_fix))
 
     read_table_names(t_eink, TYP_INCOME)
     read_table_names(t_ausg, TYP_EXPENSES)

@@ -1,43 +1,40 @@
-from __future__ import annotations
-
-from utils.notifications import show_info
-
 """
 Favoriten-Dashboard für Budgetmanager
 Zeigt eine Schnellübersicht aller favoritisierten Kategorien mit Budget/Gebucht-Vergleich
 """
 
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QLabel,
-    QDialogButtonBox,
-    QProgressBar,
-    QWidget,
-    QMessageBox,
-    QAbstractItemView,
-)
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QColor
+from __future__ import annotations
+
+import logging
 import sqlite3
 from datetime import date
 
-from model.favorites_model import FavoritesModel
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QDialog,
+    QDialogButtonBox,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
+
 from model.budget_model import BudgetModel
+from model.favorites_model import FavoritesModel
 from model.tracking_model import TrackingModel
-from utils.money import format_money
+from model.typ_constants import TYP_INCOME, normalize_typ
+from utils.i18n import display_typ, tr, trf
 from utils.icons import get_icon
+from utils.money import format_money
+from utils.notifications import show_info
 from views.ui_colors import ui_colors
-
-
-import logging
-from utils.i18n import tr, trf, display_typ
-from model.typ_constants import normalize_typ, TYP_INCOME
 
 logger = logging.getLogger(__name__)
 

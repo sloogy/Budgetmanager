@@ -69,12 +69,12 @@ class _SectionHeader(QWidget):
         self.setToolTip(tooltip if self._drag_enabled else "")
         self.setAccessibleName(tooltip or self._key)
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton and self._drag_enabled:
             self._press_pos = event.position().toPoint()
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def mouseMoveEvent(self, event) -> None:
         if not self._drag_enabled or self._press_pos is None:
             super().mouseMoveEvent(event)
             return
@@ -93,7 +93,7 @@ class _SectionHeader(QWidget):
             self.setCursor(Qt.OpenHandCursor)
             self._press_pos = None
 
-    def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def mouseReleaseEvent(self, event) -> None:
         self._press_pos = None
         super().mouseReleaseEvent(event)
 
@@ -111,12 +111,12 @@ class _SectionDragHandle(QToolButton):
         self.setCursor(Qt.OpenHandCursor)
         self.setFocusPolicy(Qt.StrongFocus)
 
-    def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def mousePressEvent(self, event) -> None:
         if event.button() == Qt.LeftButton and self.isEnabled():
             self._press_pos = event.position().toPoint()
         super().mousePressEvent(event)
 
-    def mouseMoveEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def mouseMoveEvent(self, event) -> None:
         if not self.isEnabled() or self._press_pos is None:
             super().mouseMoveEvent(event)
             return
@@ -135,7 +135,7 @@ class _SectionDragHandle(QToolButton):
             self.setCursor(Qt.OpenHandCursor)
             self._press_pos = None
 
-    def mouseReleaseEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def mouseReleaseEvent(self, event) -> None:
         self._press_pos = None
         super().mouseReleaseEvent(event)
 
@@ -441,7 +441,7 @@ class ResponsiveColumns(QWidget):
         if repaint and had_preview:
             self._relayout(force=True)
 
-    def dragEnterEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def dragEnterEvent(self, event) -> None:
         if self._drag_enabled and event.mimeData().hasFormat(COCKPIT_MIME_TYPE):
             source = self._decode_source(event)
             if source is not None:
@@ -450,7 +450,7 @@ class ResponsiveColumns(QWidget):
                 return
         event.ignore()
 
-    def dragMoveEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def dragMoveEvent(self, event) -> None:
         if self._drag_enabled and event.mimeData().hasFormat(COCKPIT_MIME_TYPE):
             source = self._decode_source(event)
             if source is not None:
@@ -460,11 +460,11 @@ class ResponsiveColumns(QWidget):
         self._clear_preview()
         event.ignore()
 
-    def dragLeaveEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def dragLeaveEvent(self, event) -> None:
         self._clear_preview()
         event.accept()
 
-    def dropEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def dropEvent(self, event) -> None:
         if not self._drag_enabled or not event.mimeData().hasFormat(COCKPIT_MIME_TYPE):
             self._clear_preview()
             event.ignore()
@@ -558,6 +558,6 @@ class ResponsiveColumns(QWidget):
             self._grid.setColumnStretch(1, 0)
             self._single_host.show()
 
-    def resizeEvent(self, event) -> None:  # noqa: N802 - Qt API
+    def resizeEvent(self, event) -> None:
         super().resizeEvent(event)
         self._relayout()

@@ -1,17 +1,18 @@
-from __future__ import annotations
-import logging
-
-logger = logging.getLogger(__name__)
-import sqlite3
-from dataclasses import dataclass
-
-from model.undo_redo_model import UndoRedoModel
-
 """Budget-Datenmodell.
 
 Verwaltet Budget-Einträge (Soll-Werte) je Jahr, Monat, Typ und Kategorie.
 Schützt reservierte Kategorienamen und integriert Undo/Redo-Unterstützung.
 """
+
+from __future__ import annotations
+
+import logging
+import sqlite3
+from dataclasses import dataclass
+
+from model.undo_redo_model import UndoRedoModel
+
+logger = logging.getLogger(__name__)
 
 # Reservierte Namen die nicht als Kategorie verwendet werden dürfen
 RESERVED_CATEGORY_NAMES = [
@@ -51,9 +52,7 @@ class BudgetModel:
             if reserved.upper() in cat_upper:
                 return True
         # Auch Emoji-Versionen prüfen
-        if "📊" in category or "SALDO" in cat_upper:
-            return True
-        return False
+        return bool("📊" in category or "SALDO" in cat_upper)
 
     def _cleanup_reserved_categories(self):
         """Entfernt fehlerhafte reservierte Kategorien aus der Datenbank (einmalig beim Start)."""

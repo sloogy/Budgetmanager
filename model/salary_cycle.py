@@ -15,11 +15,11 @@ Die Logik ist Qt-frei und damit vollständig headless testbar.
 
 from __future__ import annotations
 
+import sqlite3
+import unicodedata
 from calendar import monthrange
 from dataclasses import dataclass
 from datetime import date, timedelta
-import sqlite3
-import unicodedata
 
 from model.typ_constants import TYP_INCOME
 

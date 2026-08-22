@@ -7,7 +7,7 @@ from pathlib import Path
 
 from model.category_model import CategoryModel
 from model.migrations import migrate_all
-from model.restore_bundle import create_bundle, bundle_user_security_modes
+from model.restore_bundle import bundle_user_security_modes, create_bundle
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
 

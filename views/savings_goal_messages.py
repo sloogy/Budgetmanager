@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from utils.notifications import show_warning
-from PySide6.QtWidgets import QMessageBox, QWidget
+from PySide6.QtWidgets import QWidget
 
 from model.savings_goals_model import SavingsGoalBoundsError
 from utils.i18n import tr, trf
 from utils.money import format_money
+from utils.notifications import show_warning
 
 
 def _format_param(value: object) -> object:

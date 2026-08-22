@@ -11,21 +11,21 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_learning import (  # noqa: E402
+from model.budget_learning import (
     KIND_FIXED_RECURRING,
     KIND_IRREGULAR,
     KIND_VARIABLE_INCOME,
     KIND_VARIABLE_POT,
     apply_learning_budget_kind,
 )
+from model.budget_overview_model import BudgetOverviewModel
 from model.category_forecast_mode import (
     FORECAST_MODE_NORMAL,
     FORECAST_MODE_POT,
-)  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME  # noqa: E402
-from model.year_copy_rules import list_year_copy_review_rows  # noqa: E402
+)
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from model.year_copy_rules import list_year_copy_review_rows
 
 
 def _add_category(conn: sqlite3.Connection, typ: str, name: str) -> None:

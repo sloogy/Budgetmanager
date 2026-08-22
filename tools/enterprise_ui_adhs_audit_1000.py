@@ -21,7 +21,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app_info import APP_VERSION  # noqa: E402
+from app_info import APP_VERSION
 
 ROWS: list[dict[str, object]] = []
 UNIQUE: dict[str, tuple[str, str]] = {}
@@ -113,6 +113,7 @@ def _qt_app():
 def d3_form_accessibility(i: int) -> tuple[int, str, str]:
     try:
         from PySide6.QtWidgets import QDialog, QFormLayout, QLineEdit
+
         from utils.ui_usability import enhance_widget_tree
     except ImportError:
         # v2.2.24 (Merge-Korrektur M2): Qt-freier Kern – die Label-Ableitung
@@ -147,6 +148,7 @@ def d3_form_accessibility(i: int) -> tuple[int, str, str]:
 def d4_destructive_metadata(i: int) -> tuple[int, str, str]:
     try:
         from PySide6.QtWidgets import QDialog, QPushButton, QVBoxLayout
+
         from utils.ui_usability import enhance_widget_tree
     except ImportError:
         # v2.2.24 (Merge-Korrektur M2): Ohne PySide6 (Audit-Container) die

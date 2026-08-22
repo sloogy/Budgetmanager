@@ -12,13 +12,11 @@ Wichtig:
 """
 
 from __future__ import annotations
-import logging
-
-logger = logging.getLogger(__name__)
 
 import hashlib
 import hmac
 import json
+import logging
 import os
 import re
 import shutil
@@ -26,6 +24,8 @@ import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 # Harte Grenzen gelten sowohl beim Erstellen als auch beim Prüfen/Entpacken.

@@ -46,11 +46,13 @@ v2.0.37 – Pot/inkrementell getrennt:
 """
 
 from __future__ import annotations
+
 import logging
-
-logger = logging.getLogger(__name__)
-
 import sqlite3
+from dataclasses import dataclass
+from datetime import date
+from statistics import median
+
 from model.category_forecast_mode import (
     FORECAST_MODE_INCREMENTAL,
     FORECAST_MODE_POT,
@@ -59,18 +61,10 @@ from model.category_forecast_mode import (
 )
 from model.date_ranges import month_bounds
 from model.typ_constants import (
-    TYP_INCOME,
-    TYP_EXPENSES,
-    TYP_SAVINGS,
-    normalize_typ,
     is_income,
-    rest_sign,
-    ALL_TYPEN,
 )
-from dataclasses import dataclass
-from datetime import date
-from statistics import median
-from typing import Optional, List, Tuple
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -126,7 +120,7 @@ class BudgetSuggestionEngine:
         # Fixkosten-/wiederkehrende Kategorien schützen:
         # 0-Monate dürfen dort keine Senkung beweisen.
         respect_fixed_costs: bool = True,
-    ) -> Optional[SuggestionResult]:
+    ) -> SuggestionResult | None:
         """Berechnet einen Vorschlag für eine Kategorie.
 
         Args:
@@ -356,16 +350,18 @@ class BudgetSuggestionEngine:
 
         # ── Budget anpassen ──
         adjustment = central * alpha
-        if self._is_income(typ):
-            suggested = current_budget + adjustment
-        else:
-            suggested = current_budget - adjustment
+        suggested = (
+            current_budget + adjustment
+            if self._is_income(typ)
+            else current_budget - adjustment
+        )
 
         # Negative Budgets verhindern + Floor
-        if self._is_income(typ):
-            suggested = max(0.0, suggested)
-        else:
-            suggested = max(float(floor), float(suggested))
+        suggested = (
+            max(0.0, suggested)
+            if self._is_income(typ)
+            else max(float(floor), float(suggested))
+        )
 
         # Schwellwerte (Änderung gross genug?)
         delta = suggested - current_budget
@@ -377,10 +373,11 @@ class BudgetSuggestionEngine:
         # Runden
         if round_to and round_to > 0:
             suggested = round(suggested / round_to) * round_to
-            if self._is_income(typ):
-                suggested = max(0.0, suggested)
-            else:
-                suggested = max(float(floor), float(suggested))
+            suggested = (
+                max(0.0, suggested)
+                if self._is_income(typ)
+                else max(float(floor), float(suggested))
+            )
             delta = suggested - current_budget
 
         # Nochmals prüfen nach Rundung. Rundung kann delta auf 0 bringen oder
@@ -430,7 +427,7 @@ class BudgetSuggestionEngine:
         round_to,
         min_abs_change,
         min_pct_change,
-    ) -> Optional[SuggestionResult]:
+    ) -> SuggestionResult | None:
         """Erstellt einen Vorschlag für Kategorien ohne jegliche Buchungen."""
         suggested = float(current_budget)
         if 6 <= zero_streak < 12:
@@ -478,7 +475,7 @@ class BudgetSuggestionEngine:
         year: int,
         month: int,
         months_back: int,
-        not_before: Optional[date] = None,
+        not_before: date | None = None,
     ) -> list[date]:
         """Liefert die letzten N Monate mit Budgeteintrag im Analysefenster."""
         out: list[date] = []
@@ -511,8 +508,8 @@ class BudgetSuggestionEngine:
         round_to: float,
         min_abs_change: float,
         min_pct_change: float,
-        not_before: Optional[date] = None,
-    ) -> Optional[SuggestionResult]:
+        not_before: date | None = None,
+    ) -> SuggestionResult | None:
         """Forecast für Pot/Rückstellungen.
 
         Pot-Regeln:
@@ -636,7 +633,7 @@ class BudgetSuggestionEngine:
     # ------------------------------------------------------------
     # Kategorie-Flags
     # ------------------------------------------------------------
-    def _get_category_flags(self, typ: str, category: str) -> Tuple[bool, bool]:
+    def _get_category_flags(self, typ: str, category: str) -> tuple[bool, bool]:
         """Liest (is_fix, is_recurring) robust aus categories.
 
         Bestandsdatenbanken oder Tests können ältere Schemas haben. Dann wird
@@ -710,7 +707,7 @@ class BudgetSuggestionEngine:
         year: int,
         month: int,
         months_back: int,
-        not_before: Optional[date] = None,
+        not_before: date | None = None,
     ) -> int:
         """Zählt, in wie vielen der letzten N Monate überhaupt Buchungen > 0 vorkamen."""
         active = 0
@@ -733,7 +730,7 @@ class BudgetSuggestionEngine:
         category: str,
         year: int,
         month: int,
-        not_before: Optional[date] = None,
+        not_before: date | None = None,
     ) -> int:
         """Zählt Monate rückwärts *in Folge* ohne Buchungen (spent == 0)."""
         streak = 0
@@ -769,7 +766,7 @@ class BudgetSuggestionEngine:
 
     def _get_budget_amount(
         self, year: int, month: int, typ: str, category: str
-    ) -> Optional[float]:
+    ) -> float | None:
         row = self.conn.execute(
             "SELECT amount FROM budget WHERE year=? AND month=? AND typ=? AND category=?",
             (year, month, typ, category),
@@ -783,7 +780,7 @@ class BudgetSuggestionEngine:
 
     def _get_latest_budget_before(
         self, year: int, month: int, typ: str, category: str, max_scan: int = 24
-    ) -> Optional[float]:
+    ) -> float | None:
         """Letzte positive Budgetbasis vor dem Zielmonat.
 
         Wird nur als Basis für Vorschläge genutzt, wenn der Zielmonat selbst
@@ -827,7 +824,7 @@ class BudgetSuggestionEngine:
     # ------------------------------------------------------------
     # Datengrenze (Tracking-Beginn)
     # ------------------------------------------------------------
-    def _first_booking_month(self) -> Optional[Tuple[int, int]]:
+    def _first_booking_month(self) -> tuple[int, int] | None:
         """Frühester Monat mit irgendeiner echten Buchung (global, alle Kategorien).
 
         Dient als automatische untere Analysegrenze: Monate davor liegen vor
@@ -849,7 +846,7 @@ class BudgetSuggestionEngine:
             return (y, m)
         return None
 
-    def _configured_start_month(self) -> Optional[Tuple[int, int]]:
+    def _configured_start_month(self) -> tuple[int, int] | None:
         """Konfigurierter Startmonat (carryover_start_*), falls explizit gesetzt.
 
         Nur gültig, wenn carryover_start_year > 0. Der Standard (Jahr 0) gilt als
@@ -868,7 +865,7 @@ class BudgetSuggestionEngine:
         m = max(1, min(12, m))
         return (y, m)
 
-    def _data_start_boundary(self) -> Optional[date]:
+    def _data_start_boundary(self) -> date | None:
         """Untere Analysegrenze als ``date`` oder ``None``.
 
         = der spätere von (erste echte Buchung, konfigurierter Startmonat).
@@ -876,7 +873,7 @@ class BudgetSuggestionEngine:
         Startmonat). Dann wird NICHT geklammert, damit die Langzeit-0-Reduktion
         (Budget gesetzt, nie gebucht) wie gewünscht weiter greifen kann.
         """
-        bounds: List[Tuple[int, int]] = []
+        bounds: list[tuple[int, int]] = []
         fb = self._first_booking_month()
         if fb is not None:
             bounds.append(fb)
@@ -896,8 +893,8 @@ class BudgetSuggestionEngine:
         month: int,
         months_back: int,
         active_only: bool = False,
-        not_before: Optional[date] = None,
-    ) -> List[float]:
+        not_before: date | None = None,
+    ) -> list[float]:
         """Sammelt die letzten N Abweichungs-Datenpunkte.
 
         WICHTIG (v0.4.4.0-Fix): Das Fenster erweitert sich über Lückenmonate
@@ -909,7 +906,7 @@ class BudgetSuggestionEngine:
         active_only=True: Monate ohne Buchung werden übersprungen. Das wird
         für Fixkosten genutzt, damit 0-Buchungen keine Senkung beweisen.
         """
-        out: List[float] = []
+        out: list[float] = []
         base = date(year, month, 1)
         max_scan = months_back * 3  # Sicherheitslimit
         for i in range(max_scan):
@@ -924,10 +921,7 @@ class BudgetSuggestionEngine:
             a = self._get_spent_amount(d.year, d.month, typ, category)
             if active_only and abs(float(a)) <= 0.000001:
                 continue
-            if self._is_income(typ):
-                dev = a - float(b)
-            else:
-                dev = float(b) - a
+            dev = a - float(b) if self._is_income(typ) else float(b) - a
             out.append(float(dev))
 
         out.reverse()
@@ -940,7 +934,7 @@ class BudgetSuggestionEngine:
         year: int,
         month: int,
         sign: int,
-        not_before: Optional[date] = None,
+        not_before: date | None = None,
     ) -> int:
         """Zählt Monate rückwärts mit konsistenter Abweichungsrichtung."""
         streak = 0

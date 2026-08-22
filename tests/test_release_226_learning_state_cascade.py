@@ -16,9 +16,9 @@ import sqlite3
 
 import pytest
 
-from model.migrations import migrate_all
-from model.category_model import CategoryModel
 from model.budget_overview_model import BudgetOverviewModel
+from model.category_model import CategoryModel
+from model.migrations import migrate_all
 from model.typ_constants import TYP_EXPENSES
 
 

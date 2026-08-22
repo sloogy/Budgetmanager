@@ -1,41 +1,36 @@
-from __future__ import annotations
-import logging
-
-logger = logging.getLogger(__name__)
-import re
-import sqlite3
-from dataclasses import dataclass
-from datetime import date, timedelta, datetime
-
 """Tracking-Datenmodell.
 
 Verwaltet Buchungseinträge (Ist-Werte) mit Datum, Typ, Kategorie, Betrag
 und Bemerkung. Unterstützt Filter, Suche und Duplikaterkennung.
 """
 
-# Undo/Redo (global)
-from model.undo_redo_model import UndoRedoModel
-from model.typ_constants import (
-    TYP_INCOME,
-    TYP_EXPENSES,
-    TYP_SAVINGS,
-    normalize_typ,
-    is_income,
-    rest_sign,
-    ALL_TYPEN,
-)
+from __future__ import annotations
+
+import logging
+import re
+import sqlite3
+from dataclasses import dataclass
+from datetime import date, datetime, timedelta
+
 from model.database import db_transaction
 from model.date_ranges import month_bounds, year_bounds
 from model.savings_goals_model import (
-    SavingsGoalBoundsError,
-    ACTION_CORRECTION,
     ACTION_DEPOSIT,
     ACTION_WITHDRAWAL,
     STATUS_RELEASED,
     STATUS_SAVING,
     VALID_SAVINGS_ACTIONS,
+    SavingsGoalBoundsError,
     validate_savings_goal_flow_bounds,
 )
+from model.typ_constants import (
+    TYP_SAVINGS,
+)
+
+# Undo/Redo (global)
+from model.undo_redo_model import UndoRedoModel
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)

@@ -1,11 +1,8 @@
 from __future__ import annotations
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+
 import logging
-
-logger = logging.getLogger(__name__)
-
-from dataclasses import dataclass
 import sqlite3
+from dataclasses import dataclass
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
@@ -25,9 +22,12 @@ from PySide6.QtWidgets import (
 )
 
 from model.category_forecast_mode import FORECAST_MODE_INCREMENTAL, FORECAST_MODE_POT
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from model.year_copy_rules import YearCopyOverride, list_year_copy_review_rows
-from utils.i18n import tr, display_typ
+from utils.i18n import display_typ, tr
 from utils.money import format_money
+
+logger = logging.getLogger(__name__)
 
 
 def _localized_flags(row) -> str:

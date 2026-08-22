@@ -75,6 +75,12 @@ Vor grossen Strukturänderungen immer ein Backup erstellen.
 
 Der Setup-Assistent kann Kategorien aus einer XLSX-Vorlage importieren. Die normale tägliche Kategorienverwaltung läuft über **Strg+K** bzw. den Kategorie-Manager.
 
+### 3.5 Mehrere Kategorien auf einmal bearbeiten
+
+Im Budget-Tab mehrere Zeilen markieren und rechtsklicken: **⚙️ N Kategorien bearbeiten…** öffnet die Massenbearbeitung. Dort lassen sich Fixkosten, Wiederkehrend, Fälligkeitstag und Forecast-Modus für alle markierten Kategorien gemeinsam setzen. Felder, die du unverändert lässt, bleiben je Kategorie bei ihrem bisherigen Wert.
+
+Das lohnt sich, wenn du nach einem Import viele Kategorien gleich einstellen willst - sonst öffnest du den Eigenschaften-Dialog einmal je Kategorie.
+
 ## 4. Budget
 
 Budgetwerte sind Sollbeträge. Sie erzeugen keine Buchungen.

@@ -1,31 +1,32 @@
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 import sqlite3
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QDialogButtonBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QTableWidget,
     QTableWidgetItem,
-    QAbstractItemView,
-    QPushButton,
-    QComboBox,
-    QDialogButtonBox,
+    QVBoxLayout,
 )
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor
+
+from model.budget_model import BudgetModel
+from model.category_model import CategoryModel
+from model.tracking_model import TrackingModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from utils.i18n import tr, trf
 from utils.money import format_money
 from views.ui_colors import ui_colors
 
-from model.tracking_model import TrackingModel
-from model.category_model import CategoryModel
-from model.budget_model import BudgetModel
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+logger = logging.getLogger(__name__)
 
 
 class GlobalSearchDialog(QDialog):

@@ -123,6 +123,7 @@ def test_chart_view_style_is_owned_by_design_manager():
 
 def test_current_version_is_valid_semver():
     import re
+
     from app_info import APP_VERSION
 
     assert re.fullmatch(r"\d+\.\d+\.\d+", APP_VERSION)

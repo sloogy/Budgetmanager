@@ -22,10 +22,12 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from tools.verify_release_manifest import (  # noqa: E402
+from tools.verify_release_manifest import (
     ManifestGateError,
-    main as gate_main,
     verify_manifest_dict,
+)
+from tools.verify_release_manifest import (
+    main as gate_main,
 )
 
 WORKFLOW = ROOT / ".github" / "workflows" / "build.yml"
@@ -230,9 +232,9 @@ def test_cli_valid_ed25519_signature_passes(tmp_path, monkeypatch, capsys) -> No
     from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
     from cryptography.hazmat.primitives.serialization import (
         Encoding,
+        NoEncryption,
         PrivateFormat,
         PublicFormat,
-        NoEncryption,
     )
 
     good = _write_manifest(tmp_path, _good_manifest())

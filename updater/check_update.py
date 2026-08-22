@@ -1,34 +1,34 @@
 from __future__ import annotations
+
 import logging
 from pathlib import Path
-
-from updater.manifest_signing import ManifestSignatureError
-
-logger = logging.getLogger(__name__)
 
 from updater.common import (
     DEFAULT_MANIFEST_URL,
     asset_is_zip,
     cache_zip_path,
     current_exe_filename,
-    update_target_exe_filename,
     detect_platform_key,
-    preferred_asset_keys,
     download_file,
     enable_utf8_console,
     fetch_manifest,
-    is_newer,
-    read_current_version,
-    sha256_file,
-    safe_extract_zip,
-    staging_dir_for,
-    prune_other_staging,
-    write_staged_marker,
     find_staged_root,
+    is_newer,
+    preferred_asset_keys,
+    prune_other_staging,
+    read_current_version,
+    safe_extract_zip,
+    sha256_file,
     staged_tree_sha256,
+    staging_dir_for,
+    update_target_exe_filename,
     validate_staged_payload,
     write_check_result,
+    write_staged_marker,
 )
+from updater.manifest_signing import ManifestSignatureError
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> int:
@@ -192,7 +192,8 @@ def main() -> int:
             target = staging / target_name
             shutil.copy2(zip_path, target)
             try:
-                import os, stat
+                import os
+                import stat
 
                 os.chmod(
                     target,
@@ -206,8 +207,12 @@ def main() -> int:
 
         root = find_staged_root(staging)
         validate_staged_payload(root, asset.asset_type)
+        # Die Marke traegt genau die Pruefsumme, die hier ueber den soeben
+        # validierten Baum lief. Ohne sie berechnet write_staged_marker sie
+        # selbst noch einmal - ueber einen Baum, der inzwischen ein anderer
+        # sein kann, und mit einem zweiten vollen Lauf ueber alle Dateien.
         tree_hash = staged_tree_sha256(root)
-        write_staged_marker(remote, manifest, asset)
+        write_staged_marker(remote, manifest, asset, tree_sha256=tree_hash)
         print(f"✓ Staged und validiert: {staging}")
     except Exception as e:
         shutil.rmtree(staging, ignore_errors=True)

@@ -1,10 +1,9 @@
 import json
-import os
 from pathlib import Path
 
+from app_info import APP_VERSION
 from model import app_paths
 from model.lifeplanner_import_service import default_bridge_dir
-from app_info import APP_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]
 

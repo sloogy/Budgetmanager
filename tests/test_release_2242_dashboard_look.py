@@ -91,7 +91,7 @@ def test_card_icons_are_plain_glyphs_not_emoji():
 def test_trend_colour_follows_meaning_not_sign():
     """Mehr Ausgaben darf nicht grün sein."""
     src = COCKPIT.read_text(encoding="utf-8")
-    block = (
+    (
         src.split("def set_trend", 1)[1].split("def __init__", 1)[0]
         if "def set_trend" in src
         else ""

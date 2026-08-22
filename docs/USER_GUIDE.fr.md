@@ -28,6 +28,8 @@ Chaque catégorie appartient aux revenus, dépenses ou épargne et peut être pr
 
 Propriétés : charge fixe, récurrente, jour d’échéance, mode de prévision (Auto, Normal/Flexible, POT/Provision, Incrémentiel), favori et tags fixes. Le renommage se propage dans budgets, suivi, favoris, alertes, récurrences et objectifs. La suppression peut effacer ou réaffecter les données ; sauvegardez d’abord.
 
+Sélectionnez plusieurs lignes dans l’onglet Budget puis faites un clic droit : **⚙️ Modifier N catégories…** ouvre la modification en masse. Charge fixe, récurrence, jour d’échéance et mode de prévision se règlent alors pour toutes les catégories sélectionnées ; les champs que vous laissez tels quels conservent leur valeur d’origine par catégorie.
+
 L’assistant peut importer un modèle XLSX de catégories. La gestion quotidienne utilise **Ctrl+K**.
 
 ## 4. Budget

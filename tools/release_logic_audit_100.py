@@ -13,23 +13,19 @@ statisch und mit headless Geschäftslogik geprüft:
 """
 from __future__ import annotations
 
-import ast
 import importlib.util
 import json
-import re
 import sqlite3
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from tempfile import TemporaryDirectory
-from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_suggestion_engine import BudgetSuggestionEngine  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS  # noqa: E402
+from model.budget_suggestion_engine import BudgetSuggestionEngine
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 REQUIRED_LANGS = ("de", "en", "fr")
 

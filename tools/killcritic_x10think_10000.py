@@ -44,8 +44,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app_info import APP_VERSION  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME  # noqa: E402
+from app_info import APP_VERSION
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 
 LOOPS_PER_DOMAIN = 1000
 CSV_PATH = ROOT / (
@@ -127,8 +127,8 @@ def k1_first_run_path(i: int, rng: random.Random) -> tuple[int, str, str]:
 # ───────────────────── k2 Kernbuchungs-Lebenszyklus ─────────────────────
 def k2_booking_lifecycle(i: int, rng: random.Random) -> tuple[int, str, str]:
     from model.category_model import CategoryModel
-    from model.tracking_model import TrackingModel
     from model.tags_model import TagsModel
+    from model.tracking_model import TrackingModel
 
     conn = _fresh_db()
     checks, bad = 0, []
@@ -420,10 +420,13 @@ def k5_help_wiki(i: int, rng: random.Random) -> tuple[int, str, str]:
         if not body.strip():
             bad.append(f"{topic.get('id')}: Body {lang} leer")
         checks += 1
-        if re.search(r"\b[a-z]+\.[a-z_]+\.[a-z_]+\b", body) and "http" not in body:
-            # grobe Heuristik auf rohe i18n-Keys im Fliesstext
-            if re.search(r"\b(cockpit|settings|tags|budget)\.[a-z_]+", body):
-                bad.append(f"{topic.get('id')}: roher Key im {lang}-Text")
+        # grobe Heuristik auf rohe i18n-Keys im Fliesstext
+        if (
+            re.search(r"\b[a-z]+\.[a-z_]+\.[a-z_]+\b", body)
+            and "http" not in body
+            and re.search(r"\b(cockpit|settings|tags|budget)\.[a-z_]+", body)
+        ):
+            bad.append(f"{topic.get('id')}: roher Key im {lang}-Text")
     checks += 1
     if not help_topic_haystack(topic, "de"):
         bad.append("Suchindex leer")
@@ -594,9 +597,11 @@ def k9_dialog_invariants(i: int, rng: random.Random) -> tuple[int, str, str]:
         if not re.search(r"reject|accept|QDialogButtonBox|close", src):
             bad.append(f"{f.name}:{node.name} nicht schliessbar")
         checks += 1
-        if len(re.findall(r"QPushButton\(", body_src)) >= 5:
-            if "configure_dialog_tab_order" not in src:
-                warn.append(f"{f.name}:{node.name} ohne Tab-Ketten-Registrierung")
+        if (
+            len(re.findall(r"QPushButton\(", body_src)) >= 5
+            and "configure_dialog_tab_order" not in src
+        ):
+            warn.append(f"{f.name}:{node.name} ohne Tab-Ketten-Registrierung")
     checks += 1
     if "QMessageBox.information" in src:
         bad.append(f"{f.name}: modale Info")
@@ -610,6 +615,7 @@ def k9_dialog_invariants(i: int, rng: random.Random) -> tuple[int, str, str]:
 # ─────────────── k10 Regressions-Vollschutz ───────────────
 def k10_regression_shield(i: int, rng: random.Random) -> tuple[int, str, str]:
     from datetime import date
+
     from model.fixed_cost_due import is_open_this_month
     from model.migrations import _cols as mig_cols
 

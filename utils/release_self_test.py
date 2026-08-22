@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-from pathlib import Path
 import sqlite3
 import sys
 import traceback
+from pathlib import Path
 from typing import TextIO
 
 MIN_SAMPLE_COLOURS = 4

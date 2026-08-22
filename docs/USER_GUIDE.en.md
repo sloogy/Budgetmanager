@@ -28,6 +28,8 @@ Every category belongs to income, expenses or savings and may be a parent or chi
 
 Properties include fixed cost, recurring, due day, forecast mode (Auto, Normal/Flexible, Pot/Reserve, Incremental), favorite and fixed tags. Renaming cascades through budgets, tracking, favorites, warnings, recurring data and savings goals. Deletion can remove dependent data or reassign it; create a backup first.
 
+Select several rows in the Budget tab and right-click to open **⚙️ Edit N categories…**. Fixed cost, recurring, due day and forecast mode can then be set for all selected categories at once; fields you leave untouched keep their previous value per category.
+
 The setup assistant can import an XLSX category template. Daily management uses **Ctrl+K**.
 
 ## 4. Budget

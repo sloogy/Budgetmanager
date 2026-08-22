@@ -28,8 +28,8 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import model.crypto as crypto  # noqa: E402
-from model.crypto import (  # noqa: E402
+import model.crypto as crypto
+from model.crypto import (
     _is_comparable_stored_hash,
     generate_salt,
     hash_password,

@@ -24,14 +24,14 @@ import shutil
 import stat
 import sys
 import zipfile
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app_info import APP_NAME, APP_VERSION  # noqa: E402
-from tools.generate_sbom import generate_sbom  # noqa: E402
+from app_info import APP_NAME, APP_VERSION
+from tools.generate_sbom import generate_sbom
 
 WINDOWS_CANONICAL_EXE = "BudgetManager.exe"
 LINUX_CANONICAL_BINARY = "BudgetManager"

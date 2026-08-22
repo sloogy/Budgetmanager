@@ -178,3 +178,49 @@ def test_grenzen_sind_scharf_gezogen(audit) -> None:
     assert audit.BASE_EXCEPTION_LIMIT == 0
     assert ergebnis.broad == audit.BROAD_EXCEPTION_LIMIT
     assert len(ergebnis.silent) == audit.SILENT_EXCEPT_LIMIT
+
+
+def test_contextlib_suppress_zaehlt_als_stummer_schlucker(audit, tmp_path) -> None:
+    """``with suppress(Exception):`` ist ``except Exception: pass`` in anderer Schreibweise.
+
+    Der Ratchet sah bis Loop 45 nur ``except``-Handler. Wer eine gedeckelte
+    Stelle in ein ``contextlib.suppress`` umschrieb, verschwand aus der
+    Zaehlung, ohne dass sich etwas gebessert haette - und ruffs SIM105 raet
+    genau dazu. Darum ist die Regel aus und der Weg hier zu.
+    """
+    (tmp_path / "modul.py").write_text(
+        "import contextlib\n"
+        "\n"
+        "def f():\n"
+        "    with contextlib.suppress(Exception):\n"
+        "        riskant()\n",
+        encoding="utf-8",
+    )
+    original = audit.ROOT
+    audit.ROOT = tmp_path
+    try:
+        ergebnis = audit.scan()
+    finally:
+        audit.ROOT = original
+    assert len(ergebnis.silent) == 1
+    assert ergebnis.broad == 1
+
+
+def test_suppress_mit_enger_ausnahme_ist_trotzdem_stumm(audit, tmp_path) -> None:
+    """Eng gefangen heisst nicht, dass eine Spur bleibt."""
+    (tmp_path / "modul.py").write_text(
+        "from contextlib import suppress\n"
+        "\n"
+        "def f():\n"
+        "    with suppress(OSError):\n"
+        "        riskant()\n",
+        encoding="utf-8",
+    )
+    original = audit.ROOT
+    audit.ROOT = tmp_path
+    try:
+        ergebnis = audit.scan()
+    finally:
+        audit.ROOT = original
+    assert len(ergebnis.silent) == 1
+    assert ergebnis.broad == 0

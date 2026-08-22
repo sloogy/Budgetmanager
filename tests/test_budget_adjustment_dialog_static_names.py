@@ -19,9 +19,8 @@ def test_budget_adjustment_dialog_imports_typ_income_for_income_learning_rows():
         if isinstance(node, ast.ImportFrom):
             for alias in node.names:
                 imported.add(alias.asname or alias.name)
-        elif isinstance(node, ast.Name):
-            if node.id.startswith("TYP_"):
-                used.add(node.id)
+        elif isinstance(node, ast.Name) and node.id.startswith("TYP_"):
+            used.add(node.id)
 
     assert "TYP_INCOME" in used
     assert "TYP_INCOME" in imported

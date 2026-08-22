@@ -13,8 +13,6 @@ import logging
 import sys
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
-
 from PySide6.QtCore import QProcess, Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
@@ -34,6 +32,8 @@ from app_info import APP_VERSION, app_version_label
 from updater.common import clear_check_result, read_check_result
 from utils.accessibility import configure_dialog_tab_order
 from utils.i18n import tr, trf
+
+logger = logging.getLogger(__name__)
 
 GITHUB_RELEASES_URL = "https://github.com/sloogy/Budgetmanager/releases/latest"
 

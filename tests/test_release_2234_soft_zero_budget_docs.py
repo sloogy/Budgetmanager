@@ -1,6 +1,7 @@
 """Regressionstests v2.2.35 – Soft-0-Budget ist auffindbar und erklärt."""
 
 from __future__ import annotations
+
 import json
 from pathlib import Path
 

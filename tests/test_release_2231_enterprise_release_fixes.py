@@ -64,7 +64,7 @@ def test_responsive_dialog_hardening_is_applied_to_large_dialogs() -> None:
 
 def test_architecture_gate_has_explicit_bounded_legacy_exception() -> None:
     source = (ROOT / "tools/architecture_quality_gate.py").read_text(encoding="utf-8")
-    tree = ast.parse(source)
+    ast.parse(source)
     assert "LEGACY_FUNCTION_LIMITS" in source
     assert "continue" not in source[source.index("for node in ast.walk") :]
     assert "explizit budgetierte Legacy-Ausnahmen" in source

@@ -1,35 +1,32 @@
 from __future__ import annotations
-from utils.notifications import show_info, show_warning
-import sqlite3
+
 import csv
-from pathlib import Path
+import logging
+import sqlite3
 from datetime import date, datetime
+from pathlib import Path
+
 from PySide6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
+    QFileDialog,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QComboBox,
-    QCheckBox,
-    QGroupBox,
-    QPushButton,
-    QFileDialog,
-    QDialogButtonBox,
     QMessageBox,
-    QSpinBox,
+    QPushButton,
     QRadioButton,
-    QButtonGroup,
-    QProgressBar,
+    QVBoxLayout,
 )
 
 from model.budget_model import BudgetModel
 from model.tracking_model import TrackingModel
-
-
-import logging
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from utils.i18n import display_typ, tr, trf
 from utils.icons import get_icon
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from utils.notifications import show_info, show_warning
 
 logger = logging.getLogger(__name__)
 

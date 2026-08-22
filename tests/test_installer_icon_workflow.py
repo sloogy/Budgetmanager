@@ -123,6 +123,7 @@ def test_updater_has_different_asset_paths_for_installer_direct_and_portable(
 
 def test_update_check_stages_windows_installer_asset(monkeypatch, tmp_path):
     import hashlib
+
     import updater.check_update as check_update
     from updater.common import AssetInfo, Manifest
 
@@ -166,8 +167,11 @@ def test_update_check_stages_windows_installer_asset(monkeypatch, tmp_path):
     monkeypatch.setattr(
         check_update,
         "write_staged_marker",
-        lambda remote, manifest, asset: (staging / "_update_marker.json").write_text(
-            '{"asset_type":"installer"}', encoding="utf-8"
+        lambda remote, manifest, asset, *, tree_sha256="": (
+            staging / "_update_marker.json"
+        ).write_text(
+            f'{{"asset_type":"installer","tree_sha256":"{tree_sha256}"}}',
+            encoding="utf-8",
         ),
     )
     monkeypatch.setattr(

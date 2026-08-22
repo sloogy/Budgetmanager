@@ -25,4 +25,4 @@ def shade(color: str, factor: float) -> str:
     raw = match.group(1)
     channels = (int(raw[index : index + 2], 16) for index in (0, 2, 4))
     scaled = tuple(max(0, min(255, round(value * factor))) for value in channels)
-    return "#%02x%02x%02x" % scaled
+    return "#{:02x}{:02x}{:02x}".format(*scaled)

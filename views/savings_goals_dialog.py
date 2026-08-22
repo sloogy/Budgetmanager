@@ -1,51 +1,46 @@
 from __future__ import annotations
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 import sqlite3
 from datetime import datetime
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
+    QDateEdit,
     QDialog,
-    QVBoxLayout,
+    QDoubleSpinBox,
     QHBoxLayout,
-    QTableWidget,
-    QTableWidgetItem,
-    QPushButton,
     QLabel,
     QLineEdit,
-    QDoubleSpinBox,
-    QTextEdit,
-    QDateEdit,
-    QComboBox,
+    QMenu,
     QMessageBox,
     QProgressBar,
-    QAbstractItemView,
-    QMenu,
-    QGroupBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QTextEdit,
+    QVBoxLayout,
 )
 
+from model.category_model import CategoryModel
 from model.savings_goals_model import (
+    SavingsGoal,
     SavingsGoalBoundsError,
     SavingsGoalsModel,
-    SavingsGoal,
-    STATUS_SAVING,
-    STATUS_RELEASED,
-    STATUS_COMPLETED,
-    STATUS_LABELS,
-    STATUS_ICONS,
 )
-from model.category_model import CategoryModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import display_typ, tr, trf
 from utils.icons import get_icon
-from utils.money import format_money, get_symbol, currency_header
-from views.ui_colors import ui_colors
+from utils.money import format_money, get_symbol
+from utils.notifications import show_info
 from views.savings_goal_messages import show_savings_goal_bounds_warning
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 class SavingsGoalsDialog(QDialog):

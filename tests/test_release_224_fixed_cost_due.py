@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.fixed_cost_due import is_open_this_month  # noqa: E402
+from model.fixed_cost_due import is_open_this_month
 
 
 def test_not_due_yet_in_current_month_is_not_open():

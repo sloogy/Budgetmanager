@@ -11,9 +11,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS  # noqa: E402
+from model.budget_overview_model import BudgetOverviewModel
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 
 @pytest.fixture

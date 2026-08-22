@@ -6,37 +6,36 @@ Version 0.3.2.0
 """
 
 from __future__ import annotations
+
 import calendar
 import logging
-
-logger = logging.getLogger(__name__)
-
 import sqlite3
 from dataclasses import dataclass
-from statistics import median
 from datetime import date, datetime
-from utils.money import format_money
+from statistics import median
+
 from model.budget_learning import (
+    KIND_IRREGULAR,
     budget_kind_label,
     infer_learning_budget_kind,
     learned_monthly_amount,
     round_learning_amount,
     tracking_series_text,
-    KIND_IRREGULAR,
 )
-from model.date_ranges import month_bounds
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
-
 from model.budget_suggestion_engine import BudgetSuggestionEngine
+from model.date_ranges import month_bounds
 from model.typ_constants import (
-    TYP_INCOME,
     TYP_EXPENSES,
+    TYP_INCOME,
     TYP_SAVINGS,
-    normalize_typ,
     is_income,
+    normalize_typ,
     rest_sign,
-    ALL_TYPEN,
 )
+from utils.i18n import db_typ_from_display, display_typ, tr, trf
+from utils.money import format_money
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -307,23 +306,19 @@ class BudgetOverviewModel:
 
             # Vormonat-Rest: Budget - Getracked (+ kumulierter Vorübertrag)
             pre_co = pre_carry.get(cat, 0.0)
-            if typ == TYP_INCOME:
-                prev_rest = (pa - pb) + pre_co
-            else:
-                prev_rest = (pb - pa) + pre_co
+            prev_rest = pa - pb + pre_co if typ == TYP_INCOME else pb - pa + pre_co
 
             # Aktuell: Budget + Übertrag aus Vormonat
             curr_budget_carry = cb + prev_rest
 
             # Zukunft: (Budget_carry_aktuell - Gebucht_aktuell) + Budget_Folge
-            if typ == TYP_INCOME:
-                curr_rest_for_next = ca - curr_budget_carry
-            else:
-                curr_rest_for_next = curr_budget_carry - ca
+            curr_rest_for_next = (
+                ca - curr_budget_carry if typ == TYP_INCOME else curr_budget_carry - ca
+            )
             next_budget_carry = nb + curr_rest_for_next
 
             # Vorschlag
-            sugg = suggestion_map.get(cat, None)
+            sugg = suggestion_map.get(cat)
 
             rows.append(
                 CategoryCarryoverRow(
@@ -736,9 +731,11 @@ class BudgetOverviewModel:
                 )
                 observation_end_month = last_positive_month
                 current_month_amount = float(monthly.get(current_month, 0.0) or 0.0)
-                if current_month in monthly and current_month_amount > 0.01:
-                    observation_end_month = current_month
-                elif internal_zero_gap:
+                if (
+                    current_month in monthly
+                    and current_month_amount > 0.01
+                    or internal_zero_gap
+                ):
                     observation_end_month = current_month
 
                 observed_months = observation_end_month - first_month + 1
@@ -946,10 +943,11 @@ class BudgetOverviewModel:
 
         start = f"{int(year):04d}-01-01"
         end_month = max(1, min(12, int(current_month or 1)))
-        if end_month == 12:
-            end = f"{int(year) + 1:04d}-01-01"
-        else:
-            end = f"{int(year):04d}-{end_month + 1:02d}-01"
+        end = (
+            f"{int(year) + 1:04d}-01-01"
+            if end_month == 12
+            else f"{int(year):04d}-{end_month + 1:02d}-01"
+        )
 
         sql = (
             "SELECT category, CAST(substr(date, 6, 2) AS INTEGER) AS month_no, "  # nosec B608
@@ -1402,10 +1400,11 @@ class BudgetOverviewModel:
             deviations: list[float] = []
             d = date(year, current_month, 1)
             # Einen Monat zurück starten (aktueller Monat überspringen)
-            if d.month == 1:
-                d = date(d.year - 1, 12, 1)
-            else:
-                d = date(d.year, d.month - 1, 1)
+            d = (
+                date(d.year - 1, 12, 1)
+                if d.month == 1
+                else date(d.year, d.month - 1, 1)
+            )
 
             max_scan = min_consecutive_months * 3
             for _ in range(max_scan):
@@ -1417,10 +1416,11 @@ class BudgetOverviewModel:
                     dev = rest_sign(typ, b, a)
                     deviations.append(float(dev))
                 # Einen Monat zurück
-                if d.month == 1:
-                    d = date(d.year - 1, 12, 1)
-                else:
-                    d = date(d.year, d.month - 1, 1)
+                d = (
+                    date(d.year - 1, 12, 1)
+                    if d.month == 1
+                    else date(d.year, d.month - 1, 1)
+                )
 
             deviations.reverse()
 
@@ -1546,10 +1546,11 @@ class BudgetOverviewModel:
 
         # Vorschlag: Budget anpassen um ~80% der Abweichung
         adjustment = avg_dev * 0.8
-        if typ == TYP_INCOME:
-            suggested = current_budget + adjustment
-        else:
-            suggested = current_budget - adjustment
+        suggested = (
+            current_budget + adjustment
+            if typ == TYP_INCOME
+            else current_budget - adjustment
+        )
 
         suggested = max(0, round(suggested, 2))
 

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Database Management Model - Erweitert mit Reset-Funktionalität
 Version 2.3.0.1
@@ -10,19 +8,20 @@ Neue Features:
 - Standard-Kategorien vordefiniert
 """
 
+from __future__ import annotations
+
 import logging
-import sqlite3
 import os
-from pathlib import Path
-import shutil
+import sqlite3
 from datetime import datetime
-from typing import Any, Tuple, List
+from pathlib import Path
+from typing import Any
 
-logger = logging.getLogger(__name__)
-
+from app_info import APP_NAME, APP_VERSION
 from model.database import open_db
 from model.restore_bundle import create_bundle
-from app_info import APP_NAME, APP_VERSION
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManagementModel:
@@ -49,7 +48,7 @@ class DatabaseManagementModel:
         if conn is not self._shared_conn:
             conn.close()
 
-    def create_backup(self, prefix: str = "manual") -> Tuple[bool, Any]:
+    def create_backup(self, prefix: str = "manual") -> tuple[bool, Any]:
         """
         Erstellt ein Backup der Datenbank.
 
@@ -70,8 +69,8 @@ class DatabaseManagementModel:
             if not src.exists():
                 return False, ("database.msg.db_not_found", {"path": str(src)})
 
-            from model.user_model import _users_file_path
             from model.app_paths import settings_path as _settings_path
+            from model.user_model import _users_file_path
 
             u_path = _users_file_path()
             s_path = _settings_path()
@@ -89,7 +88,7 @@ class DatabaseManagementModel:
         except Exception as e:
             return False, ("database.msg.backup_failed", {"err": str(e)})
 
-    def get_available_backups(self) -> List[dict]:
+    def get_available_backups(self) -> list[dict]:
         """
         Gibt Liste verfügbarer Backups zurück.
 
@@ -125,7 +124,7 @@ class DatabaseManagementModel:
 
     def reset_database(
         self, create_backup: bool = True, keep_user_data: bool = False
-    ) -> Tuple[bool, Any]:
+    ) -> tuple[bool, Any]:
         """
         Setzt Datenbank auf Standard zurück.
 
@@ -262,7 +261,7 @@ class DatabaseManagementModel:
         except sqlite3.OperationalError:
             logger.debug("system_flags-Tabelle nicht vorhanden — Flag übersprungen")
 
-    def cleanup_database(self) -> Tuple[bool, str, dict]:
+    def cleanup_database(self) -> tuple[bool, str, dict]:
         """
         Bereinigt Datenbank (löscht verwaiste Einträge, optimiert).
 
@@ -440,7 +439,7 @@ class DatabaseManagementModel:
                 "years_tracking": [],
             }
 
-    def export_to_sql(self, output_path: str) -> Tuple[bool, str]:
+    def export_to_sql(self, output_path: str) -> tuple[bool, str]:
         """
         Exportiert Datenbank als SQL-Dump.
 

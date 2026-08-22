@@ -10,51 +10,51 @@ v0.3.9.0
 """
 
 from __future__ import annotations
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont, QIcon
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QDialog,
-    QVBoxLayout,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QPushButton,
     QMessageBox,
-    QFrame,
-    QFormLayout,
+    QPushButton,
     QRadioButton,
-    QButtonGroup,
-    QGroupBox,
     QTabWidget,
-    QWidget,
     QTextEdit,
-    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
 )
 
 from model.user_model import (
-    UserModel,
-    User,
-    SECURITY_QUICK,
-    SECURITY_PIN,
+    PASSWORD_MIN_LENGTH,
+    PIN_MAX_LENGTH,
+    PIN_MIN_LENGTH,
     SECURITY_PASSWORD,
+    SECURITY_PIN,
+    SECURITY_QUICK,
+    User,
+    UserModel,
 )
-from model.user_model import PIN_MIN_LENGTH, PIN_MAX_LENGTH, PASSWORD_MIN_LENGTH
-from views.ui_colors import themed, ui_colors
-from utils.icons import get_icon
+from utils.accessibility import configure_dialog_tab_order
 from utils.i18n import (
+    display_secret_kind,
+    display_security_label,
     tr,
     trf,
-    display_typ,
-    db_typ_from_display,
-    display_security_label,
-    display_secret_kind,
 )
+from utils.icons import get_icon
+from utils.notifications import show_info, show_warning
+from views.ui_colors import themed, ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 class AccountManagementDialog(QDialog):

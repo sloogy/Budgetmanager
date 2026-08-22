@@ -38,9 +38,9 @@ QtWidgets = pytest.importorskip(
     reason="PySide6 nicht installiert — GUI-Smoke-Tests übersprungen",
 )
 
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication
 
-from model.migrations import migrate_all  # noqa: E402
+from model.migrations import migrate_all
 
 
 @pytest.fixture(scope="session")

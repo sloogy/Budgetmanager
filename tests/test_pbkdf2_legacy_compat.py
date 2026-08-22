@@ -15,9 +15,10 @@ def test_legacy_200k_wrapped_key_still_authenticates_and_upgrades(
     monkeypatch.setenv("BUDGETMANAGER_APP_DIR", str(tmp_path))
 
     import importlib
+
     import model.app_paths as ap
-    import model.user_model as um
     import model.crypto as crypto
+    import model.user_model as um
 
     importlib.reload(ap)
     importlib.reload(crypto)

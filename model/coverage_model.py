@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Deckungslogik für Budget- und Tracking-Warnungen.
 
 Eine Planung bzw. ein Zeitraum ist nicht gedeckt, wenn
@@ -7,10 +5,12 @@ Einkommen < Ausgaben + Ersparnisse ist. Die Logik liegt bewusst im Model,
 damit Budget-Tab und Tracking-Tab dieselbe Berechnung nutzen.
 """
 
-from dataclasses import dataclass
-from typing import Iterable, Mapping
+from __future__ import annotations
 
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from collections.abc import Iterable, Mapping
+from dataclasses import dataclass
+
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 EPS = 1e-6
 

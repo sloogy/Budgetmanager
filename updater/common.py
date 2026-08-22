@@ -1,8 +1,3 @@
-from __future__ import annotations
-import logging
-
-logger = logging.getLogger(__name__)
-
 """Gemeinsame Updater-Helfer.
 
 Ziele:
@@ -12,8 +7,11 @@ Ziele:
 - Sichere ZIP-Extraktion (ZipSlip-Schutz)
 """
 
+from __future__ import annotations
+
 import hashlib
 import json
+import logging
 import os
 import re
 import sys
@@ -21,10 +19,11 @@ import time
 import zipfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Tuple
 
 import requests
 from packaging import version as _version
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_MANIFEST_URL = (
@@ -44,7 +43,7 @@ class Manifest:
     version: str
     release_tag: str
     channel: str
-    assets: Dict[str, AssetInfo]
+    assets: dict[str, AssetInfo]
 
 
 def enable_utf8_console() -> None:
@@ -265,7 +264,7 @@ def read_current_version() -> str:
 
 
 def parse_manifest(data: dict) -> Manifest:
-    assets: Dict[str, AssetInfo] = {}
+    assets: dict[str, AssetInfo] = {}
     raw_assets = data.get("assets") or {}
     if isinstance(raw_assets, dict):
         for platform_key, info in raw_assets.items():
@@ -597,7 +596,7 @@ def find_staged_root(staging_dir: Path) -> Path:
 
 
 def _zip_add_dir(
-    zf: zipfile.ZipFile, src: Path, arc_base: Path, exclude_names: Tuple[str, ...]
+    zf: zipfile.ZipFile, src: Path, arc_base: Path, exclude_names: tuple[str, ...]
 ) -> None:
     for root, dirs, files in os.walk(src):
         root_p = Path(root)
@@ -613,7 +612,7 @@ def _zip_add_dir(
 
 
 def backup_current_zip(
-    backup_dir: Path, label: str, exclude_names: Tuple[str, ...]
+    backup_dir: Path, label: str, exclude_names: tuple[str, ...]
 ) -> Path:
     """Erstellt ein ZIP-Backup des aktuellen App-Ordners (Rollback).
 

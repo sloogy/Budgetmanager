@@ -23,7 +23,7 @@ Die eigentliche Eingabemaske liegt im Dialog (``views/backup_restore_dialog.py``
 from __future__ import annotations
 
 import logging
-from typing import Optional, Protocol
+from typing import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -43,7 +43,7 @@ ACTION_RESTORE = "restore"
 class _Authenticator(Protocol):
     """Minimale Sicht auf ``UserModel`` – erleichtert das Testen."""
 
-    def authenticate(self, username: str, secret: str) -> Optional[bytes]: ...
+    def authenticate(self, username: str, secret: str) -> bytes | None: ...
 
 
 def security_level(user) -> str:

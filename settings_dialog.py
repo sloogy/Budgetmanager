@@ -1,57 +1,54 @@
 from __future__ import annotations
 
-from utils.notifications import show_info, show_warning
 import logging
-
-logger = logging.getLogger(__name__)
 from pathlib import Path
-from views.ui_colors import ui_colors
+
+from PySide6.QtCore import QSignalBlocker, Qt, QTimer
 from PySide6.QtWidgets import (
-    QDialog,
-    QListWidget,
-    QListWidgetItem,
-    QStackedWidget,
-    QDialogButtonBox,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGroupBox,
-    QFormLayout,
-    QLabel,
+    QAbstractItemView,
+    QApplication,
     QCheckBox,
     QComboBox,
-    QSpinBox,
-    QPushButton,
-    QLineEdit,
-    QFileDialog,
-    QMessageBox,
-    QWidget,
-    QApplication,
-    QScrollArea,
+    QDialog,
+    QDialogButtonBox,
+    QFormLayout,
     QFrame,
-    QSizePolicy,
-    QTableWidget,
-    QTableWidgetItem,
-    QAbstractItemView,
+    QGroupBox,
+    QHBoxLayout,
     QHeaderView,
     QKeySequenceEdit,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QSpinBox,
+    QStackedWidget,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
-from PySide6.QtCore import QSignalBlocker, Qt, QTimer
-from PySide6.QtGui import QFont
-from theme_manager import ThemeManager
-from views.theme_editor_dialog import ThemeEditorDialog
+
 from model.shortcuts_config import (
     SHORTCUT_DEFS,
+    all_action_ids,
+    default_key,
     group_for,
     label_for,
     load_shortcuts,
-    save_shortcuts,
-    default_key,
     shortcut_display_name,
-    all_action_ids,
 )
+from theme_manager import ThemeManager
 
 # i18n
-from utils.i18n import tr, trf, available_languages
+from utils.i18n import available_languages, tr, trf
+from utils.notifications import show_info, show_warning
+from views.theme_editor_dialog import ThemeEditorDialog
+
+logger = logging.getLogger(__name__)
 
 
 class SettingsDialog(QDialog):
@@ -250,8 +247,8 @@ class SettingsDialog(QDialog):
         from utils.money import (
             CURRENCIES,
             CURRENCY_CODES,
-            NUMBER_FORMATS,
             NUMBER_FORMAT_CODES,
+            NUMBER_FORMATS,
         )
 
         for code in CURRENCY_CODES:
@@ -905,8 +902,6 @@ class SettingsDialog(QDialog):
 
         # Nach vollständigem Rendern prüfen ob Backup-Limit überschritten
         from model.app_paths import (
-            resolve_in_app,
-            configured_db_path,
             configured_backups_dir,
         )
 
@@ -1078,9 +1073,8 @@ class SettingsDialog(QDialog):
     def _refresh_backup_status(self) -> None:
         """Aktualisiert 'Letzte Sicherung' und Backup-Anzahl in der UI."""
         from datetime import datetime as _dt
+
         from model.app_paths import (
-            resolve_in_app,
-            configured_db_path,
             configured_backups_dir,
         )
 
@@ -1112,13 +1106,13 @@ class SettingsDialog(QDialog):
     def _create_backup_now(self) -> None:
         """Erstellt sofort ein manuelles Backup der Datenbank."""
         from datetime import datetime
+
+        from app_info import APP_NAME, APP_VERSION
         from model.app_paths import (
-            resolve_in_app,
-            configured_db_path,
             configured_backups_dir,
+            configured_db_path,
         )
         from model.restore_bundle import create_bundle
-        from app_info import APP_NAME, APP_VERSION
 
         try:
             # Quelle bestimmen: verschlüsselt -> .enc, sonst -> .db

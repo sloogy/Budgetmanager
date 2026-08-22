@@ -31,9 +31,9 @@ import sys
 import tempfile
 import time
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
@@ -41,7 +41,6 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from PySide6.QtCore import Qt
-from PySide6.QtTest import QTest
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
@@ -52,15 +51,12 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
-    QGroupBox,
     QLineEdit,
-    QMainWindow,
     QPlainTextEdit,
     QPushButton,
     QRadioButton,
     QScrollBar,
     QSpinBox,
-    QTableWidget,
     QTextEdit,
     QToolBar,
     QToolButton,
@@ -212,7 +208,7 @@ def normalize_focus(widget: QWidget | None, top: QWidget, candidates: list[QWidg
 
 
 class DialogPool:
-    def __init__(self, context: "Context"):
+    def __init__(self, context: Context):
         self.context = context
         self._objects: dict[int, QDialog] = {}
         self._uses: Counter[int] = Counter()

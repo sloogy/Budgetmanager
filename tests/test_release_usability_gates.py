@@ -67,7 +67,7 @@ def test_all_complex_dialog_files_configure_tab_order() -> None:
 
 
 QtWidgets = pytest.importorskip("PySide6.QtWidgets", reason="PySide6 fehlt")
-from PySide6.QtWidgets import (  # noqa: E402
+from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QLineEdit,
@@ -75,8 +75,8 @@ from PySide6.QtWidgets import (  # noqa: E402
     QVBoxLayout,
 )
 
-from utils.accessibility import configure_dialog_tab_order  # noqa: E402
-from utils.notifications import show_info, show_warning  # noqa: E402
+from utils.accessibility import configure_dialog_tab_order
+from utils.notifications import show_info, show_warning
 
 
 def test_notification_toast_is_non_modal_and_accessible() -> None:

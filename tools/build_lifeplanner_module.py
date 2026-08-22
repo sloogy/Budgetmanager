@@ -10,7 +10,7 @@ import os
 import shutil
 import tempfile
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 
@@ -80,7 +80,7 @@ def main() -> int:
             "description": manifest.get("description", ""),
             "platforms": [args.platform],
             "payload_sha256": tree_sha256(payload),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         metadata_bytes = (
             json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

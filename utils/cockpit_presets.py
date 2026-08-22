@@ -32,8 +32,6 @@ Semantik:
 
 from __future__ import annotations
 
-from typing import Dict
-
 PANEL_KEYS = (
     "kpis",
     "quick_actions",
@@ -48,14 +46,14 @@ PANEL_KEYS = (
 # dieselbe Frage ("muss ich etwas tun?") und bilden jetzt EINEN Abschnitt.
 # Alt-Konfigurationen werden gemappt: war einer der drei sichtbar, ist der
 # gebündelte Abschnitt sichtbar.
-LEGACY_PANEL_MAP: Dict[str, str] = {
+LEGACY_PANEL_MAP: dict[str, str] = {
     "warnings": "action_needed",
     "budget_warnings": "action_needed",
     "missing": "action_needed",
 }
 
 
-def migrate_panel_keys(cfg: Dict[str, bool]) -> Dict[str, bool]:
+def migrate_panel_keys(cfg: dict[str, bool]) -> dict[str, bool]:
     """Übersetzt eine gespeicherte Panel-Auswahl auf die aktuellen Schlüssel."""
     if not isinstance(cfg, dict):
         return {}
@@ -66,9 +64,9 @@ def migrate_panel_keys(cfg: Dict[str, bool]) -> Dict[str, bool]:
     return merged
 
 
-_ALL_TRUE: Dict[str, bool] = {k: True for k in PANEL_KEYS}
+_ALL_TRUE: dict[str, bool] = {k: True for k in PANEL_KEYS}
 
-PRESETS: Dict[str, Dict[str, bool]] = {
+PRESETS: dict[str, dict[str, bool]] = {
     # ADHS-freundlicher, reduzierter Einstieg: das Wesentliche zuerst.
     "focus": {
         "kpis": True,
@@ -86,7 +84,7 @@ PRESETS: Dict[str, Dict[str, bool]] = {
 _MIGRATION_MARKER = "cockpit_warnings_visible_migrated_v2014"
 
 
-def _stored_panels(settings) -> Dict[str, bool] | None:
+def _stored_panels(settings) -> dict[str, bool] | None:
     cfg = settings.get("cockpit_visible_panels", None)
     if not isinstance(cfg, dict) or not cfg:
         return None
@@ -101,7 +99,7 @@ def current_preset(settings) -> str:
     return preset if preset in (*PRESETS, "custom") else "focus"
 
 
-def effective_panels(settings) -> Dict[str, bool]:
+def effective_panels(settings) -> dict[str, bool]:
     """Die tatsächlich wirksame Sichtbarkeit – Preset-Map oder Custom-Zustand."""
     preset = current_preset(settings)
     if preset != "custom":
@@ -153,7 +151,7 @@ def migrate_v2014(settings) -> None:
         pass
 
 
-def set_panel(settings, key: str, visible: bool) -> Dict[str, bool]:
+def set_panel(settings, key: str, visible: bool) -> dict[str, bool]:
     """Manuelles Umschalten EINES Panels ⇒ Wechsel auf custom.
 
     Basis ist der aktuell WIRKSAME Zustand (nicht eine ALL-TRUE-Map) – genau
@@ -167,7 +165,7 @@ def set_panel(settings, key: str, visible: bool) -> Dict[str, bool]:
     return cfg
 
 
-def apply_preset(settings, name: str) -> Dict[str, bool]:
+def apply_preset(settings, name: str) -> dict[str, bool]:
     """Preset-Wechsel über die Combo; ``custom`` lässt Panels unangetastet."""
     if name not in (*PRESETS, "custom"):
         name = "focus"

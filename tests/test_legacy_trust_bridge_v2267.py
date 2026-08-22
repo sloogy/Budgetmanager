@@ -6,7 +6,6 @@ import pytest
 
 from tools.build_legacy_trust_bridge import render_bridge
 
-
 PUBLIC_KEY = "5h/BG69V39sdDd9bz120pA+SB+mCtlB++1qH3B2vUQY="
 
 

@@ -10,8 +10,8 @@ import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
-    PrivateFormat,
     NoEncryption,
+    PrivateFormat,
 )
 from openpyxl import Workbook
 
@@ -242,6 +242,7 @@ def test_manifest_public_key_candidates_deduplicate_meipass(monkeypatch, tmp_pat
 
 def test_excel_rejects_invalid_container_shapes(monkeypatch, tmp_path):
     import stat
+
     import utils.secure_excel as secure_excel
 
     with pytest.raises(FileNotFoundError):

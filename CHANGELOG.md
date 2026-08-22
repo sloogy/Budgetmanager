@@ -2,6 +2,37 @@
 
 ## Unveröffentlicht
 
+### Sicherheit
+
+- **Der Ausnahmen-Ratchet sah `contextlib.suppress` nicht.** Er zählt stumme
+  Schlucker (`except Exception: pass`) und deckelt sie — kannte aber nur
+  `except`-Handler. Dieselbe Stelle als `with contextlib.suppress(...)`
+  geschrieben verschwand spurlos aus der Zählung, ohne dass sie besser
+  meldete. Genau dazu rät ruffs Regel SIM105, die mit dem vollen Regelsatz
+  ins Haus gekommen wäre: 17 gedeckelte Stellen hätten sich so aus dem Gate
+  geschrieben. Der Ratchet zählt `suppress` jetzt mit, SIM105 bleibt
+  begründet aus.
+- **Der Staging-Hash des Updaters wurde zweimal berechnet.**
+  `check_update` prüfte den entpackten Baum, verwarf die Prüfsumme und ließ
+  `write_staged_marker` sie über denselben Baum erneut bilden. In die Marke
+  kam damit nicht die Summe, die geprüft wurde, sondern eine zweite — über
+  einen Baum, der inzwischen ein anderer sein kann. Jetzt wird die geprüfte
+  Summe durchgereicht; der zweite volle Lauf über alle Dateien entfällt.
+
+### Funktion
+
+- **Die Massenbearbeitung von Kategorien war nicht erreichbar.**
+  `BulkCategoryEditDialog` ist gebaut und getestet, hing aber an keinem
+  Menü — ein ungenutzter Import ließ ihn benutzt aussehen. Er hängt jetzt im
+  Kontextmenü des Budget-Tabs, sobald mehrere Kategorien markiert sind:
+  Fixkosten, Wiederkehrend, Fälligkeitstag und Forecast-Modus für alle auf
+  einmal. Handbuch in drei Sprachen nachgeführt.
+- **Ein Abbruch galt als Korrektur.** Der Dialog zur Sparziel-Entnahme
+  prüfte nur auf "Abbrechen" und "Entnahme"; alles andere — auch ein Dialog,
+  der ohne Klick endet — fiel in den Korrektur-Zweig und veränderte den
+  Sparstand. Jetzt wird der Korrektur-Knopf ausdrücklich geprüft, und der
+  unbekannte Fall bricht ab.
+
 ### Stabilität
 
 - **Der Push-Gate-Lauf war rot.** Die Schwärzung des Crashlogs suchte den
@@ -9,7 +40,38 @@
   der zweite Treffer `None`-fähig, und `mypy model/` läuft im Gate mit. Der
   Treffer wird jetzt einmal gebunden.
 
+- **`sqlite3.Row` ist kein dict.** Beim Einführen des vollen Regelsatzes
+  schrieb ruffs SIM118 `"parent_id" in r.keys()` zu `"parent_id" in r` um.
+  Bei einer `Row` prüft `in` die *Werte*, nicht die Spaltennamen — jede
+  Kategorie galt danach als wurzellos, und die Baumansicht zeigte
+  Elternkategorien als eigenständige Einträge. Der Test fing es; die Regel
+  ist für `model/category_model.py` mit Begründung abgeschaltet.
+
 ### Ordnung
+
+- **Zwanzig Module hatten ihren Docstring verloren.** Zwei automatisierte
+  Einfügeläufe hatten `from __future__ import annotations` und einen
+  Logger-Block davor geschoben — damit war das Stringliteral kein Docstring
+  mehr, `__doc__` war `None` und `help(modul)` leer. Der Text stand noch da,
+  nur wirkungslos. In FPM traf es dieselben vier mitkopierten Dateien. Ein
+  Test hält den Zustand fest.
+- **`logger = logging.getLogger(__name__)` stand in 51 Dateien mitten im
+  Importblock.** Jeder folgende Import stand damit nach einer Anweisung, und
+  die Importordnung ließ sich nicht prüfen: Ein Sortierer sieht zwei Blöcke
+  statt einem.
+- **Das Lint-Gate prüfte nur `E9,F63,F7,F82`** — Syntaxfehler und unbekannte
+  Namen —, während FreizeitManager und LifePlanner längst den vollen Satz aus
+  einer `ruff.toml` fuhren. Der BudgetManager hat jetzt dieselbe Grundlage;
+  die Auswahl steht in `ruff.toml`, kein Aufrufer übersteuert sie mehr mit
+  eigenem `--select`. Rund 1000 Funde bereinigt, darunter 199 tote Importe,
+  254 unsortierte Importblöcke und 15 tote Zuweisungen.
+- **Ein Kategorienlauf je Tabellenzeile lief ins Leere.**
+  `_update_tree_label_row` lud zu jeder Zeile die volle Kategorienliste, um
+  drei Flags zu setzen, die niemand mehr liest — bei hundert Kategorien
+  hundert überflüssige Abfragen je Neuaufbau.
+- **Ein Test prüfte nur die Hälfte.** Sein Erwartungs-`dict` führte
+  denselben Dateinamen zweimal; die zweite Zeile gewann still, die erste
+  Erwartung wurde nie geprüft. Jetzt eine Liste von Paaren.
 
 - **Die Formatprüfung lief nur über `model/`.** `views/`, `utils/`,
   `updater/`, `tools/` und `tests/` waren zwar formatiert, aber ungeprüft —

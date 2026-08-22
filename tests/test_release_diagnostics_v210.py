@@ -5,7 +5,7 @@ import zipfile
 from pathlib import Path
 
 from model import diagnostics
-from model.app_paths import data_dir, settings_path, app_dir
+from model.app_paths import app_dir, data_dir, settings_path
 
 
 def test_runtime_state_detects_unclean_previous_run(tmp_path, monkeypatch) -> None:

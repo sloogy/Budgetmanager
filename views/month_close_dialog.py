@@ -13,29 +13,28 @@ Es wird nichts automatisch gebucht; jede Aktion braucht einen Klick.
 
 from __future__ import annotations
 
-from utils.notifications import show_info, show_warning
 import logging
 import sqlite3
 
 from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QFormLayout,
-    QLabel,
-    QComboBox,
-    QDoubleSpinBox,
-    QPushButton,
-    QGroupBox,
-    QMessageBox,
     QCheckBox,
+    QComboBox,
+    QDialog,
+    QDoubleSpinBox,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
 )
 
 from model.month_close_model import MonthCloseModel
 from model.month_status import compute_month_status
-from utils.i18n import tr, trf
 from model.typ_constants import TYP_EXPENSES, TYP_SAVINGS
+from utils.i18n import tr, trf
 from utils.money import format_money
+from utils.notifications import show_info, show_warning
 from views.ui_colors import ui_colors
 
 logger = logging.getLogger(__name__)

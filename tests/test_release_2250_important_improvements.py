@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import sqlite3
 import sys
 import zipfile
@@ -156,9 +155,12 @@ def test_visual_render_metrics_reject_blank_and_accept_real_content() -> None:
     pytest.importorskip("PySide6")
     from PySide6.QtGui import QColor, QImage, QPainter, QPixmap
     from PySide6.QtWidgets import QApplication
+
     from utils.release_self_test import _pixmap_render_metrics
 
-    app = QApplication.instance() or QApplication(["test-visual-render"])
+    # Die Zuweisung haelt die QApplication am Leben - ohne sie kann sie
+    # eingesammelt werden, waehrend die Messung noch laeuft.
+    app = QApplication.instance() or QApplication(["test-visual-render"])  # noqa: F841
     blank = QImage(800, 500, QImage.Format_ARGB32)
     blank.fill(0xFF101010)
     with pytest.raises(RuntimeError, match="einfarbig"):
@@ -192,6 +194,7 @@ def test_visual_render_metrics_reject_blank_and_accept_real_content() -> None:
 
 def test_xlsx_report_export_uses_separate_sheets_and_numeric_values(tmp_path) -> None:
     from openpyxl import load_workbook
+
     from model.report_export import ReportSection, export_sections_xlsx
 
     out = tmp_path / "report.xlsx"

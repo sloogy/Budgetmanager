@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 import zipfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
@@ -73,7 +73,7 @@ def build(
             "description": str(manifest.get("description", "")),
             "platforms": ["windows-x86_64"],
             "payload_sha256": tree_sha256(payload),
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(UTC).isoformat(),
         }
         metadata_bytes = (
             json.dumps(metadata, ensure_ascii=False, indent=2, sort_keys=True) + "\n"

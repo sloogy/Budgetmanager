@@ -73,9 +73,9 @@ def test_check_update_prunes_stale_higher_staging_so_fallback_is_safe(
     import hashlib
     import zipfile
 
+    import updater.apply_update as apply_update
     import updater.check_update as check_update
     import updater.common as common
-    import updater.apply_update as apply_update
     from updater.common import AssetInfo, Manifest
 
     updates = tmp_path / "updates"

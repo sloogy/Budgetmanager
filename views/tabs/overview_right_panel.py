@@ -16,49 +16,42 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-
-logger = logging.getLogger(__name__)
-
 from datetime import date, timedelta
 
-from PySide6.QtCore import Qt, QDate, Signal
+from PySide6.QtCore import QDate, Qt, Signal
 from PySide6.QtGui import QDoubleValidator
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QLabel,
-    QComboBox,
-    QFrame,
-    QTabWidget,
-    QLineEdit,
+    QAbstractItemView,
     QCheckBox,
-    QSpinBox,
+    QComboBox,
+    QDateEdit,
+    QGridLayout,
+    QHeaderView,
+    QLabel,
+    QLineEdit,
     QPushButton,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QAbstractItemView,
-    QDateEdit,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from model.tracking_model import TrackingModel, TrackingRow
 from model.category_model import CategoryModel
 from model.tags_model import TagsModel
-from utils.i18n import tr, trf
-from utils.money import format_money as format_chf, currency_header
-from views.ui_colors import ui_colors
+from model.tracking_model import TrackingModel, TrackingRow
 
 # Normalisierung für Typ-Strings (Alias-Mapping)
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, normalize_typ
-
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS, normalize_typ
 from model.typ_constants import (
     normalize_typ as _norm_typ,
-    TYP_INCOME,
-    TYP_EXPENSES,
-    TYP_SAVINGS,
 )
+from utils.i18n import tr, trf
+from utils.money import currency_header
+from utils.money import format_money as format_chf
+
+logger = logging.getLogger(__name__)
 
 
 def _to_qdate(d: date) -> QDate:
@@ -339,7 +332,6 @@ class OverviewRightPanel(QWidget):
         ODER Anzeigename – per normalize_typ() wird auf DB-Schlüssel normalisiert.
         """
         from PySide6.QtCore import QSignalBlocker
-        from model.typ_constants import normalize_typ
 
         db_key = normalize_typ(typ_db_or_display)
         # Suche per userData (DB-Schlüssel) – sprachunabhängig

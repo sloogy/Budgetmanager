@@ -59,8 +59,10 @@ def _flat(d, p=""):
 
 
 LOCALES = {
-    l: _flat(json.loads((ROOT / "locales" / f"{l}.json").read_text(encoding="utf-8")))
-    for l in ("de", "en", "fr")
+    lang: _flat(
+        json.loads((ROOT / "locales" / f"{lang}.json").read_text(encoding="utf-8"))
+    )
+    for lang in ("de", "en", "fr")
 }
 VIEW_FILES = sorted(
     [p for p in (ROOT / "views").rglob("*.py")] + [ROOT / "utils" / "ui_usability.py"]
@@ -253,8 +255,8 @@ def d6_placeholders(rng, i):
     sample = keys[i::100]
     for k in sample:
         ph = {
-            l: sorted(_PH.findall(str(LOCALES[l].get(k, ""))))
-            for l in ("de", "en", "fr")
+            lang: sorted(_PH.findall(str(LOCALES[lang].get(k, ""))))
+            for lang in ("de", "en", "fr")
         }
         check(
             ph["de"] == ph["en"] == ph["fr"],
@@ -267,8 +269,10 @@ def d7_refs(rng, i):
     f = VIEW_FILES[i % len(VIEW_FILES)]
     text = f.read_text(encoding="utf-8")
     for key in set(TR_KEY_RE.findall(text)):
-        for l in ("de", "en", "fr"):
-            check(key in LOCALES[l], f"[D7 L{i}] {f.name}: Key fehlt in {l}: {key}")
+        for lang in ("de", "en", "fr"):
+            check(
+                key in LOCALES[lang], f"[D7 L{i}] {f.name}: Key fehlt in {lang}: {key}"
+            )
 
 
 # ── D8: Skalierung ─────────────────────────────────────────────────────────

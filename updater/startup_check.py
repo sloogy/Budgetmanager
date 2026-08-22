@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Leichte Update-Pruefung fuer den App-Start.
 
 Dieses Modul prueft nur das kleine Release-Manifest. Es laedt keine EXE,
@@ -8,9 +6,9 @@ keinen Installer und kein ZIP herunter und schreibt auch kein normales
 nach aktiver Nutzerbestaetigung im Update-Dialog scharf.
 """
 
-import logging
+from __future__ import annotations
 
-logger = logging.getLogger(__name__)
+import logging
 
 from updater.common import (
     DEFAULT_MANIFEST_URL,
@@ -23,6 +21,8 @@ from updater.common import (
     read_current_version,
     write_startup_check_result,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def main() -> int:

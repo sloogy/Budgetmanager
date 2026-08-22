@@ -11,8 +11,8 @@ from model.migrations import CURRENT_VERSION, migrate_all
 from model.savings_goals_model import (
     ACTION_CORRECTION,
     ACTION_WITHDRAWAL,
-    SavingsGoalsModel,
     STATUS_SAVING,
+    SavingsGoalsModel,
 )
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_SAVINGS

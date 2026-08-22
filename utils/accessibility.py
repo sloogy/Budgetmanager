@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 
-from PySide6.QtCore import QTimer, Qt
+from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import QDialog, QLayout, QWidget
 
 
@@ -39,9 +39,7 @@ def _is_focus_candidate(widget: QWidget, dialog: QDialog) -> bool:
         return False
     # Explizit ausgeblendete Felder gehören nicht in die aktuelle Tab-Kette.
     # Widgets auf inaktiven Tabs werden von Qt später automatisch übersprungen.
-    if widget.isHidden() and widget.parentWidget() is dialog:
-        return False
-    return True
+    return not (widget.isHidden() and widget.parentWidget() is dialog)
 
 
 def _focus_widgets(dialog: QDialog) -> list[QWidget]:

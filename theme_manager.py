@@ -12,19 +12,18 @@ Damit:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
 import json
 import logging
 import os
-from utils.i18n import tr, trf
 import re
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
+
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import QApplication
 
 logger = logging.getLogger(__name__)
-
-from PySide6.QtWidgets import QApplication
-from PySide6.QtGui import QColor
 
 # Optional: Tabellen automatisch an Schriftgröße anpassen
 try:
@@ -36,12 +35,12 @@ except Exception:  # pragma: no cover
 @dataclass
 class ThemeProfile:
     name: str
-    data: Dict[str, Any]
+    data: dict[str, Any]
 
     def get(self, key: str, default: Any = None) -> Any:
         return self.data.get(key, default)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return dict(self.data)
 
 
@@ -63,7 +62,7 @@ def _is_hex_color(v: str) -> bool:
 
 
 # Nur 2 Fallback-Profile im Code (wie gewünscht)
-def system_mode() -> Optional[str]:
+def system_mode() -> str | None:
     """ "hell" oder "dunkel" nach dem Betriebssystem - None, wenn es nichts sagt.
 
     Qt meldet ``Unknown``, solange die Plattform keine Auskunft gibt. Dann
@@ -85,7 +84,7 @@ def system_mode() -> Optional[str]:
     return None
 
 
-BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {
+BUILTIN_PROFILES: dict[str, dict[str, Any]] = {
     "Standard Hell": {
         "modus": "hell",
         "hintergrund_app": "#ffffff",
@@ -143,7 +142,7 @@ BUILTIN_PROFILES: Dict[str, Dict[str, Any]] = {
 }
 
 # Kompatibilität: alte Namen → neue Namen (falls Einstellungen noch alte Werte enthalten)
-ALIASES: Dict[str, str] = {
+ALIASES: dict[str, str] = {
     # Die eingebauten Rueckfallprofile heissen ohne Bindestrich, der
     # gemeinsame Katalog mit. Ohne diese Zeilen stuenden beide in der Liste.
     "Standard Hell": "Standard - Hell",
@@ -166,13 +165,13 @@ HOST_THEME_ENV = "LIFEPLANNER_THEME_FILE"
 HOST_THEME_SCHEMA = "lifeplanner.theme.v1"
 
 
-def load_host_theme() -> Optional[ThemeProfile]:
+def load_host_theme() -> ThemeProfile | None:
     """Vom LifePlanner vorgegebenes Designprofil, sonst ``None``."""
     path = (os.environ.get(HOST_THEME_ENV) or "").strip()
     if not path:
         return None
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with open(path, encoding="utf-8") as handle:
             raw = json.load(handle)
     except (OSError, json.JSONDecodeError) as e:
         logger.warning("Host-Theme nicht lesbar (%s): %s", path, e)
@@ -183,7 +182,7 @@ def load_host_theme() -> Optional[ThemeProfile]:
     name = str(raw.get("name") or "").strip()
     if not name:
         return None
-    data: Dict[str, Any] = {
+    data: dict[str, Any] = {
         "modus": str(raw.get("modus", "hell")).strip().lower(),
         "schriftgroesse": raw.get("schriftgroesse", 10),
     }
@@ -211,13 +210,13 @@ class ThemeManager:
             self.user_dir = Path(__file__).resolve().parent / "data" / "theme_profiles"
         self.user_dir.mkdir(parents=True, exist_ok=True)
 
-        self._current_profile: Optional[ThemeProfile] = None
-        self._host_profile: Optional[ThemeProfile] = load_host_theme()
+        self._current_profile: ThemeProfile | None = None
+        self._host_profile: ThemeProfile | None = load_host_theme()
 
         # Cache
-        self._bundled_index: Dict[str, Path] = {}
-        self._user_index: Dict[str, Path] = {}
-        self._errors: List[Tuple[str, str, str]] = []  # (profile_name, path, error)
+        self._bundled_index: dict[str, Path] = {}
+        self._user_index: dict[str, Path] = {}
+        self._errors: list[tuple[str, str, str]] = []  # (profile_name, path, error)
 
         self.rescan_profiles()
 
@@ -225,7 +224,7 @@ class ThemeManager:
     # Profil-Discovery / Errors
     # -------------------------
 
-    def get_load_errors(self) -> List[Tuple[str, str, str]]:
+    def get_load_errors(self) -> list[tuple[str, str, str]]:
         """Liste der Probleme beim Laden (Name, Pfad, Fehlermeldung)."""
         return list(self._errors)
 
@@ -238,18 +237,18 @@ class ThemeManager:
         self._scan_dir(self.user_dir, target=self._user_index)
 
         # Builtins sicherstellen
-        for name in BUILTIN_PROFILES.keys():
+        for name in BUILTIN_PROFILES:
             if name not in self._bundled_index and name not in self._user_index:
                 # builtins werden nicht indiziert – erscheinen aber in get_all_profiles
                 pass
 
-    def _scan_dir(self, directory: Path, target: Dict[str, Path]) -> None:
+    def _scan_dir(self, directory: Path, target: dict[str, Path]) -> None:
         if not directory.exists():
             return
 
         for file in sorted(directory.glob("*.json")):
             try:
-                with open(file, "r", encoding="utf-8") as f:
+                with open(file, encoding="utf-8") as f:
                     raw = json.load(f)
 
                 name = str(raw.get("name") or "").strip()
@@ -272,7 +271,7 @@ class ThemeManager:
                 name = file.stem.replace("_", " ").strip()
                 self._errors.append((name, str(file), f"JSON-Ladefehler: {e}"))
 
-    def _validate_profile_data(self, data: Dict[str, Any]) -> Tuple[bool, str]:
+    def _validate_profile_data(self, data: dict[str, Any]) -> tuple[bool, str]:
         mode = str(data.get("modus", "hell")).strip().lower()
         if mode not in ("hell", "dunkel"):
             return False, f"Ungültiger modus: {mode}"
@@ -291,9 +290,12 @@ class ThemeManager:
                 continue
             if k.startswith("_"):
                 continue
-            if isinstance(v, str) and v.strip().startswith("#"):
-                if not _is_hex_color(v):
-                    return False, f"Ungültige Farbe {k}={v}"
+            if (
+                isinstance(v, str)
+                and v.strip().startswith("#")
+                and not _is_hex_color(v)
+            ):
+                return False, f"Ungültige Farbe {k}={v}"
 
         return True, ""
 
@@ -301,7 +303,7 @@ class ThemeManager:
     # Public API
     # -------------------------
 
-    def get_all_profiles(self) -> List[str]:
+    def get_all_profiles(self) -> list[str]:
         # Union + builtins
         names = (
             set(self._bundled_index.keys())
@@ -309,7 +311,7 @@ class ThemeManager:
             | set(BUILTIN_PROFILES.keys())
         )
         # Aliases NICHT extra anzeigen
-        names = {n for n in names if n not in ALIASES.keys()}
+        names = {n for n in names if n not in ALIASES}
         return sorted(names, key=lambda s: s.casefold())
 
     def has_override(self, name: str) -> bool:
@@ -324,7 +326,7 @@ class ThemeManager:
         name = (name or "").strip()
         return ALIASES.get(name, name)
 
-    def get_profile(self, name: str) -> Optional[ThemeProfile]:
+    def get_profile(self, name: str) -> ThemeProfile | None:
         name = self._resolve_alias(name)
 
         # User Override zuerst
@@ -352,9 +354,9 @@ class ThemeManager:
 
         return None
 
-    def _load_json_file(self, path: Path) -> Optional[Dict[str, Any]]:
+    def _load_json_file(self, path: Path) -> dict[str, Any] | None:
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 raw = json.load(f)
             raw.pop("name", None)
             if not isinstance(raw, dict):
@@ -366,7 +368,7 @@ class ThemeManager:
         except Exception:
             return None
 
-    def update_profile(self, name: str, data: Dict[str, Any]) -> bool:
+    def update_profile(self, name: str, data: dict[str, Any]) -> bool:
         """Speichert IMMER als User-Override (kein Profil-Spam)."""
         name = self._resolve_alias(name)
 
@@ -444,7 +446,7 @@ class ThemeManager:
             return True
         return False
 
-    def get_current_profile(self) -> Optional[ThemeProfile]:
+    def get_current_profile(self) -> ThemeProfile | None:
         if not self._current_profile:
             if self._host_profile is not None:
                 # Im LifePlanner gibt die zentrale Darstellung den Ton an. Die
@@ -475,7 +477,7 @@ class ThemeManager:
             return "dunkel"
         return "hell"
 
-    def get_type_colors(self) -> Dict[str, str]:
+    def get_type_colors(self) -> dict[str, str]:
         """Gibt Typfarben zurück – immer mit DB-Schlüsseln (TYP_*) als Keys."""
         p = self.get_current_profile()
         from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS

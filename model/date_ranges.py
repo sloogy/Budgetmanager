@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Zentrale Datumsbereich-Helfer für indexfreundliche SQLite-Abfragen.
 
 Alle Tracking-Daten liegen als ISO-Datum (YYYY-MM-DD) vor. Für Monats- und
@@ -7,6 +5,8 @@ Jahresfilter verwenden wir deshalb halb-offene Bereiche [start, end), damit
 SQLite Indizes auf ``tracking.date`` nutzen kann und keine ``substr(date, ...)``
 Filter nötig sind.
 """
+
+from __future__ import annotations
 
 
 def month_bounds(year: int, month: int) -> tuple[str, str]:
@@ -21,10 +21,7 @@ def month_bounds(year: int, month: int) -> tuple[str, str]:
         raise ValueError(f"month must be in 1..12, got {month!r}")
 
     start = f"{year:04d}-{month:02d}-01"
-    if month == 12:
-        end = f"{year + 1:04d}-01-01"
-    else:
-        end = f"{year:04d}-{month + 1:02d}-01"
+    end = f"{year + 1:04d}-01-01" if month == 12 else f"{year:04d}-{month + 1:02d}-01"
     return start, end
 
 

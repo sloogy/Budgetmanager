@@ -6,8 +6,8 @@ import logging
 
 from PySide6.QtGui import QAction, QActionGroup
 
-from utils.icons import get_icon
 from utils.i18n import tr
+from utils.icons import get_icon
 from utils.ui_experience_mode import detect_mode, mode_payload
 
 logger = logging.getLogger(__name__)

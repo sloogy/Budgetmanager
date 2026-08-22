@@ -1,42 +1,41 @@
 from __future__ import annotations
 
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info
+import logging
+
 from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
     QFormLayout,
-    QPushButton,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QMenu,
+    QMessageBox,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QMessageBox,
-    QHeaderView,
-    QAbstractItemView,
-    QGroupBox,
     QTextEdit,
-    QComboBox,
-    QMenu,
+    QVBoxLayout,
 )
-from PySide6.QtGui import QColor
 
-from model.budget_warnings_model_extended import BudgetWarningsModelExtended
-from model.budget_overview_model import BudgetOverviewModel, BudgetSuggestion
-from model.typ_constants import TYP_INCOME
-from settings import Settings
-from utils.money import format_money, parse_money
 from model.budget_learning import (
     ALL_LEARNING_BUDGET_KINDS,
     apply_learning_budget_kind,
     budget_kind_label,
 )
+from model.budget_overview_model import BudgetOverviewModel, BudgetSuggestion
+from model.budget_warnings_model_extended import BudgetWarningsModelExtended
+from model.typ_constants import TYP_INCOME
+from settings import Settings
+from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import db_typ_from_display, display_typ, tr, trf
+from utils.money import format_money, parse_money
+from utils.notifications import show_info
 from views.ui_colors import ui_colors
-
-
-import logging
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 logger = logging.getLogger(__name__)
 
@@ -789,11 +788,11 @@ class BudgetAdjustmentDialog(QDialog):
         header_parts = []
         if exceeded_cats:
             header_parts.append(
-                f"⚠️ " + trf("suggestion.exceeded_n", n=len(exceeded_cats))
+                "⚠️ " + trf("suggestion.exceeded_n", n=len(exceeded_cats))
             )
         if surplus_cats:
             header_parts.append(
-                f"💡 " + trf("suggestion.surplus_n", n=len(surplus_cats))
+                "💡 " + trf("suggestion.surplus_n", n=len(surplus_cats))
             )
         header_txt = (
             " &nbsp;|&nbsp; ".join(header_parts)
@@ -820,8 +819,12 @@ class BudgetAdjustmentDialog(QDialog):
             typ_sums = self.budget_model.sum_by_typ(self.year, self.month)
             # DB-Schlüssel verwenden (sprachunabhängig)
             from model.typ_constants import (
-                TYP_INCOME as _TI,
                 TYP_EXPENSES as _TE,
+            )
+            from model.typ_constants import (
+                TYP_INCOME as _TI,
+            )
+            from model.typ_constants import (
                 TYP_SAVINGS as _TS,
             )
 

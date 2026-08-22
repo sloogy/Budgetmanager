@@ -1,13 +1,13 @@
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
 import json
-
-from utils.cockpit_presets import PRESETS as _COCKPIT_PRESETS
-import os
+import logging
 from pathlib import Path
 from typing import Any
+
+from utils.cockpit_presets import PRESETS as _COCKPIT_PRESETS
+
+logger = logging.getLogger(__name__)
 
 
 class Settings:
@@ -33,7 +33,7 @@ class Settings:
         defaults = self._defaults()
         if self.settings_file.exists():
             try:
-                with open(self.settings_file, "r", encoding="utf-8") as f:
+                with open(self.settings_file, encoding="utf-8") as f:
                     loaded = json.load(f)
                 if isinstance(loaded, dict):
                     merged = {**defaults, **loaded}
@@ -52,7 +52,7 @@ class Settings:
                     # Zahlformat aus alten Builds normalisieren (ch/eu/us sowie
                     # swiss/german/french/anglo werden toleriert).
                     try:
-                        from utils.money import normalize_number_format, CURRENCIES
+                        from utils.money import CURRENCIES, normalize_number_format
 
                         merged["number_format"] = normalize_number_format(
                             merged.get("number_format")
@@ -135,7 +135,6 @@ class Settings:
 
     def _defaults(self) -> dict[str, Any]:
         """Standard-Einstellungen"""
-        from pathlib import Path
 
         return {
             "theme": "light",  # "light" oder "dark"

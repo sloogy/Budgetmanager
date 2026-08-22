@@ -6,13 +6,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.shortcuts_config import (  # noqa: E402
+from model.shortcuts_config import (
     SHORTCUT_DEFS,
     group_for,
     label_for,
     shortcut_display_name,
 )
-from utils.i18n import get_language, set_language  # noqa: E402
+from utils.i18n import get_language, set_language
 
 
 def test_shortcut_catalog_is_localized_in_all_release_languages():

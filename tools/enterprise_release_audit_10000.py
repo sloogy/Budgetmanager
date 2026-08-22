@@ -15,31 +15,31 @@ import sqlite3
 import sys
 import tempfile
 import zipfile
+from collections.abc import Callable
 from datetime import date
 from pathlib import Path
-from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_model import BudgetModel  # noqa: E402
-from model.budget_warnings_model_extended import (  # noqa: E402
+from model.budget_model import BudgetModel
+from model.budget_warnings_model_extended import (
     BudgetWarningsModelExtended,
 )
-from model.category_model import CategoryModel  # noqa: E402
-from model.favorites_model import FavoritesModel  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.recurring_transactions_model import (  # noqa: E402
+from model.category_model import CategoryModel
+from model.favorites_model import FavoritesModel
+from model.migrations import migrate_all
+from model.recurring_transactions_model import (
     RecurringTransactionsModel,
 )
-from model.savings_goals_model import (  # noqa: E402
+from model.savings_goals_model import (
     SavingsGoalBoundsError,
     SavingsGoalsModel,
 )
-from model.tags_model import TagsModel  # noqa: E402
-from model.tracking_model import TrackingModel  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS  # noqa: E402
-from updater.common import safe_extract_zip  # noqa: E402
+from model.tags_model import TagsModel
+from model.tracking_model import TrackingModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from updater.common import safe_extract_zip
 
 _TEMPLATE: sqlite3.Connection | None = None
 
@@ -450,7 +450,7 @@ def run(loop_count: int, seed: int) -> dict:
         scenario_counts[scenario.__name__] += 1
         try:
             checks += int(scenario(rng))
-        except Exception as exc:  # noqa: BLE001 - Audit sammelt alle Seeds.
+        except Exception as exc:
             findings.append(
                 {
                     "loop": loop,

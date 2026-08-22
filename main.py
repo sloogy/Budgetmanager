@@ -1,14 +1,13 @@
 from __future__ import annotations
-from utils.i18n import tr, trf
 
 import faulthandler
+import json
 import logging
-
-logger = logging.getLogger(__name__)
 import os
 import sys
 from pathlib import Path
-import json
+
+logger = logging.getLogger(__name__)
 
 
 _crash_log_handle = None
@@ -123,7 +122,10 @@ def _install_crash_diagnostics() -> None:
 
         from app_info import APP_VERSION
 
-        _crash_log_handle = open(crash_log, "a", encoding="utf-8")
+        # Kein Kontextmanager: Der Deskriptor bleibt fuer die gesamte
+        # Laufzeit offen, weil faulthandler direkt hineinschreibt.
+        # Geschlossen wird er beim Herunterfahren.
+        _crash_log_handle = open(crash_log, "a", encoding="utf-8")  # noqa: SIM115
         # Mit Zeit, Version und Prozessnummer: Die Datei sammelt jeden Start,
         # und ohne diese drei Angaben laesst sich ein Absturzdump keinem
         # Programmlauf zuordnen. Im eingesandten Bericht standen zwoelf
@@ -246,6 +248,7 @@ def _install_excepthook() -> None:
 
         try:
             from PySide6.QtWidgets import QApplication, QMessageBox
+
             from utils.i18n import tr, trf
 
             if QApplication.instance():
@@ -292,6 +295,7 @@ def _apply_application_icon(app) -> None:
     """
     try:
         from PySide6.QtGui import QIcon
+
         from model.app_paths import resolve_in_app
 
         candidates = []
@@ -326,8 +330,8 @@ def _apply_application_icon(app) -> None:
 
 def main() -> int:
     # Logging initialisieren (vor allem anderen Code)
-    from model.logging_config import setup_logging
     from model.app_paths import data_dir
+    from model.logging_config import setup_logging
 
     try:
         log_file = str(data_dir() / "budgetmanager.log")
@@ -371,18 +375,16 @@ def main() -> int:
     if rc is not None:
         return rc
 
-    import traceback
-
     try:
-        from model.app_paths import (
-            resolve_in_app,
-            data_dir,
-            configured_db_path,
-            configured_backups_dir,
-        )
         from PySide6.QtCore import QTimer
         from PySide6.QtWidgets import QApplication, QMessageBox
-        from model.database import open_db, EncryptedSession
+
+        from model.app_paths import (
+            configured_backups_dir,
+            configured_db_path,
+            data_dir,
+        )
+        from model.database import EncryptedSession, open_db
         from model.migrations import migrate_all
 
         # Single-Instance-Schutz VOR der GUI/User-DB öffnen.
@@ -402,7 +404,7 @@ def main() -> int:
             return 0
 
         from app_info import APP_VERSION
-        from model.diagnostics import mark_app_started, mark_app_exited
+        from model.diagnostics import mark_app_exited, mark_app_started
 
         previous_unclean_state = mark_app_started(version=APP_VERSION, argv=sys.argv)
 
@@ -437,11 +439,10 @@ def main() -> int:
 
         # Sprache & Währung
         from utils.i18n import (
+            set_debug_missing,
             set_language,
-            available_languages,
             tr,
             trf,
-            set_debug_missing,
         )
         from utils.money import set_currency, set_number_format
 
@@ -698,7 +699,7 @@ def main() -> int:
             # bleibt der letzte gute Stand erhalten.
             if encrypted_session is not None:
                 try:
-                    from model.migrations import _get_db_version, CURRENT_VERSION
+                    from model.migrations import CURRENT_VERSION, _get_db_version
 
                     if _get_db_version(conn) < CURRENT_VERSION:
                         import shutil

@@ -12,9 +12,9 @@ import os
 import tempfile
 from pathlib import Path
 
+from model.category_model import CategoryModel
 from model.database import open_db
 from model.migrations import migrate_all
-from model.category_model import CategoryModel
 from model.typ_constants import TYP_EXPENSES
 from settings import Settings
 
@@ -91,12 +91,20 @@ def test_existing_recurring_category_keeps_explicit_day_when_only_resaved(
 
 
 def test_release_paths_no_longer_hardcode_day_one_for_recurring_defaults():
-    files = {
-        "views/budget_entry_dialog_extended.py": "preferred_recurring_day",
-        "views/budget_entry_dialog_extended.py": "CategoryModel.preferred_recurring_day()",
-        "views/category_properties_dialog.py": "CategoryModel.preferred_recurring_day()",
-        "views/tabs/budget_tab.py": "CategoryModel.preferred_recurring_day()",
-    }
-    for filename, marker in files.items():
+    # Liste statt dict: derselbe Dateiname kommt zweimal vor, und ein dict
+    # haette die erste Erwartung stumm verworfen.
+    files = [
+        ("views/budget_entry_dialog_extended.py", "preferred_recurring_day"),
+        (
+            "views/budget_entry_dialog_extended.py",
+            "CategoryModel.preferred_recurring_day()",
+        ),
+        (
+            "views/category_properties_dialog.py",
+            "CategoryModel.preferred_recurring_day()",
+        ),
+        ("views/tabs/budget_tab.py", "CategoryModel.preferred_recurring_day()"),
+    ]
+    for filename, marker in files:
         text = Path(filename).read_text(encoding="utf-8")
         assert marker in text, filename

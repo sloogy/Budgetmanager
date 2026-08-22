@@ -18,6 +18,7 @@ Vordefinierte Formate (siehe ``NUMBER_FORMATS``):
 """
 
 from __future__ import annotations
+
 import logging
 import math
 
@@ -278,7 +279,8 @@ def parse_money(text: str, *, empty_is_zero: bool = True) -> float:
 
     if has_comma and has_dot:
         # Letztes Trennzeichen = Dezimalzeichen
-        if s.rfind(",") > s.rfind("."):
+        # Kein Ternary: die beiden Formate stehen nebeneinander erklaert.
+        if s.rfind(",") > s.rfind("."):  # noqa: SIM108
             s = s.replace(".", "").replace(",", ".")  # europäisch 1.234,56
         else:
             s = s.replace(",", "")  # angelsächsisch 1,234.56
@@ -288,10 +290,11 @@ def parse_money(text: str, *, empty_is_zero: bool = True) -> float:
             s = s.replace(",", ".")  # Dezimaltrenner
         else:
             # Komma ist hier Tausendertrenner – nur entfernen, wenn es so aussieht
-            if _looks_like_thousands(s, ","):
-                s = s.replace(",", "")
-            else:
-                s = s.replace(",", ".")
+            s = (
+                s.replace(",", "")
+                if _looks_like_thousands(s, ",")
+                else s.replace(",", ".")
+            )
     elif has_dot:
         # Nur Punkt: Dezimaltrenner ODER Tausender?
         if get_decimal_separator() == ".":

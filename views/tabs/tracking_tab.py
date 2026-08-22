@@ -1,56 +1,54 @@
 from __future__ import annotations
 
-from utils.notifications import show_info, show_warning
-import logging
-
-logger = logging.getLogger(__name__)
-import sqlite3
 import calendar
+import logging
+import sqlite3
 from datetime import date
 
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QCheckBox,
-    QTableWidget,
-    QTableWidgetItem,
     QAbstractItemView,
-    QMessageBox,
-    QDialog,
+    QCheckBox,
     QComboBox,
+    QDateEdit,
+    QDialog,
+    QDoubleSpinBox,
+    QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
     QLabel,
     QLineEdit,
-    QDateEdit,
-    QGroupBox,
-    QDoubleSpinBox,
     QMenu,
+    QMessageBox,
     QProgressBar,
-    QHeaderView,
+    QPushButton,
     QSizePolicy,
-    QInputDialog,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
-from model.category_model import CategoryModel
-from model.tags_model import TagsModel
-from views.type_color_helper import apply_tracking_type_colors
-from views.delegates.badge_delegate import BadgeDelegate
-from model.tracking_model import TrackingModel
 from model.budget_model import BudgetModel
+from model.category_model import CategoryModel
+from model.coverage_model import CoverageResult, coverage_from_tracking_rows
 from model.savings_goals_model import SavingsGoalBoundsError, SavingsGoalsModel
-
-from views.quick_add_dialog import QuickAddDialog
-from views.recurring_bookings_dialog import PendingBooking
-from views.recurring_bookings_dialog import RecurringBookingsDialog
-from utils.money import format_short as format_chf, format_money, currency_header
-from views.ui_colors import ui_colors
-from views.savings_goal_messages import show_savings_goal_bounds_warning
-from utils.i18n import tr, trf
+from model.tags_model import TagsModel
+from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
-from model.coverage_model import coverage_from_tracking_rows, CoverageResult
-from utils.i18n import display_typ, db_typ_from_display
+from utils.i18n import db_typ_from_display, display_typ, tr, trf
+from utils.money import currency_header, format_money
+from utils.money import format_short as format_chf
+from utils.notifications import show_info, show_warning
+from views.delegates.badge_delegate import BadgeDelegate
+from views.quick_add_dialog import QuickAddDialog
+from views.recurring_bookings_dialog import PendingBooking, RecurringBookingsDialog
+from views.savings_goal_messages import show_savings_goal_bounds_warning
+from views.type_color_helper import apply_tracking_type_colors
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 def _months_de() -> list[str]:
@@ -732,7 +730,7 @@ class TrackingTab(QWidget):
         current_ids |= fixed_ids
 
         # Einfacher Checkable-Dialog
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QDialogButtonBox
+        from PySide6.QtWidgets import QDialogButtonBox, QListWidget, QListWidgetItem
 
         dlg = QDialog(self)
         dlg.setWindowTitle(tr("tracking.title.set_tags"))
@@ -1093,7 +1091,7 @@ class TrackingTab(QWidget):
                 _uc = ui_colors(self)
                 type_colors = _uc.type_colors
                 negative_color = _uc.negative
-        except Exception as e:
+        except Exception:
             # Fallback via ui_colors
             _uc = ui_colors(self)
             type_colors = _uc.type_colors
@@ -1171,13 +1169,16 @@ class TrackingTab(QWidget):
             btn_withdrawal = box.addButton(
                 tr("tracking.btn.withdrawal"), QMessageBox.DestructiveRole
             )
-            btn_cancel = box.addButton(tr("btn.cancel"), QMessageBox.RejectRole)
+            box.addButton(tr("btn.cancel"), QMessageBox.RejectRole)
 
             box.exec()
             clicked = box.clickedButton()
-            if clicked == btn_cancel:
-                return "cancel"
-            elif clicked == btn_withdrawal:
+            # Kein Treffer heisst abgebrochen (Esc, Fensterkreuz, oder
+            # programmatisch geschlossen). Der sichere Ausgang ist "nichts
+            # tun" - nicht die Korrektur, die den Sparstand veraendert.
+            if clicked == btn_correction:
+                return "correction"
+            if clicked == btn_withdrawal:
                 show_warning(
                     self,
                     tr("msg.info"),
@@ -1188,8 +1189,7 @@ class TrackingTab(QWidget):
                     + tr("tracking.tip.unlock_goal_3"),
                 )
                 return "withdrawal"
-            else:
-                return "correction"
+            return "cancel"
 
         elif goal_status == "freigegeben":
             # Bei freigegebenen Zielen: einfach informieren, kein Block

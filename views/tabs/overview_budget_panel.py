@@ -21,46 +21,40 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-
-logger = logging.getLogger(__name__)
-
+from collections.abc import Callable
 from datetime import date
-from typing import Callable
 
-from PySide6.QtCore import Qt, Signal, QSignalBlocker, QObject
-from PySide6.QtGui import QFont, QColor
+from PySide6.QtCore import QObject, QSignalBlocker, Qt, Signal
+from PySide6.QtGui import QColor, QFont
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
+    QAbstractItemView,
     QComboBox,
-    QTabWidget,
-    QTreeWidget,
-    QTreeWidgetItem,
-    QTableWidget,
-    QTableWidgetItem,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QPushButton,
     QSizePolicy,
-    QAbstractItemView,
-    QHeaderView,
-    QMessageBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 from model.budget_model import BudgetModel
 from model.budget_overview_model import BudgetOverviewModel
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, is_income
-from settings import Settings
-from utils.i18n import tr, trf, display_typ, db_typ_from_display, tr_category_name
-from utils.money import format_money as format_chf, parse_money
-from views.ui_colors import ui_colors
-
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS, is_income
 from model.typ_constants import (
     normalize_typ as _norm,
-    TYP_INCOME,
-    TYP_EXPENSES,
-    TYP_SAVINGS,
 )
+from settings import Settings
+from utils.i18n import db_typ_from_display, display_typ, tr, tr_category_name, trf
+from utils.money import format_money as format_chf
+from utils.money import parse_money
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 def _month_label(idx: int) -> str:

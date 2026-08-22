@@ -1,7 +1,6 @@
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
@@ -9,7 +8,6 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QDialog,
     QDialogButtonBox,
-    QHeaderView,
     QLabel,
     QTableWidget,
     QTableWidgetItem,
@@ -23,7 +21,9 @@ from model.shortcuts_config import (
     load_shortcuts,
     shortcut_display_name,
 )
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 
 class ShortcutsDialog(QDialog):

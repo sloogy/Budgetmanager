@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger(__name__)
-
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -24,6 +22,8 @@ from PySide6.QtWidgets import (
 )
 
 from utils.i18n import tr
+
+logger = logging.getLogger(__name__)
 
 
 class RestoreKeyDialog(QDialog):

@@ -24,10 +24,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.database import open_db  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.category_model import CategoryModel  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME  # noqa: E402
+from model.category_model import CategoryModel
+from model.database import open_db
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 
 
 def _fresh():

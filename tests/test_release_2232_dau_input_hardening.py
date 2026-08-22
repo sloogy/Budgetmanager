@@ -27,16 +27,16 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from model.budget_model import BudgetModel  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.savings_goals_model import (  # noqa: E402
+from model.budget_model import BudgetModel
+from model.migrations import migrate_all
+from model.savings_goals_model import (
     SavingsGoalBoundsError,
     SavingsGoalsModel,
     validate_savings_goal_bounds,
 )
-from model.tracking_model import TrackingModel  # noqa: E402
-from utils import money  # noqa: E402
-from utils.money import parse_money, require_finite_amount  # noqa: E402
+from model.tracking_model import TrackingModel
+from utils import money
+from utils.money import parse_money, require_finite_amount
 
 NON_FINITE_STRINGS = [
     "inf",

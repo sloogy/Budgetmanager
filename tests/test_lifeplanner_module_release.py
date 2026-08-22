@@ -13,6 +13,7 @@ from cryptography.hazmat.primitives.serialization import (
     NoEncryption,
     PrivateFormat,
 )
+
 from app_info import APP_VERSION
 
 ROOT = Path(__file__).resolve().parents[1]

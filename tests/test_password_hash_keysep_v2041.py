@@ -27,8 +27,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import model.crypto as crypto  # noqa: E402
-from cryptography.fernet import Fernet, InvalidToken  # noqa: E402
+from cryptography.fernet import Fernet, InvalidToken
+
+import model.crypto as crypto
 
 
 def test_stored_password_hash_cannot_reconstruct_wrapping_key():
@@ -69,9 +70,10 @@ def test_login_migrates_legacy_key_equivalent_hash_even_at_current_iterations(
     monkeypatch.setenv("BUDGETMANAGER_APP_DIR", str(tmp_path))
 
     import importlib
+
     import model.app_paths as ap
-    import model.user_model as um
     import model.crypto as c
+    import model.user_model as um
 
     importlib.reload(ap)
     importlib.reload(c)
@@ -139,9 +141,10 @@ def test_failed_legacy_upgrade_is_visible_in_security_report(monkeypatch, tmp_pa
     monkeypatch.setenv("BUDGETMANAGER_APP_DIR", str(tmp_path))
 
     import importlib
+
     import model.app_paths as ap
-    import model.user_model as um
     import model.crypto as c
+    import model.user_model as um
 
     importlib.reload(ap)
     importlib.reload(c)

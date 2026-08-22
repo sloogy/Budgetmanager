@@ -9,10 +9,10 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.income_specials import apply_13th_month_salary  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME  # noqa: E402
-from model.year_copy_rules import (  # noqa: E402
+from model.income_specials import apply_13th_month_salary
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from model.year_copy_rules import (
     YearCopyOverride,
     apply_year_copy_pattern,
     distribute_like_previous_year,

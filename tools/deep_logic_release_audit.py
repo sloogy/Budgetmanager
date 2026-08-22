@@ -17,18 +17,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_suggestion_engine import BudgetSuggestionEngine  # noqa: E402
-from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
-from model.category_model import CategoryModel  # noqa: E402
-from model.income_specials import apply_13th_month_salary  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS  # noqa: E402
-from model.year_copy_rules import (  # noqa: E402
-    YearCopyOverride,
-    apply_year_copy_pattern,
+from model.budget_overview_model import BudgetOverviewModel
+from model.budget_suggestion_engine import BudgetSuggestionEngine
+from model.category_model import CategoryModel
+from model.income_specials import apply_13th_month_salary
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from model.year_copy_rules import (
     distribute_like_previous_year,
 )
-
 
 _TEMPLATE_CONN: sqlite3.Connection | None = None
 
@@ -294,9 +291,7 @@ def run(loop_count: int, seed: int) -> dict:
             checks += 1
             try:
                 scenario(rng)
-            except (
-                Exception
-            ) as exc:  # noqa: BLE001 - Audit sammelt Findings bewusst breit.
+            except Exception as exc:
                 findings.append(
                     {
                         "loop": i,

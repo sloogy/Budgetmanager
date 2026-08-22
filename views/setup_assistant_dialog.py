@@ -1,66 +1,63 @@
 from __future__ import annotations
 
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
 import logging
-
-logger = logging.getLogger(__name__)
-from dataclasses import dataclass
-from contextlib import contextmanager
-from pathlib import Path
-from datetime import date
 import sqlite3
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import date
+from pathlib import Path
 
-from PySide6.QtCore import Qt, QObject, QThread, Signal, Slot
+from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
-    QWidget,
-    QVBoxLayout,
+    QDoubleSpinBox,
+    QFileDialog,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
-    QStackedWidget,
-    QPushButton,
-    QCheckBox,
-    QRadioButton,
-    QButtonGroup,
-    QGroupBox,
-    QFileDialog,
-    QMessageBox,
-    QFrame,
-    QFormLayout,
-    QSpinBox,
-    QDoubleSpinBox,
     QListWidget,
     QListWidgetItem,
-    QScrollArea,
+    QMessageBox,
     QProgressDialog,
+    QPushButton,
+    QRadioButton,
+    QScrollArea,
+    QSpinBox,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from views.category_excel_io import (
-    export_category_template_xlsx,
-    import_categories_from_xlsx,
-    parse_categories_from_xlsx,
-    apply_parsed_categories,
-    export_category_template_csv,
-    import_categories_from_csv,
-)
-from views.budget_fill_dialog import BudgetFillDialog
-from model.category_model import CategoryModel
 from model.budget_model import BudgetModel
+from model.category_model import CategoryModel
 from model.crypto import suspend_after_commit_autosave
 from model.tracking_model import TrackingModel
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import tr, trf
 from utils.icons import get_icon
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
 from utils.money import (
-    get_symbol,
-    format_money,
-    NUMBER_FORMATS,
-    NUMBER_FORMAT_CODES,
-    set_number_format,
-    get_number_format,
     LANGUAGE_NUMBER_FORMAT_DEFAULTS,
+    NUMBER_FORMAT_CODES,
+    NUMBER_FORMATS,
+    format_money,
+    get_symbol,
+    set_number_format,
 )
+from utils.notifications import show_info, show_warning
+from views.budget_fill_dialog import BudgetFillDialog
+from views.category_excel_io import (
+    apply_parsed_categories,
+    export_category_template_csv,
+    export_category_template_xlsx,
+    import_categories_from_csv,
+    parse_categories_from_xlsx,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class _ExcelParseWorker(QObject):
@@ -433,7 +430,7 @@ class SetupAssistantDialog(QDialog):
         lay.addWidget(self.lbl_db)
 
         # Restore + Reset buttons
-        from PySide6.QtWidgets import QPushButton, QHBoxLayout
+        from PySide6.QtWidgets import QHBoxLayout, QPushButton
 
         btn_row = QHBoxLayout()
         btn_restore = QPushButton(tr("setup.setup_db_restore"))
@@ -917,10 +914,7 @@ class SetupAssistantDialog(QDialog):
         # Next enabled?
         can_next = True
         # page 0: if unguided, allow Next (will finish)
-        if idx == 0:
-            can_next = True
-        else:
-            can_next = bool(self._step_done[idx])
+        can_next = True if idx == 0 else bool(self._step_done[idx])
         self.btn_next.setEnabled(can_next)
 
         # Erklären, WARUM "Weiter" gesperrt ist – statt nur eines toten Buttons.
@@ -1066,7 +1060,7 @@ class SetupAssistantDialog(QDialog):
         show_info(self, tr("msg.info"), tr("setup.finish_done_msg"))
         self.accept()
 
-    def closeEvent(self, event):  # noqa: N802 (Qt naming)
+    def closeEvent(self, event):
         """Beim Schließen: Einstellung tr("chk.show_onboarding") persistieren.
 
         Wichtig:
@@ -1092,7 +1086,7 @@ class SetupAssistantDialog(QDialog):
     # ---------------------------------------------------------------------
     # Enter hooks
     # ---------------------------------------------------------------------
-    def keyPressEvent(self, event):  # noqa: N802 (Qt naming)
+    def keyPressEvent(self, event):
         """v2.2.5 (Führung): Enter/Return bewegt den Assistenten vorwärts.
 
         Bisher war "Weiter" kein Default-Button, deshalb passierte auf der
@@ -1105,7 +1099,7 @@ class SetupAssistantDialog(QDialog):
         Alt) werden ebenfalls durchgelassen.
         """
         try:
-            from PySide6.QtCore import Qt, QObject, QThread, Signal, Slot as _Qt
+            from PySide6.QtCore import Slot as _Qt
             from PySide6.QtWidgets import QPlainTextEdit, QTextEdit
 
             if event.key() in (_Qt.Key_Return, _Qt.Key_Enter) and (
@@ -1718,7 +1712,8 @@ class SetupAssistantDialog(QDialog):
         """
         try:
             from PySide6.QtWidgets import QFileDialog, QMessageBox
-            from model.app_paths import resolve_in_app, configured_db_path
+
+            from model.app_paths import configured_db_path
 
             path, _ = QFileDialog.getOpenFileName(
                 self,

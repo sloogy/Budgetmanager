@@ -7,15 +7,15 @@ Vorjahresmuster auf das neue Jahr verteilt werden.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sqlite3
+from dataclasses import dataclass
 
+from model.budget_learning import budget_kind_profile
 from model.category_forecast_mode import (
     FORECAST_MODE_INCREMENTAL,
     FORECAST_MODE_POT,
     effective_forecast_mode,
 )
-from model.budget_learning import budget_kind_profile
 from model.typ_constants import is_income
 
 

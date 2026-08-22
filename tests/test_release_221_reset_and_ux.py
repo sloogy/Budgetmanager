@@ -16,17 +16,17 @@ from __future__ import annotations
 
 import sqlite3
 import sys
-from pathlib import Path
 from datetime import date
+from pathlib import Path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.database_management_model import DatabaseManagementModel  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_SAVINGS  # noqa: E402
+from model.database_management_model import DatabaseManagementModel
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES, TYP_SAVINGS
 
 
 @pytest.fixture

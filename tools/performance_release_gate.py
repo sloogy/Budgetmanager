@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import argparse
-from datetime import date, timedelta
 import json
-from pathlib import Path
 import sqlite3
 import sys
 import tempfile
 import time
+from datetime import date, timedelta
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:

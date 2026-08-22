@@ -31,10 +31,9 @@ import json
 import os
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Set
-
 
 TR_CALL_RE = re.compile(r"\b(?:tr|trf)\(\s*['\"]([^'\"]+)['\"]", re.MULTILINE)
 
@@ -69,11 +68,10 @@ def _looks_user_text_literal(s: str) -> bool:
     # F-Strings wie "{icon} {name}" enthalten im Quelltext Buchstaben,
     # aber keinen festen user-visible Text. Erst Platzhalter entfernen.
     without_placeholders = re.sub(r"\{[^{}]+\}", "", t).strip()
-    if not without_placeholders or not re.search(
-        r"[A-Za-zÄÖÜäöüßÉéÈèÀàÇç]", without_placeholders
-    ):
-        return False
-    return True
+    return not (
+        not without_placeholders
+        or not re.search(r"[A-Za-zÄÖÜäöüßÉéÈèÀàÇç]", without_placeholders)
+    )
 
 
 IGNORE_PATH_PARTS = {
@@ -100,8 +98,8 @@ class HardcodedFinding:
     line: str
 
 
-def _flatten_json_keys(obj: object, prefix: str = "") -> Set[str]:
-    keys: Set[str] = set()
+def _flatten_json_keys(obj: object, prefix: str = "") -> set[str]:
+    keys: set[str] = set()
     if isinstance(obj, dict):
         for k, v in obj.items():
             k_str = str(k)
@@ -113,8 +111,8 @@ def _flatten_json_keys(obj: object, prefix: str = "") -> Set[str]:
     return keys
 
 
-def _flatten_json_values(obj: object, prefix: str = "") -> Dict[str, str]:
-    values: Dict[str, str] = {}
+def _flatten_json_values(obj: object, prefix: str = "") -> dict[str, str]:
+    values: dict[str, str] = {}
     if isinstance(obj, dict):
         for k, v in obj.items():
             k_str = str(k)
@@ -141,9 +139,9 @@ GERMAN_RESIDUAL_RE = re.compile(
 
 
 def _find_german_residual_values(
-    values: Dict[str, str], referenced: Set[str]
-) -> Dict[str, str]:
-    findings: Dict[str, str] = {}
+    values: dict[str, str], referenced: set[str]
+) -> dict[str, str]:
+    findings: dict[str, str] = {}
     for key in sorted(referenced):
         if "language_select_dialog" in key:
             # This dialog intentionally displays all three languages before the
@@ -155,7 +153,7 @@ def _find_german_residual_values(
     return findings
 
 
-def _load_locale_json(path: Path) -> Dict:
+def _load_locale_json(path: Path) -> dict:
     try:
         with path.open("r", encoding="utf-8") as f:
             return json.load(f)
@@ -181,7 +179,7 @@ def _iter_py_files(root: Path) -> Iterable[Path]:
         yield p
 
 
-def _extract_referenced_locale_keys(text: str, locale_keys: Set[str]) -> Set[str]:
+def _extract_referenced_locale_keys(text: str, locale_keys: set[str]) -> set[str]:
     """Findet direkte und dynamisch zusammengesetzte Locale-Key-Referenzen.
 
     Neben tr()/trf()-Literalen werden alle Stringkonstanten, f-String-Präfixe
@@ -221,11 +219,11 @@ def _extract_referenced_locale_keys(text: str, locale_keys: Set[str]) -> Set[str
     return referenced
 
 
-def _find_hardcoded_ui_strings(py_path: Path) -> List[HardcodedFinding]:
+def _find_hardcoded_ui_strings(py_path: Path) -> list[HardcodedFinding]:
     """Heuristik: Findet Zeilen mit UI-Aufrufen + Stringliteral,
     die nicht offensichtlich via tr()/trf() laufen.
     """
-    findings: List[HardcodedFinding] = []
+    findings: list[HardcodedFinding] = []
     try:
         raw = py_path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
@@ -252,7 +250,7 @@ def _write_report(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def main(argv: List[str]) -> int:
+def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description="BudgetManager i18n Audit")
     ap.add_argument("--root", default=".", help="Projekt-Root (Default: .)")
     ap.add_argument(
@@ -275,8 +273,8 @@ def main(argv: List[str]) -> int:
     langs = args.lang or ["de", "en"]
 
     # Load locales
-    locale_keys: Dict[str, Set[str]] = {}
-    locale_values: Dict[str, Dict[str, str]] = {}
+    locale_keys: dict[str, set[str]] = {}
+    locale_values: dict[str, dict[str, str]] = {}
     try:
         for lang in langs:
             p = locales_dir / f"{lang}.json"
@@ -293,8 +291,8 @@ def main(argv: List[str]) -> int:
     base = locale_keys[base_lang]
 
     # Extract referenced keys + hardcoded strings
-    referenced: Set[str] = set()
-    hardcoded: List[HardcodedFinding] = []
+    referenced: set[str] = set()
+    hardcoded: list[HardcodedFinding] = []
     for py in _iter_py_files(root):
         txt = py.read_text(encoding="utf-8", errors="replace")
         referenced |= _extract_referenced_locale_keys(txt, base)
@@ -305,8 +303,8 @@ def main(argv: List[str]) -> int:
         raw = resource.read_text(encoding="utf-8", errors="replace")
         referenced.update(key for key in base if key in raw)
 
-    missing_by_lang: Dict[str, Set[str]] = {}
-    extra_by_lang: Dict[str, Set[str]] = {}
+    missing_by_lang: dict[str, set[str]] = {}
+    extra_by_lang: dict[str, set[str]] = {}
     for lang in langs[1:]:
         missing_by_lang[lang] = base - locale_keys[lang]
         extra_by_lang[lang] = locale_keys[lang] - base
@@ -314,7 +312,7 @@ def main(argv: List[str]) -> int:
     unused_in_base = base - referenced
     missing_in_base = referenced - base
 
-    out_lines: List[str] = []
+    out_lines: list[str] = []
     out_lines.append("BudgetManager i18n Audit")
     out_lines.append("=" * 24)
     out_lines.append(f"Root: {root}")
@@ -361,7 +359,7 @@ def main(argv: List[str]) -> int:
                 out_lines.append(f"  ... (+{len(extra)-80} weitere)")
             out_lines.append("")
 
-    german_residual_by_lang: Dict[str, Dict[str, str]] = {}
+    german_residual_by_lang: dict[str, dict[str, str]] = {}
     for lang in langs[1:]:
         residual = _find_german_residual_values(locale_values.get(lang, {}), referenced)
         german_residual_by_lang[lang] = residual
@@ -422,8 +420,8 @@ def main(argv: List[str]) -> int:
 
     problems = (
         bool(missing_in_base)
-        or any(missing_by_lang.get(l) for l in langs[1:])
-        or any(german_residual_by_lang.get(l) for l in langs[1:])
+        or any(missing_by_lang.get(lang) for lang in langs[1:])
+        or any(german_residual_by_lang.get(lang) for lang in langs[1:])
         or bool(hardcoded)
         or bool(unused_in_base)
     )

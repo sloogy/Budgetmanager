@@ -7,8 +7,8 @@ Diese Tests halten die daraus behobenen Punkte fest.
 
 from __future__ import annotations
 
-import json
 import importlib.util
+import json
 import re
 import subprocess
 import sys

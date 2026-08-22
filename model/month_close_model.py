@@ -27,7 +27,6 @@ from model.typ_constants import (
     TYP_EXPENSES,
     TYP_INCOME,
     TYP_SAVINGS,
-    normalize_typ,
 )
 
 logger = logging.getLogger(__name__)

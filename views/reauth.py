@@ -8,12 +8,12 @@ Dialoge diese eine Funktion (Policy bleibt Qt-frei in ``model/backup_auth``).
 
 from __future__ import annotations
 
-from utils.notifications import show_warning
 import logging
 
 from PySide6.QtWidgets import QInputDialog, QLineEdit, QMessageBox
 
 from utils.i18n import tr, trf
+from utils.notifications import show_warning
 
 logger = logging.getLogger(__name__)
 

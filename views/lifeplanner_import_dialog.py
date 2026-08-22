@@ -5,7 +5,7 @@ import sqlite3
 from dataclasses import replace
 from datetime import date
 
-from PySide6.QtCore import Qt, QDate
+from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -28,13 +28,12 @@ from PySide6.QtWidgets import (
 )
 
 from model.category_model import CategoryModel
-from views.category_search_picker import CategorySearchPicker
 from model.lifeplanner_import_service import (
-    bridge_zustand,
     ImportDraft,
     ImportRecord,
     LifePlannerImportError,
     apply_import,
+    bridge_zustand,
     default_bridge_path,
     default_draft,
     load_import_records,
@@ -47,6 +46,7 @@ from utils.accessibility import configure_dialog_tab_order
 from utils.i18n import tr, trf
 from utils.money import get_currency
 from utils.notifications import show_info, show_warning
+from views.category_search_picker import CategorySearchPicker
 
 logger = logging.getLogger(__name__)
 

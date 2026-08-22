@@ -1,29 +1,3 @@
-from __future__ import annotations
-
-from utils.notifications import show_warning
-import logging
-
-logger = logging.getLogger(__name__)
-
-from pathlib import Path
-
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGroupBox,
-    QFormLayout,
-    QLabel,
-    QLineEdit,
-    QPushButton,
-    QFileDialog,
-    QMessageBox,
-)
-
-from utils.i18n import tr, trf
-from views.ui_colors import ui_colors
-
 """Zentraler Hub „Konto & Daten".
 
 Eine wiederverwendbare Oberfläche, die bewusst NUR bündelt und an die bestehenden
@@ -40,6 +14,28 @@ main_window._handle_data_directory_change() angewandt wird.
 Die gleiche Komponente wird im Reiter „Konto" und in der Einstellungen-Seite
 „Konto & Daten" eingebettet.
 """
+
+from __future__ import annotations
+
+import logging
+
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
+
+from utils.i18n import tr, trf
+from utils.notifications import show_warning
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 class AccountDataHub(QWidget):

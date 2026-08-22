@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import os
 import zipfile
 from pathlib import Path
@@ -11,9 +10,9 @@ import pytest
 
 def test_safe_extract_rejects_readme_only_payload(tmp_path):
     from updater.common import (
+        find_staged_root,
         safe_extract_zip,
         validate_staged_payload,
-        find_staged_root,
     )
 
     archive = tmp_path / "bad.zip"

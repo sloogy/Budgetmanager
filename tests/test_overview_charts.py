@@ -20,13 +20,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.database import open_db  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.category_model import CategoryModel  # noqa: E402
-from model.budget_model import BudgetModel  # noqa: E402
-from model.tracking_model import TrackingModel  # noqa: E402
-from model.overview_aggregation import aggregate_top_bookings  # noqa: E402
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, normalize_typ  # noqa: E402
+from model.budget_model import BudgetModel
+from model.database import open_db
+from model.migrations import migrate_all
+from model.overview_aggregation import aggregate_top_bookings
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, normalize_typ
 
 EPS = 1e-6
 

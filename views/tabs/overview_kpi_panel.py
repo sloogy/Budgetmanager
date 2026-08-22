@@ -22,39 +22,31 @@ Schnittstelle zu OverviewTab:
 from __future__ import annotations
 
 import logging
-import sqlite3
-
-logger = logging.getLogger(__name__)
-
 from datetime import date
 
-from model.date_ranges import month_bounds
-
-from PySide6.QtCore import Qt, Signal, QObject
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
     QHBoxLayout,
     QLabel,
     QPushButton,
-    QTabWidget,
     QStackedWidget,
-    QSizePolicy,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
 )
 
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from model.budget_overview_model import BudgetOverviewModel
-from utils.i18n import tr, display_typ, db_typ_from_display, trf
-from utils.money import format_money as format_chf
-from views.ui_colors import ui_colors
-from views.tabs.overview_widgets import CompactKPICard, CompactProgressBar, CompactChart
-
+from model.date_ranges import month_bounds
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from model.typ_constants import (
     normalize_typ as _norm,
-    TYP_INCOME,
-    TYP_EXPENSES,
-    TYP_SAVINGS,
 )
+from utils.i18n import db_typ_from_display, display_typ, tr, trf
+from utils.money import format_money as format_chf
+from views.tabs.overview_widgets import CompactChart, CompactKPICard, CompactProgressBar
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 class OverviewKpiPanel(QWidget):
@@ -210,28 +202,28 @@ class OverviewKpiPanel(QWidget):
 
     def _build_cat_tab(self) -> QWidget:
         w = QWidget()
-        l = QVBoxLayout(w)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(self._chart_help_label("overview.explain.categories"))
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._chart_help_label("overview.explain.categories"))
         self.chart_categories = CompactChart()
         self.chart_categories.setMinimumHeight(320)
         self.chart_categories.setMaximumHeight(520)
         self.chart_categories.slice_clicked.connect(self.chart_category_clicked)
-        l.addWidget(self.chart_categories)
+        lay.addWidget(self.chart_categories)
         return w
 
     def _build_typ_tab(self) -> QWidget:
         w = QWidget()
-        l = QVBoxLayout(w)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(self._chart_help_label("overview.explain.account_flow"))
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._chart_help_label("overview.explain.account_flow"))
         self.chart_types = CompactChart()
         self.chart_types.setMinimumHeight(260)
         self.chart_types.setMaximumHeight(420)
         self.chart_types.slice_clicked.connect(
             lambda s: self.chart_type_clicked.emit(db_typ_from_display(s) if s else "")
         )
-        l.addWidget(self.chart_types)
+        lay.addWidget(self.chart_types)
         return w
 
     def _build_trend_tab(self) -> QWidget:
@@ -239,10 +231,10 @@ class OverviewKpiPanel(QWidget):
         from PySide6.QtWidgets import QScrollArea
 
         inner = QWidget()
-        l = QVBoxLayout(inner)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(self._build_monthly_trend_tab())
-        l.addWidget(self._build_balance_trend_tab())
+        lay = QVBoxLayout(inner)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._build_monthly_trend_tab())
+        lay.addWidget(self._build_balance_trend_tab())
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setWidget(inner)
@@ -254,38 +246,38 @@ class OverviewKpiPanel(QWidget):
 
     def _build_monthly_trend_tab(self) -> QWidget:
         w = QWidget()
-        l = QVBoxLayout(w)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(self._chart_help_label("overview.explain.monthly_trend"))
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._chart_help_label("overview.explain.monthly_trend"))
         self.chart_monthly_expenses = CompactChart()
         self.chart_monthly_expenses.setMinimumHeight(260)
         self.chart_monthly_expenses.setMaximumHeight(420)
         self.chart_monthly_expenses.setToolTip(tr("overview.tip.monthly_trend"))
-        l.addWidget(self.chart_monthly_expenses)
+        lay.addWidget(self.chart_monthly_expenses)
         return w
 
     def _build_balance_trend_tab(self) -> QWidget:
         w = QWidget()
-        l = QVBoxLayout(w)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(self._chart_help_label("overview.explain.balance_trend"))
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._chart_help_label("overview.explain.balance_trend"))
         self.chart_monthly_balance = CompactChart()
         self.chart_monthly_balance.setMinimumHeight(260)
         self.chart_monthly_balance.setMaximumHeight(420)
         self.chart_monthly_balance.setToolTip(tr("overview.tip.balance_trend"))
-        l.addWidget(self.chart_monthly_balance)
+        lay.addWidget(self.chart_monthly_balance)
         return w
 
     def _build_top_bookings_tab(self) -> QWidget:
         w = QWidget()
-        l = QVBoxLayout(w)
-        l.setContentsMargins(0, 0, 0, 0)
-        l.addWidget(self._chart_help_label("overview.explain.top_bookings"))
+        lay = QVBoxLayout(w)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(self._chart_help_label("overview.explain.top_bookings"))
         self.chart_top_bookings = CompactChart()
         self.chart_top_bookings.setMinimumHeight(320)
         self.chart_top_bookings.setMaximumHeight(520)
         self.chart_top_bookings.setToolTip(tr("overview.tip.top_bookings"))
-        l.addWidget(self.chart_top_bookings)
+        lay.addWidget(self.chart_top_bookings)
         return w
 
     # ── Daten laden ─────────────────────────────────────────────────────────
@@ -709,9 +701,6 @@ class OverviewKpiPanel(QWidget):
             key=lambda x: x[1],
             reverse=True,
         )[:6]
-
-        from utils.i18n import trf
-        from views.tabs.overview_widgets import CompactChart  # already imported
 
         labels = [x[0] for x in cat_data]
         budget_vals = [x[1] for x in cat_data]

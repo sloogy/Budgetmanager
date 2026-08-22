@@ -3,7 +3,10 @@ auf Logik-Ebene (ohne GUI). Prüft, ob ein ahnungsloser Nutzer ohne Fehler
 durchkommt und die Daten danach konsistent sind.
 """
 
-import sys, tempfile, os, traceback
+import os
+import sys
+import tempfile
+import traceback
 
 sys.path.insert(0, ".")
 
@@ -48,7 +51,7 @@ tmpdir = tempfile.mkdtemp()
 os.environ["BUDGETMANAGER_APP_DIR"] = tmpdir
 os.environ["HOME"] = tmpdir
 try:
-    from model.user_model import UserModel, SECURITY_QUICK
+    from model.user_model import SECURITY_QUICK, UserModel
 
     um = UserModel()
     had_users_before = um.has_users()
@@ -61,10 +64,10 @@ except Exception as e:
 
 # --- Schritt 2: DB anlegen + migrieren + Default-Kategorien (Setup-Assistent) ---
 print("\n[2] DB anlegen, migrieren, Default-Kategorien laden")
+from model.budget_model import BudgetModel
+from model.category_model import CategoryModel
 from model.database import open_db
 from model.migrations import migrate_all
-from model.category_model import CategoryModel
-from model.budget_model import BudgetModel
 from model.tracking_model import TrackingModel
 
 db_path = os.path.join(tmpdir, "budgetmanager.db")
@@ -173,8 +176,8 @@ try:
     # verwaiste parent_id?
     valid_ids = {c.id for c in cats.list()}
     dangling = conn.execute(
-        "SELECT COUNT(*) FROM categories WHERE parent_id IS NOT NULL AND parent_id NOT IN (%s)"  # nosec B608
-        % ",".join(str(i) for i in valid_ids or [0])
+        "SELECT COUNT(*) FROM categories WHERE parent_id IS NOT NULL "
+        f"AND parent_id NOT IN ({','.join(str(i) for i in valid_ids or [0])})"  # nosec B608
     ).fetchone()[0]
     check(orphans == 0, f"Keine verwaisten Namens-Referenzen (gefunden: {orphans})")
     check(dangling == 0, f"Keine hängenden parent_id (gefunden: {dangling})")
@@ -188,15 +191,16 @@ print("\n[8] Fehleingabe-Robustheit – inf/nan gelangen nie in die Datenbank")
 try:
     import math as _math
     import sqlite3 as _sqlite3
-    from model.typ_constants import TYP_EXPENSES as _TYP_EXP
-    from utils.money import parse_money, require_finite_amount
-    from model.budget_model import BudgetModel
-    from model.tracking_model import TrackingModel
-    from model.savings_goals_model import (
-        SavingsGoalsModel,
-        SavingsGoalBoundsError,
-    )
     from datetime import date as _date
+
+    from model.budget_model import BudgetModel
+    from model.savings_goals_model import (
+        SavingsGoalBoundsError,
+        SavingsGoalsModel,
+    )
+    from model.tracking_model import TrackingModel
+    from model.typ_constants import TYP_EXPENSES as _TYP_EXP
+    from utils.money import parse_money
 
     # 8a: parse_money weist nicht-endliche Eingaben ab (fail-closed)
     rejected = 0

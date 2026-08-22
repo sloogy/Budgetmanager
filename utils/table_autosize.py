@@ -13,8 +13,7 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger(__name__)
-
+from PySide6.QtGui import QFontMetrics
 from PySide6.QtWidgets import (
     QApplication,
     QTableView,
@@ -22,7 +21,8 @@ from PySide6.QtWidgets import (
     QTreeView,
     QWidget,
 )
-from PySide6.QtGui import QFontMetrics
+
+logger = logging.getLogger(__name__)
 
 
 def _calc_row_height(font_metrics: QFontMetrics) -> int:

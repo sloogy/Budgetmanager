@@ -15,15 +15,15 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.migrations import migrate_all  # noqa: E402
-from model.month_close_model import MonthCloseModel  # noqa: E402
-from model.month_status import (  # noqa: E402
+from model.migrations import migrate_all
+from model.month_close_model import MonthCloseModel
+from model.month_status import (
     LEVEL_GREEN,
     LEVEL_RED,
     LEVEL_YELLOW,
     compute_month_status,
 )
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS  # noqa: E402
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 
 # ── Ampel ────────────────────────────────────────────────────────

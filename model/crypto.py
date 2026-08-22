@@ -15,19 +15,18 @@ Dateiformat .enc:  [16 Bytes Salt][Fernet-Token]
 """
 
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
-
-import os
 import base64
 import hashlib
 import hmac
-import secrets
+import logging
+import os
 import sqlite3
+from collections.abc import Callable
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Callable
+
+logger = logging.getLogger(__name__)
 
 
 class CryptoUserError(ValueError):

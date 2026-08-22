@@ -10,10 +10,7 @@ konservativ False (kein fälschlicher Update-Hinweis).
 
 from __future__ import annotations
 
-import hashlib
 import zipfile
-
-import pytest
 
 
 def test_update_without_sha256_is_rejected(monkeypatch, tmp_path):

@@ -1,21 +1,28 @@
-from __future__ import annotations
-import logging
-
-logger = logging.getLogger(__name__)
-import re
-import sqlite3
-from dataclasses import dataclass
-from typing import List
-
-from model.undo_redo_model import UndoRedoModel
-from model.category_forecast_mode import FORECAST_MODE_AUTO, normalize_forecast_mode
-from model.typ_constants import ALL_TYPEN, TYP_SAVINGS
-
 """Kategorie-Datenmodell.
 
 Verwaltet Kategorien mit hierarchischer Eltern-Kind-Struktur,
 Typen (Ausgaben/Einkommen/Ersparnisse), Fixkosten- und Wiederkehrend-Flags.
 """
+
+from __future__ import annotations
+
+import builtins
+import logging
+import re
+import sqlite3
+from dataclasses import dataclass
+
+from model.category_forecast_mode import FORECAST_MODE_AUTO, normalize_forecast_mode
+from model.typ_constants import ALL_TYPEN, TYP_SAVINGS
+from model.undo_redo_model import UndoRedoModel
+
+logger = logging.getLogger(__name__)
+
+
+# ``sqlite3.Row`` ist kein dict: ``"spalte" in row`` prueft die *Werte*, nicht
+# die Spaltennamen, und ist damit praktisch immer False. Die Spaltenpruefungen
+# unten brauchen deshalb ``.keys()`` - ruffs SIM118 raet hier falsch und ist
+# fuer diese Datei in ruff.toml abgeschaltet.
 
 
 class CategoryError(ValueError):
@@ -161,7 +168,7 @@ class CategoryModel:
         )
         self.conn.commit()
 
-    def list(self, typ: str | None = None) -> List[Category]:
+    def list(self, typ: str | None = None) -> builtins.list[Category]:
         if typ:
             cur = self.conn.execute(
                 "SELECT * FROM categories WHERE typ=? ORDER BY sort_order, name COLLATE NOCASE",
@@ -210,7 +217,7 @@ class CategoryModel:
     # ---------------------------------------------------------------------
     # Kompatibilitätsschicht (für Views aus dem 0.18.x-Branch)
     # ---------------------------------------------------------------------
-    def get_all_categories(self) -> List[dict]:
+    def get_all_categories(self) -> builtins.list[dict]:
         """Gibt alle Kategorien als Dict-Liste zurück.
 
         Einige Views/Dialogs (z.B. Übersicht / Fixkosten-Check) erwarten ein
@@ -256,7 +263,7 @@ class CategoryModel:
             # Fallback: wie Ausgaben behandeln
             return "expense"
 
-        out: List[dict] = []
+        out: list[dict] = []
         for r in cur.fetchall():
             out.append(
                 {
@@ -286,20 +293,20 @@ class CategoryModel:
             )
         return out
 
-    def list_tree(self) -> dict[str, List[Category]]:
+    def list_tree(self) -> dict[str, builtins.list[Category]]:
         """Liefert alle Kategorien gruppiert nach typ (Einkommen/Ausgaben/Ersparnisse)."""
-        data: dict[str, List[Category]] = {typ: [] for typ in ALL_TYPEN}
+        data: dict[str, list[Category]] = {typ: [] for typ in ALL_TYPEN}
         for c in self.list(None):
             data.setdefault(c.typ, []).append(c)
         return data
 
-    def build_tree(self, items: List[Category]) -> List[dict]:
+    def build_tree(self, items: builtins.list[Category]) -> builtins.list[dict]:
         """Baut aus flacher Liste eine Baumstruktur.
 
         Returns: Liste von Nodes {cat: Category, children: [...]}
         """
         by_id: dict[int, dict] = {}
-        roots: List[dict] = []
+        roots: list[dict] = []
         for c in items:
             by_id[c.id] = {"cat": c, "children": []}
         for c in items:
@@ -332,14 +339,14 @@ class CategoryModel:
             logger.debug("_cols(%s) fehlgeschlagen: %s", table, e)
             return set()
 
-    def list_names(self, typ: str) -> List[str]:
+    def list_names(self, typ: str) -> builtins.list[str]:
         cur = self.conn.execute(
             "SELECT name FROM categories WHERE typ=? ORDER BY name COLLATE NOCASE",
             (typ,),
         )
         return [r["name"] for r in cur.fetchall()]
 
-    def list_names_tree(self, typ: str) -> List[tuple[str, str]]:
+    def list_names_tree(self, typ: str) -> builtins.list[tuple[str, str]]:
         """Hierarchische Namensliste für Dropdowns.
 
         Anzeige: Einrückung bleibt, aber ab Unterkategorie wird zusätzlich der direkte Parent angezeigt:
@@ -350,9 +357,9 @@ class CategoryModel:
         items = self.list(typ)
         nodes = self.build_tree(items)
 
-        out: List[tuple[str, str]] = []
+        out: list[tuple[str, str]] = []
 
-        def walk(children: List[dict], depth: int, parent_name: str | None) -> None:
+        def walk(children: list[dict], depth: int, parent_name: str | None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 prefix = "  " * depth
@@ -367,7 +374,7 @@ class CategoryModel:
         walk(nodes, 0, None)
         return out
 
-    def list_for_tracking_dropdown(self, typ: str) -> List[tuple[str, str]]:
+    def list_for_tracking_dropdown(self, typ: str) -> builtins.list[tuple[str, str]]:
         """Kategorien-Reihenfolge für Buchungsdialoge.
 
         Flache Fallback-Liste ohne Kopfzeilen. Die eigentliche Tracker-UI nutzt
@@ -384,7 +391,7 @@ class CategoryModel:
 
     def list_for_tracking_dropdown_grouped(
         self, typ: str
-    ) -> List[tuple[str, str, object]]:
+    ) -> builtins.list[tuple[str, str, object]]:
         """Gruppierte Reihenfolge für den Tracker-Picker.
 
         Liefert eine flache Liste aus Kopfzeilen und Einträgen:
@@ -417,7 +424,7 @@ class CategoryModel:
         tree_pos: dict[str, int] = {}
         parent_names_with_children: set[str] = set()
 
-        def walk(children: List[dict], parent_path: str | None = None) -> None:
+        def walk(children: list[dict], parent_path: str | None = None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 child_nodes = n.get("children", []) or []
@@ -455,7 +462,7 @@ class CategoryModel:
             logger.debug("Nutzungsranking für gruppierten Picker: %s", e)
             usage = {}
 
-        def order_by_usage(names: List[str]) -> List[str]:
+        def order_by_usage(names: list[str]) -> list[str]:
             return sorted(
                 names,
                 key=lambda n: (
@@ -465,7 +472,7 @@ class CategoryModel:
                 ),
             )
 
-        def order_by_tree(names: List[str]) -> List[str]:
+        def order_by_tree(names: list[str]) -> list[str]:
             return sorted(
                 names,
                 key=lambda n: (
@@ -474,11 +481,11 @@ class CategoryModel:
                 ),
             )
 
-        frequent_manual: List[str] = []
-        normal_other: List[str] = []
-        fix_variable: List[str] = []
-        recurring_variable: List[str] = []
-        real_fixcosts: List[str] = []
+        frequent_manual: list[str] = []
+        normal_other: list[str] = []
+        fix_variable: list[str] = []
+        recurring_variable: list[str] = []
+        real_fixcosts: list[str] = []
 
         for c in items:
             # Parent-Kategorien mit Unterkategorien sind Struktur-/Summenzeilen.
@@ -501,7 +508,7 @@ class CategoryModel:
                 else:
                     normal_other.append(c.name)
 
-        out: List[tuple[str, str, object]] = []
+        out: list[tuple[str, str, object]] = []
 
         def _tr(title_key: str, default_title: str) -> str:
             try:
@@ -519,7 +526,7 @@ class CategoryModel:
         def add_group(
             title_key: str,
             default_title: str,
-            names: List[str],
+            names: list[str],
             *,
             favorite: bool = False,
         ) -> None:
@@ -556,19 +563,19 @@ class CategoryModel:
         )
         return out
 
-    def list_fix_names(self, typ: str) -> List[str]:
+    def list_fix_names(self, typ: str) -> builtins.list[str]:
         cur = self.conn.execute(
             "SELECT name FROM categories WHERE typ=? AND is_fix=1 ORDER BY name COLLATE NOCASE",
             (typ,),
         )
         return [r["name"] for r in cur.fetchall()]
 
-    def list_fix_names_tree(self, typ: str) -> List[tuple[str, str]]:
+    def list_fix_names_tree(self, typ: str) -> builtins.list[tuple[str, str]]:
         items = [c for c in self.list(typ) if c.is_fix]
         nodes = self.build_tree(items)
-        out: List[tuple[str, str]] = []
+        out: list[tuple[str, str]] = []
 
-        def walk(children: List[dict], depth: int, parent_name: str | None) -> None:
+        def walk(children: list[dict], depth: int, parent_name: str | None) -> None:
             for n in children:
                 c: Category = n["cat"]
                 prefix = "  " * depth
@@ -585,7 +592,7 @@ class CategoryModel:
 
     def descendant_names(
         self, typ: str, name: str, *, include_self: bool = True
-    ) -> List[str]:
+    ) -> builtins.list[str]:
         """Gibt die Kategorie plus alle Unterkategorien nach Namen zurück.
 
         Wird bewusst im Model gehalten, damit Filter und spätere Auswertungen die
@@ -606,8 +613,8 @@ class CategoryModel:
         if not row:
             return [name] if include_self else []
 
-        out: List[str] = [str(row["name"])] if include_self else []
-        queue: List[int] = [int(row["id"])]
+        out: list[str] = [str(row["name"])] if include_self else []
+        queue: list[int] = [int(row["id"])]
         seen: set[int] = set(queue)
         while queue:
             parent_id = queue.pop(0)
@@ -828,8 +835,8 @@ class CategoryModel:
         ).fetchone()
         old_d = dict(old) if old else None
 
-        fields: List[str] = []
-        params: List[object] = []
+        fields: list[str] = []
+        params: list[object] = []
         if is_fix is not None:
             fields.append("is_fix=?")
             params.append(int(is_fix))
@@ -1211,7 +1218,7 @@ class CategoryModel:
 
     def delete_categories_safely(
         self,
-        ids: List[int],
+        ids: builtins.list[int],
         *,
         data_action: str = "delete_until_last_booking",
         reassign_to_id: int | None = None,
@@ -1237,7 +1244,7 @@ class CategoryModel:
         deleted = 0
         skipped = 0
         group = self.undo.new_group_id()
-        undo_rows: List[dict] = []
+        undo_rows: list[dict] = []
 
         with db_transaction(self.conn):
             for cat_id in ids:
@@ -1321,7 +1328,7 @@ class CategoryModel:
             int(row["id"]), data_action="delete_until_last_booking"
         )
 
-    def delete_by_ids(self, ids: List[int]) -> None:
+    def delete_by_ids(self, ids: builtins.list[int]) -> None:
         self.delete_categories_safely(ids, data_action="delete_until_last_booking")
 
     def get_by_id(self, cat_id: int) -> Category | None:

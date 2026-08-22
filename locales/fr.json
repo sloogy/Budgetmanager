@@ -553,6 +553,7 @@
       "delete_row_this_year": "🗑️ Supprimer la ligne budgétaire (cette année uniquement)",
       "delete_rows_this_year_count": "Supprimer {count} lignes de budget pour cette année",
       "edit_budget": "💰 Modifier le budget…",
+      "edit_properties_count": "⚙️ Modifier {count} catégories…",
       "favorite": "⭐ Marquer comme favori",
       "fix_disable": "📌 Désactiver le coût fixe",
       "fix_enable": "📌 Activer le coût fixe",

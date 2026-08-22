@@ -14,9 +14,9 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 QtWidgets = pytest.importorskip("PySide6.QtWidgets", reason="PySide6 Widgets fehlen")
 pytest.importorskip("PySide6.QtCharts", reason="PySide6 QtCharts fehlt")
 
-from PySide6.QtWidgets import QApplication  # noqa: E402
+from PySide6.QtWidgets import QApplication
 
-from views.tabs.overview_widgets import CompactChart  # noqa: E402
+from views.tabs.overview_widgets import CompactChart
 
 
 def _ring_data() -> list[dict]:

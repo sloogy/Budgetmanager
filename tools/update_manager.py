@@ -1,20 +1,20 @@
 from __future__ import annotations
 
+import hashlib
+import json
+
 # HINWEIS: Der produktive Update-Pfad der App ist updater/ (Manifest:
 # https://github.com/sloogy/Budgetmanager/releases/latest/download/latest.json).
 # Dieses Modul ist ein eigenstaendiges Werkzeug und derzeit nicht in die App
 # eingebunden.
 import logging
-import requests
-import json
 import os
-import sys
 import subprocess
 import tempfile
-import hashlib
-from pathlib import Path
-from typing import Optional, Dict, Tuple
 from datetime import datetime
+from pathlib import Path
+
+import requests
 from packaging import version
 
 
@@ -53,7 +53,7 @@ class UpdateManager:
             f"https://github.com/{repo_owner}/{repo_name}/releases/download"
         )
 
-    def check_for_updates(self, include_prereleases: bool = False) -> Optional[Dict]:
+    def check_for_updates(self, include_prereleases: bool = False) -> dict | None:
         """
         Prüft ob Updates verfügbar sind
 
@@ -124,9 +124,7 @@ class UpdateManager:
             print(f"Unerwarteter Fehler: {e}")
             return None
 
-    def download_update(
-        self, update_info: Dict, progress_callback=None
-    ) -> Optional[str]:
+    def download_update(self, update_info: dict, progress_callback=None) -> str | None:
         """
         Lädt ein Update herunter
 
@@ -171,7 +169,7 @@ class UpdateManager:
             return None
 
     def verify_download(
-        self, filepath: str, expected_checksum: Optional[str] = None
+        self, filepath: str, expected_checksum: str | None = None
     ) -> bool:
         """
         Verifiziert die heruntergeladene Datei
@@ -201,7 +199,7 @@ class UpdateManager:
 
             actual_checksum = sha256_hash.hexdigest()
             if actual_checksum != expected_checksum:
-                print(f"Checksum-Fehler!")
+                print("Checksum-Fehler!")
                 print(f"  Erwartet: {expected_checksum}")
                 print(f"  Erhalten: {actual_checksum}")
                 return False
@@ -247,7 +245,7 @@ class UpdateManager:
             print(f"Fehler bei Installation: {e}")
             return False
 
-    def create_backup_before_update(self, backup_dir: Optional[str] = None) -> str:
+    def create_backup_before_update(self, backup_dir: str | None = None) -> str:
         """
         Erstellt ein Backup vor dem Update
 
@@ -269,7 +267,7 @@ class UpdateManager:
 
         return os.path.join(backup_dir, backup_name)
 
-    def get_update_settings(self) -> Dict:
+    def get_update_settings(self) -> dict:
         """
         Liest Update-Einstellungen aus Konfigurationsdatei
 
@@ -289,7 +287,7 @@ class UpdateManager:
 
         if settings_file.exists():
             try:
-                with open(settings_file, "r") as f:
+                with open(settings_file) as f:
                     saved_settings = json.load(f)
                     default_settings.update(saved_settings)
             except Exception as e:
@@ -309,7 +307,7 @@ class UpdateManager:
         settings_dir.mkdir(parents=True, exist_ok=True)
         return settings_dir / "update_settings.json"
 
-    def save_update_settings(self, settings: Dict) -> None:
+    def save_update_settings(self, settings: dict) -> None:
         """Speichert Update-Einstellungen"""
         settings_file = self._update_settings_file()
         settings_file.parent.mkdir(parents=True, exist_ok=True)

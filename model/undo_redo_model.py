@@ -1,16 +1,17 @@
 from __future__ import annotations
 
-import logging
-
-logger = logging.getLogger(__name__)
 import json
+import logging
 import re
 import sqlite3
-from model.typ_constants import TYP_SAVINGS
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 from uuid import uuid4
+
+from model.typ_constants import TYP_SAVINGS
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -20,8 +21,8 @@ class UndoRow:
     group_id: str
     table_name: str
     operation: str
-    old_data: Optional[dict]
-    new_data: Optional[dict]
+    old_data: dict | None
+    new_data: dict | None
 
 
 class UndoRedoModel:
@@ -89,10 +90,10 @@ class UndoRedoModel:
         self,
         table_name: str,
         operation: str,
-        old_data: Optional[dict] = None,
-        new_data: Optional[dict] = None,
+        old_data: dict | None = None,
+        new_data: dict | None = None,
         *,
-        group_id: Optional[str] = None,
+        group_id: str | None = None,
         clear_redo: bool = True,
     ) -> None:
         """Speichert eine Operation im undo_stack.
@@ -311,7 +312,7 @@ class UndoRedoModel:
             logger.debug("_table_exists(%s): %s", table, e)
             return False
 
-    def _last_group_id(self, table: str) -> Optional[str]:
+    def _last_group_id(self, table: str) -> str | None:
         safe = self._safe_table(table)
         row = self.conn.execute(
             f"SELECT group_id FROM {safe} ORDER BY id DESC LIMIT 1"  # nosec B608
@@ -511,9 +512,7 @@ class UndoRedoModel:
         safe = self._safe_table(table)
         cols = self._cols(safe)
         insert_cols = [
-            k
-            for k in data.keys()
-            if k in cols and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", k)
+            k for k in data if k in cols and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", k)
         ]
         if not insert_cols:
             return
@@ -532,7 +531,7 @@ class UndoRedoModel:
             return
         set_cols = [
             k
-            for k in data.keys()
+            for k in data
             if k in cols and k != "id" and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", k)
         ]
         if not set_cols:

@@ -16,30 +16,29 @@ from __future__ import annotations
 import logging
 import sqlite3
 
-logger = logging.getLogger(__name__)
-
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
+    QAbstractItemView,
     QHBoxLayout,
+    QHeaderView,
     QLabel,
+    QMenu,
     QProgressBar,
     QPushButton,
+    QSizePolicy,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QAbstractItemView,
-    QSizePolicy,
-    QMenu,
-    QMessageBox,
+    QVBoxLayout,
+    QWidget,
 )
 
 from model.savings_goals_model import SavingsGoalsModel
 from utils.i18n import tr, trf
 from utils.money import format_money as format_chf
 from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 class OverviewSavingsPanel(QWidget):

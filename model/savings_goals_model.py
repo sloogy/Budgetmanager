@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Sparziele-Datenmodell.
 
 Ein Sparziel ist ein Flussbestand:
@@ -13,12 +11,13 @@ Ein Sparziel ist ein Flussbestand:
   Sparziel zu beenden.
 """
 
+from __future__ import annotations
+
 import logging
 import math
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime
-from typing import List, Optional
 
 from model.crypto import suspend_after_commit_autosave
 from model.typ_constants import TYP_SAVINGS
@@ -188,13 +187,13 @@ class SavingsGoal:
     name: str
     target_amount: float
     current_amount: float
-    deadline: Optional[str]
-    category: Optional[str]
-    notes: Optional[str]
+    deadline: str | None
+    category: str | None
+    notes: str | None
     created_date: str
     status: str = STATUS_SAVING
     released_amount: float = 0.0
-    released_date: Optional[str] = None
+    released_date: str | None = None
     contributed_amount: float = 0.0
     withdrawn_amount: float = 0.0
 
@@ -328,9 +327,9 @@ class SavingsGoalsModel:
         name: str,
         target_amount: float,
         current_amount: float = 0,
-        deadline: Optional[str] = None,
-        category: Optional[str] = None,
-        notes: Optional[str] = None,
+        deadline: str | None = None,
+        category: str | None = None,
+        notes: str | None = None,
     ) -> int:
         validate_savings_goal_flow_bounds(
             goal_name=name,
@@ -391,7 +390,7 @@ class SavingsGoalsModel:
             logger.debug("savings_goals create undo: %s", exc)
         return goal_id
 
-    def list_all(self) -> List[SavingsGoal]:
+    def list_all(self) -> list[SavingsGoal]:
         cur = self.conn.execute(
             f"""
             SELECT {self._select_sql()}
@@ -408,11 +407,11 @@ class SavingsGoalsModel:
         )
         return [self._row_to_goal(row) for row in cur.fetchall()]
 
-    def get(self, goal_id: int) -> Optional[SavingsGoal]:
+    def get(self, goal_id: int) -> SavingsGoal | None:
         row = self._snapshot(goal_id)
         return self._row_to_goal(row) if row else None
 
-    def get_by_category(self, category: str) -> Optional[SavingsGoal]:
+    def get_by_category(self, category: str) -> SavingsGoal | None:
         row = self.conn.execute(
             f"""
             SELECT {self._select_sql()}
@@ -427,12 +426,12 @@ class SavingsGoalsModel:
     def update(
         self,
         goal_id: int,
-        name: Optional[str] = None,
-        target_amount: Optional[float] = None,
-        current_amount: Optional[float] = None,
-        deadline: Optional[str] = None,
-        category: Optional[str] = None,
-        notes: Optional[str] = None,
+        name: str | None = None,
+        target_amount: float | None = None,
+        current_amount: float | None = None,
+        deadline: str | None = None,
+        category: str | None = None,
+        notes: str | None = None,
     ) -> None:
         old_goal = self.get(goal_id)
         old_row = self._snapshot(goal_id)
@@ -546,7 +545,7 @@ class SavingsGoalsModel:
         except Exception as exc:
             logger.debug("savings_goals delete undo: %s", exc)
 
-    def release_partial(self, goal_id: int, amount: float) -> Optional[SavingsGoal]:
+    def release_partial(self, goal_id: int, amount: float) -> SavingsGoal | None:
         """Gibt einen Teilbetrag frei, ohne das Ziel zu beenden."""
         goal = self.get(goal_id)
         if not goal or goal.is_completed:
@@ -591,7 +590,7 @@ class SavingsGoalsModel:
         self.conn.commit()
         return self.get(goal_id)
 
-    def release(self, goal_id: int) -> Optional[SavingsGoal]:
+    def release(self, goal_id: int) -> SavingsGoal | None:
         """Legacy-Vollfreigabe für alte Aufrufer.
 
         Die neue Oberfläche verwendet :meth:`release_partial`, wodurch das Ziel
@@ -612,7 +611,7 @@ class SavingsGoalsModel:
         self.conn.commit()
         return self.get(goal_id)
 
-    def complete(self, goal_id: int) -> Optional[SavingsGoal]:
+    def complete(self, goal_id: int) -> SavingsGoal | None:
         if not self.get(goal_id):
             return None
         self.conn.execute(
@@ -622,7 +621,7 @@ class SavingsGoalsModel:
         self.conn.commit()
         return self.get(goal_id)
 
-    def reopen(self, goal_id: int) -> Optional[SavingsGoal]:
+    def reopen(self, goal_id: int) -> SavingsGoal | None:
         if not self.get(goal_id):
             return None
         # Freigabehistorie bleibt erhalten; nur der Lebenszyklus wird geöffnet.

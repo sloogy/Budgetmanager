@@ -1,9 +1,3 @@
-from __future__ import annotations
-from utils.notifications import show_info
-import logging
-
-logger = logging.getLogger(__name__)
-
 """
 Database Management Dialog - Neu
 Version 2.3.0.1
@@ -15,28 +9,35 @@ Features:
 - Backup vor Reset
 """
 
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
-    QGroupBox,
-    QTextEdit,
-    QCheckBox,
-    QMessageBox,
-    QProgressDialog,
-    QRadioButton,
-    QButtonGroup,
-)
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
+from PySide6.QtWidgets import (
+    QButtonGroup,
+    QCheckBox,
+    QDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QProgressDialog,
+    QPushButton,
+    QRadioButton,
+    QTextEdit,
+    QVBoxLayout,
+)
 
 from model.database_management_model import DatabaseManagementModel
-from pathlib import Path
-from views.ui_colors import ui_colors
+from utils.i18n import tr, tr_msg, trf
 from utils.icons import get_icon
-from utils.i18n import tr, trf, tr_msg, display_typ, db_typ_from_display
+from utils.notifications import show_info
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 class DatabaseManagementDialog(QDialog):
@@ -342,6 +343,7 @@ class DatabaseManagementDialog(QDialog):
             if delete_account:
                 import shutil
                 from datetime import datetime as _dt
+
                 from model.app_paths import backups_dir
 
                 stamp = _dt.now().strftime("%Y%m%d_%H%M%S")
@@ -402,6 +404,7 @@ class DatabaseManagementDialog(QDialog):
 
 if __name__ == "__main__":
     import sys
+
     from PySide6.QtWidgets import QApplication
 
     app = QApplication(sys.argv)

@@ -1,11 +1,11 @@
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 import re
 import sqlite3
 from dataclasses import dataclass
-from typing import List
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -100,7 +100,7 @@ class TagsModel:
         self.conn.commit()
         return cur.lastrowid
 
-    def list_all(self) -> List[Tag]:
+    def list_all(self) -> list[Tag]:
         """Liste alle Tags"""
         action_col = (
             "action_text"
@@ -120,7 +120,7 @@ class TagsModel:
             for row in cur.fetchall()
         ]
 
-    def list_tags(self, active_only: bool = False) -> List[Tag]:
+    def list_tags(self, active_only: bool = False) -> list[Tag]:
         """Alias auf :meth:`list_all` für Views, die diesen Namen nutzen.
 
         Es gibt aktuell keine aktive/inaktive Tag-Spalte; active_only bleibt
@@ -131,7 +131,7 @@ class TagsModel:
         """
         return self.list_all()
 
-    def get_all_tags(self) -> List[Tag]:
+    def get_all_tags(self) -> list[Tag]:
         """Alias auf :meth:`list_all` (historischer Name aus overview_tab).
 
         v2.2.31: liefert ``Tag``-Objekte statt roher Dicts – einheitlich mit
@@ -140,7 +140,7 @@ class TagsModel:
         """
         return self.list_all()
 
-    def get_tags_for_entry(self, entry_id: int) -> List[Tag]:
+    def get_tags_for_entry(self, entry_id: int) -> list[Tag]:
         """
         Gibt alle Tags für einen Tracking-Eintrag zurück.
 
@@ -291,7 +291,7 @@ class TagsModel:
         )
         self.conn.commit()
 
-    def get_tags_for_category(self, category_id: int) -> List[Tag]:
+    def get_tags_for_category(self, category_id: int) -> list[Tag]:
         """Gibt alle Tags einer Kategorie zurück"""
         action_col = (
             "t.action_text" if self._has_column("tags", "action_text") else "''"
@@ -316,7 +316,7 @@ class TagsModel:
             for row in cur.fetchall()
         ]
 
-    def get_categories_by_tag(self, tag_id: int) -> List[int]:
+    def get_categories_by_tag(self, tag_id: int) -> list[int]:
         """Gibt alle Kategorie-IDs mit diesem Tag zurück"""
         cur = self.conn.execute(
             "SELECT category_id FROM category_tags WHERE tag_id = ?", (tag_id,)
@@ -360,7 +360,7 @@ class TagsModel:
         except Exception:
             return False
 
-    def merge_tags(self, source_ids: List[int], target_id: int) -> bool:
+    def merge_tags(self, source_ids: list[int], target_id: int) -> bool:
         """Führt Quell-Tags in ein Ziel-Tag zusammen.
 
         Alle entry_tags- und category_tags-Verknüpfungen werden auf

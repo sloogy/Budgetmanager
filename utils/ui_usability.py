@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Zentrale UI-Härtung für Fokus, Accessibility und sichere Dialog-Defaults.
 
 Die Regeln werden über einen QApplication-Eventfilter auf jedes neu angezeigte
@@ -19,30 +17,31 @@ v2.2.22 (UI/ADHS-Audit):
   bereits geschlossen/gelöscht sein).
 """
 
+from __future__ import annotations
+
 import logging
-import re
-from typing import Iterable
+from collections.abc import Iterable
 
 from PySide6.QtCore import QEvent, QObject, Qt, QTimer
 from PySide6.QtWidgets import (
     QAbstractButton,
     QAbstractItemView,
     QComboBox,
-    QDialog,
-    QDialogButtonBox,
-    QLineEdit,
-    QMenu,
-    QSpinBox,
-    QDoubleSpinBox,
     QDateEdit,
     QDateTimeEdit,
+    QDialog,
+    QDialogButtonBox,
+    QDoubleSpinBox,
     QFormLayout,
     QGridLayout,
     QHBoxLayout,
-    QVBoxLayout,
     QLabel,
-    QTextEdit,
+    QLineEdit,
+    QMenu,
     QPlainTextEdit,
+    QSpinBox,
+    QTextEdit,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -59,8 +58,10 @@ _AUTO_DESC_PROP = "_bm_ui_auto_accessible_description"
 # PySide6); hier nur re-exportiert.
 from utils.ui_text_rules import (
     clean_ui_text as _clean,
+)
+from utils.ui_text_rules import (
     is_destructive_text,
-)  # noqa: E402
+)
 
 
 def _itemview_hint() -> str:
@@ -350,7 +351,7 @@ def refresh_accessibility(root: QWidget) -> None:
 class UiUsabilityFilter(QObject):
     """Wendet UI-Regeln auf jedes sichtbar werdende Top-Level-Widget an."""
 
-    def eventFilter(self, watched: QObject, event: QEvent) -> bool:  # noqa: N802
+    def eventFilter(self, watched: QObject, event: QEvent) -> bool:
         if event.type() == QEvent.Show and isinstance(watched, QWidget):
             try:
                 if _is_transient_window(watched):

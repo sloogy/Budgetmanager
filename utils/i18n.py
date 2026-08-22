@@ -25,6 +25,7 @@ import json
 import logging
 import os
 from pathlib import Path
+
 from model.typ_constants import ALL_TYPEN
 
 logger = logging.getLogger(__name__)

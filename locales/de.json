@@ -553,6 +553,7 @@
       "delete_row_this_year": "🗑️ Budget-Zeile entfernen (nur dieses Jahr)",
       "delete_rows_this_year_count": "{count} Budgetpositionen in diesem Jahr löschen",
       "edit_budget": "💰 Budget bearbeiten…",
+      "edit_properties_count": "⚙️ {count} Kategorien bearbeiten…",
       "favorite": "⭐ Als Favorit markieren",
       "fix_disable": "📌 Fixkosten deaktivieren",
       "fix_enable": "📌 Fixkosten aktivieren",

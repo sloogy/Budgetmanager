@@ -9,45 +9,42 @@ Features:
 
 from __future__ import annotations
 
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
+import logging
 import sqlite3
 
-from PySide6.QtCore import Signal, Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
+    QDialogButtonBox,
     QFormLayout,
+    QFrame,
     QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
-    QCheckBox,
-    QSpinBox,
-    QComboBox,
-    QPushButton,
-    QGroupBox,
-    QMessageBox,
-    QDialogButtonBox,
     QListWidget,
     QListWidgetItem,
-    QWidget,
-    QFrame,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
+    QVBoxLayout,
 )
 
-from model.category_model import CategoryModel, Category
-from model.tags_model import TagsModel
 from model.category_forecast_mode import (
     FORECAST_MODE_AUTO,
     FORECAST_MODE_INCREMENTAL,
     FORECAST_MODE_NORMAL,
     FORECAST_MODE_POT,
 )
+from model.category_model import Category, CategoryModel
+from model.tags_model import TagsModel
+from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import db_typ_from_display, tr, trf
 from utils.icons import get_icon
-
-
-import logging
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+from utils.notifications import show_info, show_warning
 from views.category_delete_dialog import ask_category_delete_decision
 
 logger = logging.getLogger(__name__)
@@ -545,7 +542,7 @@ class BulkCategoryEditDialog(QDialog):
 
         msg = f"{changed} Kategorie(n) aktualisiert."
         if errors:
-            msg += f"\n\nFehler bei:\n" + "\n".join(errors[:10])
+            msg += "\n\nFehler bei:\n" + "\n".join(errors[:10])
 
         show_info(
             self, tr("auto.views_category_properties_dialog.397_ergebnis_0d350353"), msg

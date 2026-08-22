@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Sequence
 from dataclasses import dataclass
 from html import escape
 from pathlib import Path
-import os
-from typing import Sequence
 
 
 @dataclass(frozen=True)

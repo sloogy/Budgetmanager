@@ -130,7 +130,7 @@ def _verify_signature(manifest_path: Path, signature_path: Path) -> str:
             public_key = Ed25519PublicKey.from_public_bytes(
                 base64.b64decode(env_key, validate=True)
             )
-        except Exception as exc:  # noqa: BLE001 - Gate meldet Klartext
+        except Exception as exc:
             _fail(f"UPDATE_SIGNING_PUBLIC_KEY_B64 ist kein gültiger Key: {exc}")
     try:
         verify_manifest_signature(manifest_bytes, sig_bytes, public_key=public_key)

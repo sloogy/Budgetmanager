@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
 import logging
 import os
 import shutil
@@ -11,23 +9,24 @@ from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QPushButton,
-    QLabel,
     QFileDialog,
-    QMessageBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
     QListWidget,
     QListWidgetItem,
-    QInputDialog,
-    QApplication,
-    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QVBoxLayout,
 )
 
-from model.app_paths import resolve_in_app, configured_backups_dir
+from model.app_paths import configured_backups_dir
 from model.file_permissions import secure_dir, secure_file
+from utils.accessibility import configure_dialog_tab_order
 from utils.icons import get_icon
+from utils.notifications import show_info, show_warning
 
 logger = logging.getLogger(__name__)
 
@@ -234,8 +233,8 @@ class BackupRestoreDialog(QDialog):
         backup_path = self.backup_dir / backup_name
 
         try:
-            from model.restore_bundle import create_bundle
             from app_info import APP_NAME, APP_VERSION
+            from model.restore_bundle import create_bundle
 
             if self.encrypted_session is not None:
                 try:
@@ -470,8 +469,8 @@ class BackupRestoreDialog(QDialog):
                 shutil.copy2(file_path, import_path)
                 secure_file(import_path)
             else:
-                from model.restore_bundle import create_bundle
                 from app_info import APP_NAME, APP_VERSION
+                from model.restore_bundle import create_bundle
 
                 create_bundle(
                     source_db=src,
@@ -663,8 +662,8 @@ class BackupRestoreDialog(QDialog):
         """
         import json
         import zipfile
+
         from model.app_paths import data_dir
-        from model.user_model import _users_file_path
         from model.restore_bundle import (
             MAX_DB_BYTES,
             MAX_USERS_BYTES,
@@ -675,6 +674,7 @@ class BackupRestoreDialog(QDialog):
             read_member_limited,
             verify_open_bundle,
         )
+        from model.user_model import _users_file_path
 
         bundle_path = Path(bundle_path)
         # SICHERHEIT (v2.2.11): Struktur, Grössen und SHA256 prüfen, BEVOR
@@ -924,6 +924,7 @@ class BackupRestoreDialog(QDialog):
         if src.suffix.lower() == ".db":
             # unverschlüsselte DB importieren → verschlüsselt speichern (ersetzt aktive)
             import sqlite3
+
             from model.crypto import encrypt_db_to_file
 
             # Quelle öffnen (read-only, wenn möglich)
@@ -965,6 +966,7 @@ class BackupRestoreDialog(QDialog):
         oder halb übertragenes Backup darf niemals über die aktive DB laufen.
         """
         import zipfile
+
         from model.restore_bundle import (
             MAX_DB_BYTES,
             BundleIntegrityError,
@@ -1107,10 +1109,10 @@ class BackupRestoreDialog(QDialog):
         Schließt automatisch settings.json und users.json ein. users.json wird
         beim Restore aber nur nach ausdrücklicher Konto-Wiederherstellung übernommen.
         """
-        from model.restore_bundle import create_bundle
-        from model.app_paths import settings_path as get_settings_path
-        from model.user_model import _users_file_path
         from app_info import APP_NAME, APP_VERSION
+        from model.app_paths import settings_path as get_settings_path
+        from model.restore_bundle import create_bundle
+        from model.user_model import _users_file_path
 
         out = self.backup_dir / f"{prefix}.bmr"
         if self.encrypted_session is not None:
@@ -1154,6 +1156,4 @@ class BackupRestoreDialog(QDialog):
                 logger.debug("Konnte Safety-Backup nicht löschen (%s): %s", old_file, e)
 
 
-from PySide6.QtCore import Qt
-from utils.i18n import tr, trf, display_typ, db_typ_from_display, display_security_label
-from views.ui_colors import ui_colors
+from utils.i18n import display_security_label, tr, trf

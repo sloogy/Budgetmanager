@@ -26,7 +26,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, ALL_TYPEN
+from model.typ_constants import ALL_TYPEN, TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +41,7 @@ class DefaultCategory:
     is_recurring: bool = False
     recurring_day: int = 1
     enabled: bool = True
-    children: tuple["DefaultCategory", ...] = ()
+    children: tuple[DefaultCategory, ...] = ()
 
 
 # Eingebauter Fallback — bewusst klein, generisch und tippfehlerfrei.

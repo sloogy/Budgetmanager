@@ -12,8 +12,8 @@ from __future__ import annotations
 import logging
 from functools import lru_cache
 
-from PySide6.QtCore import Qt, QRect
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QFont, QColor, QFontMetrics
+from PySide6.QtCore import QRect, Qt
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QIcon, QPainter, QPixmap
 
 logger = logging.getLogger(__name__)
 
@@ -201,9 +201,12 @@ def _emoji_renders_visible(emoji: str, font: QFont, size: int) -> bool:
         for dx in range(-3, 4):
             for dy in range(-3, 4):
                 x, y = cx + dx, cy + dy
-                if 0 <= x < size and 0 <= y < size:
-                    if img.pixelColor(x, y).alpha() > 10:
-                        return True
+                if (
+                    0 <= x < size
+                    and 0 <= y < size
+                    and img.pixelColor(x, y).alpha() > 10
+                ):
+                    return True
         return False
     except Exception:
         return False

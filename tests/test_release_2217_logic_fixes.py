@@ -76,10 +76,10 @@ def test_update_keeps_source_and_savings_in_sync(tmp_path):
     import sys
 
     sys.path.insert(0, str(ROOT))
-    from model.migrations import migrate_all
     from model.category_model import CategoryModel
-    from model.tracking_model import TrackingModel
+    from model.migrations import migrate_all
     from model.savings_goals_model import SavingsGoalsModel
+    from model.tracking_model import TrackingModel
     from model.typ_constants import TYP_EXPENSES, TYP_SAVINGS
 
     conn = sqlite3.connect(":memory:")

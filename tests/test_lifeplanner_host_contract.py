@@ -23,6 +23,7 @@ def test_standalone_default_remains_unchanged(monkeypatch):
 
 def test_module_manifest_matches_budgetmanager_version():
     import json
+
     from app_info import APP_VERSION
 
     root = Path(__file__).resolve().parents[1]

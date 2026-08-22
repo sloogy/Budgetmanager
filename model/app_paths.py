@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import json
 import os
 import sys
+from pathlib import Path
 
 INSTALL_TYPES_WITH_EXTERNAL_DATA = {"windows_installer", "installer"}
 SETTINGS_FILENAME = "budgetmanager_settings.json"

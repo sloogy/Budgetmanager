@@ -1,12 +1,12 @@
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
+import logging
 import re
 import sqlite3
-import shutil
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Aktuelle Schema-Version
 CURRENT_VERSION = 18
@@ -78,11 +78,10 @@ def _create_migration_backup(db_path: str, backup_dir: str = None) -> str:
     backup_path = backup_path_obj / backup_name
 
     try:
-        from model.restore_bundle import create_bundle
         from app_info import APP_NAME, APP_VERSION
-
-        from model.user_model import _users_file_path
         from model.app_paths import settings_path as _settings_path
+        from model.restore_bundle import create_bundle
+        from model.user_model import _users_file_path
 
         u_path = _users_file_path()
         s_path = _settings_path()

@@ -1,0 +1,33 @@
+# Feste Regelauswahl, damit lokale Prueflaeufe und CI dasselbe sagen -
+# unabhaengig von einer globalen Ruff-Konfiguration auf dem Entwicklerrechner.
+# Gleiches Muster wie in FPM, FreizeitManager und LifePlanner; die Auswahl
+# unterscheidet sich nur dort, wo die Aufgabe es verlangt.
+line-length = 110
+target-version = "py311"
+
+[lint]
+# Echte Fehler plus toter Code und Importordnung. Bewusst NICHT dabei:
+# DTZ (Zeitzonen) - der BudgetManager rechnet in Kalendermonaten und
+# -jahren; eine UTC-Pflicht waere hier falsch. Der Host (LifePlanner)
+# hat DTZ dabei, weil er Zeitangaben schreibt, die andere Programme lesen.
+select = ["E4", "E7", "E9", "F", "I", "UP", "SIM", "RUF100"]
+ignore = [
+    "E402",    # Importe nach sys.path-Anpassung sind in Werkzeugen noetig
+    # SIM105 raet zu contextlib.suppress statt try/except/pass. Das ist hier
+    # ausdruecklich unerwuenscht: Der Ausnahmen-Ratchet
+    # (tools/exception_audit.py, Loop 21) zaehlt stumme Schlucker und deckelt
+    # sie. Beide Schreibweisen sind gleich stumm - die Umschreibung wuerde
+    # nichts bessern, aber den Bestand kleiner aussehen lassen. Der richtige
+    # Weg ist defensive_log.uebersprungen(), nicht eine andere Verpackung
+    # desselben Schweigens. (Der Ratchet zaehlt suppress seit Loop 45 mit,
+    # damit der Weg auch dann zu ist, wenn jemand die Regel doch einschaltet.)
+    "SIM105",
+]
+
+[lint.per-file-ignores]
+# sqlite3.Row ist kein dict: `"spalte" in row` prueft die Werte, nicht die
+# Spaltennamen, und ist praktisch immer False. Die Spaltenpruefungen hier
+# brauchen `.keys()`. SIM118 hat sie einmal umgeschrieben - danach galt jede
+# Kategorie als wurzellos, weil parent_id nie gelesen wurde.
+"model/category_model.py" = ["SIM118"]
+"BudgetManager.spec" = ["F821"]   # PyInstaller stellt SPECPATH global bereit

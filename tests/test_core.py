@@ -20,14 +20,14 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.migrations import migrate_all, _get_db_version, CURRENT_VERSION  # noqa: E402
-from model.undo_redo_model import UndoRedoModel  # noqa: E402
-from model.recurring_transactions_model import (  # noqa: E402
-    RecurringTransactionsModel,
+from model.default_categories import _FALLBACK, load_default_categories
+from model.migrations import CURRENT_VERSION, _get_db_version, migrate_all
+from model.recurring_transactions_model import (
     RecurringTransaction,
+    RecurringTransactionsModel,
 )
-from model.default_categories import load_default_categories, _FALLBACK  # noqa: E402
-from model.typ_constants import ALL_TYPEN  # noqa: E402
+from model.typ_constants import ALL_TYPEN
+from model.undo_redo_model import UndoRedoModel
 
 
 @pytest.fixture
@@ -308,8 +308,9 @@ def test_savings_goal_undo_redo_returns_to_start(migrated_conn):
 
 
 def test_bmr_bundle_roundtrip(tmp_path):
-    from model.restore_bundle import create_bundle
     import zipfile
+
+    from model.restore_bundle import create_bundle
 
     db = tmp_path / "source.db"
     c = sqlite3.connect(str(db))
@@ -368,7 +369,7 @@ def test_restore_into_live_connection():
 
 
 def test_money_format_respects_number_format():
-    from utils.money import set_money_locale, format_money, format_short, parse_money
+    from utils.money import format_money, format_short, parse_money, set_money_locale
 
     set_money_locale(currency="CHF", number_format="ch")
     assert format_money(1234.5) == "1'234.50 CHF"
@@ -391,7 +392,7 @@ def test_money_format_respects_number_format():
 
 
 def test_money_parser_uses_active_number_format():
-    from utils.money import set_money_locale, parse_money
+    from utils.money import parse_money, set_money_locale
 
     set_money_locale(currency="CHF", number_format="ch")
     assert parse_money("1'234.50 CHF") == 1234.5
@@ -539,8 +540,8 @@ def test_category_rename_cascades_all_known_text_refs(migrated_conn):
 
 
 def test_budget_model_rename_delegates_to_category_cascade(migrated_conn):
-    from model.category_model import CategoryModel
     from model.budget_model import BudgetModel
+    from model.category_model import CategoryModel
 
     cm = CategoryModel(migrated_conn)
     cm.create("Ausgaben", "AltBudgetName")

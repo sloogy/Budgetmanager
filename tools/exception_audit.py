@@ -78,7 +78,7 @@ EXCLUDED_FILES = frozenset({"conftest.py", "dev_check.py", "setup.py"})
 BARE_EXCEPT_LIMIT = 0
 BASE_EXCEPTION_LIMIT = 0
 SILENT_EXCEPT_LIMIT = 24
-BROAD_EXCEPTION_LIMIT = 658
+BROAD_EXCEPTION_LIMIT = 657
 
 
 def _production_files() -> list[Path]:
@@ -124,6 +124,33 @@ def _is_silent(handler: ast.ExceptHandler) -> bool:
     return isinstance(only, ast.Expr) and isinstance(only.value, ast.Constant)
 
 
+def _suppress_ziele(node: ast.With) -> tuple[str, ...] | None:
+    """Namen der Ausnahmen in ``with contextlib.suppress(...)``.
+
+    ``None``, wenn das kein suppress-Block ist. ``contextlib.suppress`` ist
+    genau das, was ``except X: pass`` ist - ein Fehler ohne jede Spur. Wer
+    das hier nicht mitzaehlt, hat einen Ratchet, an dem eine Umschreibung
+    vorbeifuehrt, ohne dass sich etwas gebessert haette.
+    """
+    for item in node.items:
+        aufruf = item.context_expr
+        if not isinstance(aufruf, ast.Call):
+            continue
+        ziel = aufruf.func
+        name = (
+            ziel.attr
+            if isinstance(ziel, ast.Attribute)
+            else ziel.id if isinstance(ziel, ast.Name) else ""
+        )
+        if name != "suppress":
+            continue
+        namen: list[str] = []
+        for arg in aufruf.args:
+            namen.extend(_caught_names(arg) or ("<berechnet>",))
+        return tuple(namen)
+    return None
+
+
 class Findings:
     def __init__(self) -> None:
         self.bare: list[str] = []
@@ -144,6 +171,18 @@ def scan() -> Findings:
         result.files += 1
         rel = path.relative_to(ROOT)
         for node in ast.walk(tree):
+            if isinstance(node, ast.With):
+                ziele = _suppress_ziele(node)
+                if ziele is not None:
+                    where = f"{rel}:{node.lineno}"
+                    if "BaseException" in ziele:
+                        result.base.append(where)
+                    elif "Exception" in ziele:
+                        result.broad += 1
+                        result.silent.append(where)
+                    else:
+                        result.silent.append(where)
+                continue
             if not isinstance(node, ast.ExceptHandler):
                 continue
             names = _caught_names(node.type)

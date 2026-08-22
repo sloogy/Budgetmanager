@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import csv
-from dataclasses import dataclass
-from pathlib import Path
+import logging
 import re
 import sqlite3
+from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from openpyxl import Workbook
-from utils.secure_excel import load_workbook_safely
 
-
-import logging
-from utils.i18n import tr, trf
 from model.crypto import suspend_after_commit_autosave
+from utils.i18n import tr, trf
+from utils.secure_excel import load_workbook_safely
 
 logger = logging.getLogger(__name__)
 
@@ -444,7 +443,7 @@ def export_categories_csv(conn: sqlite3.Connection, out_path: Path) -> Path:
         out_path = out_path.with_suffix(".csv")
 
     from model.category_model import CategoryModel
-    from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+    from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
     cm = CategoryModel(conn)
     rows: list[list] = []

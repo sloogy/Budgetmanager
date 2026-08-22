@@ -1,34 +1,48 @@
 from __future__ import annotations
-from utils.notifications import show_info, show_warning
+
 import logging
+
+from utils.notifications import show_info, show_warning
 
 logger = logging.getLogger(__name__)
 import sqlite3
 
-from PySide6.QtCore import Qt, Signal, QTimer, QCoreApplication, QEvent
-from PySide6.QtGui import QKeySequence, QShortcut, QBrush, QColor, QPalette
+from PySide6.QtCore import QCoreApplication, QEvent, Qt, QTimer, Signal
+from PySide6.QtGui import QBrush, QColor, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
+    QAbstractItemDelegate,
+    QAbstractItemView,
+    QApplication,
+    QCheckBox,
     QComboBox,
+    QDialog,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QMenu,
+    QMessageBox,
+    QPushButton,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
-    QPushButton,
-    QMessageBox,
-    QLabel,
-    QSpinBox,
-    QAbstractItemView,
-    QCheckBox,
-    QDialog,
-    QMenu,
-    QInputDialog,
-    QApplication,
-    QAbstractItemDelegate,
-    QHeaderView,
+    QVBoxLayout,
+    QWidget,
 )
 
-from utils.i18n import tr, trf
+from model.budget_model import BudgetModel
+from model.budget_modes import (
+    BUDGET_MODE_ALL,
+    BUDGET_MODE_MONTH,
+    BUDGET_MODE_RANGE,
+    normalize_budget_mode,
+)
+from model.budget_warnings_model_extended import BudgetWarningsModelExtended
+from model.category_model import Category, CategoryModel
+from model.coverage_model import CoverageResult, budget_year_coverage
+from model.crypto import suspend_after_commit_autosave
+from model.favorites_model import FavoritesModel
+from model.income_specials import apply_13th_month_salary
 from model.typ_constants import (
     TYP_EXPENSES,
     TYP_INCOME,
@@ -36,35 +50,24 @@ from model.typ_constants import (
     is_income,
     normalize_typ,
 )
+from utils.defensive_log import uebersprungen as _uebersprungen
+from utils.i18n import display_typ, tr, tr_category_name, trf
 from utils.icons import get_icon
-from utils.i18n import display_typ, db_typ_from_display, tr_category_name
-from model.category_model import CategoryModel, Category
-from model.budget_model import BudgetModel
-from model.favorites_model import FavoritesModel
-from model.budget_warnings_model_extended import BudgetWarningsModelExtended
-from model.budget_modes import (
-    BUDGET_MODE_MONTH,
-    BUDGET_MODE_ALL,
-    BUDGET_MODE_RANGE,
-    normalize_budget_mode,
-)
-from model.coverage_model import budget_year_coverage, CoverageResult
-from model.crypto import suspend_after_commit_autosave
-from views.copy_year_dialog import CopyYearDialog
-from views.special_income_dialog import ThirteenthSalaryDialog
-from model.income_specials import apply_13th_month_salary
-from views.budget_entry_dialog_extended import BudgetEntryRequest
 
 # Erweiterter Dialog mit integrierter Kategorie-Verwaltung
-from views.budget_entry_dialog_extended import BudgetEntryDialogExtended
+from views.budget_entry_dialog_extended import (
+    BudgetEntryDialogExtended,
+    BudgetEntryRequest,
+)
 
 # Kategorie-Eigenschaften-Dialoge
 from views.category_properties_dialog import (
-    CategoryPropertiesDialog,
     BulkCategoryEditDialog,
+    CategoryPropertiesDialog,
     QuickCategoryDialog,
 )
-from utils.defensive_log import uebersprungen as _uebersprungen
+from views.copy_year_dialog import CopyYearDialog
+from views.special_income_dialog import ThirteenthSalaryDialog
 
 
 def _months() -> list[str]:
@@ -81,9 +84,9 @@ ROLE_TYP = Qt.UserRole + 10  # str (bereits im alten Code genutzt)
 ROLE_ROW_KIND = Qt.UserRole + 11  # str: "header"/"footer"
 
 
-from utils.money import parse_money, format_short
-from views.ui_colors import ui_colors
+from utils.money import format_short, parse_money
 from views.category_delete_dialog import ask_category_delete_decision
+from views.ui_colors import ui_colors
 
 
 def parse_amount(text: str) -> float:
@@ -111,7 +114,7 @@ class _BudgetDragTableWidget(QTableWidget):
     - Drop auf Typ-Header: wird Hauptkategorie dieses Typs
     """
 
-    def __init__(self, owner: "BudgetTab"):
+    def __init__(self, owner: BudgetTab):
         super().__init__(owner)
         self._owner = owner
         self._closing_editor_guard = False
@@ -202,7 +205,7 @@ class _BudgetDragTableWidget(QTableWidget):
                 _uebersprungen("safe_close_active_editor", fehler)
             self._closing_editor_guard = False
 
-    def dropEvent(self, event):  # noqa: N802 (Qt naming)
+    def dropEvent(self, event):
         if not getattr(self._owner, "_category_drag_enabled", False):
             event.ignore()
             return
@@ -215,7 +218,7 @@ class _BudgetDragTableWidget(QTableWidget):
             return
         event.ignore()
 
-    def keyPressEvent(self, event):  # noqa: N802 (Qt naming)
+    def keyPressEvent(self, event):
         """Stabile Enter-Navigation ohne QObject.installEventFilter.
 
         Das frühere EventFilter-Wiring konnte bei Qt6/PySide6 nach Dialogen
@@ -789,7 +792,7 @@ class BudgetTab(QWidget):
         nodes = self.cats.build_tree(items)
 
         # id->name for path
-        by_id: dict[int, Category] = {c.id: c for c in items}
+        {c.id: c for c in items}
 
         totals_by_name: dict[str, dict[int, float]] = {}
         buffer_by_name: dict[str, dict[int, float]] = {}
@@ -1138,10 +1141,7 @@ class BudgetTab(QWidget):
     def seed_from_categories(self):
         year = int(self.year_spin.value())
         typ = self._current_typ_db()
-        if typ == "Alle":
-            types = [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS]
-        else:
-            types = [typ]
+        types = [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS] if typ == "Alle" else [typ]
 
         with suspend_after_commit_autosave(self.conn):
             for t in types:
@@ -1165,10 +1165,7 @@ class BudgetTab(QWidget):
             year = int(self.year_spin.value())
             typ = self._current_typ_db()
 
-            if typ == "Alle":
-                types = [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS]
-            else:
-                types = [typ]
+            types = [TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS] if typ == "Alle" else [typ]
 
             self._buffer_cache.clear()
 
@@ -1485,7 +1482,7 @@ class BudgetTab(QWidget):
             i += 1
 
         children_sum = sum(v for _, v in children)
-        total_val = puffer_val + children_sum
+        puffer_val + children_sum
         sep = "─" * 28
         lines = [f"{tr('budget.tooltip.puffer')}:  {fmt_amount(puffer_val)}", sep]
         for ch_name, ch_val in children:
@@ -2312,7 +2309,7 @@ class BudgetTab(QWidget):
             cat = self._row_cat_real(r)
         else:
             _d = self.typ_cb.currentData()
-            typ = TYP_EXPENSES if not _d else _d
+            typ = _d if _d else TYP_EXPENSES
             cat = None
 
         preset = None
@@ -2566,7 +2563,7 @@ class BudgetTab(QWidget):
             return
 
         row = item.row()
-        col = item.column()
+        item.column()
 
         # Nicht auf Header/Footer
         if self._is_header_row(row) or self._is_footer_row(row):
@@ -2584,6 +2581,10 @@ class BudgetTab(QWidget):
         if len(selected) > 1:
             menu = QMenu(self)
             menu.addSection(trf("budget.ctx.multi_section", count=len(selected)))
+            act_edit_multi = menu.addAction(
+                trf("budget.ctx.edit_properties_count", count=len(selected))
+            )
+            menu.addSeparator()
             act_delete_budget_multi = menu.addAction(
                 trf("budget.ctx.delete_rows_this_year_count", count=len(selected))
             )
@@ -2591,7 +2592,9 @@ class BudgetTab(QWidget):
                 trf("budget.ctx.delete_categories_count", count=len(selected))
             )
             action = menu.exec(self.table.viewport().mapToGlobal(pos))
-            if action == act_delete_budget_multi:
+            if action == act_edit_multi:
+                self._edit_categories_bulk(selected)
+            elif action == act_delete_budget_multi:
                 self._delete_budget_rows_for_categories(selected)
             elif action == act_delete_cat_multi:
                 self._delete_categories_with_confirm(selected)
@@ -2741,6 +2744,18 @@ class BudgetTab(QWidget):
             self, conn=self.conn, category_name=cat_name, typ=typ
         )
         dlg.category_updated.connect(self.load)
+        dlg.exec()
+
+    def _edit_categories_bulk(self, selected: list[tuple[str, str]]) -> None:
+        """Öffnet die Massenbearbeitung für mehrere Kategorien.
+
+        `selected` kommt aus dem Kontextmenü als (typ, name); der Dialog
+        erwartet (name, typ).
+        """
+        kategorien = [(name, typ) for typ, name in selected]
+        dlg = BulkCategoryEditDialog(self, conn=self.conn, categories=kategorien)
+        dlg.categories_updated.connect(self.load)
+        dlg.categories_updated.connect(self.budget_data_changed.emit)
         dlg.exec()
 
     def _rename_category_inline(self, cat_name: str, typ: str) -> None:
@@ -3128,17 +3143,6 @@ class BudgetTab(QWidget):
         has_children = self._row_has_children(row)
         collapsed = bool(it0.data(ROLE_COLLAPSED))
 
-        # Flags come from the real category (not the display path)
-        is_fix = False
-        is_rec = False
-        day = 1
-        for c in self.cats.list(typ):
-            if c.name == real_name:
-                is_fix = bool(c.is_fix)
-                is_rec = bool(c.is_recurring)
-                day = int(c.recurring_day or 1)
-                break
-
         it0.setText(
             self._format_cat_label(display_name, depth, has_children, collapsed)
         )
@@ -3191,7 +3195,7 @@ class BudgetTab(QWidget):
 
         if action == act_expand_all:
             self._set_visible_depth(None)
-        elif action == act_collapse_all or action == act_depth0:
+        elif action in (act_collapse_all, act_depth0):
             self._set_visible_depth(0)
         elif action == act_depth1:
             self._set_visible_depth(1)

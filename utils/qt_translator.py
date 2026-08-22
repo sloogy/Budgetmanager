@@ -23,7 +23,6 @@ Sprachwechsel::
 from __future__ import annotations
 
 import logging
-import os
 import sys
 from pathlib import Path
 
@@ -143,12 +142,13 @@ def install_qt_translations(app, lang_code: str) -> bool:
                 continue
             translator = QTranslator(app)
             # load(filename, directory) ist am robustesten
-            if translator.load(f"{prefix}_{lang}", str(d)):
-                if app.installTranslator(translator):
-                    _installed.append(translator)
-                    loaded_any = True
-                    logger.debug("Qt-Übersetzung installiert: %s", qm)
-                    break  # diesen prefix erledigt, nächsten prefix probieren
+            if translator.load(f"{prefix}_{lang}", str(d)) and app.installTranslator(
+                translator
+            ):
+                _installed.append(translator)
+                loaded_any = True
+                logger.debug("Qt-Übersetzung installiert: %s", qm)
+                break  # diesen prefix erledigt, nächsten prefix probieren
 
     if not loaded_any:
         logger.info(

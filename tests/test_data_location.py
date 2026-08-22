@@ -13,13 +13,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import pytest  # noqa: E402
+import pytest
 
-from model.data_location import (  # noqa: E402
-    list_user_data,
-    has_user_data,
-    migrate_data_dir,
+from model.data_location import (
     DataMigrationError,
+    has_user_data,
+    list_user_data,
+    migrate_data_dir,
 )
 
 

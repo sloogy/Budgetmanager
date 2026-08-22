@@ -1,6 +1,8 @@
 from __future__ import annotations
-from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+
 import logging
+
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 logger = logging.getLogger(__name__)
 
@@ -10,19 +12,18 @@ from datetime import date
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QAbstractItemView,
+    QComboBox,
     QDateEdit,
     QDialog,
-    QVBoxLayout,
+    QFrame,
     QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QPushButton,
     QTableWidget,
     QTableWidgetItem,
-    QLabel,
-    QAbstractItemView,
-    QHeaderView,
-    QCheckBox,
-    QFrame,
-    QComboBox,
+    QVBoxLayout,
 )
 
 
@@ -43,13 +44,17 @@ class PendingBooking:
 
 
 from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import display_typ, tr, trf
 from utils.money import (
-    format_short as _fmt_chf,
-    parse_money as _parse_chf,
     currency_header,
 )
+from utils.money import (
+    format_short as _fmt_chf,
+)
+from utils.money import (
+    parse_money as _parse_chf,
+)
 from views.ui_colors import ui_colors
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
 
 
 class SortablePendingItem:

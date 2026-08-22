@@ -19,7 +19,6 @@ Läuft ohne Qt/PySide6 (UserModel und crypto sind Qt-frei).
 from __future__ import annotations
 
 import json
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -33,8 +32,8 @@ def test_removing_broken_quick_account_clears_data_dir(monkeypatch):
     monkeypatch.setenv("BUDGETMANAGER_APP_DIR", app_dir)
 
     # Importe erst NACH dem Setzen der Env, damit data_dir() korrekt auflöst.
-    from model.user_model import UserModel, SECURITY_QUICK, data_dir
     from model.crypto import decrypt_db_from_file
+    from model.user_model import SECURITY_QUICK, UserModel
 
     um = UserModel()
     user, _ = um.create_user("Feld Quick", SECURITY_QUICK, "")

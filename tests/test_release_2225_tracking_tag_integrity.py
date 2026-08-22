@@ -11,7 +11,6 @@ from model.tags_model import TagsModel
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
 
-
 _OPEN_CONNECTIONS: list[sqlite3.Connection] = []
 
 

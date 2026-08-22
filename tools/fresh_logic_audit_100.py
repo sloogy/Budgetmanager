@@ -27,13 +27,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.migrations import migrate_all  # noqa: E402
-from model.tracking_model import TrackingModel  # noqa: E402
-from model.category_model import CategoryModel  # noqa: E402
-from model.tags_model import TagsModel  # noqa: E402
-from model.savings_goals_model import SavingsGoalsModel  # noqa: E402
-from model.undo_redo_model import UndoRedoModel  # noqa: E402
-from model.typ_constants import TYP_EXPENSES, TYP_SAVINGS  # noqa: E402
+from model.category_model import CategoryModel
+from model.migrations import migrate_all
+from model.savings_goals_model import SavingsGoalsModel
+from model.tags_model import TagsModel
+from model.tracking_model import TrackingModel
+from model.typ_constants import TYP_EXPENSES, TYP_SAVINGS
+from model.undo_redo_model import UndoRedoModel
 
 FINDINGS: list[str] = []
 

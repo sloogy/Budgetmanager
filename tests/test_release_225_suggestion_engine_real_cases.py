@@ -20,14 +20,14 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.budget_learning import KIND_FIXED_RECURRING  # noqa: E402
-from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
+from model.budget_learning import KIND_FIXED_RECURRING
+from model.budget_overview_model import BudgetOverviewModel
+from model.budget_suggestion_engine import BudgetSuggestionEngine
 from model.budget_warnings_model_extended import (
     BudgetWarningsModelExtended,
-)  # noqa: E402
-from model.budget_suggestion_engine import BudgetSuggestionEngine  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES  # noqa: E402
+)
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES
 
 
 @pytest.fixture

@@ -1,12 +1,14 @@
 from __future__ import annotations
+
 import logging
-from utils.i18n import tr, trf
+
+from PySide6.QtCore import QRect, Qt
+from PySide6.QtGui import QBrush, QColor, QFontMetrics, QPainter, QPen
+from PySide6.QtWidgets import QStyle, QStyledItemDelegate
+
+from utils.i18n import tr
 
 logger = logging.getLogger(__name__)
-
-from PySide6.QtCore import Qt, QRect
-from PySide6.QtGui import QColor, QFontMetrics, QPainter, QPen, QBrush
-from PySide6.QtWidgets import QStyledItemDelegate, QStyle
 
 
 def _ideal_text_color(bg: QColor) -> QColor:

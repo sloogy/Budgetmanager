@@ -88,7 +88,7 @@ def test_installer_staging_requires_exactly_one_setup_exe(tmp_path):
 def test_apply_aborts_when_rollback_backup_fails_linux(monkeypatch, tmp_path):
     import updater.apply_update as apply_update
     import updater.common as common
-    from updater.common import AssetInfo, Manifest, staged_tree_sha256
+    from updater.common import staged_tree_sha256
 
     updates = tmp_path / "updates"
     staging = updates / "staging" / "9.9.9"

@@ -10,54 +10,49 @@ Features:
 
 from __future__ import annotations
 
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
 import logging
 import sqlite3
 
-logger = logging.getLogger(__name__)
-
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QBrush
-from views.ui_colors import ui_colors
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QGridLayout,
-    QLabel,
-    QLineEdit,
+    QAbstractItemView,
     QCheckBox,
-    QSpinBox,
     QComboBox,
-    QPushButton,
+    QDialog,
+    QGridLayout,
     QGroupBox,
+    QHBoxLayout,
+    QHeaderView,
+    QInputDialog,
+    QLabel,
+    QMenu,
     QMessageBox,
-    QDialogButtonBox,
+    QPushButton,
+    QSizePolicy,
+    QSplitter,
     QTreeWidget,
     QTreeWidgetItem,
+    QVBoxLayout,
     QWidget,
-    QWidget,
-    QFrame,
-    QSplitter,
-    QMenu,
-    QInputDialog,
-    QHeaderView,
-    QAbstractItemView,
-    QSizePolicy,
 )
 
-from model.category_model import CategoryModel, Category
 from model.category_forecast_mode import (
     FORECAST_MODE_AUTO,
     FORECAST_MODE_INCREMENTAL,
     FORECAST_MODE_NORMAL,
     FORECAST_MODE_POT,
 )
+from model.category_model import Category, CategoryModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import display_typ, tr, tr_category_name, trf
 from utils.icons import get_icon
-from utils.i18n import tr, trf, display_typ, db_typ_from_display, tr_category_name
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
+from utils.notifications import show_info, show_warning
 from views.category_delete_dialog import ask_category_delete_decision
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 def _forecast_mode_label(mode: str) -> str:
@@ -79,11 +74,11 @@ class _CategoryTreeWidget(QTreeWidget):
     - auf einen Typ-Header: wird Hauptkategorie dieses Typs
     """
 
-    def __init__(self, owner: "CategoryManagerDialog"):
+    def __init__(self, owner: CategoryManagerDialog):
         super().__init__(owner)
         self._owner = owner
 
-    def dropEvent(self, event):  # noqa: N802 (Qt naming)
+    def dropEvent(self, event):
         pos = event.position().toPoint() if hasattr(event, "position") else event.pos()
         target_item = self.itemAt(pos)
         current_item = self.currentItem()

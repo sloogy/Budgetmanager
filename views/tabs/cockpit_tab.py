@@ -3,46 +3,42 @@ from __future__ import annotations
 import logging
 import os
 import sqlite3
+from collections.abc import Iterable
 from datetime import date
-from typing import Iterable
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QFrame,
-    QTableWidget,
-    QTableWidgetItem,
-    QHeaderView,
-    QProgressBar,
-    QGridLayout,
-    QScrollArea,
-    QMenu,
-    QSizePolicy,
+    QAbstractScrollArea,
+    QCheckBox,
+    QComboBox,
     QDialog,
+    QDialogButtonBox,
+    QFrame,
+    QGridLayout,
+    QHBoxLayout,
+    QHeaderView,
+    QLabel,
     QListWidget,
     QListWidgetItem,
-    QDialogButtonBox,
-    QAbstractScrollArea,
-    QComboBox,
-    QCheckBox,
+    QProgressBar,
+    QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
-from model.favorites_model import FavoritesModel
-from model.savings_goals_model import SavingsGoalsModel, STATUS_SAVING, STATUS_RELEASED
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
-from model.pot_reserve_model import PotReserveModel
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS
 from model.date_ranges import month_bounds
+from model.favorites_model import FavoritesModel
+from model.pot_reserve_model import PotReserveModel
 from model.salary_cycle import SalaryCycle, previous_salary_cycle, resolve_salary_cycle
-from utils.i18n import display_typ, tr, trf
+from model.savings_goals_model import STATUS_RELEASED, STATUS_SAVING, SavingsGoalsModel
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from settings import Settings
 from utils import cockpit_presets as _cp
-from views.cockpit_charts import DonutChart, TrendAreaChart
-from views.ui_colors import ui_colors
 from utils.cockpit_layout import (
     LAYOUT_AUTO,
     LAYOUT_FIXED,
@@ -52,13 +48,15 @@ from utils.cockpit_layout import (
     normalize_mode,
     normalize_order,
 )
+from utils.i18n import display_typ, tr, trf
+from utils.money import format_money
+from views.cockpit_charts import DonutChart, TrendAreaChart
 from views.cockpit_sections import (
     CollapsibleSection,
     ResponsiveColumns,
     fit_table_height,
 )
-from utils.money import format_money
-from utils.icons import get_icon
+from views.ui_colors import ui_colors
 
 logger = logging.getLogger(__name__)
 
@@ -1064,9 +1062,8 @@ class CockpitTab(QWidget):
                     status = "🔴 " + tr("cockpit.warning_exceeded")
                 elif actual <= budget * 0.1:
                     status = "🟡 " + tr("cockpit.warning_underused")
-            elif typ in (TYP_INCOME, TYP_SAVINGS):
-                if actual < budget:
-                    status = "🟡 " + tr("cockpit.warning_goal_open")
+            elif typ in (TYP_INCOME, TYP_SAVINGS) and actual < budget:
+                status = "🟡 " + tr("cockpit.warning_goal_open")
             if status:
                 rows.append(
                     [
@@ -1266,7 +1263,6 @@ class CockpitTab(QWidget):
                 (start, end),
             ).fetchall()
         }
-        EPS = 1e-6
         open_count = 0
         # v2.2.4 (Führung/Stabilität): Fälligkeit je Position berücksichtigen –
         # im laufenden Monat gilt eine Position erst ab ihrem Soll-Tag als

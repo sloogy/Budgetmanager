@@ -14,14 +14,14 @@ sys.path.insert(0, str(ROOT))
 from model.budget_learning import (
     KIND_FIXED_RECURRING,
     apply_learning_budget_kind,
-)  # noqa: E402
-from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
+)
+from model.budget_overview_model import BudgetOverviewModel
 from model.budget_warnings_model_extended import (
     BudgetWarningsModelExtended,
-)  # noqa: E402
-from model.migrations import migrate_all  # noqa: E402
-from model.typ_constants import TYP_EXPENSES  # noqa: E402
-from settings import Settings  # noqa: E402
+)
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES
+from settings import Settings
 
 
 @pytest.fixture

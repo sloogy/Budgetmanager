@@ -93,9 +93,7 @@ def _pid_alive_windows(
             result = kernel32.WaitForSingleObject(handle, 0)
             if result == wait_timeout:
                 return True
-            if result == wait_object_0:
-                return False
-            return True
+            return result != wait_object_0
         finally:
             kernel32.CloseHandle(handle)
     except Exception:

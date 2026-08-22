@@ -16,7 +16,6 @@ from __future__ import annotations
 import sqlite3
 
 import pytest
-
 from PySide6.QtWidgets import QApplication
 
 from model.category_model import CategoryModel

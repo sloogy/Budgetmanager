@@ -16,9 +16,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.migrations import migrate_all  # noqa: E402
-from model.budget_overview_model import BudgetOverviewModel  # noqa: E402
-from model.typ_constants import TYP_EXPENSES  # noqa: E402
+from model.budget_overview_model import BudgetOverviewModel
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES
 
 
 def _add_category(conn: sqlite3.Connection, typ: str, name: str) -> None:

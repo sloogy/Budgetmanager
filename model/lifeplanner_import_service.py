@@ -14,16 +14,17 @@ import math
 import os
 import re
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import dataclass, replace
-from utils.atomic_write import atomar_offen
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from model.category_model import CategoryModel
 from model.database import db_transaction
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
+from utils.atomic_write import atomar_offen
 from utils.money import get_currency
 
 BRIDGE_FILE = "fpm_to_budgetmanager.jsonl"
@@ -95,10 +96,11 @@ def default_bridge_dir() -> Path:
     from model.bridge_registry import eintragen
 
     override = os.environ.get("LIFEPLANNER_BRIDGE_DIR", "").strip()
-    if override:
-        path = Path(override).expanduser().resolve()
-    else:
-        path = Path.home() / "fpm_budgetmanager_bridge"
+    path = (
+        Path(override).expanduser().resolve()
+        if override
+        else Path.home() / "fpm_budgetmanager_bridge"
+    )
     neu = not path.exists()
     path.mkdir(parents=True, exist_ok=True)
     if neu:
@@ -265,7 +267,8 @@ def _einlesen(src: Path, parsed: dict[str, ImportRecord]) -> None:
 def load_import_records(
     conn: sqlite3.Connection, path: str | Path | None = None
 ) -> list[ImportRecord]:
-    if path is not None:
+    # Kein Ternary: die Begruendung im else-Zweig gehoert an ihre Stelle.
+    if path is not None:  # noqa: SIM108
         quellen = [Path(path)]
     else:
         # Aus jeder bekannten Brücke, die aktive zuletzt: Wer den
@@ -476,7 +479,7 @@ def apply_import(
         ensure_ascii=False,
         sort_keys=True,
     )
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(UTC).isoformat()
     with db_transaction(conn):
         if updated:
             tracking.update(
@@ -552,7 +555,7 @@ def reject_import(conn: sqlite3.Connection, record: ImportRecord) -> None:
             record.payload_hash,
             "rejected",
             tracking_id,
-            datetime.now(timezone.utc).isoformat(),
+            datetime.now(UTC).isoformat(),
             json.dumps(record.raw, ensure_ascii=False, sort_keys=True),
             "",
         ),
@@ -581,7 +584,7 @@ def export_fpm_expense_proposals(
                 {
                     "schema": "fpm.import.manifest.v1",
                     "source": "BudgetManager",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                     "mode": "reviewable_bridge_import",
                 },
                 ensure_ascii=False,
@@ -657,7 +660,7 @@ def export_savings_goals(conn, path: str | Path | None = None) -> BridgeExportRe
                 {
                     "schema": "fpm.savings-goals.manifest.v1",
                     "source": "BudgetManager",
-                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "created_at": datetime.now(UTC).isoformat(),
                 },
                 ensure_ascii=False,
                 sort_keys=True,

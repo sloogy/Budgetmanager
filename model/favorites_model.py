@@ -1,9 +1,9 @@
 from __future__ import annotations
+
 import logging
+import sqlite3
 
 logger = logging.getLogger(__name__)
-import sqlite3
-from typing import List, Tuple
 
 
 class FavoritesModel:
@@ -38,7 +38,7 @@ class FavoritesModel:
         )
         return cur.fetchone()[0] > 0
 
-    def list_favorites(self, typ: str) -> List[str]:
+    def list_favorites(self, typ: str) -> list[str]:
         """Liste alle Favoriten für einen Typ"""
         cur = self.conn.execute(
             "SELECT category FROM favorites WHERE typ = ? ORDER BY sort_order, category",
@@ -46,14 +46,14 @@ class FavoritesModel:
         )
         return [row[0] for row in cur.fetchall()]
 
-    def list_all(self) -> List[Tuple[str, str]]:
+    def list_all(self) -> list[tuple[str, str]]:
         """Liste alle Favoriten (typ, category)"""
         cur = self.conn.execute(
             "SELECT typ, category FROM favorites ORDER BY typ, sort_order, category"
         )
         return [(row[0], row[1]) for row in cur.fetchall()]
 
-    def get_all_favorites(self) -> List[Tuple[str, str]]:
+    def get_all_favorites(self) -> list[tuple[str, str]]:
         """Alias für list_all() – Kompatibilität mit FavoritesDashboardDialog."""
         return self.list_all()
 
@@ -92,7 +92,7 @@ class FavoritesModel:
         favs = self.list_favorites(typ)
         self._save_order(typ, favs)
 
-    def _save_order(self, typ: str, categories: List[str]) -> None:
+    def _save_order(self, typ: str, categories: list[str]) -> None:
         """Speichert die Reihenfolge"""
         for i, cat in enumerate(categories):
             self.conn.execute(

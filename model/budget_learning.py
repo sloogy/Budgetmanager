@@ -8,17 +8,17 @@ Startbudget vorgeschlagen. Sobald ein Budget existiert, ist der Lernmodus für
 
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass
 from math import ceil, floor
 from statistics import median
-import sqlite3
 
 from model.category_forecast_mode import (
     FORECAST_MODE_INCREMENTAL,
     FORECAST_MODE_NORMAL,
     FORECAST_MODE_POT,
 )
-from model.typ_constants import TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS, is_income
+from model.typ_constants import TYP_INCOME, TYP_SAVINGS, is_income
 from utils.i18n import tr
 from utils.money import format_money
 
@@ -137,7 +137,7 @@ def infer_learning_budget_kind(typ: str, observed_values: list[float]) -> str:
 
     zero_count = sum(1 for v in values if v <= 0.01)
     active_count = len(positives)
-    active_ratio = active_count / max(1, len(values))
+    active_count / max(1, len(values))
     cv = _coefficient_of_variation(positives)
 
     if typ == TYP_INCOME or is_income(typ):

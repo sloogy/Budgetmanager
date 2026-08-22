@@ -1,40 +1,39 @@
-from __future__ import annotations
-
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
-
 """
 Vollständiger Theme-Editor - ALLE Themes komplett editierbar
 """
 
-from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QDialogButtonBox,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QListWidget,
-    QScrollArea,
-    QWidget,
-    QFormLayout,
-    QLineEdit,
-    QComboBox,
-    QColorDialog,
-    QMessageBox,
-    QGroupBox,
-    QInputDialog,
-    QFileDialog,
-)
-from utils.icons import get_icon
-from PySide6.QtCore import Qt, QSignalBlocker
-from PySide6.QtGui import QColor
-from views.ui_colors import ui_colors
+from __future__ import annotations
+
 import json
-
-
 import logging
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+
+from PySide6.QtCore import QSignalBlocker, Qt
+from PySide6.QtGui import QColor
+from PySide6.QtWidgets import (
+    QColorDialog,
+    QComboBox,
+    QDialog,
+    QDialogButtonBox,
+    QFileDialog,
+    QFormLayout,
+    QGroupBox,
+    QHBoxLayout,
+    QInputDialog,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QMessageBox,
+    QPushButton,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
+
+from utils.accessibility import configure_dialog_tab_order
+from utils.i18n import tr, trf
+from utils.icons import get_icon
+from utils.notifications import show_info, show_warning
+from views.ui_colors import ui_colors
 
 logger = logging.getLogger(__name__)
 
@@ -468,7 +467,7 @@ class ThemeEditorDialog(QDialog):
             return
 
         try:
-            with open(file, "r", encoding="utf-8") as f:
+            with open(file, encoding="utf-8") as f:
                 data = json.load(f)
 
             name = data.get("name", "Importiertes Theme")

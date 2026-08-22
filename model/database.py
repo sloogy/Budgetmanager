@@ -1,12 +1,12 @@
 from __future__ import annotations
-import logging
 
-logger = logging.getLogger(__name__)
-import sqlite3
 import atexit
+import logging
+import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _configure_connection(conn: sqlite3.Connection, *, is_memory: bool = False) -> None:
@@ -112,7 +112,7 @@ class EncryptedSession:
     @classmethod
     def open_with_key(
         cls, enc_path: str, db_key: bytes, salt: bytes
-    ) -> "EncryptedSession":
+    ) -> EncryptedSession:
         """Öffnet eine verschlüsselte DB mit dem db_key."""
         from model.crypto import decrypt_db_from_file
 

@@ -15,11 +15,9 @@ Nutzung:
 from __future__ import annotations
 
 import logging
-from utils.i18n import tr, trf
 from dataclasses import dataclass, field
-from typing import Dict, Optional
 
-from PySide6.QtGui import QColor, QBrush
+from PySide6.QtGui import QBrush, QColor
 from PySide6.QtWidgets import QWidget
 
 logger = logging.getLogger(__name__)
@@ -29,11 +27,15 @@ logger = logging.getLogger(__name__)
 # TYP_* Konstanten als Schlüssel (DB-Werte = immer Deutsch, sprachunabhängig)
 from model.typ_constants import (
     TYP_EXPENSES as _TE,
+)
+from model.typ_constants import (
     TYP_INCOME as _TI,
+)
+from model.typ_constants import (
     TYP_SAVINGS as _TS,
 )
 
-_DEFAULT_TYPE_COLORS: Dict[str, str] = {
+_DEFAULT_TYPE_COLORS: dict[str, str] = {
     _TI: "#2ecc71",
     _TE: "#e74c3c",
     _TS: "#3498db",
@@ -79,7 +81,7 @@ class UIColors:
     """Immutable Container für die aktiven Theme-Farben."""
 
     # Typ-Farben
-    type_colors: Dict[str, str] = field(
+    type_colors: dict[str, str] = field(
         default_factory=lambda: dict(_DEFAULT_TYPE_COLORS)
     )
 
@@ -325,7 +327,7 @@ def _lighten(hex_color: str, factor: float = 0.6) -> str:
 # ── Haupt-API ──────────────────────────────────────────────────────
 
 
-def ui_colors(widget: Optional[QWidget] = None) -> UIColors:
+def ui_colors(widget: QWidget | None = None) -> UIColors:
     """Holt die aktuellen Theme-Farben.
 
     Durchsucht die Widget-Hierarchie nach dem MainWindow und dessen
@@ -394,7 +396,7 @@ def invalidate_color_cache() -> None:
     _cache.clear()
 
 
-def themed(widget: Optional[QWidget], template: str) -> str:
+def themed(widget: QWidget | None, template: str) -> str:
     """Ersetzt ``%(name)s``-Marken in einem Stylesheet durch Profilfarben.
 
     Bewusst %-Formatierung statt f-String oder ``str.format``: QSS besteht aus

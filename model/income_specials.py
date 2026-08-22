@@ -7,8 +7,8 @@ Einkommenskategorie mit genau einem budgetierten Auszahlungsmonat.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sqlite3
+from dataclasses import dataclass
 
 from model.budget_model import BudgetModel
 from model.category_forecast_mode import FORECAST_MODE_INCREMENTAL

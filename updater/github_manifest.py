@@ -1,11 +1,11 @@
 from __future__ import annotations
-import logging
-
-logger = logging.getLogger(__name__)
 
 import json
+import logging
 from dataclasses import dataclass
-from typing import Dict, Any
+from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 DEFAULT_MANIFEST_URL = (
@@ -25,10 +25,10 @@ class Manifest:
     version: str
     release_tag: str
     channel: str
-    assets: Dict[str, Asset]
+    assets: dict[str, Asset]
 
 
-def parse_manifest(data: Dict[str, Any]) -> Manifest:
+def parse_manifest(data: dict[str, Any]) -> Manifest:
     if not isinstance(data, dict):
         raise ValueError("Manifest ist kein JSON-Objekt")
 
@@ -43,7 +43,7 @@ def parse_manifest(data: Dict[str, Any]) -> Manifest:
     if not isinstance(assets_raw, dict) or not assets_raw:
         raise ValueError("Manifest fehlt: assets")
 
-    assets: Dict[str, Asset] = {}
+    assets: dict[str, Asset] = {}
     for key, val in assets_raw.items():
         if not isinstance(val, dict):
             continue

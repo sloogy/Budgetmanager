@@ -25,10 +25,9 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from model.migrations import migrate_all  # noqa: E402
-from model.budget_suggestion_engine import BudgetSuggestionEngine  # noqa: E402
-from model.typ_constants import TYP_EXPENSES  # noqa: E402
-
+from model.budget_suggestion_engine import BudgetSuggestionEngine
+from model.migrations import migrate_all
+from model.typ_constants import TYP_EXPENSES
 
 # ── Helpers ──────────────────────────────────────────────────────
 

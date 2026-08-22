@@ -11,17 +11,17 @@ Befund B: TagsModel lieferte uneinheitlich Tag-Objekte und rohe dicts.
 from __future__ import annotations
 
 import ast
-from contextlib import closing
 import sqlite3
 import sys
+from contextlib import closing
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from model.migrations import migrate_all  # noqa: E402
-from model.tags_model import Tag, TagsModel  # noqa: E402
+from model.migrations import migrate_all
+from model.tags_model import Tag, TagsModel
 
 GATE = ROOT / "tools" / "lint_procedure_check.py"
 

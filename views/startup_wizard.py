@@ -1,46 +1,47 @@
 from __future__ import annotations
 
-from utils.accessibility import configure_dialog_tab_order
-from utils.notifications import show_info, show_warning
 import logging
-
-logger = logging.getLogger(__name__)
-
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QDialog,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QPushButton,
-    QLineEdit,
-    QRadioButton,
     QButtonGroup,
-    QGroupBox,
-    QFrame,
-    QFormLayout,
+    QCheckBox,
+    QDialog,
     QFileDialog,
-    QMessageBox,
+    QFormLayout,
+    QFrame,
+    QGroupBox,
+    QHBoxLayout,
     QInputDialog,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QPushButton,
+    QRadioButton,
     QStackedWidget,
     QTextEdit,
-    QCheckBox,
+    QVBoxLayout,
 )
 
 from model.user_model import (
-    UserModel,
-    User,
-    SECURITY_QUICK,
-    SECURITY_PIN,
+    PASSWORD_MIN_LENGTH,
+    PIN_MAX_LENGTH,
+    PIN_MIN_LENGTH,
     SECURITY_PASSWORD,
+    SECURITY_PIN,
+    SECURITY_QUICK,
+    User,
+    UserModel,
 )
-from model.user_model import PIN_MIN_LENGTH, PIN_MAX_LENGTH, PASSWORD_MIN_LENGTH
-from views.ui_colors import ui_colors
+from utils.accessibility import configure_dialog_tab_order
 from utils.i18n import tr, trf
+from utils.notifications import show_info, show_warning
+from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -472,10 +473,9 @@ class StartupWizard(QDialog):
                 )
                 restore_key = ""
 
-        if restore_key:
-            if not self._show_restore_key(restore_key, user):
-                _rollback_created_user()
-                return  # user closed dialog without confirming
+        if restore_key and not self._show_restore_key(restore_key, user):
+            _rollback_created_user()
+            return  # user closed dialog without confirming
 
         if self._import_src_path:
             show_info(self, tr("startup.import_title"), tr("startup.import_success"))
@@ -603,6 +603,7 @@ class StartupWizard(QDialog):
             return
         import json
         import zipfile
+
         from model.restore_bundle import (
             MAX_SETTINGS_BYTES,
             read_member_limited,
@@ -785,6 +786,7 @@ class StartupWizard(QDialog):
         self, src_db: Path, dest_enc: Path, db_key: bytes, salt: bytes
     ) -> None:
         import sqlite3
+
         from model.crypto import encrypt_db_to_file
 
         try:
@@ -851,6 +853,7 @@ class StartupWizard(QDialog):
 
     def _extract_bmr_to_temp(self, bundle_path: Path) -> Path:
         import zipfile
+
         from model.file_permissions import secure_dir, secure_file
         from model.restore_bundle import (
             MAX_DB_BYTES,

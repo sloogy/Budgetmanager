@@ -1,10 +1,10 @@
-from __future__ import annotations
-
 """Einstellungs-Workflow des Hauptfensters.
 
 Die Logik ist bewusst ausgelagert, damit ``MainWindow`` Navigation und
 Fenster-Lebenszyklus koordiniert, ohne erneut zu einem GUI-Monolithen zu werden.
 """
+
+from __future__ import annotations
 
 import logging
 

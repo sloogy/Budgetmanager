@@ -13,37 +13,36 @@ from __future__ import annotations
 
 import logging
 
-logger = logging.getLogger(__name__)
-
-from PySide6.QtCore import Qt, Signal, QMargins
-from PySide6.QtGui import QPainter, QFont, QCursor, QColor
-from PySide6.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QFrame,
-    QProgressBar,
-    QSizePolicy,
-)
 from PySide6.QtCharts import (
+    QBarCategoryAxis,
+    QBarSeries,
+    QBarSet,
     QChart,
     QChartView,
+    QHorizontalStackedBarSeries,
+    QLineSeries,
     QPieSeries,
     QPieSlice,
-    QBarSeries,
     QStackedBarSeries,
-    QBarSet,
-    QBarCategoryAxis,
     QValueAxis,
-    QLineSeries,
-    QHorizontalStackedBarSeries,
+)
+from PySide6.QtCore import QMargins, Qt, Signal
+from PySide6.QtGui import QColor, QCursor, QFont, QPainter
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QVBoxLayout,
+    QWidget,
 )
 
-from utils.icons import get_icon
 from utils.i18n import tr
+from utils.icons import get_icon
 from utils.money import format_money as format_chf
 from views.ui_colors import ui_colors
+
+logger = logging.getLogger(__name__)
 
 
 class CompactKPICard(QFrame):
@@ -168,10 +167,11 @@ class CompactProgressBar(QWidget):
         )
 
         c = ui_colors(self)
-        if self.typ_key:
-            color = c.type_color(self.typ_key)
-        else:
-            color = self._bar_color or c.progress_color(percent)
+        color = (
+            c.type_color(self.typ_key)
+            if self.typ_key
+            else self._bar_color or c.progress_color(percent)
+        )
         self.progress.setStyleSheet(
             f"""
             QProgressBar {{

@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """Übernahme (Migration) von Nutzerdaten in einen neuen Datenordner.
 
 Bewusst Qt-frei und ohne App-Abhängigkeiten, damit die Logik testbar ist und
@@ -22,6 +20,8 @@ Sicherheit:
 - In einen Zielordner, der bereits Nutzerdaten enthält, wird nicht migriert
   (kein Vermischen zweier Datenbestände).
 """
+
+from __future__ import annotations
 
 import shutil
 import zipfile

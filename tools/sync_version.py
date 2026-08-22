@@ -24,7 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app_info import APP_NAME, APP_VERSION, APP_RELEASE_DATE  # noqa: E402
+from app_info import APP_NAME, APP_RELEASE_DATE, APP_VERSION
 
 
 def _latest_template_data() -> dict:

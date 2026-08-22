@@ -14,39 +14,30 @@ Benutzerdaten in data/users.json.
 
 from __future__ import annotations
 
-from utils.atomic_write import atomar_schreiben
-import logging
-
-logger = logging.getLogger(__name__)
-
 import json
-import os
+import logging
 import re
-from pathlib import Path
-from dataclasses import dataclass, field, asdict, replace
-from typing import Optional
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime
+from pathlib import Path
 
 from model.app_paths import data_dir
-from model.file_permissions import secure_file
 from model.crypto import (
-    generate_salt,
-    generate_db_key,
-    hash_password,
-    verify_password,
-    is_legacy_password_hash,
-    wrap_db_key,
-    unwrap_db_key,
-    unwrap_db_key_with_iterations,
-    db_key_to_restore_key,
-    restore_key_to_db_key,
-    create_empty_encrypted_db,
-    decrypt_db_from_file,
-    save_memory_db,
-    encrypt_db_to_file,
-    SALT_LENGTH,
     PBKDF2_ITERATIONS,
+    create_empty_encrypted_db,
+    db_key_to_restore_key,
+    decrypt_db_from_file,
+    generate_db_key,
+    generate_salt,
+    hash_password,
+    is_legacy_password_hash,
+    restore_key_to_db_key,
+    unwrap_db_key_with_iterations,
+    wrap_db_key,
 )
+from utils.atomic_write import atomar_schreiben
+
+logger = logging.getLogger(__name__)
 
 USERS_FILE = "users.json"
 
@@ -194,11 +185,10 @@ def _validate_security_secret(security: str, secret: str = "") -> None:
             raise ValueError(
                 f"PIN muss {PIN_MIN_LENGTH}–{PIN_MAX_LENGTH} Ziffern lang sein"
             )
-    elif security == SECURITY_PASSWORD:
-        if len(secret) < PASSWORD_MIN_LENGTH:
-            raise ValueError(
-                f"Passwort muss mindestens {PASSWORD_MIN_LENGTH} Zeichen lang sein"
-            )
+    elif security == SECURITY_PASSWORD and len(secret) < PASSWORD_MIN_LENGTH:
+        raise ValueError(
+            f"Passwort muss mindestens {PASSWORD_MIN_LENGTH} Zeichen lang sein"
+        )
 
 
 class UserModel:
@@ -214,7 +204,7 @@ class UserModel:
             self._users = {}
             return
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 data = json.load(f)
             self._users = {}
             valid_fields = set(User.__dataclass_fields__)
@@ -256,7 +246,7 @@ class UserModel:
     def list_users(self) -> list[User]:
         return sorted(self._users.values(), key=lambda u: u.display_name.lower())
 
-    def get(self, username: str) -> Optional[User]:
+    def get(self, username: str) -> User | None:
         return self._users.get(username)
 
     def username_exists(self, username: str) -> bool:
@@ -268,7 +258,7 @@ class UserModel:
     def get_auth_users(self) -> list[User]:
         return [u for u in self._users.values() if u.needs_auth]
 
-    def get_default_user(self) -> Optional[User]:
+    def get_default_user(self) -> User | None:
         """Gibt den Standard-Benutzer zurück (falls gesetzt)."""
         for u in self._users.values():
             if u.is_default:
@@ -462,7 +452,7 @@ class UserModel:
 
     # ── Authentifizierung ────────────────────────
 
-    def authenticate(self, username: str, secret: str) -> Optional[bytes]:
+    def authenticate(self, username: str, secret: str) -> bytes | None:
         """Authentifiziert und gibt den db_key zurück.
 
         Returns: db_key bei Erfolg, None bei Fehler
@@ -491,7 +481,7 @@ class UserModel:
             logger.warning("Authentifizierung fehlgeschlagen für '%s'", username)
             return None
 
-    def authenticate_quick(self, username: str) -> Optional[bytes]:
+    def authenticate_quick(self, username: str) -> bytes | None:
         """Quick-Login ohne Secret."""
         user = self._users.get(username)
         if not user or not user.is_quick:
@@ -502,7 +492,7 @@ class UserModel:
             logger.warning("Quick-Login fehlgeschlagen für '%s': %s", username, e)
             return None
 
-    def authenticate_restore(self, username: str, restore_key: str) -> Optional[bytes]:
+    def authenticate_restore(self, username: str, restore_key: str) -> bytes | None:
         """Authentifiziert mit Restore-Key."""
         user = self._users.get(username)
         if not user:
@@ -537,10 +527,7 @@ class UserModel:
 
         # Alten db_key holen
         try:
-            if user.is_quick:
-                db_key = user.get_db_key()
-            else:
-                db_key = user.get_db_key(old_secret)
+            db_key = user.get_db_key() if user.is_quick else user.get_db_key(old_secret)
         except ValueError:
             return False, ""
 

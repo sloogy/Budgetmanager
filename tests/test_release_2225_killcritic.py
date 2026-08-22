@@ -37,10 +37,10 @@ def test_redo_delete_leaves_no_orphaned_entry_tags():
     import sys
 
     sys.path.insert(0, str(ROOT))
-    from model.migrations import migrate_all
     from model.category_model import CategoryModel
-    from model.tracking_model import TrackingModel
+    from model.migrations import migrate_all
     from model.tags_model import TagsModel
+    from model.tracking_model import TrackingModel
 
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row

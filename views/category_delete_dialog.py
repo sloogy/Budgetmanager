@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import sqlite3
+from dataclasses import dataclass
 
 from PySide6.QtWidgets import (
     QComboBox,
@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from model.category_model import CategoryModel, Category
-from utils.i18n import tr, trf, display_typ
+from model.category_model import Category, CategoryModel
+from utils.i18n import display_typ, tr, trf
 
 
 @dataclass(frozen=True)

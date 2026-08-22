@@ -1,24 +1,24 @@
 from __future__ import annotations
 
 import logging
-
-logger = logging.getLogger(__name__)
 import sqlite3
 from datetime import date
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QDialog,
-    QVBoxLayout,
-    QLabel,
     QDialogButtonBox,
+    QFrame,
+    QLabel,
     QPushButton,
     QScrollArea,
-    QFrame,
+    QVBoxLayout,
 )
 
+from utils.i18n import tr
 from views.tabs.budget_tab import BudgetTab
-from utils.i18n import tr, trf, display_typ, db_typ_from_display
+
+logger = logging.getLogger(__name__)
 
 
 class BudgetFillDialog(QDialog):

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from utils.notifications import show_info, show_warning
 import logging
 import os
 import sqlite3
@@ -8,86 +7,78 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QTimer, QUrl, QPoint, QProcess, QSize
+from PySide6.QtCore import QPoint, QProcess, Qt, QTimer, QUrl
 from PySide6.QtGui import (
     QAction,
-    QActionGroup,
+    QDesktopServices,
     QIcon,
     QKeySequence,
-    QShortcut,
-    QDesktopServices,
 )
 from PySide6.QtWidgets import (
-    QMainWindow,
-    QTabWidget,
-    QMenuBar,
-    QMenu,
-    QMessageBox,
-    QDialog,
-    QVBoxLayout,
-    QLabel,
-    QDialogButtonBox,
     QApplication,
-    QPushButton,
-    QFrame,
-    QTableWidget,
-    QPlainTextEdit,
-    QToolBar,
-    QToolButton,
-    QWidget,
-    QHBoxLayout,
     QButtonGroup,
+    QDialog,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMainWindow,
+    QMenu,
+    QMenuBar,
+    QMessageBox,
+    QPushButton,
     QSizePolicy,
-    QLineEdit,
+    QTableWidget,
+    QTabWidget,
+    QToolBar,
+    QVBoxLayout,
+    QWidget,
 )
 
-from app_info import APP_NAME, APP_VERSION, app_window_title, app_version_label
+from app_info import APP_NAME, APP_VERSION, app_version_label, app_window_title
 from model.app_paths import (
-    resolve_in_app,
-    data_dir,
-    configured_db_path,
     configured_backups_dir,
+    configured_db_path,
+    data_dir,
 )
 from model.budget_warnings_model_extended import BudgetWarningsModelExtended
 from model.category_model import CategoryModel
-from model.shortcuts_config import load_shortcuts, default_key
+from model.shortcuts_config import default_key, load_shortcuts
 from model.undo_redo_model import UndoRedoModel
 from settings import Settings
-from utils.icons import get_icon
-from utils.i18n import tr, trf, display_security_label
 from theme_manager import ThemeManager
+from updater.common import clear_startup_check_result, read_startup_check_result
+from utils.defensive_log import uebersprungen as _uebersprungen
+from utils.i18n import display_security_label, tr, trf
+from utils.icons import get_icon
+from utils.notifications import show_info, show_warning
 from views.account_management_dialog import AccountManagementDialog
 from views.backup_restore_dialog import BackupRestoreDialog
+from views.budget_adjustment_dialog import BudgetAdjustmentDialog
+from views.category_manager_dialog import CategoryManagerDialog
+from views.export_dialog import ExportDialog
+from views.favorites_dashboard_dialog import FavoritesDashboardDialog
+from views.global_search_dialog import GlobalSearchDialog
 from views.help_launcher import (
     help_file_candidates,
     install_help_corner_button,
     open_help_file,
 )
 from views.help_menu import build_help_menu
-from views.budget_adjustment_dialog import BudgetAdjustmentDialog
-from views.category_manager_dialog import CategoryManagerDialog
-from views.export_dialog import ExportDialog
-from views.favorites_dashboard_dialog import FavoritesDashboardDialog
-from views.global_search_dialog import GlobalSearchDialog
 from views.lifeplanner_import_dialog import LifePlannerImportDialog
+from views.main_window_dialogs import AboutDialog, LogViewerDialog
 from views.quick_add_dialog import QuickAddDialog
 from views.savings_goals_dialog import SavingsGoalsDialog
 from views.shortcuts_dialog import ShortcutsDialog
 from views.tabs.budget_tab import BudgetTab
-from views.tabs.cockpit_tab import CockpitTab
 from views.tabs.categories_tab import CategoriesTab
-from views.tabs.overview_tab import OverviewTab
-from utils.defensive_log import uebersprungen as _uebersprungen
+from views.tabs.cockpit_tab import CockpitTab
 from views.tabs.overview_savings_panel import OverviewSavingsPanel
+from views.tabs.overview_tab import OverviewTab
 from views.tabs.tracking_tab import TrackingTab
 from views.tags_manager_dialog import TagsManagerDialog
 from views.update_dialog import UpdateDialog
-from updater.common import clear_startup_check_result, read_startup_check_result
 
 logger = logging.getLogger(__name__)
-
-
-from views.main_window_dialogs import AboutDialog, LogViewerDialog
 
 
 class MainWindow(QMainWindow):
@@ -1508,9 +1499,9 @@ class MainWindow(QMainWindow):
         """
         from model.app_paths import data_dir, resolve_data_dir
         from model.data_location import (
+            DataMigrationError,
             has_user_data,
             migrate_data_dir,
-            DataMigrationError,
         )
 
         old_eff = data_dir()  # aktuell wirksamer (alter) Ordner – VOR dem Setzen
@@ -1849,12 +1840,13 @@ class MainWindow(QMainWindow):
         direkt; deren verschlüsselte Persistenz übernimmt der Commit-Hook.
         """
         try:
-            if widget is getattr(self, "budget_tab", None) and getattr(
-                self.settings, "auto_save", True
+            if (
+                widget is getattr(self, "budget_tab", None)
+                and getattr(self.settings, "auto_save", True)
+                and hasattr(self.budget_tab, "save")
             ):
-                if hasattr(self.budget_tab, "save"):
-                    self.budget_tab.save()
-                    logger.debug("Budget-Tab vor %s gespeichert.", reason)
+                self.budget_tab.save()
+                logger.debug("Budget-Tab vor %s gespeichert.", reason)
             # Auch wenn der Tab selbst nichts speichern musste: verschlüsselte
             # Session auf Disk bringen, falls kurz vorher Model-Commits liefen.
             self._save_encrypted_session()
@@ -2178,10 +2170,9 @@ class MainWindow(QMainWindow):
 
     def _show_db_info(self):
         """Zeigt Datenbank-Informationen und Migrations-Status"""
-        from model.migrations import get_migration_info, CURRENT_VERSION
-        import os
         from pathlib import Path
-        from model.app_paths import resolve_in_app
+
+        from model.migrations import CURRENT_VERSION, get_migration_info
 
         try:
             # Aktive DB-Datei (für Anzeige & Größe)
@@ -2707,9 +2698,9 @@ class MainWindow(QMainWindow):
                 return
 
             from datetime import datetime, timedelta
-            from model.app_paths import resolve_in_app
-            from model.restore_bundle import create_bundle
+
             from app_info import APP_NAME, APP_VERSION
+            from model.restore_bundle import create_bundle
 
             backup_dir = configured_backups_dir(
                 self.settings.get("backup_directory", "data/backups")
@@ -2802,7 +2793,7 @@ class MainWindow(QMainWindow):
             encrypted_session=encrypted_session,
             active_user=self._active_user,
         )
-        result = dialog.exec()
+        dialog.exec()
         # Nach erfolgreichem Restore:
         # - Unverschlüsselt: Daten wurden direkt in die Live-Connection zurückgespielt
         #   → Tabs refreshen, KEIN Neustart nötig.
@@ -2935,7 +2926,6 @@ class MainWindow(QMainWindow):
     def _check_budget_warnings(self, year: int | None = None, month: int | None = None):
         """Prüft Budgetwarnungen und zeigt Anpassungsdialog (v2.4.0)"""
         from datetime import date
-        from PySide6.QtWidgets import QMessageBox
 
         # Jahr/Monat möglichst aus der UI ableiten, damit "Extras → Budgetwarnungen"
         # dasselbe zeigt wie die Übersicht (kein "nur über Klick in Übersicht").
@@ -2973,13 +2963,6 @@ class MainWindow(QMainWindow):
             year = date.today().year
         if month is None:
             month = date.today().month
-
-        # Lookback identisch zur Einstellung, damit "keine Auffälligkeiten" nicht
-        # fälschlich erscheint, obwohl der Dialog später Vorschläge hätte.
-        try:
-            lookback = int(self.settings.get("budget_suggestion_months", 3) or 3)
-        except Exception:
-            lookback = 3
 
         warnings_model = BudgetWarningsModelExtended(self.conn)
         # Kein vorzeitiger Abbruch: BudgetAdjustmentDialog nutzt BudgetOverviewModel
@@ -3296,11 +3279,9 @@ class MainWindow(QMainWindow):
         """Wird aufgerufen wenn Fenster-State sich ändert (minimize, maximize, etc)"""
         from PySide6.QtGui import QWindowStateChangeEvent
 
-        if isinstance(event, QWindowStateChangeEvent):
-            # Update maximize status (nur wenn settings schon initialisiert)
-            if hasattr(self, "settings"):
-                is_max = self.isMaximized()
-                self.settings.set("window_is_maximized", is_max)
+        # Maximierungsstatus merken - nur wenn settings schon initialisiert ist
+        if isinstance(event, QWindowStateChangeEvent) and hasattr(self, "settings"):
+            self.settings.set("window_is_maximized", self.isMaximized())
         super().changeEvent(event)
 
     def closeEvent(self, event):
