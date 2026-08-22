@@ -62,6 +62,32 @@ Les filtres combinent type/compte, catégorie avec descendants, tags, période, 
 
 Une **Charge fixe** est protégée des conseils de réduction flexible.
 
+### 6.6 Reprendre des paiements d'autres programmes
+
+D'autres programmes de la suite — FPM par exemple — déposent des dépenses
+comme propositions dans un dossier commun. BudgetManager n'ouvre jamais leur
+base de données ; il lit les propositions dans une boîte de réception que vous
+vérifiez avant toute écriture.
+
+La liste affiche la date, la description, la contrepartie, le montant, la
+devise et la catégorie proposée. Sous le tableau, vous choisissez le type et
+la catégorie — avec le même champ de recherche et la même liste filtrée que
+dans la saisie rapide — puis vous les appliquez à toutes les propositions
+sélectionnées avec **Attribuer la catégorie**. Pour vingt paiements
+similaires, c'est une étape au lieu de vingt.
+
+**Modifier** permet de changer date, type, catégorie, montant et description
+d'une proposition. C'est le seul endroit où une catégorie manquante est
+créée, et seulement après votre confirmation explicite.
+
+**Accepter** enregistre l'écriture, **Rejeter** masque la proposition jusqu'à
+ce que la source la modifie. Les propositions déjà reprises restent
+inchangées : leur écriture existe et ne suivrait pas une modification
+ultérieure.
+
+Si la devise source diffère de celle de votre compte, BudgetManager demande
+une confirmation explicite avant de reprendre le montant.
+
 ## 7. Aperçu
 
 Choisissez année, mois ou période personnalisée et combinez compte/type, catégorie avec enfants, tags, remarque et montant. L’aperçu contient KPI, tableaux prévu/réel, reste, pourcentage, dépassements, opérations filtrées et suggestions à valider.

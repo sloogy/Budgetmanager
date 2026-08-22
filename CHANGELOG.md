@@ -1,5 +1,36 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Funktion
+
+- **Die Kategorie im Zahlungsimport wählt man jetzt wie in der
+  Schnelleingabe.** Der Importdialog hatte eine schlichte Auswahlliste; die
+  Schnelleingabe hat seit langem ein Suchfeld über einem gefilterten,
+  gruppierten Dropdown. Bei zweihundert Kategorien ist das der Unterschied
+  zwischen Tippen und Scrollen. Die Auswahl steht jetzt als eigenes Widget da
+  und wird an beiden Stellen benutzt.
+- **Kategorie für mehrere Vorschläge auf einmal.** Unter der Importübersicht
+  stehen Typ, Kategorie und **Kategorie zuweisen**. Wer zwanzig Zahlungen
+  derselben Art importiert, öffnet nicht mehr zwanzigmal den Bearbeiten-Dialog.
+  Übernommene und abgelehnte Vorschläge bleiben unberührt — ihre Buchung
+  existiert und würde einer nachträglichen Änderung nicht folgen. Neue
+  Kategorien legt die Übersicht bewusst nicht an; das bleibt dem
+  Bearbeiten-Dialog mit seiner ausdrücklichen Rückfrage.
+
+### Werkzeuge
+
+- **Der Rückfall auf die „flache Kategorienliste“ war keiner.**
+  `list_for_tracking_dropdown` ruft intern dieselbe gruppierte Abfrage auf —
+  fällt die aus, fällt der Rückfall mit. Im Import liest er jetzt
+  `list_names`.
+
+### Dokumentation
+
+- **Kapitel 6.6 im Handbuch, in allen drei Sprachen:** wie Zahlungen aus
+  anderen Programmen der Suite geprüft, kategorisiert und übernommen werden.
+  Die Funktion gab es, beschrieben war sie nirgends.
+
 ## 2.2.73 — 22. August 2026
 
 Inhaltlich 2.2.72: Der Tag v2.2.72 war gesetzt, bevor der Bau gruen war, und

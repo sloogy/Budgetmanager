@@ -62,6 +62,29 @@ Filters combine type/account, category including descendants, tags, date range, 
 
 A **Fixed cost** is protected from flexible reduction hints.
 
+### 6.6 Taking over payments from other programs
+
+Other programs in the suite — FPM, for example — place expenses as proposals
+in a shared folder. BudgetManager never opens their database; it reads the
+proposals into an inbox that you review before anything is booked.
+
+The list shows date, description, counterparty, amount, currency and the
+proposed category. Below the table you pick type and category — with the same
+search field and filtered dropdown as in quick entry — and apply them to all
+selected proposals with **Assign category**. For twenty similar payments that
+is one step instead of twenty.
+
+**Edit** changes date, type, category, amount and description for a single
+proposal. Only there is a missing category created, and only after your
+explicit confirmation.
+
+**Accept** books the entry, **Reject** hides the proposal until the source
+changes it. Proposals already taken over stay as they are: their booking
+exists and would not follow a later change.
+
+If the source currency differs from your account currency, BudgetManager asks
+for explicit confirmation before the amount is taken over.
+
 ## 7. Overview
 
 Choose year, month or custom range and combine filters for account/type, category including children, tags, note and amount. The Overview contains KPI cards, planned/actual tables, remaining amount, percentage, overruns, filtered transactions and reviewed suggestions.

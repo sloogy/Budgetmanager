@@ -189,6 +189,30 @@ Kombinierbar sind:
 
 Eine positive Ersparnisbuchung kann ein verknüpftes Sparziel erhöhen. Bei einer negativen Buchung fragt BudgetManager, ob sie als Entnahme des Sparziels behandelt werden soll.
 
+### 6.6 Zahlungen aus anderen Programmen übernehmen
+
+Andere Programme der Suite — etwa FPM — legen Ausgaben als Vorschlag in einem
+gemeinsamen Ordner ab. BudgetManager öffnet dessen Datenbank nie; er liest die
+Vorschläge und legt sie in eine Eingangsliste, die Sie prüfen, bevor etwas
+gebucht wird.
+
+Die Liste zeigt Datum, Beschreibung, Gegenpartei, Betrag, Währung und die
+vorgeschlagene Kategorie. Unter der Tabelle wählen Sie Typ und Kategorie —
+mit demselben Suchfeld und gefilterten Dropdown wie in der Schnelleingabe —
+und setzen sie mit **Kategorie zuweisen** auf alle markierten Vorschläge. Für
+zwanzig gleichartige Zahlungen ist das ein Schritt statt zwanzig.
+
+Über **Bearbeiten** lassen sich Datum, Typ, Kategorie, Betrag und
+Beschreibung einzeln ändern. Nur dort wird eine noch nicht vorhandene
+Kategorie angelegt, und auch dann erst nach Ihrer ausdrücklichen Bestätigung.
+
+**Übernehmen** bucht, **Ablehnen** blendet den Vorschlag aus, bis die Quelle
+ihn ändert. Bereits übernommene Vorschläge bleiben unverändert stehen: Ihre
+Buchung existiert und würde einer nachträglichen Änderung nicht folgen.
+
+Weicht die Fremdwährung von Ihrer Kontowährung ab, verlangt BudgetManager
+eine ausdrückliche Bestätigung, bevor der Betrag übernommen wird.
+
 ## 7. Übersicht und Diagramme
 
 Die Übersicht bietet Jahr, Monat oder benutzerdefinierten Zeitraum. Rechts können Typ, Kategorie inklusive Unterkategorien, Tags, Bemerkung und Betragsgrenzen kombiniert werden.
