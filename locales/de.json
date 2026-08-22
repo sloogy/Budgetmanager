@@ -1460,6 +1460,10 @@
   "lifeplanner_import": {
     "accept": "Auswahl übernehmen",
     "amount_in_budget_currency": "Betrag in Budget-Währung",
+    "assign_category": "Kategorie zuweisen",
+    "assign_category_tip": "Setzt Typ und Kategorie auf alle markierten offenen Vorschläge.",
+    "assign_unknown_category": "Die Kategorie „{category}“ gibt es noch nicht. Zum Anlegen bitte „Bearbeiten“ verwenden.",
+    "assigned": "{count} Vorschläge auf „{category}“ gesetzt.",
     "bridge_status_entries": "{name}: {anzahl} Einträge",
     "bridge_status_folder": "Ordner: {pfad}",
     "bridge_status_hint": "Der Ordner hängt davon ab, wie BudgetManager gestartet wurde: Im LifePlanner gibt ihn der Host vor, eigenständig liegt er im Benutzerverzeichnis. Wer beides nutzt, hat zwei getrennte Brücken.",
@@ -1486,6 +1490,7 @@
     "reject_title": "Vorschläge ablehnen",
     "reload": "Neu laden",
     "select_one": "Bitte genau einen offenen Vorschlag auswählen.",
+    "select_open_records": "Bitte mindestens einen offenen Vorschlag markieren.",
     "select_rows": "Bitte mindestens einen offenen Vorschlag auswählen.",
     "sidebar": "Import-Inbox",
     "source": "Quelle",

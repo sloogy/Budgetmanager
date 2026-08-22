@@ -1460,6 +1460,10 @@
   "lifeplanner_import": {
     "accept": "Accepter la sélection",
     "amount_in_budget_currency": "Montant dans la devise du budget",
+    "assign_category": "Attribuer la catégorie",
+    "assign_category_tip": "Applique le type et la catégorie à toutes les propositions ouvertes sélectionnées.",
+    "assign_unknown_category": "La catégorie « {category} » n'existe pas encore. Utilisez « Modifier » pour la créer.",
+    "assigned": "{count} propositions définies sur « {category} ».",
     "bridge_status_entries": "{name} : {anzahl} entrées",
     "bridge_status_folder": "Dossier : {pfad}",
     "bridge_status_hint": "Le dossier dépend du mode de lancement de BudgetManager : dans LifePlanner, c'est l'hôte qui le fixe ; lancé seul, il se trouve dans votre dossier personnel. Utiliser les deux revient à avoir deux passerelles distinctes.",
@@ -1486,6 +1490,7 @@
     "reject_title": "Refuser les propositions",
     "reload": "Recharger",
     "select_one": "Veuillez sélectionner exactement une proposition ouverte.",
+    "select_open_records": "Veuillez sélectionner au moins une proposition ouverte.",
     "select_rows": "Veuillez sélectionner au moins une proposition ouverte.",
     "sidebar": "Boîte d’import",
     "source": "Source",

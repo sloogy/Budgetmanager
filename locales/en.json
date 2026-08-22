@@ -1460,6 +1460,10 @@
   "lifeplanner_import": {
     "accept": "Accept selection",
     "amount_in_budget_currency": "Amount in budget currency",
+    "assign_category": "Assign category",
+    "assign_category_tip": "Applies type and category to all selected open proposals.",
+    "assign_unknown_category": "The category “{category}” does not exist yet. Use “Edit” to create it.",
+    "assigned": "{count} proposals set to “{category}”.",
     "bridge_status_entries": "{name}: {anzahl} entries",
     "bridge_status_folder": "Folder: {pfad}",
     "bridge_status_hint": "The folder depends on how BudgetManager was started: inside LifePlanner the host sets it, on its own it sits in your home directory. Using both means two separate bridges.",
@@ -1486,6 +1490,7 @@
     "reject_title": "Reject proposals",
     "reload": "Reload",
     "select_one": "Please select exactly one open proposal.",
+    "select_open_records": "Please select at least one open proposal.",
     "select_rows": "Please select at least one open proposal.",
     "sidebar": "Import Inbox",
     "source": "Source",

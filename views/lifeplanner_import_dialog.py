@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from model.category_model import CategoryModel
+from views.category_search_picker import CategorySearchPicker
 from model.lifeplanner_import_service import (
     bridge_zustand,
     ImportDraft,
@@ -57,6 +58,62 @@ _STATUS_TEXT = {
     "imported": "Übernommen",
     "rejected": "Abgelehnt",
 }
+
+
+def _kategorie_auf_entwuerfe_setzen(
+    *,
+    conn: sqlite3.Connection,
+    drafts: dict[str, ImportDraft],
+    records_by_id: dict[str, ImportRecord],
+    external_ids: list[str],
+    typ: str,
+    kategorie: str,
+) -> int:
+    """Setzt Typ und Kategorie auf die offenen Vorschlaege und zaehlt sie.
+
+    Uebernommene und abgelehnte Datensaetze bleiben unberuehrt: Ihr Entwurf
+    ist Geschichte, kein Vorschlag mehr - er nachtraeglich zu aendern wuerde
+    die Buchung, die daraus entstanden ist, nicht mitziehen und beides
+    auseinanderlaufen lassen.
+
+    ``drafts`` wird an Ort und Stelle geaendert; die Entwuerfe selbst sind
+    unveraenderlich und werden ersetzt.
+    """
+    geaendert = 0
+    for external_id in external_ids:
+        record = records_by_id.get(external_id)
+        if record is None or record.status in {"imported", "rejected"}:
+            continue
+        draft = drafts.get(external_id) or default_draft(conn, record)
+        drafts[external_id] = replace(draft, typ=typ, category=kategorie)
+        geaendert += 1
+    return geaendert
+
+
+def _kategoriezeilen(
+    conn: sqlite3.Connection, typ: str
+) -> list[tuple[str, str, object]]:
+    """Gruppierte Kategoriezeilen fuer den Picker, mit echtem Rueckfall.
+
+    Ohne Gruppen fehlen Favoriten und Fixkosten als Kopfzeilen - waehlen kann
+    man dann weiterhin. Ein leeres Ergebnis waere schlimmer als eine
+    ungruppierte Liste: Dann laesst sich gar keine Kategorie setzen, und der
+    Vorschlag bleibt liegen.
+
+    Der Rueckfall liest bewusst ``list_names`` und nicht
+    ``list_for_tracking_dropdown``: Letztere ruft intern dieselbe gruppierte
+    Abfrage auf. Als Rueckfall gegen deren Ausfall taugt sie damit nicht -
+    sie faellt mit.
+    """
+    modell = CategoryModel(conn)
+    try:
+        zeilen = modell.list_for_tracking_dropdown_grouped(typ)
+    except (AttributeError, sqlite3.Error, ValueError) as fehler:
+        logger.debug("gruppierte Kategorien nicht verfuegbar: %s", fehler)
+        zeilen = []
+    if zeilen:
+        return list(zeilen)
+    return [("item", name, name) for name in modell.list_names(typ)]
 
 
 class LifePlannerImportEditDialog(QDialog):
@@ -108,14 +165,20 @@ class LifePlannerImportEditDialog(QDialog):
         self.typ_combo.currentIndexChanged.connect(self._reload_categories)
         form.addRow(tr("header.type"), self.typ_combo)
 
-        self.category_combo = QComboBox()
-        self.category_combo.setEditable(True)
-        self.category_combo.setInsertPolicy(QComboBox.NoInsert)
+        # Dieselbe Auswahl wie in der Schnelleingabe: Suchfeld ueber
+        # gefiltertem, gruppiertem Dropdown. Vorher stand hier eine schlichte
+        # Liste - wer aus zweihundert Kategorien die richtige suchte, scrollte.
+        self.category_picker = CategorySearchPicker(
+            such_platzhalter=tr("quickadd.category_search_placeholder"),
+            such_hinweis=tr("quickadd.category_search_tip"),
+            dropdown_hinweis=tr("quickadd.category_dropdown_tip"),
+            leer_hinweis=tr("quickadd.no_category_matches"),
+        )
         self._requested_category = (
             draft.category
             or record.category_path.replace("›", "/").split("/")[-1].strip()
         )
-        form.addRow(tr("header.category"), self.category_combo)
+        form.addRow(tr("header.category"), self.category_picker)
 
         self.amount_spin = QDoubleSpinBox()
         self.amount_spin.setDecimals(2)
@@ -173,28 +236,22 @@ class LifePlannerImportEditDialog(QDialog):
         configure_dialog_tab_order(self)
 
     def _reload_categories(self, *_args) -> None:
+        """Baut die Auswahl nach einem Typwechsel neu auf.
+
+        Der bisher gewaehlte Name bleibt der Wunsch: Wer von Ausgaben auf
+        Ersparnisse wechselt, will nicht wieder bei der ersten Kategorie
+        anfangen - existiert der Name dort auch, steht er wieder da.
+        """
         typ = str(self.typ_combo.currentData() or TYP_EXPENSES)
-        previous = self.category_combo.currentText().strip() or self._requested_category
-        self.category_combo.clear()
-        for label, value in CategoryModel(self.conn).list_for_tracking_dropdown(typ):
-            self.category_combo.addItem(label, value)
-        idx = self.category_combo.findData(previous)
-        if idx < 0:
-            for i in range(self.category_combo.count()):
-                if (
-                    str(self.category_combo.itemData(i) or "").casefold()
-                    == previous.casefold()
-                ):
-                    idx = i
-                    break
-        if idx >= 0:
-            self.category_combo.setCurrentIndex(idx)
-        else:
-            self.category_combo.setEditText(previous)
+        vorher = self.category_picker.selected_category() or self._requested_category
+        self.category_picker.set_rows(
+            _kategoriezeilen(self.conn, typ), bevorzugt=vorher
+        )
+        if vorher:
+            self.category_picker.set_category(vorher)
 
     def _selected_category(self) -> str:
-        data = self.category_combo.currentData()
-        return str(data or self.category_combo.currentText()).strip()
+        return self.category_picker.selected_category().strip()
 
     def _validate_and_accept(self) -> None:
         typ = str(self.typ_combo.currentData() or TYP_EXPENSES)
@@ -309,6 +366,34 @@ class LifePlannerImportDialog(QDialog):
         self.table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.table, 1)
 
+        # Kategorie direkt in der Uebersicht setzen - dieselbe Auswahl wie in
+        # der Schnelleingabe. Vorher ging das nur ueber "Bearbeiten", einen
+        # Datensatz nach dem anderen; wer zwanzig Zahlungen derselben Art
+        # importierte, oeffnete zwanzigmal denselben Dialog.
+        zuweisung = QHBoxLayout()
+        zuweisung.addWidget(QLabel(tr("header.category")))
+
+        self.bulk_typ_combo = QComboBox()
+        self.bulk_typ_combo.addItem(tr("typ.Ausgaben"), TYP_EXPENSES)
+        self.bulk_typ_combo.addItem(tr("typ.Einkommen"), TYP_INCOME)
+        self.bulk_typ_combo.addItem(tr("typ.Ersparnisse"), TYP_SAVINGS)
+        self.bulk_typ_combo.currentIndexChanged.connect(self._reload_bulk_categories)
+        zuweisung.addWidget(self.bulk_typ_combo)
+
+        self.bulk_category_picker = CategorySearchPicker(
+            such_platzhalter=tr("quickadd.category_search_placeholder"),
+            such_hinweis=tr("quickadd.category_search_tip"),
+            dropdown_hinweis=tr("quickadd.category_dropdown_tip"),
+            leer_hinweis=tr("quickadd.no_category_matches"),
+        )
+        zuweisung.addWidget(self.bulk_category_picker, 1)
+
+        self.assign_btn = QPushButton(tr("lifeplanner_import.assign_category"))
+        self.assign_btn.setToolTip(tr("lifeplanner_import.assign_category_tip"))
+        self.assign_btn.clicked.connect(self._assign_category_to_selection)
+        zuweisung.addWidget(self.assign_btn)
+        layout.addLayout(zuweisung)
+
         actions = QHBoxLayout()
         self.reload_btn = QPushButton(tr("lifeplanner_import.reload"))
         self.edit_btn = QPushButton(tr("btn.edit"))
@@ -415,6 +500,71 @@ class LifePlannerImportDialog(QDialog):
             if external_id and external_id not in ids:
                 ids.append(external_id)
         return ids
+
+    def _reload_bulk_categories(self, *_args) -> None:
+        """Fuellt die Auswahl unter der Tabelle passend zum gewaehlten Typ."""
+        typ = str(self.bulk_typ_combo.currentData() or TYP_EXPENSES)
+        vorher = self.bulk_category_picker.selected_category()
+        self.bulk_category_picker.set_rows(
+            _kategoriezeilen(self.conn, typ), bevorzugt=vorher
+        )
+
+    def _assign_category_to_selection(self, *_args) -> None:
+        """Setzt Typ und Kategorie auf alle markierten offenen Vorschlaege.
+
+        Bereits uebernommene oder abgelehnte Datensaetze bleiben unberuehrt -
+        ihr Entwurf ist Geschichte, nicht Vorschlag.
+        """
+        typ = str(self.bulk_typ_combo.currentData() or TYP_EXPENSES)
+        kategorie = self.bulk_category_picker.selected_category()
+        if not kategorie:
+            show_info(
+                self,
+                tr("dlg.hinweis"),
+                tr("lifeplanner_import.category_required"),
+            )
+            return
+
+        # Der Name muss im Modell existieren: Die Uebersicht legt bewusst
+        # keine Kategorien an - das bleibt dem Bearbeiten-Dialog mit seiner
+        # ausdruecklichen Rueckfrage vorbehalten.
+        aufgeloest = CategoryModel(self.conn).resolve_name(typ, kategorie)
+        if not aufgeloest:
+            show_info(
+                self,
+                tr("dlg.hinweis"),
+                trf(
+                    "lifeplanner_import.assign_unknown_category",
+                    category=kategorie,
+                ),
+            )
+            return
+
+        geaendert = _kategorie_auf_entwuerfe_setzen(
+            conn=self.conn,
+            drafts=self._drafts,
+            records_by_id=self._records_by_id,
+            external_ids=self._selected_ids(),
+            typ=typ,
+            kategorie=str(aufgeloest),
+        )
+
+        if not geaendert:
+            show_info(
+                self,
+                tr("dlg.hinweis"),
+                tr("lifeplanner_import.select_open_records"),
+            )
+            return
+
+        self._populate_table()
+        self.summary_label.setText(
+            trf(
+                "lifeplanner_import.assigned",
+                count=geaendert,
+                category=str(aufgeloest),
+            )
+        )
 
     def _edit_selected(self, *_args) -> None:
         ids = self._selected_ids()
