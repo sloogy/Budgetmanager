@@ -1,7 +1,7 @@
-Budgetmanager Version 2.2.71
+Budgetmanager Version 2.2.72
 Datum: 22. August 2026
 
-ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.71
+ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.72
 -------------------------------------------------------------
 - Der LifePlanner-Dialog zeigt den aktiven Brueckenordner und alle drei
   Dateien einzeln. Welcher Ordner gilt, haengt vom Startmodus ab: Im

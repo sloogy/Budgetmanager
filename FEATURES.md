@@ -1,3 +1,7 @@
+## Neu in v2.2.72
+
+- Siehe VERSION_INFO.txt und CHANGELOG.md.
+
 ## Neu in v2.2.71
 
 - Zustandsanzeige der FPM-Brücke im LifePlanner-Dialog: aktiver Ordner und alle drei Dateien einzeln, unterschieden nach „noch nichts geschrieben" und „leer".

@@ -2,7 +2,7 @@
   "schema": "lifeplanner.module.v2",
   "id": "budgetmanager",
   "name": "BudgetManager",
-  "version": "2.2.71",
+  "version": "2.2.72",
   "description": "Budget, Buchungen, Forecasts, Sparziele und Monatsabschluss.",
   "requires_host": ">=0.5.15,<0.6",
   "source_entry": "main.py",
@@ -26,19 +26,27 @@
       {
         "name": "BudgetManager → FPM",
         "file": "budgetmanager_to_fpm.jsonl",
-        "schemas": ["fpm.import.v1", "fpm.expense.v1"]
+        "schemas": [
+          "fpm.import.v1",
+          "fpm.expense.v1"
+        ]
       },
       {
         "name": "Sparziele → FPM",
         "file": "budgetmanager_savings_goals.jsonl",
-        "schemas": ["fpm.savings-goal.v1", "fpm.savings_goal.v1"]
+        "schemas": [
+          "fpm.savings-goal.v1",
+          "fpm.savings_goal.v1"
+        ]
       }
     ],
     "subscribes": [
       {
         "name": "FPM → BudgetManager",
         "file": "fpm_to_budgetmanager.jsonl",
-        "schemas": ["budgetmanager.import.v1"]
+        "schemas": [
+          "budgetmanager.import.v1"
+        ]
       }
     ]
   }
