@@ -32,9 +32,15 @@ prüft diese Liste und meldet jeden weiteren.
   `main`: Linux, ein Python, keine Builds, zwei bis drei Minuten. Er reagiert nie
   auf Tags und überspringt `[release]`-Commits, weil die ohnehin durch den vollen
   Lauf gehen.
-- `.github/workflows/build.yml` — der Release-Weg. Er startet bei einem Tag `v*`
-  oder bei einem `[release]`-Commit auf `main`; ein Push auf `release/**`
-  synchronisiert nur die Release-Metadaten.
+- `.github/workflows/build.yml` — der Release-Weg. Ihn startet ausschliesslich
+  ein Tag `v*`; ein Push auf `release/**` synchronisiert nur die
+  Release-Metadaten. Der frühere zweite Auslöser, ein `[release]`-Commit auf
+  `main`, ist entfallen: Beim Release werden Zweig und Tag zusammen gepusst,
+  der Bau lief also zweimal für denselben Stand und lud beide Male unter
+  denselben Tag hoch. Da `latest.json` die Hashes der ZIPs trägt, hätten
+  Manifest und ZIP aus verschiedenen Läufen stammen können — der Updater
+  lehnt so etwas fail-closed ab. Eine `concurrency`-Sperre sichert das
+  zusätzlich.
 
 Der Releaselauf erledigt die gesamte Veröffentlichung:
 
@@ -80,8 +86,8 @@ git push origin "v$VERSION"
 ```
 
 Die Version kommt immer aus `app_info.py`; so bleibt der Tag automatisch
-richtig. Alternativ genügt ein Commit auf `main`, dessen Nachricht `[release]`
-enthält.
+richtig. Der Tag ist der einzige Auslöser des Release-Laufs — ein
+`[release]`-Commit auf `main` baut nichts mehr.
 
 ## Nach GitHub Actions
 

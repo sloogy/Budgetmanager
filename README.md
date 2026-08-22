@@ -399,7 +399,7 @@ python tools/sync_version.py
 
 ### Release
 
-Ein Release entsteht aus einem Tag `v<version>` oder einem `[release]`-Commit auf `main` (`.github/workflows/build.yml`). Ein Lauf erzeugt portable ZIPs für Windows und Linux, den Windows-Installer inklusive Silent-Install-/Uninstall-Test, SBOM, unsigned `.lpmodule`-Pakete und die Updater-Dateien.
+Ein Release entsteht aus einem Tag `v<version>` (`.github/workflows/build.yml`); der Tag ist der einzige Auslöser. Ein Lauf erzeugt portable ZIPs für Windows und Linux, den Windows-Installer inklusive Silent-Install-/Uninstall-Test, SBOM, unsigned `.lpmodule`-Pakete und die Updater-Dateien.
 
 Das Update-Manifest wird aus dem Template generiert:
 
