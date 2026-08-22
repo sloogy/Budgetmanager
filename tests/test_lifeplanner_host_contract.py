@@ -27,11 +27,15 @@ def test_module_manifest_matches_budgetmanager_version():
 
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / "module.json").read_text(encoding="utf-8"))
-    assert manifest["schema"] == "lifeplanner.module.v1"
+    assert manifest["schema"] == "lifeplanner.module.v2"
     assert manifest["id"] == "budgetmanager"
     assert manifest["version"] == APP_VERSION
+    assert manifest["requires_host"] == ">=0.5.15,<0.6"
     assert manifest["environment"]["BUDGETMANAGER_DATA_DIR"] == "{module_data_dir}"
     assert manifest["environment"]["LIFEPLANNER_BRIDGE_DIR"] == "{bridge_dir}"
+    published = {entry["file"] for entry in manifest["bridge"]["publishes"]}
+    assert "budgetmanager_to_fpm.jsonl" in published
+    assert "budgetmanager_savings_goals.jsonl" in published
 
 
 def test_central_updater_guard_is_present_in_both_update_entry_points():
