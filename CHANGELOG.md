@@ -18,6 +18,20 @@
   Kategorien legt die Übersicht bewusst nicht an; das bleibt dem
   Bearbeiten-Dialog mit seiner ausdrücklichen Rückfrage.
 
+### Fehlerdiagnose
+
+- **Der Diagnosebericht nennt den Fehler wieder.** Aus einem eingesandten
+  Bericht liess sich nichts schliessen: Das App-Log war Zeile für Zeile
+  geschwärzt — und die Schlusszeile jedes Tracebacks, die einzige, die sagt,
+  *was* schiefging, gleich mit. Ein `KeyError` war von einem Datenbankfehler
+  nicht zu unterscheiden. Der Ausnahmetyp bleibt jetzt stehen, sein Text
+  nicht: Der Typ ist ein Klassenname aus dem Programmcode und nennt keine
+  Kategorien, Beträge oder Kommentare.
+- **Der Kopf im Crash-Log trägt Zeit, Version und Prozessnummer.** Vorher
+  hängte jeder Start dieselbe Zeile an; im eingesandten Bericht standen zwölf
+  gleichlautende Zeilen und ein Absturzdump, und welcher Start dazugehörte,
+  war daraus nicht zu erkennen.
+
 ### Werkzeuge
 
 - **Der Rückfall auf die „flache Kategorienliste“ war keiner.**

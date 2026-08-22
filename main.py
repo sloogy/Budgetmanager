@@ -119,8 +119,23 @@ def _install_crash_diagnostics() -> None:
         crash_log = Path(tempfile.gettempdir()) / "budgetmanager_crash.log"
 
     try:
+        from datetime import datetime
+
+        from app_info import APP_VERSION
+
         _crash_log_handle = open(crash_log, "a", encoding="utf-8")
-        _crash_log_handle.write("\n=== Budgetmanager Crash Diagnostics Enabled ===\n")
+        # Mit Zeit, Version und Prozessnummer: Die Datei sammelt jeden Start,
+        # und ohne diese drei Angaben laesst sich ein Absturzdump keinem
+        # Programmlauf zuordnen. Im eingesandten Bericht standen zwoelf
+        # gleichlautende Zeilen und ein Dump - welcher Start dazugehoerte,
+        # war daraus nicht zu erkennen.
+        _crash_log_handle.write(
+            "\n=== Budgetmanager {version} | Start {zeit} | PID {pid} ===\n".format(
+                version=APP_VERSION,
+                zeit=datetime.now().astimezone().isoformat(timespec="seconds"),
+                pid=os.getpid(),
+            )
+        )
         _crash_log_handle.flush()
         faulthandler.enable(file=_crash_log_handle, all_threads=True)
         logger.info("Crash-Diagnose aktiv: %s", crash_log)

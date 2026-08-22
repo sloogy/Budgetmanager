@@ -77,6 +77,17 @@ _SAFE_TRACEBACK_LINE_RE = re.compile(
     r'^\s*File "[^"]+", line \d+, in [A-Za-z0-9_<>.]+\s*$'
 )
 
+# Die Schlusszeile eines Tracebacks: "ValueError: irgendein Text".
+# Der Klassenname stammt aus dem Code und nennt keine Nutzdaten - der Text
+# dahinter kann Kategorien und Betraege enthalten und faellt weg. Ohne diese
+# Trennung sah ein eingesandter Bericht bei jedem Fehler gleich aus, und der
+# Unterschied zwischen einem KeyError und einem Datenbankfehler ging verloren.
+_EXCEPTION_LINE_RE = re.compile(
+    r"^(?P<typ>(?:[A-Za-z_][A-Za-z0-9_]*\.)*[A-Z][A-Za-z0-9_]*"
+    r"(?:Error|Exception|Warning|Interrupt|Exit|Timeout|Abort))"
+    r"(?::.*)?$"
+)
+
 
 def _now_iso() -> str:
     return datetime.now().isoformat(timespec="seconds")
@@ -429,9 +440,15 @@ def _sanitize_application_log(text: str) -> str:
 
     Kategorien, Beträge, Kommentare und externe IDs können in frei
     formulierten Logmeldungen vorkommen. Eine Schlüsselwortliste könnte solche
-    Werte nie zuverlässig erkennen. Darum bleiben nur Zeit, Level, Logger und
-    sichere Traceback-Rahmen erhalten; der eigentliche Meldungstext wird
-    konsequent ersetzt.
+    Werte nie zuverlässig erkennen. Darum bleiben nur Zeit, Level, Logger,
+    sichere Traceback-Rahmen und der Typ einer Ausnahme erhalten; der
+    eigentliche Meldungstext wird konsequent ersetzt.
+
+    Der Ausnahmetyp ist die eine Ausnahme davon, und zwar mit Grund: Er ist
+    ein Klassenname aus dem Programmcode, kein Nutzerwert. Ohne ihn sah jeder
+    Fehler in einem eingesandten Bericht gleich aus - ein KeyError war von
+    einem Datenbankfehler nicht zu unterscheiden, und damit war der Bericht
+    für die Fehlersuche fast wertlos.
     """
     sanitized: list[str] = []
     for raw_line in text.splitlines():
@@ -448,6 +465,12 @@ def _sanitize_application_log(text: str) -> str:
             "During handling of the above exception, another exception occurred:",
         }:
             sanitized.append(line)
+        elif _EXCEPTION_LINE_RE.match(line.strip()):
+            # Nur der Typ bleibt stehen; er sagt, was schiefging, ohne zu
+            # sagen, womit.
+            sanitized.append(
+                f"{_EXCEPTION_LINE_RE.match(line.strip()).group('typ')}: <redacted>"
+            )
         else:
             sanitized.append("<redacted>")
     return "\n".join(sanitized) + ("\n" if text.endswith("\n") else "")
