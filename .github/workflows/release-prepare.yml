@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   prepare:
+    if: "!startsWith(github.event.head_commit.message, '[release-status]')"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -92,11 +93,15 @@ jobs:
           git push origin HEAD:main
 
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
-            echo "Tag ${TAG} existiert bereits; Abbruch statt Überschreiben." >&2
-            exit 1
+            REMOTE_SHA="$(git ls-remote --tags origin "refs/tags/${TAG}" | awk '{print $1}')"
+            test "$REMOTE_SHA" = "$(git rev-parse HEAD)" || {
+              echo "Tag ${TAG} existiert bereits auf anderem Commit; kein Force-Move." >&2
+              exit 1
+            }
+          else
+            git tag "$TAG" HEAD
+            git push origin "$TAG"
           fi
-          git tag "$TAG" HEAD
-          git push origin "$TAG"
 
       - name: Bestehenden Full-Release starten und Erfolg verlangen
         env:
@@ -115,5 +120,17 @@ jobs:
             sleep 2
           done
           test -n "$RUN_ID" || { echo "Release-Run nicht gefunden" >&2; exit 1; }
+          echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
           echo "Release workflow run: $RUN_ID"
           gh run watch "$RUN_ID" --exit-status
+
+      - name: Grünen Full-Release auf dem Triggerbranch markieren
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .release-status
+          printf 'tag=%s\ncommit=%s\nworkflow_run=%s\nstatus=success\n' \
+            "$TAG" "$(git rev-parse HEAD)" "$RUN_ID" > ".release-status/${TAG}.ok"
+          git add ".release-status/${TAG}.ok"
+          git commit -m "[release-status] ${TAG} full release passed"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
