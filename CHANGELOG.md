@@ -1,6 +1,6 @@
 # Changelog
 
-## 2.2.72 – 22. August 2026
+## 2.2.72 — 22. August 2026
 
 ### LifePlanner-Integration
 
@@ -17,7 +17,33 @@
 - `release-prepare.yml` ist im strengen Lint-/Release-Prozedurcheck zugelassen, darf aber selbst keine Assets oder GitHub Releases veröffentlichen; `build.yml` bleibt der einzige Publisher.
 - Der vorher rote Gate-Lauf durch die alte Workflow-Allowlist ist damit behoben, ohne den Gate zu lockern.
 
-## Unveröffentlicht
+### Stabilität
+
+- **Der Release-Lauf schrieb an einer Workflow-Datei und durfte das nie.**
+  Vier Anläufe für 2.2.72 scheiterten an derselben Stelle: Der Prepare-Lauf
+  trug `workflow_dispatch` selbst in `.github/workflows/build.yml` ein, und
+  GitHub lehnt jeden Push ab, der eine Workflow-Datei ändert, wenn er nur mit
+  dem GITHUB_TOKEN kommt. Das ist keine Fehlkonfiguration, die man wegdreht —
+  ein Lauf, der seine eigenen Auslöser umschreiben kann, ist genau das, was
+  diese Sperre verhindern soll. Der Trigger steht jetzt fest in `build.yml`,
+  und der Prepare-Lauf prüft vor dem Push, ob der Release-Commit
+  `.github/workflows` berührt.
+- **Das Formatgate urteilte über die Werkzeugversion, nicht über den Code.**
+  black wollte `model/bridge_registry.py` umformatieren — die Datei war lokal
+  mit 26.5.1 formatiert, die CI nimmt die gepinnte 25.1.0, und beide setzen
+  die Leerzeile hinter dem Modul-Docstring verschieden. Derselbe Riss bei
+  mypy: lokal 2.3.1 meldet drei Slice-Fehler, die gepinnte 1.15.0 kennt sie
+  nicht. Die Pinnung war richtig — sie galt nur in der CI.
+  `tools/gepinnte_werkzeuge.py` führt black, ruff und mypy jetzt in genau der
+  Version aus, die in requirements steht. Release-Checkliste, offene Aufgaben
+  und Feature-Übersicht rufen den Wrapper auf.
+
+### Funktion
+
+- **Beide Startarten lesen aus allen bekannten Brückenordnern.** Im
+  LifePlanner gibt der Host den Ordner vor, eigenständig liegt er im
+  Benutzerverzeichnis; wer gemischt startete, hatte zwei getrennte Brücken.
+  Geschrieben wird weiterhin nur in den aktiven.
 
 ### Werkzeuge
 

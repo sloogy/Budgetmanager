@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import stat
+import sys
 
 import pytest
 
@@ -82,6 +83,12 @@ def test_ein_kaputtes_register_haelt_die_bruecke_nicht_auf(tmp_path, register):
     assert bekannte_ordner(aktiv) == (aktiv,)
 
 
+@pytest.mark.skipif(
+    sys.platform.startswith("win"),
+    reason="Windows kennt keine POSIX-Bits; os.chmod setzt dort nur den "
+    "Schreibschutz. Der Schutz des Registers ist dort Sache der ACLs des "
+    "Benutzerprofils - dieser Test wuerde 0o666 sehen und nichts aussagen.",
+)
 def test_das_register_liegt_nicht_offen(tmp_path, register):
     """Es enthaelt nur Pfade - aber die verraten Profilnamen und die
     Ordnerstruktur des Nutzers."""
