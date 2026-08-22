@@ -60,3 +60,29 @@ def test_eine_fehlende_datei_ist_kein_fehler(tmp_path):
     daten = _settings(tmp_path / "budgetmanager_settings.json")._load()
     assert isinstance(daten, dict) and daten
     assert not list(tmp_path.glob("*.kaputt-*"))
+
+
+def test_zwei_fehlschlaege_in_derselben_sekunde(tmp_path):
+    """Beide Fassungen bleiben erhalten - der Zeitstempel allein reicht nicht.
+
+    Vorher trugen beide denselben Namen, der zweite ueberschrieb den ersten,
+    und die urspruengliche Fassung war doch wieder weg.
+    """
+    ziel = tmp_path / "budgetmanager_settings.json"
+    for inhalt in ("{erster", "{zweiter"):
+        ziel.write_text(inhalt, encoding="utf-8")
+        _settings(str(ziel))._beiseitelegen(ValueError("kaputt"))
+
+    gerettet = sorted(tmp_path.glob("budgetmanager_settings.json.kaputt-*"))
+    assert len(gerettet) == 2
+    assert {p.read_text(encoding="utf-8") for p in gerettet} == {"{erster", "{zweiter"}
+
+
+def test_beiseitegelegte_fassungen_wachsen_nicht_unbegrenzt(tmp_path):
+    """Sonst entstuende bei jedem Start eine weitere Datei."""
+    ziel = tmp_path / "budgetmanager_settings.json"
+    for _ in range(15):
+        ziel.write_text("{kaputt", encoding="utf-8")
+        _settings(str(ziel))._beiseitelegen(ValueError("kaputt"))
+
+    assert len(list(tmp_path.glob("budgetmanager_settings.json.kaputt-*"))) == 10

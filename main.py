@@ -830,7 +830,12 @@ def main() -> int:
         setup_timer = QTimer(win)
         setup_timer.setSingleShot(True)
 
-        def _start_setup_assistant_safely() -> None:
+        # Das Fenster wird als Vorgabewert gebunden, nicht ueber die Closure
+        # geholt: beim Beenden loescht ``del win`` den Namen, und das
+        # anschliessende ``app.processEvents()`` kann diesen Timer noch feuern
+        # lassen. Dann griff der Rumpf auf eine geleerte Zelle - ein
+        # NameError, der beim Beenden wie ein Programmfehler aussah.
+        def _start_setup_assistant_safely(win=win) -> None:
             try:
                 if QApplication.instance() is None:
                     return

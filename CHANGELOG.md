@@ -1,5 +1,28 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Stabilität
+
+- **Beim Beenden konnte ein NameError auftreten.** Der Timer für den
+  Setup-Assistenten holte sich das Hauptfenster über die Closure. Beim
+  Herunterfahren löscht `del win` diesen Namen, und das folgende
+  `processEvents()` kann den Timer noch feuern lassen — dann griff er auf eine
+  geleerte Zelle und protokollierte einen Fehler, der wie ein Programmfehler
+  aussah.
+- **Zwei kaputte Einstellungsdateien in derselben Sekunde** bekamen denselben
+  Namen; die zweite überschrieb die erste und die ursprüngliche Fassung war
+  doch wieder weg. Außerdem wuchsen die beiseitegelegten Fassungen unbegrenzt
+  — jetzt bleiben zehn.
+- **Der Ausnahmen-Ratchet ist eingebaut** und prüft den Syntaxbaum statt
+  Textzeilen, mit vier Regeln: keine nackten `except:`, kein
+  `except BaseException`, gedeckelte stumme Schlucker, gedeckelte breite
+  Handler. Er prüft alles außerhalb von Tests und Werkzeugen —
+  `settings_dialog.py` mit 19 breiten Handlern stand vorher außerhalb jeder
+  Prüfliste.
+- **Ruff läuft jetzt im Build.** Es fehlte ganz; der NameError oben stand
+  seitdem unbemerkt im Quelltext.
+
 ## 2.2.70 – 22. August 2026
 
 ### Sicherheit

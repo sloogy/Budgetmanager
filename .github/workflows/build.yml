@@ -125,6 +125,12 @@ jobs:
       - name: Type-check model layer
         run: python -m mypy model/
 
+      - name: Linting (Fehler, die den Start verhindern)
+        run: python -m ruff check . --select E9,F63,F7,F82
+
+      - name: Ausnahmen-Ratchet
+        run: python tools/exception_audit.py
+
       - name: Run core tests
         shell: bash
         env:

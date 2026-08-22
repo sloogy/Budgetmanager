@@ -47,6 +47,7 @@ pytest-cov==7.1.0
 pyyaml==6.0.3
 requests==2.34.2
 rich==15.0.0
+ruff==0.16.3
 shiboken6==6.11.1
 sortedcontainers==2.4.0
 stevedore==5.9.0
