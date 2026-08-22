@@ -15,13 +15,11 @@ ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.71
   Namen; die zweite ueberschrieb die erste. Jetzt durchnummeriert, zehn
   Staende bleiben erhalten.
 - Bei jedem Push nach main laufen die Gates: Version, compileall,
-  Uebersetzungs-Audit, Ausnahmen-Ratchet, ruff, mypy, Lint-Verfahren, Tests.
+  Ausnahmen-Ratchet, ruff, mypy, black, Lint-Verfahren, Tests.
   Vorher hing alles am Tag beziehungsweise am [release]-Commit.
 - Der Release-Marker wird nur noch am Anfang der Betreffzeile erkannt;
   contains() traf ihn auch im Fliesstext und loeste dort einen vollstaendigen
   Release-Build aus.
-- Der Uebersetzungs-Audit lief in keinem Workflow. Er faellt jetzt auf, wenn
-  ein Schluessel in allen drei Sprachen liegt und nirgends verwendet wird.
 - Einstellungen, Bruecke und Themes werden atomar und mit fsync geschrieben.
   Wo "atomar" draufstand, fehlte meist das Durchschreiben auf den Datentraeger;
   ein Absturz mitten im Speichern hinterliess eine halbe Datei.

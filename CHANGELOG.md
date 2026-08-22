@@ -1,5 +1,33 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Werkzeuge
+
+- **Der Übersetzungs-Audit lief in keinem der beiden Workflows.**
+  `tools/i18n_audit.py` stand nur in der Release-Checkliste; dass
+  `lifeplanner_import.bridge_status_title` in allen drei Sprachen liegt und
+  nirgends verwendet wird, fiel deshalb erst von Hand auf — die Überschrift
+  über dem Brückenzustand fehlte im Dialog und wird jetzt angezeigt. Das
+  Werkzeug läuft im Push- und im Release-Lauf mit.
+- **`sync_version` zieht nur den Kopfbereich einer Datei nach.** Die
+  `--base-url`-Zeile im Beispiel von `updater/generate_manifest.py` stand
+  knapp ausserhalb und klebte seit 2.2.63 fest.
+- **VERSION_INFO.txt:** `sync_version` benennt den obersten Block auf die
+  aktuelle Version um. Seit 2.2.67 traf das den 2.2.66-Block, weil kein
+  Release seither einen eigenen davorgesetzt hat.
+
+### Dokumentation
+
+- **README.md und README_INSTALLATION.md standen inhaltlich auf 2.2.63**,
+  während die Kopfzeile mitlief: Downloadnamen, Prüfsummenbefehle und der
+  Hinweis, der In-App-Updater sei abgeschaltet, waren falsch. Beide sind nach
+  Ablauf geordnet, die Versionsgeschichte ist gekürzt, Notstartschalter und
+  Systemvoraussetzungen sind dokumentiert.
+- **Die Release-Checkliste** beschrieb `build.yml` als einzigen Workflow und
+  den Tag als einzigen Auslöser; der Tag wird jetzt aus `app_info.py`
+  abgeleitet statt fest eingetragen.
+
 ## 2.2.71 – 22. August 2026
 
 ### Stabilität
@@ -44,10 +72,6 @@
   zu sagen, wenn das misslang. Wächst der Ordner weiter, obwohl aufgeräumt
   wird, war das vorher nirgends zu sehen. Beim Präzisieren zeigte ruff, dass
   das Modul gar keinen Logger hatte — der Aufruf wäre ein `NameError` gewesen.
-- **Der Übersetzungs-Audit läuft jetzt mit.** `tools/i18n_audit.py` stand nur
-  in der Release-Checkliste und in keinem der beiden Workflows; ein Schlüssel,
-  der in allen drei Sprachen liegt, aber nirgends verwendet wird, fiel dadurch
-  erst von Hand auf. Er läuft jetzt im Push- und im Release-Lauf.
 - **Black lief nur im Release-Lauf.** Der Push-Lauf prüfte die Formatierung
   nicht, deshalb fiel erst der Release-Build zu 2.2.71 über drei ungeformte
   Dateien in `model/` — nach dem Tag, mit rotem Build und ohne Artefakte.
