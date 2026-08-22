@@ -1,6 +1,11 @@
 # Changelog
 
-## 2.2.72 — 22. August 2026
+## 2.2.73 — 22. August 2026
+
+Inhaltlich 2.2.72: Der Tag v2.2.72 war gesetzt, bevor der Bau gruen war, und
+Release-Tags werden hier nie verschoben. Der kaputte Tag bleibt als Beleg
+stehen, veroeffentlicht wird 2.2.73.
+
 
 ### LifePlanner-Integration
 

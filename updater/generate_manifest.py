@@ -5,12 +5,12 @@ Du nutzt das, wenn du ein neues Release-ZIP gebaut hast.
 Beispiel (Windows + Linux ZIPs):
 
   python -m updater.generate_manifest \
-    --version 2.2.72 \
-    --release-tag v2.2.72 \
+    --version 2.2.73 \
+    --release-tag v2.2.73 \
     --channel stable \
-    --windows-zip dist/BudgetManager-v2.2.72-portable-windows.zip \
-    --linux-zip dist/BudgetManager-v2.2.72-portable-linux.zip \
-    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.72 \
+    --windows-zip dist/BudgetManager-v2.2.73-portable-windows.zip \
+    --linux-zip dist/BudgetManager-v2.2.73-portable-linux.zip \
+    --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.73 \
     --out latest.json
 
 Danach lädst du die ZIP(s), latest.json und latest.json.sig als Release-Assets hoch.
