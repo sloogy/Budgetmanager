@@ -92,6 +92,8 @@ def default_bridge_dir() -> Path:
     wird er beim Anlegen auf 0700 gesetzt, denn was darin liegt, sind
     Buchungen und Sparziele.
     """
+    from model.bridge_registry import eintragen
+
     override = os.environ.get("LIFEPLANNER_BRIDGE_DIR", "").strip()
     if override:
         path = Path(override).expanduser().resolve()
@@ -103,7 +105,20 @@ def default_bridge_dir() -> Path:
         from model.file_permissions import secure_dir
 
         secure_dir(path)
+    eintragen(path)
     return path
+
+
+def alle_bridge_dirs() -> tuple[Path, ...]:
+    """Alle Brückenordner, aus denen gelesen wird - der aktive zuletzt.
+
+    Wer den BudgetManager mal eigenständig und mal im LifePlanner startet, hat
+    mehrere Brücken. Geschrieben wird nur in den aktiven; gelesen aus allen,
+    sonst liegt der Stand aus der anderen Startart da und kommt nie an.
+    """
+    from model.bridge_registry import bekannte_ordner
+
+    return bekannte_ordner(default_bridge_dir())
 
 
 def default_bridge_path() -> Path:
@@ -206,18 +221,23 @@ def _state_rows(conn: sqlite3.Connection) -> dict[str, sqlite3.Row]:
     return {str(row["external_id"]): row for row in rows}
 
 
-def load_import_records(
-    conn: sqlite3.Connection, path: str | Path | None = None
-) -> list[ImportRecord]:
-    src = Path(path) if path is not None else default_bridge_path()
+def _einlesen(src: Path, parsed: dict[str, ImportRecord]) -> None:
+    """Liest eine Brückendatei in ``parsed`` ein - nach Kennung, nicht als Liste.
+
+    Steht derselbe Datensatz in zwei Brücken, gewinnt der zuletzt gelesene.
+    Die Aufrufreihenfolge stellt sicher, dass das der aktive Ordner ist.
+
+    Eine fehlende Datei ist kein Fehler: Die andere Seite hat dann noch nichts
+    geschrieben. Alles andere schon - eine Brücke, die auf ein Verzeichnis
+    oder auf 20 MB zeigt, soll auffallen und nicht stumm nichts liefern.
+    """
     if not src.exists():
-        return []
+        return
     if not src.is_file():
         raise LifePlannerImportError("Der Bridge-Pfad ist keine Datei.")
     if src.stat().st_size > MAX_FILE_BYTES:
         raise LifePlannerImportError("Die Bridge-Datei ist größer als 20 MB.")
 
-    parsed: dict[str, ImportRecord] = {}
     with src.open("r", encoding="utf-8") as handle:
         for line_no, raw_line in enumerate(handle, start=1):
             if len(raw_line.encode("utf-8")) > MAX_LINE_BYTES:
@@ -240,6 +260,21 @@ def load_import_records(
                 raise LifePlannerImportError(
                     "Die Bridge-Datei enthält zu viele Einträge."
                 )
+
+
+def load_import_records(
+    conn: sqlite3.Connection, path: str | Path | None = None
+) -> list[ImportRecord]:
+    if path is not None:
+        quellen = [Path(path)]
+    else:
+        # Aus jeder bekannten Brücke, die aktive zuletzt: Wer den
+        # BudgetManager mal eigenständig und mal im LifePlanner startet, sieht
+        # sonst je nach Startart nur die Hälfte der offenen Buchungen.
+        quellen = [o / BRIDGE_FILE for o in alle_bridge_dirs()]
+    parsed: dict[str, ImportRecord] = {}
+    for src in quellen:
+        _einlesen(src, parsed)
 
     states = _state_rows(conn)
     result: list[ImportRecord] = []

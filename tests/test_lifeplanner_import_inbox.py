@@ -127,3 +127,45 @@ def test_changed_upsert_keeps_previous_user_category(tmp_path):
     next_draft = default_draft(conn, changed)
     assert next_draft.category == "Sammlung"
     assert next_draft.amount == 199.0
+
+
+# ── Loop 31: Zwei Startarten, eine Bruecke ──────────────────────────────────
+
+def test_offene_buchungen_kommen_auch_aus_der_anderen_bruecke(tmp_path, monkeypatch):
+    """Der Fall, um den es geht: FPM lief im LifePlanner und legte seinen
+    Export im Profilordner ab. Der BudgetManager wird danach eigenstaendig
+    gestartet - und sah bis Loop 31 eine leere Inbox."""
+    from model.bridge_registry import eintragen
+    from model.lifeplanner_import_service import BRIDGE_FILE
+
+    host = tmp_path / "profil" / "bridge"
+    host.mkdir(parents=True)
+    _write(host / BRIDGE_FILE, _payload())
+    eintragen(host)
+
+    allein = tmp_path / "eigenstaendig"
+    allein.mkdir()
+    monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(allein))
+
+    records = load_import_records(_conn())
+    assert [r.external_id for r in records] == ["fpm:expense:1"]
+
+
+def test_derselbe_datensatz_in_zwei_bruecken_erscheint_einmal(tmp_path, monkeypatch):
+    """Und zwar so, wie er im aktiven Ordner steht - der ist der juengere Stand."""
+    from model.bridge_registry import eintragen
+    from model.lifeplanner_import_service import BRIDGE_FILE
+
+    alt = tmp_path / "alt"
+    alt.mkdir()
+    _write(alt / BRIDGE_FILE, _payload(amount=10.0))
+    eintragen(alt)
+
+    aktiv = tmp_path / "aktiv"
+    aktiv.mkdir()
+    _write(aktiv / BRIDGE_FILE, _payload(amount=99.0))
+    monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(aktiv))
+
+    records = load_import_records(_conn())
+    assert len(records) == 1
+    assert float(records[0].amount) == 99.0
