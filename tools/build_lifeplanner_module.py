@@ -50,11 +50,18 @@ def main() -> int:
         "--platform", required=True, choices=["windows-x86_64", "linux-x86_64"]
     )
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--requires-host", default=">=0.5.0")
+    parser.add_argument(
+        "--requires-host",
+        default="",
+        help="optional; sonst wird module.json.requires_host verwendet",
+    )
     parser.add_argument("--allow-unsigned", action="store_true")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / "module.json").read_text(encoding="utf-8"))
+    requires_host = str(
+        args.requires_host or manifest.get("requires_host") or ">=0.5.0"
+    ).strip()
     runtime = args.runtime_dir.resolve()
     if not runtime.is_dir():
         raise SystemExit(f"runtime directory missing: {runtime}")
@@ -69,7 +76,7 @@ def main() -> int:
             "name": manifest.get("name", manifest["id"]),
             "version": manifest["version"],
             "kind": "module",
-            "requires_host": args.requires_host,
+            "requires_host": requires_host,
             "description": manifest.get("description", ""),
             "platforms": [args.platform],
             "payload_sha256": tree_sha256(payload),
