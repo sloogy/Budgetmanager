@@ -219,6 +219,21 @@ Buchung existiert und würde einer nachträglichen Änderung nicht folgen.
 Weicht die Fremdwährung von Ihrer Kontowährung ab, verlangt BudgetManager
 eine ausdrückliche Bestätigung, bevor der Betrag übernommen wird.
 
+### 6.7 Meldungen im LifePlanner
+
+Läuft BudgetManager als Modul im LifePlanner, meldet er dorthin, was gerade
+ansteht: überzogene Budgets, Sparziele kurz vor oder nach ihrem Termin und
+erreichte Sparziele. Der LifePlanner zeigt diese Meldungen auf seiner
+Übersichtsseite, über den Modulkacheln — Sie sehen sie also, ohne den
+BudgetManager zu öffnen.
+
+Übertragen wird nur die fertige Meldung: eine Zeile Text und wie dringend sie
+ist. Beträge, Buchungen und Kategorienamen bleiben in Ihrer Datenbank. Der
+Stand wird beim Beenden geschrieben und beim nächsten Mal vollständig ersetzt —
+was erledigt ist, verschwindet von selbst.
+
+Ohne LifePlanner passiert hier nichts.
+
 ## 7. Übersicht und Diagramme
 
 Die Übersicht bietet Jahr, Monat oder benutzerdefinierten Zeitraum. Rechts können Typ, Kategorie inklusive Unterkategorien, Tags, Bemerkung und Betragsgrenzen kombiniert werden.

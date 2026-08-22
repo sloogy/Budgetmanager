@@ -87,6 +87,20 @@ exists and would not follow a later change.
 If the source currency differs from your account currency, BudgetManager asks
 for explicit confirmation before the amount is taken over.
 
+### 6.7 Notices in LifePlanner
+
+When BudgetManager runs as a LifePlanner module, it reports what needs
+attention: exceeded budgets, savings goals close to or past their deadline, and
+goals that have been reached. LifePlanner shows these on its overview page,
+above the module cards — so you see them without opening BudgetManager.
+
+Only the finished notice is transferred: one line of text and how urgent it is.
+Amounts, transactions and category names stay in your database. The state is
+written on exit and fully replaced next time, so resolved items disappear on
+their own.
+
+Without LifePlanner, nothing happens here.
+
 ## 7. Overview
 
 Choose year, month or custom range and combine filters for account/type, category including children, tags, note and amount. The Overview contains KPI cards, planned/actual tables, remaining amount, percentage, overruns, filtered transactions and reviewed suggestions.

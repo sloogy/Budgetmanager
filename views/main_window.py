@@ -3243,6 +3243,19 @@ class MainWindow(QMainWindow):
             savings.count,
             expenses.path.parent,
         )
+        # Getrennt gefangen: Die Meldungen sind reine Anzeige. Fallen sie
+        # aus, sollen die Outboxen oben trotzdem geschrieben sein.
+        try:
+            from model.lifeplanner_import_service import sync_host_notices
+
+            anzahl = sync_host_notices(self.conn)
+        except (OSError, sqlite3.Error, ValueError):
+            logger.warning(
+                "Meldungen fuer das Host-Dashboard konnten nicht geschrieben werden",
+                exc_info=True,
+            )
+            return
+        logger.debug("Host-Meldungen geschrieben: %s", anzahl)
 
     def _toggle_fullscreen(self, checked):
         """Toggle Vollbildmodus (F11)"""

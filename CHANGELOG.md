@@ -2,6 +2,23 @@
 
 ## Unveröffentlicht
 
+### Funktion
+
+- **Der LifePlanner zeigt jetzt, was im BudgetManager ansteht.** Bisher sah
+  der Host nur, ob ein Modul läuft und wie viele Zeilen in den Brückendateien
+  stehen. Ein überzogenes Budget sah nur, wer den BudgetManager öffnete —
+  obwohl der Host das Fenster ist, das ohnehin offen steht. Er meldet jetzt
+  überzogene Budgets, Sparziele kurz vor oder nach ihrem Termin und erreichte
+  Sparziele nach `lifeplanner.notice.v1`.
+
+  Übertragen wird nur die fertige Meldung: eine Zeile Text und ihre
+  Dringlichkeit. Keine Beträge, keine Buchungen, keine Kategorienamen — die
+  Datei liegt im Brückenordner und ist für jedes Modul lesbar, deshalb ist
+  auch die Kennung je Meldung ein gekürzter Hash statt Klartext. Geschrieben
+  wird atomar und als vollständiger Stand: Was behoben ist, verschwindet von
+  selbst, statt bis zum nächsten Aufräumlauf stehen zu bleiben. Handbuch in
+  drei Sprachen, Kapitel 6.7.
+
 ### Dokumentation
 
 - **Das README sagt jetzt zuerst, was das Programm tut.** Vorher stand dort

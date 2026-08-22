@@ -90,6 +90,21 @@ ultérieure.
 Si la devise source diffère de celle de votre compte, BudgetManager demande
 une confirmation explicite avant de reprendre le montant.
 
+### 6.7 Messages dans LifePlanner
+
+Lorsque BudgetManager fonctionne comme module de LifePlanner, il signale ce qui
+demande votre attention : budgets dépassés, objectifs d'épargne proches de leur
+échéance ou dépassés, et objectifs atteints. LifePlanner les affiche sur sa page
+d'aperçu, au-dessus des tuiles de modules — vous les voyez donc sans ouvrir
+BudgetManager.
+
+Seul le message fini est transmis : une ligne de texte et son degré d'urgence.
+Montants, écritures et noms de catégories restent dans votre base de données.
+L'état est écrit à la fermeture et entièrement remplacé la fois suivante ; ce
+qui est réglé disparaît de lui-même.
+
+Sans LifePlanner, rien ne se passe ici.
+
 ## 7. Aperçu
 
 Choisissez année, mois ou période personnalisée et combinez compte/type, catégorie avec enfants, tags, remarque et montant. L’aperçu contient KPI, tableaux prévu/réel, reste, pourcentage, dépassements, opérations filtrées et suggestions à valider.

@@ -759,3 +759,17 @@ def bridge_zustand() -> tuple[Path, tuple[BridgeDateiBefund, ...]]:
 
 def sync_default_outboxes(conn) -> tuple[BridgeExportResult, BridgeExportResult]:
     return export_fpm_expense_proposals(conn), export_savings_goals(conn)
+
+
+def sync_host_notices(conn, heute: date | None = None) -> int:
+    """Schreibt den Meldungsstand fuer das LifePlanner-Dashboard.
+
+    Getrennt von ``sync_default_outboxes``, weil das etwas anderes ist: Die
+    Outboxen tragen Vorschlaege fuer ein anderes Fachmodul, die Meldungen
+    tragen nur Anzeige. Faellt eines aus, soll das andere trotzdem laufen.
+    """
+    from model.lifeplanner_notices import sammle_meldungen, schreibe_meldungen
+
+    stichtag = heute or date.today()
+    meldungen = sammle_meldungen(conn, stichtag.year, stichtag.month, stichtag)
+    return schreibe_meldungen(meldungen)
