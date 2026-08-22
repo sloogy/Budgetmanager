@@ -239,9 +239,7 @@ class UserModel:
             # traegt er zusaetzlich den Verzeichnis-fsync und eine
             # Zwischendatei mit Prozessnummer bei, damit zwei gleichzeitig
             # laufende Instanzen sich nicht dieselbe teilen.
-            atomar_schreiben(
-                path, json.dumps(data, indent=2, ensure_ascii=False)
-            )
+            atomar_schreiben(path, json.dumps(data, indent=2, ensure_ascii=False))
             return True
         except Exception as e:
             logger.error("Fehler beim Speichern der Benutzerdatei: %s", e)

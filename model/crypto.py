@@ -206,7 +206,8 @@ def _secure_file(path) -> None:
     except Exception as fehler:  # nie fatal, aber nie stumm
         logger.warning(
             "Zugriffsrechte auf %s nicht gesetzt - die Datei bleibt offen: %s",
-            path, fehler,
+            path,
+            fehler,
         )
 
 

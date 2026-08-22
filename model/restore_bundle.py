@@ -73,7 +73,8 @@ def _secure_bundle_file(path: Path) -> None:
     except Exception as fehler:  # nie fatal, aber nie stumm
         logger.warning(
             "Zugriffsrechte auf %s nicht gesetzt - die Sicherung bleibt offen: %s",
-            path, fehler,
+            path,
+            fehler,
         )
 
 
