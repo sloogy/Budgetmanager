@@ -60,13 +60,21 @@ class BundleManifest:
 
 
 def _secure_bundle_file(path: Path) -> None:
-    """0600 auf Backup-Dateien. Auf FAT/Windows folgenlos."""
+    """0600 auf Backup-Dateien. Auf FAT/Windows folgenlos.
+
+    Scheitern darf das, schweigen nicht: Eine Sicherung traegt denselben
+    Datenbestand wie die Datenbank. Blieb sie offen liegen, war das bis
+    Loop 25 nirgends zu sehen.
+    """
     try:
         from model.file_permissions import secure_file
 
         secure_file(path)
-    except Exception:  # pragma: no cover
-        pass
+    except Exception as fehler:  # nie fatal, aber nie stumm
+        logger.warning(
+            "Zugriffsrechte auf %s nicht gesetzt - die Sicherung bleibt offen: %s",
+            path, fehler,
+        )
 
 
 def _sha256_file(path: Path) -> str:
@@ -91,9 +99,11 @@ def _fsync_directory(path: Path) -> None:
             os.fsync(fd)
         finally:
             os.close(fd)
-    except Exception:
+    except OSError as fehler:
         # Nicht alle Dateisysteme/Container erlauben fsync auf Verzeichnissen.
-        pass
+        # Kein Grund abzubrechen - aber ohne fsync ist nicht garantiert, dass
+        # der Verzeichniseintrag einen Stromausfall ueberlebt.
+        logger.debug("fsync auf %s nicht moeglich: %s", path, fehler)
 
 
 def atomic_copy_verified(
