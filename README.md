@@ -7,218 +7,233 @@ BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Ka
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
 
+Alle Daten bleiben auf dem eigenen Rechner. Es gibt kein Konto in der Cloud, keine Telemetrie und keinen Serverzwang; die einzige optionale Netzwerkverbindung ist die Update-Prüfung gegen GitHub.
+
+---
+
+## Inhalt
+
+- [Schnellstart](#schnellstart)
+- [Erste Schritte in der App](#erste-schritte-in-der-app)
+- [Anleitung: die wichtigsten Abläufe](#anleitung-die-wichtigsten-abläufe)
+- [Hilfe in der App](#hilfe-in-der-app)
+- [Notstart- und Diagnoseschalter](#notstart--und-diagnoseschalter)
+- [Funktionsumfang](#funktionsumfang)
+- [Neu in v2.2.70](#neu-in-v2270)
+- [Für Entwickler](#für-entwickler)
+- [Weitere Dokumentation](#weitere-dokumentation)
+
 ---
 
 ## Schnellstart
 
 ### Windows — empfohlen für normale Nutzer
 
-1. Aktuelles Release herunterladen.
-2. Portable-ZIP entpacken oder Installer starten.
-3. `BudgetManager.exe` starten.
+1. Aktuelles [Release](https://github.com/sloogy/Budgetmanager/releases) herunterladen.
+2. Entweder `BudgetManager_Setup_2.2.70.exe` (Installer) starten **oder** `BudgetManager-v2.2.70-portable-windows.zip` entpacken.
+3. Portable Version: `start-windows.cmd` beziehungsweise `BudgetManager.exe` starten.
 
-Portable Daten liegen im Ordner `data/` neben dem Programm. Dadurch kann der komplette Ordner auch auf einem USB-Stick genutzt werden.
+Portable Daten liegen im Ordner `data/` neben dem Programm. Dadurch kann der komplette Ordner auch auf einem USB-Stick genutzt werden. Der Installer fragt beim ersten Start nach einem Datenordner.
 
-### Linux / Entwicklung
+Die Pakete sind bewusst nicht Authenticode-signiert. Windows SmartScreen warnt deshalb; die Prüfsummen aus `SHA256SUMS.txt` sollten vor dem Start kontrolliert werden. Details dazu in [README_INSTALLATION.md](README_INSTALLATION.md).
+
+### Linux
+
+Fertiges Paket `BudgetManager-v2.2.70-portable-linux.zip` entpacken und starten:
 
 ```bash
+./start-linux.sh
+```
+
+Aus dem Quellcode:
+
+```bash
+git clone https://github.com/sloogy/Budgetmanager.git
+cd Budgetmanager
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python3 main.py
 ```
 
-Alternativ:
+Alternativ erledigt `./run.sh` beides: Es startet eine vorhandene Binary, sonst legt es `.venv` an, installiert die Abhängigkeiten und startet den Quellcode.
+
+Unter Wayland schaltet BudgetManager automatisch auf das XCB-/XWayland-Backend, weil Qt beim Schliessen kleiner Dialoge sonst nativ abstürzen kann. Wer natives Wayland will, setzt `BM_ALLOW_WAYLAND=1`.
+
+### macOS
+
+Für macOS gibt es kein fertiges Release-Paket. Der Start aus dem Quellcode funktioniert:
 
 ```bash
-./run.sh
+./start-macos.sh
 ```
+
+Voraussetzung ist Python 3.12 oder neuer; das Skript legt `.venv` an und installiert die Abhängigkeiten selbst.
+
+### Voraussetzungen
+
+- Python 3.11 oder neuer (CI und Releases bauen mit 3.12) — nur für den Start aus dem Quellcode.
+- PySide6/Qt 6 (kommt über `requirements.txt`).
+- Unter Linux die Qt-Systembibliotheken: `libegl1`, `libgl1`, `libxkbcommon-x11-0`, `libxcb-cursor0`, `libdbus-1-3`, `libfontconfig1`.
 
 ---
 
-## Neu in v2.2.63
+## Erste Schritte in der App
 
-- **Zentrale Darstellung:** Im LifePlanner übernimmt BudgetManager das dort gewählte Designprofil beim Start (`LIFEPLANNER_THEME_FILE`, Format `lifeplanner.theme.v1`).
-- **Standalone unverändert:** Die lokal gespeicherte Profilwahl wird dabei nicht überschrieben und gilt weiterhin beim Start ohne Host.
-- **Fremde Profile darstellbar:** Ein Profil, das nur der Host mitbringt, wird aus dessen Farbwerten aufgebaut statt zu scheitern.
+1. **Sprache und Region wählen.** Der Erststart-Assistent fragt Sprache, Währung, Zahlenformat und den bevorzugten Buchungstag ab.
+2. **Restore-Key sichern.** Er wird einmalig angezeigt und gehört an einen Ort ausserhalb des Programmordners. Ohne ihn lässt sich ein verschlüsseltes Backup auf einer anderen Installation nicht öffnen. Später erneut abrufbar über `Hilfe → Restore-Key anzeigen…`.
+3. **Kategorien anlegen** oder die mitgelieferten Standardkategorien übernehmen.
+4. **Budget setzen** — oder den **Lernmodus** aktiv lassen und zuerst nur buchen. Im Lernmodus darf der Budget-Schritt ohne Betrag abgeschlossen werden.
+5. **Buchen** unter *Tracking*. Fixkosten und wiederkehrende Zahlungen laufen über `Tracking → Fix/Wiederkehrend buchen…`.
+6. **Auswerten** im Cockpit und in der Übersicht.
 
-## Neu in v2.2.62
+Auto-Speichern und Auto-Backup sind ab dem ersten Start aktiv.
 
-- **LifePlanner-/LiveManager-Installation:** Der GitHub-Release enthält bewusst unsigned `.lpmodule`-Pakete für Windows x86_64 und Linux x86_64; lokal ist eine manuelle Vertrauensbestätigung erforderlich.
-- **Integritätsnachweis:** Jedes Modulpaket erhält eine eigene SHA-256-Datei und wird vor dem Upload strukturell geprüft.
-- **Ein Releaseweg:** Portable Pakete, Windows-Setup, Updater-Dateien, SBOM und LifePlanner-Module entstehen aus demselben Tag-Workflow.
+### Einfach- oder Erweitert-Modus
 
-## Neu in v2.2.61
+Der einfache Modus reduziert die Oberfläche auf Cockpit, Budget, Tracking und Übersicht. Es geht dabei nichts verloren: Alle übrigen Funktionen sind im erweiterten Modus erreichbar, umschaltbar in den Einstellungen.
 
-- **QtCharts-Lebensdauer:** Ersetzte Übersichtsdiagramme bleiben bis zum nativen Qt-`destroyed`-Signal referenziert und werden erst im Event-Loop sicher freigegeben.
-- **Installer-E2E:** Der Windows-Releasejob prüft Silent-Install, Start der installierten App, Release-Selbsttest und Silent-Uninstall.
-- **Reproduzierbare CI:** Build und Tests installieren die gehashten Linux-/Windows-Lockfiles; virtuelle Umgebungen werden von statischen Quellcode-Audits ausgeschlossen.
+---
 
-## Neu in v2.2.60
+## Anleitung: die wichtigsten Abläufe
 
-- **Verbindliche Basis:** v2.2.56 LIFEPLANNER_FIXED bleibt führend; Verbesserungen aus v2.2.58 wurden selektiv übernommen.
-- **LifePlanner-Profile:** BudgetManager nutzt die vom Host vorgegebenen, getrennten Daten- und Bridge-Ordner und bleibt gleichzeitig standalone startbar.
-- **Review-Inbox:** Neue, geänderte, abgelehnte und verwaiste FPM-/LifePlanner-Vorschläge werden nachvollziehbar verwaltet. Vor der Übernahme können Datum, Typ, Kategorie, Betrag und Beschreibung bearbeitet werden.
-- **Kein Auto-Buchen:** Externe Finanzdaten werden niemals ungeprüft als Buchung gespeichert. Fremdwährungen benötigen eine ausdrückliche Bestätigung.
-- **Bidirektionale Bridge:** FPM-Ausgaben und Sparziele können weiterhin getrennt in die Outbox geschrieben werden.
-- **Monatsstatus nach Lohn:** Der Cockpit-Zeitraum beginnt beim tatsächlichen beziehungsweise hinterlegten Lohneingang und endet am Tag vor dem nächsten Lohntag.
-- **Klare Release-Grenze:** Der BudgetManager-Tag veröffentlicht nur BudgetManager-Artefakte. LifePlanner prüft seinen Online-Stand über den eigenen Veröffentlichungsweg; `.lpmodule`-Dateien werden hier nicht hochgeladen.
-- **Cockpit und Sparziele:** Freie Kachelspalten, Drop-Platzhalter, QtCharts-Härtung sowie Sparziel-Flussbestand mit Bezug, Korrektur und Teilfreigabe bleiben erhalten.
+### Fixkosten und Wiederkehrend sauber getrennt
 
-## Neu in v2.2.55
+- **Fix + Wiederkehrend** = echte monatliche Fixkosten, Betrag aus dem Budget, gesperrt.
+- **Fix ohne Wiederholung** = geschützte variable Kosten oder Rückstellungen, zum Beispiel Franchise oder Selbstbehalt; der Betrag ist beim Buchen editierbar.
+- **Wiederkehrend ohne Fix** = regelmässige, aber variable Buchung; der Betrag ist editierbar.
+- Fix-only und Recurring-only gelten im Monat erst als abgeschlossen, wenn der Budgetbetrag erreicht ist.
 
-- Die gesamte Kopfzeile einer Cockpit-Kachel dient im manuellen Modus als Drag-Zone.
-- Bereits ab 720 px stehen zwei gleich breite Zielspalten zur Verfügung.
-- Reihenfolge und Spaltenzuordnung werden nach jedem Drop gespeichert.
-- Tabellen, Buttons und Diagramme innerhalb der Kacheln bleiben normal bedienbar.
+Wichtig: Das Häkchen bucht nichts automatisch im Hintergrund. Es nimmt die Kategorie in `Tracking → Fix/Wiederkehrend buchen…` auf, nutzt den Budgetbetrag des Monats, überspringt bereits vorhandene Buchungen und schützt die Kategorie vor falschen 0-Monats-Budgetvorschlägen.
 
-## Neu in v2.2.54
+### Kategorien umbenennen und löschen
 
-- Kritischen nativen QtCharts-Absturz im Cockpit nach dem Hinzufügen von Buchungen behoben.
-- Die obere Linie des Flächendiagramms wird dauerhaft gehalten, weil `QAreaSeries` sie nicht besitzt.
-- Verlauf, Serien und Achsen werden nicht mehr bei jedem Refresh zerstört, sondern sicher in-place aktualisiert.
-- Notstart ohne Cockpit-Diagramme: `BM_DISABLE_COCKPIT_CHARTS=1 ./run.sh`.
-- Neue Regressionstests sichern Objektlebensdauer, atomare Punktaktualisierung und den Notstartschalter.
+- Umbenennen läuft zentral über `CategoryModel.rename_and_cascade()` und zieht alle Textreferenzen nach: Budget, Tracking/Buchungen, Favoriten, Budget-Warnungen, wiederkehrende Buchungen, angenommene Budgetvorschläge und Sparziele.
+- Löschen läuft über `delete_category_safely()` / `delete_categories_safely()`. Die App fragt vorher, was mit abhängigen Daten passieren soll:
+  - Buchungen und Budget bis zur Löschung entfernen und Sparziele entkoppeln,
+  - alle zugehörigen Daten löschen,
+  - abhängige Daten einer anderen Kategorie desselben Typs zuordnen.
+- Beim Löschen einer Parent-Kategorie werden direkte Children eine Ebene hochgezogen — sie werden nicht verwaist und nicht stillschweigend mitgelöscht.
+- Der Kategorienbaum schützt gegen Self-Parenting, Typ-Mischung und Zyklen.
 
-## Neu in v2.2.53
-
-- Kritischen nativen Qt-/PySide6-Segfault nach Abschluss des Setup-Assistenten behoben.
-- Das verschobene Auto-Backup läuft erst nach vollständig abgeschlossenem Dialogabbau und in einem separaten Event-Loop-Schritt.
-- Parent-gebundene Timer, Referenzschutz und Abschluss-Guard verhindern Callbacks auf zerstörte Qt-Objekte und Doppelabschlüsse.
-
-## Neu in v2.2.52
-
-- Kritischen Cockpit-Startabbruch durch Python-Klassen-Comprehension behoben.
-- Dashboard-Spaltenvorgaben werden nun importstabil aus Modulkonstanten aufgebaut.
-- Neuer Regressionstest verhindert erneute `NameError`-Abbrüche beim Laden des Cockpits.
-
-## Neu in v2.2.51
-
-- Kritischen Erststart-Abbruch im Sprachwahldialog behoben (`FrozenInstanceError` in `UIColors`).
-- Berechnete Hover-Farben werden bei der unveränderlichen Farb-Dataclass jetzt korrekt und typisiert initialisiert.
-- Ein neuer Runtime-Regressionstest startet die Farbkonfiguration wirklich und schützt vor derselben Fehlerklasse.
-
-## Neu in v2.2.50
-
-- Neuer **Einfach-/Erweitert-Modus**: Der einfache Modus reduziert die Oberfläche auf Cockpit, Budget, Tracking und Übersicht; alle Funktionen bleiben im erweiterten Modus erreichbar.
-- Export erweitert um **XLSX-Arbeitsmappen** mit getrennten Tabellenblättern sowie schwarzweiss-taugliche **A4-PDF-Berichte**.
-- Diagnose-ZIPs enthalten jetzt anonymisierte Qt-/Skalierungsdaten und eine technische Datenbank-Gesundheitsprüfung, aber keine Buchungen, Namen oder Beträge.
-- Restore-Kopien bleiben auch bei vollem Datenträger, fehlenden Rechten oder Austauschfehlern atomar; der bisherige Datenbestand bleibt bis zum letzten geprüften Dateitausch erhalten.
-- CI erzeugt eindeutige Voll-Coverage-Artefakte, prüft kritische Sicherheitsmodule separat und führt einen 50’000-Buchungen-Performance-Benchmark aus.
-- Fedora-/Windows-Gates erzeugen visuelle Screenshots und weisen einfarbige, leere oder fehlerhaft skalierte Hauptansichten zurück.
-- Strengere Typprüfung für Backup, Diagnose, Update-Signatur, sicheren Excel-Import und Berichtsexport.
-
-## Neu in v2.2.49
-
-- Die Sicherheitsverbesserungen aus KILLCRITIC GREEN und ENTERPRISE RELEASE AUDITED wurden ohne Rückschritte bei lokalen Coverage-, Qt- und Bandit-Prüfungen zusammengeführt.
-- Der Erststart-Import prüft `.bmr`-Backups jetzt genauso strikt wie der normale Restore und streamt Datenbanken mit Größenlimit statt sie vollständig in den Arbeitsspeicher zu lesen.
-- Vollständige Konto-Wiederherstellungen erhalten andere lokale Konten. Nur ein exakt identisches Konto wird ersetzt; Namens- oder Datenbankkollisionen brechen sicher ab.
-- Manifest und Nutzdaten werden aus demselben geöffneten Archiv geprüft, um Austauschrennen zwischen Prüfung und Restore zu verhindern.
-- Leere optionale Dateien erhalten gültige Prüfsummen; fehlerhafte SHA-256-Felder und unvollständige Konto-Metadaten werden abgewiesen.
-- Backup-Dialoge melden jetzt den tatsächlichen Bundle-Inhalt statt lediglich vorhandene Quelldateien.
-- Neue v2.2.49-Regressionen sichern beide Restore-Wege, Mehrbenutzer-Erhalt, atomare Kopien und Kompressions-Grenzfälle ab.
-
-## Neu in v2.2.48
-
-- Backup-Integrität umfasst jetzt Datenbank, Einstellungen und das zugehörige Benutzerkonto; manipulierte oder beschädigte Zusatzdaten werden abgewiesen.
-- Konto-Backups enthalten bei mehreren lokalen Benutzern nur noch den zur gesicherten Datenbank passenden Kontoeintrag und bleiben dadurch selbstkonsistent.
-- Vollständige Konto-Wiederherstellungen streamen große Datenbanken mit harter Größenbegrenzung statt die gesamte Datei in den Arbeitsspeicher zu laden.
-- Legacy-Backups können nach ausdrücklicher Bestätigung in eine vollständig gehashte Kopie migriert werden.
-- Manipulierte ZIP-Kompressionsmethoden werden kontrolliert abgewiesen; Update-Archive dürfen keine doppelten oder plattformabhängig kollidierenden Pfade enthalten.
-- Aktive lokale Dokumentationslinks werden durch einen Regressionstest abgesichert.
-
-## Neu in v2.2.47
-
-- Die ausführlichere Cockpit-Anleitung aus der Guide-Variante wurde mit der technisch robusteren Enterprise-Version verbunden.
-- Ein eigenes In-App-Hilfethema erklärt Kennzahlen und Trendfarben, Ring- und Flächendiagramm, Automatikmodus, fixiertes Drag-and-drop, Spaltenwechsel und Designprofile.
-- Layoutmodus, Reihenfolge und Spalten bleiben atomar gespeichert; DesignManager und Theme-Wechsel werden nicht umgangen.
-- Das Enterprise-DAU-Audit erkennt jetzt auch dreistellige fest codierte Farben wie `#666`.
-
-## Neu in v2.2.43
-
-- Dashboard-Optik aus v2.2.42 und das automatische/fixierte Kachellayout aus v2.2.41 sind in einer gemeinsamen Implementierung zusammengeführt.
-- Leere Bereiche schrumpfen und wandern im Automatikmodus stabil nach unten; im fixierten Modus lassen sich Kacheln über den Griff `≡` zwischen beiden Spalten verschieben.
-- Reihenfolge, Spalten, Sichtbarkeit und Auf-/Zuklappzustand werden gespeichert; Einstellungen aus beiden Zwischenversionen werden migriert.
-- KPI-Karten, Ringdiagramm und Flächenverlauf bleiben vollständig vom aktiven DesignManager-Profil gesteuert.
-- Fehler der Dashboard-Variante behoben: fehlender KPI-Icon-Parameter, herausgefilterte Diagramm-Kachel, instabile Einspalten-Ablage und undefinierte Theme-Randfarbe.
-- Theme-Wechsel aktualisieren Cockpit-Diagramme und KPI-Trends sofort.
-
-Vollständige Anleitung: [`docs/USER_GUIDE.de.md`](docs/USER_GUIDE.de.md). In der App: **F1**.
-
-## Wichtige Grundfunktionen
-
-### Fixkosten / Wiederkehrend sauber getrennt
-
-- **Fix + Wiederkehrend** = echte monatliche Fixkosten, Betrag aus Budget, gesperrt.
-- **Fix ohne Wiederholung** = geschützte variable Kosten/Rückstellungen, z. B. Franchise oder Selbstbehalt; Betrag ist beim Buchen editierbar.
-- **Wiederkehrend ohne Fix** = regelmäßige, variable Buchung; Betrag ist editierbar.
-- Fix-only und recurring-only gelten im Monat erst als abgeschlossen, wenn der Budgetbetrag erreicht wurde.
-
-### Tracker-Kategorieauswahl
+### Kategorieauswahl im Tracking
 
 - Favoriten stehen oben.
 - Normale manuelle Kategorien werden nach manueller Buchungshäufigkeit sortiert.
-- Parent-Kategorien mit Unterkategorien werden im Tracking nicht als eigene Buchungszeile angezeigt.
-- Unterkategorien werden kurz angezeigt: **Miete** statt **Wohnen › Miete** oder **Wohnen - Miete**.
-- Fix-/Wiederkehrend-Kategorien sind eigene Gruppen und werden nicht durch automatische Buchungen hochsortiert.
+- Parent-Kategorien mit Unterkategorien erscheinen nicht als eigene Buchungszeile.
+- Unterkategorien werden kurz angezeigt: **Miete** statt **Wohnen › Miete**.
+- Fix- und Wiederkehrend-Kategorien bilden eigene Gruppen und werden nicht durch automatische Buchungen hochsortiert.
 
-### Kategorie-Logik finalisiert
+### Sparziele
 
-- Kategorie-Rename läuft zentral über `CategoryModel.rename_and_cascade()`.
-- Rename aktualisiert alle bekannten Text-Referenzen:
-  - Budget
-  - Tracking/Buchungen
-  - Favoriten
-  - Budget-Warnungen
-  - wiederkehrende Buchungen
-  - angenommene Budgetvorschläge
-  - Sparziele
-- Kategorie-Löschung läuft zentral über `delete_category_safely()` / `delete_categories_safely()`.
-- Beim Löschen fragt die App, was mit abhängigen Daten passieren soll:
-  - Buchungen/Budget bis zur Kategorie-Löschung entfernen und Sparziele entkoppeln,
-  - alle zugehörigen Daten löschen,
-  - abhängige Daten einer anderen Kategorie desselben Typs zuordnen.
-- Beim Löschen einer Parent-Kategorie werden direkte Children eine Ebene hochgezogen, nicht verwaist und nicht automatisch mitgelöscht.
+Sparziele sind an mehreren Stellen eingebettet: im Budget über den 🎯-Einstieg, im Tracking über ein ausblendbares Panel mit Fortschrittsbalken und Doppelklick zum Ziel, in der Übersicht als Kontrollstelle.
 
+Geld aus einem Sparziel wird als **negative Ersparnisse-Buchung** auf die verknüpfte Kategorie gebucht, zum Beispiel `-500 CHF` auf `Ersparnisse → Hochzeit`. Negative Beträge sind deshalb bei `Ersparnisse` erlaubt; bei `Ausgaben` bleiben sie bewusst gesperrt.
 
-### Budgetvorschläge / Forecast korrigiert
+Die Grenzen sind hart: Eine Entnahme darf den Stand nicht unter `0` ziehen, eine Einzahlung das Ziel nicht über `100 %` füllen. Beides wird blockiert und gemeldet.
 
-- Fixkosten und wiederkehrende Kategorien werden vor falschen 0-Monats-Senkungen geschützt.
-- 0-Monate werden bei Fixkosten nicht als Beweis für „Budget zu hoch“ gewertet.
-- Wiederholte echte Buchungen dürfen trotzdem Budgeterhöhungen oder -senkungen auslösen.
-- Flexible Kategorien bleiben flexibel: wiederholte Muster wie `20 / 30 / 0` bei Hobby können weiterhin Vorschläge erzeugen.
+Best Practice: Sparziel zuerst **freigeben**, dann die Entnahme buchen und das Ziel abschliessen, wenn es erledigt ist.
 
-### Update-Ablauf verbessert
+### Lernmodus — Entscheidungspfad
 
-- Menü `Extras → Updates...` öffnet ein eigenes Update-Fenster.
-- Klick auf `Update jetzt ausführen` prüft, lädt und startet die Installation automatisch.
-- Das Update-Fenster zeigt die einzelnen Schritte im Log.
-- Unter Windows wird ein eigenes Update-Helferfenster geöffnet, weil die laufende EXE nicht selbst überschrieben werden kann.
-- Installer-Versionen laden das Setup-Asset und aktualisieren über den Installer, damit Uninstaller, Startmenü und Installationspfad sauber bleiben.
-- Datenordner, Backups, Exporte, Einstellungen und Update-Cache bleiben im gewählten Datenordner erhalten.
-- Der alte irreführende Text `python -m updater.apply_update` nach der Prüfung wurde ersetzt.
-- Bereits vorbereitete, aber veraltete Staging-Updates aktivieren den Installieren-Button nicht mehr.
+Der Lernmodus ist für den Einstieg gedacht, wenn noch kein Budget steht und zuerst echte Buchungen gesammelt werden sollen. Ist er deaktiviert, bleibt die Mindestprüfung im Erststart hart: mindestens ein Budgetwert muss vorhanden sein.
 
-### Währung, Zahlenformat und i18n
+1. **Kein Budget im Jahr vorhanden** → die Kategorie darf aus manuellem Tracking ein Startbudget vorschlagen.
+2. **Budget im Jahr vorhanden** → der Lernmodus ist für diese Kategorie beendet; danach gilt nur noch die normale Vorschlagslogik.
+3. **Vorschlag im Budgetwarner** → Betrag prüfen, Budgetart bestätigen und erst dann übernehmen.
+4. **Unsicher** → Rechtsklick auf den Lernvorschlag und „Weiter beobachten“ wählen.
+5. **Kategorie passt nicht monatlich** → „Als unregelmäßig / Rückstellung markieren“ wählen.
+6. **Nicht verwenden** → „Ignorieren“ blendet die Lernphase dauerhaft aus, bis der Status zurückgesetzt wird.
 
-- Zahlenformat ist formatbewusst: Schweiz, Europa und US/UK werden korrekt geparst und formatiert.
-- Alte Zahlenformat-Codes werden migriert.
+Budgetarten im Lernmodus:
+
+| Budgetart | Typische Beispiele |
+| --- | --- |
+| Fix + wiederkehrend | Miete, Abo, gleichbleibender Lohn |
+| Fix + inkrementell | Jahres- oder Quartalskosten als Monatsreserve |
+| Nur wiederkehrend | regelmässig, aber nicht exakt gleich |
+| Variabler Topf | Lebensmittel, Hobby, Haushalt |
+| Ersparnis-Topf | Sparen als planbarer Topf |
+| Schwankendes Einkommen | Stundenlohn, variable Einnahmen; vorsichtig abgerundet |
+| Unregelmässig / Rückstellung | Franchise, Selbstbehalt, Reparaturen, seltene Kosten |
+
+Best Practice: erst tracken, dann Vorschläge prüfen, niemals blind alles übernehmen. Gerade bei Gesundheit, Franchise und Jahresrechnungen ist ein Rückstellungsbudget meist besser als ein starrer Monatsfixbetrag.
+
+In der Übersicht sind die Banner-Symbole eindeutig: **🆕** neuer Startbudget-Vorschlag aus dem Lernmodus, **📉** echte Defizit-/Erhöhungswarnung, **📈** Überschuss-/Senkungsvorschlag.
+
+### Budgetvorschläge und Forecast
+
+- Fixkosten und wiederkehrende Kategorien sind vor falschen 0-Monats-Senkungen geschützt; ein 0-Monat gilt dort nicht als Beweis für „Budget zu hoch“.
+- Wiederholte echte Buchungen dürfen trotzdem Erhöhungen oder Senkungen auslösen.
+- Flexible Kategorien bleiben flexibel: Muster wie `20 / 30 / 0` bei Hobby erzeugen weiterhin Vorschläge.
+
+### Backup, Restore und Erststart-Import
+
+- Auto-Backup läuft beim Start; manuelle Backups jederzeit über den Konto-Hub.
+- Ein Backup (`.bmr`) enthält Datenbank, Einstellungen und den passenden Kontoeintrag; Integrität und Prüfsummen werden vor jedem Restore geprüft.
+- Beim Erststart-Import zuerst das Backup wählen, danach die Sicherheitsstufe. `.bmr`-Backups von Quick-Benutzern werden über die enthaltene `users.json` übernommen und in den neuen Benutzer re-verschlüsselt.
+- Stammt das Backup von einem PIN-/Passwort-Benutzer oder einer anderen Installation, wird der Restore-Key abgefragt. Bei falschem Key bleibt kein leerer Benutzer zurück.
+- Eine vollständige Konto-Wiederherstellung erhält andere lokale Konten; ersetzt wird nur ein exakt identisches Konto.
+
+### Update aus der App
+
+1. Menü `Extras → Updates…` öffnen (oder im Über-Dialog auf `Updates…` klicken).
+2. `Update jetzt ausführen` klicken. Die App prüft, lädt, verifiziert Signatur und Prüfsumme und startet die Installation.
+3. Unter Windows schliesst sich BudgetManager und ein Update-Helferfenster übernimmt, weil die laufende EXE sich nicht selbst überschreiben kann.
+4. Installer-Versionen laden das Setup-Asset und aktualisieren über den Installer, damit Uninstaller, Startmenü und Installationspfad sauber bleiben.
+
+Datenordner, Backups, Exporte, Einstellungen und Update-Cache bleiben dabei erhalten. Das Update-Fenster protokolliert jeden Schritt.
+
+> **Einmalig nötig für alte Installationen:** Den eingebauten Vertrauensanker für Update-Signaturen gibt es erst ab v2.2.65. Eine ältere Installation muss einmal von Hand aktualisiert werden; danach funktioniert das In-App-Update wieder von selbst. Für v2.2.61 liegt dem Release zusätzlich `BudgetManager-v2.2.61-Trust-Bridge.ps1` bei, das nur den öffentlichen Schlüssel nachträgt.
+
+### Währung, Zahlenformat und Sprachen
+
+- Deutsch, Englisch und Französisch; Qt-Systemübersetzungen werden beim Start geladen, sofern die `.qm`-Dateien im Build vorhanden sind.
+- Das Zahlenformat ist formatbewusst: Schweiz, Europa und US/UK werden korrekt geparst und formatiert; alte Formatcodes werden migriert.
 - App-eigene Kontextmenüs sind über i18n-Keys übersetzt.
-- Qt-Systemübersetzungen werden beim Start geladen, sofern die `.qm`-Dateien im Build vorhanden sind.
 
-Details stehen im [CHANGELOG.md](CHANGELOG.md).
+### Mehrfachstart und Parallelbetrieb
 
-### Hilfe / Wissensdatenbank / Mindmap
+BudgetManager verhindert, dass zwei Instanzen denselben Datenordner beschreiben — sonst kämen sich Datenbank, Auto-Save und Auto-Backup in die Quere. Der Schutz gilt **pro Datenordner**, nicht global für `python main.py`: Andere Python-Programme mit eigenem Ordner laufen ungestört parallel.
+
+Zum Beenden alter Testinstanzen deshalb bitte kein pauschales `pkill -f "python main.py"`, sondern das Fenster schliessen oder gezielt die PID aus `data/budgetmanager.instance.lock/pid` prüfen.
+
+Das Cockpit startet keine eigene Instanz — es ist ein normaler Reiter im Hauptfenster. Update-Prüfungen im Source-Modus laufen über `python -m updater.check_update` statt über ein zweites `python main.py`.
+
+---
+
+## Hilfe in der App
 
 - `F1` öffnet das durchsuchbare In-App-Handbuch.
 - `Ctrl+F1` öffnet die Tastenkürzel.
-- `Hilfe → HTML-Wissensdatenbank öffnen…` öffnet die vollständige lokale HTML-Hilfe unter `docs/help/index.html`.
-- `Hilfe → Informations-Laufplan / Mindmap anzeigen…` öffnet `docs/help/mindmap.html` direkt im Browser. Diese Mindmap ist ohne Mermaid-Plugin sichtbar und kann gedruckt oder als PDF gespeichert werden.
+- `Hilfe → HTML-Wissensdatenbank öffnen…` öffnet die vollständige lokale Hilfe unter [`docs/help/index.html`](docs/help/index.html).
+- `Hilfe → Informations-Laufplan / Mindmap anzeigen…` öffnet [`docs/help/mindmap.html`](docs/help/mindmap.html) im Browser. Die Mindmap ist ohne Mermaid-Plugin sichtbar und lässt sich drucken oder als PDF speichern.
 - `Hilfe → Restore-Key anzeigen…` zeigt den Datenbank-/Restore-Key der aktuell geöffneten Datenbank.
+- `? Hilfe` in der Seitenleiste führt zum selben Angebot, ohne Emoji-Abhängigkeit unter Linux/GNOME.
 
-Die Wissensdatenbank erklärt alle Kernfunktionen einschließlich **Soft-0-Budget / sanfter Null-Bilanz**: Erststart, Restore-Key, Datenbank, Backup, Kategorien, Drag & Drop, Budget, Buchungen/Tracking, Fixkosten, Wiederkehrend, Übersicht, Sparziele, Favoriten, Tags, Export, Updates und typische Stolperfallen.
+Die Wissensdatenbank erklärt alle Kernfunktionen einschliesslich **Soft-0-Budget / sanfter Null-Bilanz**: Erststart, Restore-Key, Datenbank, Backup, Kategorien, Drag & Drop, Budget, Buchungen, Fixkosten, Wiederkehrend, Übersicht, Sparziele, Favoriten, Tags, Export, Updates und typische Stolperfallen.
 
-Wichtig bei Fixkosten: Das Häkchen bucht nichts automatisch im Hintergrund. Es nimmt die Kategorie in **Tracking → Fix/Wiederkehrend buchen…** auf, nutzt den Budgetbetrag des Monats, überspringt vorhandene Buchungen und schützt Fixkosten vor falschen 0-Monats-Budgetvorschlägen.
+Ausführliche Anleitung: [`docs/USER_GUIDE.de.md`](docs/USER_GUIDE.de.md) ([EN](docs/USER_GUIDE.en.md), [FR](docs/USER_GUIDE.fr.md)).
+
+---
+
+## Notstart- und Diagnoseschalter
+
+Alle Schalter sind Umgebungsvariablen, verändern keine Daten und gelten nur für den jeweiligen Start.
+
+| Variable | Wirkung |
+| --- | --- |
+| `BM_DISABLE_COCKPIT_CHARTS=1` | Startet ohne die beiden Cockpit-Diagramme; hilft bei Grafiktreiberproblemen mit QtCharts. |
+| `BM_SKIP_STARTUP_AUTO_BACKUP=1` | Überspringt nur die automatische Backup-Prüfung beim Start. Manuelle Backups bleiben aktiv. |
+| `BM_ALLOW_WAYLAND=1` | Erzwingt natives Wayland statt des stabileren XCB-/XWayland-Fallbacks. |
+| `BM_FORCE_XCB=1` | Erzwingt das XCB-Backend, auch ausserhalb einer Wayland-Sitzung. |
+| `BUDGETMANAGER_DATA_DIR=…` | Setzt den Datenordner explizit, zum Beispiel für Launcher oder Tests. |
+
+Beispiel:
+
+```bash
+BM_DISABLE_COCKPIT_CHARTS=1 ./run.sh
+```
 
 ---
 
@@ -227,71 +242,142 @@ Wichtig bei Fixkosten: Das Häkchen bucht nichts automatisch im Hintergrund. Es 
 ### Budget
 
 - Jahresbudget mit Monatswerten und Totalen.
-- Kategorien mit Haupt-/Unterkategorien.
+- Kategorien mit Haupt- und Unterkategorien.
 - Typen: Einkommen, Ausgaben, Ersparnisse.
-- Fixkosten- und Wiederkehrend-Markierung.
-- Fälligkeitstag pro Kategorie.
+- Fixkosten- und Wiederkehrend-Markierung, Fälligkeitstag pro Kategorie.
 - Budgetwerte direkt in der Tabelle bearbeiten.
-- Budgetvorschläge basierend auf historischen Buchungen.
+- Budgetvorschläge auf Basis historischer Buchungen.
 
 ### Buchungen / Tracking
 
 - Einnahmen, Ausgaben und Ersparnisse erfassen.
-- Filter nach Zeitraum, Kategorie und Typ.
-- Schnellfilter für die letzten 14 oder 30 Tage.
+- Filter nach Zeitraum, Kategorie und Typ, Schnellfilter für 14 oder 30 Tage.
 - Wiederkehrende Buchungen und Fixkostenprüfung.
-- Import-/Export-Funktionen für Excel/CSV.
+- Import und Export für Excel/CSV.
 
 ### Kategorien
 
 - Kategorien-Manager mit Baumansicht.
-- Drag & Drop für Parent/Child-Ebenen.
+- Drag & Drop für Parent-/Child-Ebenen.
 - Kontextmenü: verschieben, zur Hauptkategorie machen, umbenennen, sicher löschen.
 - Schutz gegen Self-Parenting, Typ-Mischung und Zyklen.
-- Sicherer Löschdialog mit Daten löschen / komplett löschen / anderer Kategorie zuordnen.
 
-### Übersicht
+### Cockpit und Übersicht
 
-- Budget-Ist-Vergleich.
-- KPIs für Einnahmen, Ausgaben, Sparen und Saldo.
-- Verständlichere Diagramme: bewährter Plan/Ist-Donut, Kategorien-Ranking, Konto-Vergleich als Balken, Monatsverlauf, Monatsbilanz und Top-Buchungen.
-- Der gute Plan/Ist-Donut bleibt. Der verwirrende Kreis daneben wird nicht mehr für Einnahmen/Ausgaben/Ersparnisse genutzt, weil diese Werte keine Anteile desselben Topfs sind.
+- Cockpit mit KPI-Kacheln, Ringdiagramm und Flächenverlauf; Kacheln automatisch oder frei anordenbar.
+- Monatsstatus nach Lohn: Der Cockpit-Zeitraum beginnt beim tatsächlichen beziehungsweise hinterlegten Lohneingang und endet am Tag vor dem nächsten Lohntag.
+- Übersicht mit Budget-Ist-Vergleich, KPIs für Einnahmen, Ausgaben, Sparen und Saldo.
+- Plan/Ist-Donut, Kategorien-Ranking, Konto-Vergleich als Balken, Monatsverlauf, Monatsbilanz und Top-Buchungen.
 - Filter nach Jahr, Monat und Zeitraum.
 
-### App & Komfort
+### Export und Berichte
+
+- XLSX-Arbeitsmappen mit getrennten Tabellenblättern.
+- Schwarzweiss-taugliche A4-PDF-Berichte.
+- CSV-/Excel-Export der Buchungen.
+- Diagnose-ZIP mit anonymisierten Qt-/Skalierungsdaten und Datenbank-Gesundheitsprüfung — ohne Buchungen, Namen oder Beträge.
+
+### App und Komfort
 
 - Mehrsprachig: Deutsch, Englisch, Französisch.
 - Währungssymbol und Zahlenformat konfigurierbar.
-- Themes und Designprofile.
-- Lokale SQLite-Datenbank.
-- Backup/Restore.
-- Persistentes Undo/Redo.
-- Multi-Account-System mit Quick/PIN/Passwort-Modus.
+- 26 gemeinsame Designprofile, Kontrast- und Farbfehlsichtigkeitsprüfung, optional „Wie das System“.
+- Lokale SQLite-Datenbank, Backup/Restore, persistentes Undo/Redo.
+- Multi-Account-System mit Quick-, PIN- und Passwort-Modus.
 - Portable Update-Mechanik für Windows und Linux.
+- Betrieb als LifePlanner-/LiveManager-Modul oder vollständig standalone.
 
 ---
 
-## Projektstruktur
+## Neu in v2.2.70
+
+- **Brücke zu FPM abgesichert:** Ordner und Dateien der Austauschbrücke bekommen `0700` beziehungsweise `0600` — es sind dieselben Buchungen und Sparziele wie in der Datenbank.
+- **Update-Archive** werden beim Entpacken zusätzlich auf die Zahl der Einträge geprüft.
+- **Unlesbare Einstellungsdateien** werden als `.kaputt-<zeitstempel>` beiseitegelegt statt überschrieben; oft ist nur ein Zeichen falsch und die Datei liesse sich von Hand retten.
+- **Radien und Innenabstände** wachsen mit der eingestellten Schriftgrösse, wie Schriftgrössen und Mindesthöhen seit v2.2.68.
+
+### Kürzlich davor
+
+- **v2.2.69:** Radien und Abstände folgen der Schrifteinstellung; bei 10 pt bleibt das Aussehen unverändert.
+- **v2.2.68:** Die Brücke zu FPM wird nach jeder Datenänderung, beim Schliessen und einmal beim Start nachgezogen — bisher nur auf Knopfdruck im LifePlanner-Dialog. Neue Kontrakttests prüfen beide Richtungen. Neue Designwahl „Wie das System“.
+- **v2.2.67:** Hotfix für den Theme-Editor (`NameError: name 'outer' is not defined`); Signatur- und Vertrauensfehler des Updaters werden nicht mehr als Netzwerkfehler gemeldet.
+- **v2.2.65:** Die Kette für Update-Signaturen ist vollständig verdrahtet: Der Vertrauensanker wird vor dem Build eingebettet, `latest.json.sig` entsteht im Release und das Gate lässt ein Release ohne Signatur nicht mehr durch.
+- **v2.2.64:** Ein gemeinsamer Designkatalog mit 26 Designs und 55 Rollen für LifePlanner, BudgetManager, FountainPen Manager und FreizeitManager, erzeugt und geprüft von `tools/design_sync.py`. Lesbarkeit ist Bedingung: 4,5:1 für jede Schrift auf jedem Grund, Signalfarben mindestens 2,6:1 gegen die Karte, Prüfung auf Protanopie, Deuteranopie und Tritanopie.
+- **v2.2.63:** Im LifePlanner übernimmt BudgetManager das dort gewählte Designprofil beim Start (`LIFEPLANNER_THEME_FILE`, Format `lifeplanner.theme.v1`), ohne die lokale Profilwahl zu überschreiben.
+- **v2.2.62:** Der GitHub-Release enthält bewusst unsigned `.lpmodule`-Pakete für Windows und Linux x86_64, jeweils mit eigener SHA-256-Datei.
+- **v2.2.60:** Review-Inbox für externe Finanzdaten — nichts wird ungeprüft gebucht; getrennte Daten- und Bridge-Ordner unter LifePlanner bei weiterhin standalone startbarer App.
+
+Die vollständige Versionsgeschichte steht in [CHANGELOG.md](CHANGELOG.md), die Funktionsliste je Version in [FEATURES.md](FEATURES.md).
+
+---
+
+## Für Entwickler
+
+### Projektstruktur
 
 ```text
 BudgetManager/
 ├── main.py                         # App-Start
 ├── app_info.py                     # zentrale Versionsquelle
 ├── settings.py                     # robuste App-Einstellungen
+├── settings_dialog.py              # Einstellungsdialog
+├── theme_manager.py                # Designprofile und Farbrollen
 ├── model/                          # Datenbank, Migrationen, Geschäftslogik
 ├── views/                          # PySide6-Dialoge und Tabs
 ├── utils/                          # i18n, Geldformatierung, Hilfsfunktionen
 ├── locales/                        # de/en/fr JSON-Übersetzungen
+├── resources/                      # Icons und eingebettete Ressourcen
 ├── data/default_categories.json    # Standard-Kategorien
+├── docs/                           # Handbücher, Hilfe, Release-Dokumentation
 ├── installer/                      # Inno-Setup-Skript
-├── updater/                        # Update-Manifest/Updater
-├── tools/                          # Audit-/Release-Hilfen
+├── updater/                        # Update-Manifest und Updater
+├── tools/                          # Audit-, Design- und Release-Hilfen
 └── tests/                          # Core- und GUI-Smoke-Tests
 ```
 
----
+### Entwicklungsumgebung
 
-## Versionierung
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+```
+
+Für reproduzierbare Läufe wie in der CI stattdessen die gehashten Lockfiles verwenden:
+
+```bash
+python tools/verify_hashed_lock.py
+python -m pip install --require-hashes -r requirements-build.lock
+python -m pip install --require-hashes -r requirements-dev.lock
+```
+
+### Tests und Checks
+
+Dieselben Gates laufen bei jedem Push auf `main` (`.github/workflows/push-checks.yml`):
+
+```bash
+python tools/sync_version.py --check
+python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+python tools/exception_audit.py
+python -m ruff check . --select E9,F63,F7,F82
+python -m mypy model/
+python -m black --check model/
+python tools/clean_release_tree.py
+python tools/lint_procedure_check.py
+python -m pytest tests/ -q
+```
+
+Ergänzend:
+
+```bash
+python tools/i18n_audit.py          # Übersetzungsschlüssel
+python tools/verify_qt_translations.py
+python tools/design_sync.py check   # Designkatalog und Kontraste
+```
+
+GUI-Tests werden ohne PySide6 automatisch übersprungen. Headless läuft alles mit `QT_QPA_PLATFORM=offscreen`.
+
+### Versionierung
 
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
@@ -300,131 +386,55 @@ APP_VERSION = "2.2.70"
 APP_RELEASE_DATE = "21. August 2026"
 ```
 
-Vor einem Release prüfen:
+Prüfen und synchronisieren:
 
 ```bash
 python tools/sync_version.py --check
-```
-
-Synchronisieren:
-
-```bash
 python tools/sync_version.py
 ```
 
----
+`sync_version.py` zieht Version und Datum in `version.json`, `module.json`, `VERSION_INFO.txt`, das Installer-Skript, die `latest.json`-Templates, die Lockfile-Kopfzeilen und die Versionsköpfe der aktiven Dokumentation nach.
 
-## Tests und Checks
+### Release
 
-```bash
-python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
-python tools/sync_version.py --check
-python tools/i18n_audit.py
-black --check model/
-mypy model/
-pytest tests/ -v
-```
+Ein Release entsteht aus einem Tag `v<version>` oder einem `[release]`-Commit auf `main` (`.github/workflows/build.yml`). Ein Lauf erzeugt portable ZIPs für Windows und Linux, den Windows-Installer inklusive Silent-Install-/Uninstall-Test, SBOM, unsigned `.lpmodule`-Pakete und die Updater-Dateien.
 
-GUI-Tests werden ohne PySide6 automatisch übersprungen.
-
----
-
-## Release-Update-Manifest
-
-Für GitHub-Releases wird `latest.json` aus dem Template generiert:
+Das Update-Manifest wird aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.2.63 \
-  --release-tag v2.2.63 \
+  --version 2.2.70 \
+  --release-tag v2.2.70 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.2.63-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.2.63-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.63 \
+  --windows-zip dist/BudgetManager-v2.2.70-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.2.70-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.70 \
   --out latest.json
 ```
 
-Die Datei `latest.json` wird zusammen mit den Plattform-ZIPs, Installer-Artefakten, unsigned `.lpmodule`-Paketen und Prüfsummen in das GitHub-Release hochgeladen.
+`latest.json` wird zusammen mit den Plattform-ZIPs, den Installer-Artefakten, den `.lpmodule`-Paketen und den Prüfsummen in das GitHub-Release hochgeladen. Die vollständige Abfolge steht in [docs/release-checklist.md](docs/release-checklist.md), die Signaturkette in [docs/release-signing.md](docs/release-signing.md).
 
 ---
 
 ## Datenschutz
 
-Alle Daten bleiben lokal. Standardmäßig nutzt BudgetManager den portablen Datenordner `data/` neben der Anwendung. Über den Konto-Hub kann ein anderer Datenordner gewählt werden; DB, verschlüsselte Konto-Dateien und Standard-Backups folgen dann diesem Ordner.
+Alle Daten bleiben lokal. Standardmässig nutzt BudgetManager den portablen Datenordner `data/` neben der Anwendung. Über den Konto-Hub kann ein anderer Datenordner gewählt werden; Datenbank, verschlüsselte Konto-Dateien und Standard-Backups folgen dann diesem Ordner. Diagnose-ZIPs enthalten keine Buchungen, Namen oder Beträge.
 
 ---
 
 ## Weitere Dokumentation
 
-- [README_INSTALLATION.md](README_INSTALLATION.md) — Installation, Start und Update.
-- [docs/help/index.html](docs/help/index.html) — vollständige lokale HTML-Wissensdatenbank.
+- [README_INSTALLATION.md](README_INSTALLATION.md) — Installation, Start und Update im Detail.
+- [docs/USER_GUIDE.de.md](docs/USER_GUIDE.de.md) — vollständige Anleitung ([EN](docs/USER_GUIDE.en.md), [FR](docs/USER_GUIDE.fr.md)).
+- [docs/help/index.html](docs/help/index.html) — lokale HTML-Wissensdatenbank.
 - [docs/help/README.md](docs/help/README.md) — Markdown-Version der Wissensdatenbank.
-- [docs/help/mindmap.html](docs/help/mindmap.html) — direkt anzeigbare Mindmap / Informations-Laufplan.
-- [FEATURES.md](FEATURES.md) — Funktionsübersicht.
+- [docs/help/mindmap.html](docs/help/mindmap.html) — Mindmap / Informations-Laufplan.
+- [docs/SOFT_ZERO_BUDGET.de.md](docs/SOFT_ZERO_BUDGET.de.md) — Soft-0-Budget erklärt.
+- [FEATURES.md](FEATURES.md) — Funktionsübersicht je Version.
 - [CHANGELOG.md](CHANGELOG.md) — Änderungen nach Version.
-- [docs/open-tasks.md](docs/open-tasks.md) — verbleibende externe Release-Schritte und Abnahmehinweise.
-
-### Sparziele im Workflow
-
-Sparziele sind jetzt klarer eingebettet: im Budget gibt es einen kleinen 🎯-Einstieg, im Tracking erscheint bei aktiven Zielen ein ausblendbares Panel mit Fortschrittsbalken und Doppelklick zum Ziel, und die Übersicht bleibt die Kontrollstelle.
-
-### Sparziel-Entnahme / Geld herausbuchen
-
-Geld aus einem Sparziel wird als **negative Ersparnisse-Buchung** auf die mit dem Sparziel verknüpfte Kategorie gebucht, z. B. `-500 CHF` auf `Ersparnisse → Hochzeit`. Negative Beträge sind dafür bei `Ersparnisse` erlaubt; bei `Ausgaben` bleiben negative Beträge bewusst gesperrt.
-
-Sparziele haben jetzt echte Grenzen: Eine Entnahme darf den Stand nicht unter `0 CHF` ziehen, und eine Einzahlung darf das Ziel nicht über `100 %` füllen. Bei beiden Fällen wird die Buchung blockiert und eine Meldung angezeigt.
-
-Best Practice: Sparziel zuerst **freigeben**, dann die Entnahme buchen und das Ziel abschließen, wenn es erledigt ist.
-
-### Sicherer Start
-
-Auto-Speichern und Auto-Backup sind beim ersten Start aktiv.
-
-## Mehrfachstart-Schutz
-
-BudgetManager verhindert parallele Programmstarts, damit Datenbank, Auto-Save und Auto-Backups nicht gleichzeitig von mehreren Instanzen beschrieben werden.
-
-## Erststart-Import
-
-Beim Import einer `.bmr`/`.enc`-Datei im Erststart zuerst Backup wählen, danach Sicherheitsstufe wählen. `.bmr`-Backups von Quick-Benutzern können über die enthaltene `users.json` automatisch übernommen und in den neuen Benutzer re-verschlüsselt werden. Falls das Backup von einem PIN-/Passwort-Benutzer oder einer anderen Installation stammt, wird der Restore-Key des alten Backups abgefragt. Bei falschem Key wird kein leerer Benutzer zurückgelassen.
-
-## Parallelbetrieb mit anderen Programmen
-
-BudgetManager schützt nur seinen eigenen Datenordner vor Mehrfachzugriff. Das verhindert, dass zwei BudgetManager-Fenster gleichzeitig dieselbe verschlüsselte Datenbank speichern. Der Schutz ist **nicht** global auf `python main.py` gelegt. Andere Programme mit eigenem Ordner, z. B. ein Füller-Sammelprogramm, können parallel laufen.
-
-Zum Beenden alter BudgetManager-Testinstanzen bitte nicht pauschal `pkill -f "python main.py"` verwenden, wenn andere Python-Apps offen sind. Besser: BudgetManager-Fenster schließen oder gezielt die PID aus `data/budgetmanager.instance.lock/pid` prüfen.
-
-### Cockpit und Instanzen
-
-Das Cockpit startet keine eigene BudgetManager-Instanz. Es ist ein normaler Reiter innerhalb des Hauptfensters. Der Startablauf wurde so angepasst, dass das Hauptfenster genau einmal sichtbar gemacht wird. Update-Prüfungen im Source-Modus laufen über `python -m updater.check_update` statt über ein zweites `python main.py`.
-
-## Lernmodus v2.2.22 – Entscheidungspfad
-
-Der Lernmodus ist für den Einstieg gedacht, wenn noch kein Budget gesetzt wurde und zuerst echte Buchungen gesammelt werden sollen. Im Erststart bedeutet das: Ist der Lernmodus aktiv, darf der Budget-Schritt ohne Budgetwert abgeschlossen werden. Ist der Lernmodus deaktiviert, bleibt die Mindestprüfung hart und es muss mindestens ein Budgetwert vorhanden sein.
-
-1. **Kein Budget im Jahr vorhanden** → die Kategorie darf aus manuellem Tracking ein Startbudget vorschlagen.
-2. **Budget im Jahr vorhanden** → Lernmodus ist für diese Kategorie beendet; danach gilt nur noch die normale Budget-Vorschlagslogik.
-3. **Vorschlag im Budgetwarner** → Betrag prüfen, Budgetart bestätigen und erst dann übernehmen.
-4. **Unsicher** → Rechtsklick auf den Lernvorschlag und „Weiter beobachten“ wählen.
-5. **Kategorie passt nicht monatlich** → „Als unregelmäßig / Rückstellung markieren“ wählen.
-6. **Nicht verwenden** → „Ignorieren“ blendet die Lernphase dauerhaft aus, bis der Status zurückgesetzt wird.
-
-Budgetarten im Lernmodus:
-
-- **Fix + wiederkehrend**: Miete, Abo, gleichbleibender Lohn.
-- **Fix + inkrementell**: Jahres- oder Quartalskosten, die als Monatsreserve geplant werden.
-- **Nur wiederkehrend**: regelmäßig, aber nicht exakt gleich.
-- **Variabler Topf**: Lebensmittel, Hobby, Haushalt.
-- **Ersparnis-Topf**: Sparen als planbarer Topf.
-- **Schwankendes Einkommen**: Stundenlohn oder variable Einnahmen; vorsichtig abgerundet.
-- **Unregelmäßig / Rückstellung**: Franchise, Selbstbehalt, Reparaturen, seltene Kosten.
-
-Best Practice: Erst tracken, dann Vorschläge prüfen, niemals blind alle Vorschläge übernehmen. Gerade bei Gesundheit, Franchise und Jahresrechnungen ist ein Rückstellungsbudget meist besser als ein starrer Monatsfixbetrag.
-
-Hinweis zur Übersicht: Neue Startbudget-Vorschläge aus dem Lernmodus werden im Banner mit **🆕** angezeigt. **📉** bleibt echten Defizit-/Erhöhungswarnungen vorbehalten, **📈** steht für Überschuss-/Senkungsvorschläge.
-
-### Neu in v2.2.36
-
-- Wiki-Audit und drei grafische Offline-Erklärungen der Prozess- und Datenzusammenhänge.
-- Sichtbarer **? Hilfe**-Knopf in der Seitenleiste, Linux-/GNOME-sicher ohne Emoji-Abhängigkeit.
-- Direkter Aufruf der Wiki-Grafiken aus Hilfe-Menü und In-App-Handbuch.
+- [docs/architecture.md](docs/architecture.md) — Aufbau der Anwendung.
+- [docs/database.md](docs/database.md) — Datenbankschema und Migrationen.
+- [docs/themes.md](docs/themes.md) — Designprofile und Farbrollen.
+- [docs/release-checklist.md](docs/release-checklist.md) — Release-Ablauf.
+- [docs/open-tasks.md](docs/open-tasks.md) — verbleibende externe Release-Schritte.
+- [LICENSE.txt](LICENSE.txt) — Lizenz.

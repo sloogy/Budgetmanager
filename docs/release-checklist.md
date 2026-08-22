@@ -6,6 +6,8 @@
 python tools/sync_version.py --check
 python tools/verify_hashed_lock.py
 python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+python tools/exception_audit.py
+python -m ruff check . --select E9,F63,F7,F82
 python tools/i18n_audit.py
 python tools/dau_first_run_check.py
 python -m black --check --workers 1 main.py app_info.py settings.py settings_dialog.py theme_manager.py model updater utils views tools tests
@@ -21,23 +23,35 @@ python tools/lint_procedure_check.py
 ```
 
 
-## Einziger automatisierter Release-Workflow
+## Die beiden Workflows
 
-Im Repository existiert ausschließlich `.github/workflows/build.yml`. Er wird nur
-durch einen Tag `v*` gestartet und erledigt die gesamte Veröffentlichung:
+Im Repository existieren genau zwei Workflows; `tools/lint_procedure_check.py`
+prüft diese Liste und meldet jeden weiteren.
+
+- `.github/workflows/push-checks.yml` — der schnelle Lauf bei jedem Push auf
+  `main`: Linux, ein Python, keine Builds, zwei bis drei Minuten. Er reagiert nie
+  auf Tags und überspringt `[release]`-Commits, weil die ohnehin durch den vollen
+  Lauf gehen.
+- `.github/workflows/build.yml` — der Release-Weg. Er startet bei einem Tag `v*`
+  oder bei einem `[release]`-Commit auf `main`; ein Push auf `release/**`
+  synchronisiert nur die Release-Metadaten.
+
+Der Releaselauf erledigt die gesamte Veröffentlichung:
 
 1. Windows- und Linux-onedir-Build mit PyInstaller.
-2. Windows-Installer mit Inno Setup.
+2. Windows-Installer mit Inno Setup, inklusive Silent-Install-, Start- und
+   Silent-Uninstall-Test.
 3. Portable ZIPs für Windows und Linux.
 4. Unsigned `.lpmodule`-Pakete für Windows und Linux samt SHA-256-Dateien.
-5. `latest.json`, `SHA256SUMS.txt` und SBOM.
+5. `latest.json`, `latest.json.sig`, `SHA256SUMS.txt` und SBOM.
 6. Upload aller Dateien in den GitHub-Release.
 
-Für nicht-kommerzielle Vorab-Releases darf `latest.json` ohne
-`latest.json.sig` veröffentlicht werden. Der signaturpflichtige In-App-Updater
-nimmt ein solches Manifest bewusst nicht an; Installer und portable Pakete
-bleiben manuell nutzbar. Vor einer regulären Veröffentlichung werden Manifest-
-und Authenticode-Signierung als verpflichtende Gates aktiviert.
+Die Manifest-Signierung ist seit v2.2.65 verpflichtend: Ohne die Repository-
+Variable `UPDATE_SIGNING_PUBLIC_KEY_B64` bricht der Build vor PyInstaller ab,
+und ein Release ohne `latest.json.sig` kommt nicht durch das Gate. Der
+In-App-Updater nimmt ein unsigniertes Manifest nicht an. Die
+Authenticode-Signierung der Windows-Binaries hängt am Code-Signing-Zertifikat;
+Details in [release-signing.md](release-signing.md).
 
 Die umfangreichen Enterprise-, Security- und Usability-Audits bleiben als lokale
 Werkzeuge erhalten, einschließlich des 10.000er Enterprise-Audits, starten aber
@@ -56,13 +70,18 @@ keine eigenen GitHub-Workflows mehr.
 ## Release erstellen
 
 ```bash
+VERSION="$(python -c 'from app_info import APP_VERSION; print(APP_VERSION)')"
 git status
 git add .
-git commit -m "Release v2.2.63"
+git commit -m "Release v$VERSION"
 git push origin main
-git tag -a v2.2.63 -m "BudgetManager v2.2.63"
-git push origin v2.2.63
+git tag -a "v$VERSION" -m "BudgetManager v$VERSION"
+git push origin "v$VERSION"
 ```
+
+Die Version kommt immer aus `app_info.py`; so bleibt der Tag automatisch
+richtig. Alternativ genügt ein Commit auf `main`, dessen Nachricht `[release]`
+enthält.
 
 ## Nach GitHub Actions
 

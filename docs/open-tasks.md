@@ -1,10 +1,10 @@
 # Offene Release-Aufgaben — BudgetManager v2.2.70
 
-Stand: 20. August 2026
+Stand: 22. August 2026
 
 ## Source-Code-Status
 
-Alle im lokalen Quellcode-Audit gefundenen technischen Findings wurden behoben. Versionsabgleich, Hash-Lockfiles, Syntax, Architektur, Übersetzungen, Handbuch, DAU-E2E, Funktionsregressionen und interne Release-Audits werden für v2.2.63 neu geprüft. Vor einer regulären Binärfreigabe müssen zusätzlich Signierung sowie die externen GitHub-Gates unter Fedora/Wayland und Windows grün sein.
+Alle im lokalen Quellcode-Audit gefundenen technischen Findings wurden behoben. Versionsabgleich, Hash-Lockfiles, Syntax, Architektur, Übersetzungen, Handbuch, DAU-E2E, Funktionsregressionen und interne Release-Audits werden für v2.2.70 neu geprüft. Vor einer regulären Binärfreigabe müssen zusätzlich Signierung sowie die externen GitHub-Gates unter Fedora/Wayland und Windows grün sein.
 
 ## Einmalige externe Vertrauensanker
 
@@ -19,7 +19,7 @@ Anleitung: `docs/release-signing.md`.
 
 ## Vor der finalen öffentlichen Freigabe
 
-- Tag `v2.2.63` erstellen und den einzigen GitHub-Actions-Releaseworkflow grün abschliessen lassen.
+- Tag `v2.2.70` erstellen und den einzigen GitHub-Actions-Releaseworkflow grün abschliessen lassen.
 - Online-`pip-audit` im Dependency-Workflow prüfen.
 - GitHub Build-Provenance/Attestation prüfen.
 - Authenticode-Signatur von `BudgetManager.exe` und Installer prüfen.
@@ -34,6 +34,8 @@ Anleitung: `docs/release-signing.md`.
 python tools/sync_version.py --check
 python tools/verify_hashed_lock.py
 python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+python tools/exception_audit.py
+python -m ruff check . --select E9,F63,F7,F82
 python tools/i18n_audit.py
 python tools/dau_first_run_check.py
 python -m black --check --workers 1 main.py app_info.py settings.py settings_dialog.py theme_manager.py model updater utils views tools tests
