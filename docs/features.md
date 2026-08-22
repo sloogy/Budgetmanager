@@ -98,6 +98,8 @@ BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategor
 - Harte Cockpit-Bezeichnungen wurden in Übersetzungsschlüssel überführt.
 - README, Installationsdoku, Feature-Übersicht, Hilfe, technische Dokumente und Manifest-Beispiele wurden auf v2.2.13 bereinigt.
 - CI prüft zusätzlich Formatierung im `model/` (`black --check model/`) und Typen im `model/` (`mypy model/`).
+  Lokal dafür `python tools/gepinnte_werkzeuge.py black --check model/` verwenden: Das Skript nimmt die in
+  `requirements-dev.txt` gepinnte Version, nicht die des Rechners.
 - Alte Arbeitsberichte und Cache-Ordner wurden aus dem Release-Paket entfernt.
 
 ## Technik

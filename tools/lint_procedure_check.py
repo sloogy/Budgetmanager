@@ -272,8 +272,11 @@ def check_release_docs() -> list[str]:
         "python -m compileall -q .",
         "python tools/i18n_audit.py",
         "python tools/dau_first_run_check.py",
-        "python -m black --check --workers 1 main.py",
-        "python -m mypy model/",
+        # Ueber den Wrapper, nicht direkt: Er nimmt die in requirements-dev.txt
+        # gepinnte Version. Ein blosses "python -m black" nimmt die des
+        # Rechners und macht das Gate rot, ohne dass am Code etwas falsch ist.
+        "python tools/gepinnte_werkzeuge.py black --check --workers 1 main.py",
+        "python tools/gepinnte_werkzeuge.py mypy model/",
         "python tools/verify_hashed_lock.py",
         "python tools/architecture_quality_gate.py",
         "python tools/coverage_gate.py",

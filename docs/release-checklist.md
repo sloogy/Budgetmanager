@@ -10,8 +10,8 @@ python tools/exception_audit.py
 python -m ruff check . --select E9,F63,F7,F82
 python tools/i18n_audit.py
 python tools/dau_first_run_check.py
-python -m black --check --workers 1 main.py app_info.py settings.py settings_dialog.py theme_manager.py model updater utils views tools tests
-python -m mypy model/ updater/manifest_signing.py utils/secure_excel.py utils/ui_experience_mode.py
+python tools/gepinnte_werkzeuge.py black --check --workers 1 main.py app_info.py settings.py settings_dialog.py theme_manager.py model updater utils views tools tests
+python tools/gepinnte_werkzeuge.py mypy model/ updater/manifest_signing.py utils/secure_excel.py utils/ui_experience_mode.py
 python tools/bandit_release_gate.py --bandit-json audit_artifacts/BANDIT_CURRENT.json --summary-json audit_artifacts/BANDIT_RELEASE_GATE.json
 python -m pytest tests/ -v -ra --tb=short --cov --cov-branch --cov-report=json:audit_artifacts/coverage_full.json --cov-fail-under=40
 python tools/coverage_gate.py --json audit_artifacts/coverage_full.json --summary-json audit_artifacts/coverage_gate_summary.json --overall-min 40
@@ -21,6 +21,12 @@ python tools/run_killcritic_usability_10000.py --loops 10000 --seed 20260718 --j
 python tools/clean_release_tree.py
 python tools/lint_procedure_check.py
 ```
+> **black und mypy immer ueber `tools/gepinnte_werkzeuge.py` aufrufen.** Beide
+> formatieren beziehungsweise urteilen von Nebenversion zu Nebenversion
+> unterschiedlich. Die CI nimmt die Version aus `requirements-dev.txt`, ein
+> `python -m black` nimmt die des Rechners - und macht damit das Gate rot,
+> ohne dass am Code etwas falsch waere.
+
 
 
 ## Die beiden Workflows

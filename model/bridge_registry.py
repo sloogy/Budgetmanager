@@ -21,6 +21,7 @@ Wortgleich in FPM, BudgetManager und LifePlanner. Der FreizeitManager
 braucht es nicht: Er kennt keinen eigenstaendigen Brueckenbetrieb - ohne Host
 gibt es dort keinen Ordner, den man verfehlen koennte.
 """
+
 from __future__ import annotations
 
 import json
