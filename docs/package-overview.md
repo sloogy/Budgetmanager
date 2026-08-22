@@ -1,4 +1,4 @@
-# Paketübersicht — BudgetManager v2.2.70
+# Paketübersicht — BudgetManager v2.2.71
 
 Diese Übersicht beschreibt den aktuellen Release-Quellbaum. Alte Arbeits-, Analyse- und Zwischenstandsberichte sind nicht Bestandteil des Release-Pakets.
 
@@ -41,5 +41,5 @@ docs/                           aktive technische Dokumentation und Hilfe
 - Keine lokalen Nutzer-Settings.
 - Keine Python-Cache-Ordner.
 - Historische Merge-, Analyse- und Bugfix-Berichte liegen ausschließlich unter `docs/archive/release-evidence/`.
-- Release-Dateien, aktive Dokumentation und Manifest-Beispiele sind auf `v2.2.70` synchronisiert.
+- Release-Dateien, aktive Dokumentation und Manifest-Beispiele sind auf `v2.2.71` synchronisiert.
 - Der Tag-Workflow veröffentlicht unsigned Windows-/Linux-`.lpmodule` samt SHA-256-Dateien für den lokalen Import mit Vertrauensbestätigung.

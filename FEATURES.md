@@ -1,3 +1,11 @@
+## Neu in v2.2.71
+
+- Zustandsanzeige der FPM-Brücke im LifePlanner-Dialog: aktiver Ordner und alle drei Dateien einzeln, unterschieden nach „noch nichts geschrieben" und „leer".
+- Kein NameError mehr beim Beenden, wenn der Timer des Setup-Assistenten nach dem Abbau noch feuert.
+- Beiseitegelegte Einstellungsdateien werden durchnummeriert; zehn Stände bleiben erhalten.
+- Gates bei jedem Push nach main: Version, compileall, Übersetzungs-Audit, Ausnahmen-Ratchet, ruff, mypy, Lint-Verfahren, Tests.
+- Der Release-Marker `[release]` zählt nur am Anfang der Betreffzeile.
+
 ## Neu in v2.2.70
 
 - Siehe VERSION_INFO.txt und CHANGELOG.md.

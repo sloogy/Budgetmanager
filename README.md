@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.2.70
+# 💰 BudgetManager v2.2.71
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.2.70-blue)
+![Version](https://img.shields.io/badge/version-2.2.71-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -19,7 +19,7 @@ Alle Daten bleiben auf dem eigenen Rechner. Es gibt kein Konto in der Cloud, kei
 - [Hilfe in der App](#hilfe-in-der-app)
 - [Notstart- und Diagnoseschalter](#notstart--und-diagnoseschalter)
 - [Funktionsumfang](#funktionsumfang)
-- [Neu in v2.2.70](#neu-in-v2270)
+- [Neu in v2.2.71](#neu-in-v2271)
 - [Für Entwickler](#für-entwickler)
 - [Weitere Dokumentation](#weitere-dokumentation)
 
@@ -30,7 +30,7 @@ Alle Daten bleiben auf dem eigenen Rechner. Es gibt kein Konto in der Cloud, kei
 ### Windows — empfohlen für normale Nutzer
 
 1. Aktuelles [Release](https://github.com/sloogy/Budgetmanager/releases) herunterladen.
-2. Entweder `BudgetManager_Setup_2.2.70.exe` (Installer) starten **oder** `BudgetManager-v2.2.70-portable-windows.zip` entpacken.
+2. Entweder `BudgetManager_Setup_2.2.71.exe` (Installer) starten **oder** `BudgetManager-v2.2.71-portable-windows.zip` entpacken.
 3. Portable Version: `start-windows.cmd` beziehungsweise `BudgetManager.exe` starten.
 
 Portable Daten liegen im Ordner `data/` neben dem Programm. Dadurch kann der komplette Ordner auch auf einem USB-Stick genutzt werden. Der Installer fragt beim ersten Start nach einem Datenordner.
@@ -39,7 +39,7 @@ Die Pakete sind bewusst nicht Authenticode-signiert. Windows SmartScreen warnt d
 
 ### Linux
 
-Fertiges Paket `BudgetManager-v2.2.70-portable-linux.zip` entpacken und starten:
+Fertiges Paket `BudgetManager-v2.2.71-portable-linux.zip` entpacken und starten:
 
 ```bash
 ./start-linux.sh
@@ -289,15 +289,17 @@ BM_DISABLE_COCKPIT_CHARTS=1 ./run.sh
 
 ---
 
-## Neu in v2.2.70
+## Neu in v2.2.71
 
-- **Brücke zu FPM abgesichert:** Ordner und Dateien der Austauschbrücke bekommen `0700` beziehungsweise `0600` — es sind dieselben Buchungen und Sparziele wie in der Datenbank.
-- **Update-Archive** werden beim Entpacken zusätzlich auf die Zahl der Einträge geprüft.
-- **Unlesbare Einstellungsdateien** werden als `.kaputt-<zeitstempel>` beiseitegelegt statt überschrieben; oft ist nur ein Zeichen falsch und die Datei liesse sich von Hand retten.
-- **Radien und Innenabstände** wachsen mit der eingestellten Schriftgrösse, wie Schriftgrössen und Mindesthöhen seit v2.2.68.
+- **Der Zustand der Brücke ist sichtbar.** Der LifePlanner-Dialog zeigt jetzt den aktiven Brückenordner und alle drei Dateien einzeln. Welcher Ordner gilt, hängt vom Startmodus ab: Im LifePlanner gibt ihn der Host vor, eigenständig liegt er im Benutzerverzeichnis — wer beides mischt, hat zwei getrennte Brücken. Unterschieden wird zwischen „noch nichts geschrieben" und „leer".
+- **Kein NameError mehr beim Beenden.** Der Timer für den Setup-Assistenten holte sich das Hauptfenster über die Closure; beim Herunterfahren konnte er auf eine bereits geleerte Zelle greifen.
+- **Beiseitegelegte Einstellungen gehen nicht mehr verloren.** Zwei kaputte Dateien in derselben Sekunde bekamen denselben Namen, die zweite überschrieb die erste. Jetzt durchnummeriert, und es bleiben zehn Stände statt unbegrenzt vieler.
+- **Die Gates laufen bei jedem Push nach main** — vorher hing alles am Tag beziehungsweise am `[release]`-Commit, und ein Fehler wäre erst beim nächsten Release aufgefallen. Neu dabei: ruff, der Ausnahmen-Ratchet und der Übersetzungs-Audit.
+- **Der Release-Marker muss am Anfang der Betreffzeile stehen.** `contains()` traf ihn auch im Fliesstext und löste dadurch einen vollständigen Release-Build für einen gewöhnlichen Arbeitscommit aus.
 
 ### Kürzlich davor
 
+- **v2.2.70:** Ordner und Dateien der Brücke zu FPM bekommen `0700`/`0600`; Update-Archive werden auch auf die Zahl der Einträge geprüft; unlesbare Einstellungsdateien werden als `.kaputt-<zeitstempel>` beiseitegelegt statt überschrieben; Radien und Innenabstände wachsen mit der eingestellten Schrift.
 - **v2.2.69:** Radien und Abstände folgen der Schrifteinstellung; bei 10 pt bleibt das Aussehen unverändert.
 - **v2.2.68:** Die Brücke zu FPM wird nach jeder Datenänderung, beim Schliessen und einmal beim Start nachgezogen — bisher nur auf Knopfdruck im LifePlanner-Dialog. Neue Kontrakttests prüfen beide Richtungen. Neue Designwahl „Wie das System“.
 - **v2.2.67:** Hotfix für den Theme-Editor (`NameError: name 'outer' is not defined`); Signatur- und Vertrauensfehler des Updaters werden nicht mehr als Netzwerkfehler gemeldet.
@@ -382,8 +384,8 @@ GUI-Tests werden ohne PySide6 automatisch übersprungen. Headless läuft alles m
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.2.70"
-APP_RELEASE_DATE = "21. August 2026"
+APP_VERSION = "2.2.71"
+APP_RELEASE_DATE = "22. August 2026"
 ```
 
 Prüfen und synchronisieren:
@@ -403,12 +405,12 @@ Das Update-Manifest wird aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.2.70 \
-  --release-tag v2.2.70 \
+  --version 2.2.71 \
+  --release-tag v2.2.71 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.2.70-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.2.70-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.70 \
+  --windows-zip dist/BudgetManager-v2.2.71-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.2.71-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.71 \
   --out latest.json
 ```
 

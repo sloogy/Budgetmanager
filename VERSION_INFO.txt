@@ -1,7 +1,29 @@
-Budgetmanager Version 2.2.70
-Datum: 21. August 2026
+Budgetmanager Version 2.2.71
+Datum: 22. August 2026
 
-SIGNIERUNG BRAUCHT CRYPTOGRAPHY 2.2.70
+ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.71
+-------------------------------------------------------------
+- Der LifePlanner-Dialog zeigt den aktiven Brueckenordner und alle drei
+  Dateien einzeln. Welcher Ordner gilt, haengt vom Startmodus ab: Im
+  LifePlanner gibt ihn der Host vor, eigenstaendig liegt er im
+  Benutzerverzeichnis. Unterschieden wird zwischen "noch nichts geschrieben"
+  und "leer".
+- Beim Beenden konnte ein NameError auftreten: Der Timer fuer den
+  Setup-Assistenten holte sich das Hauptfenster ueber die Closure und griff
+  nach "del win" auf eine geleerte Zelle.
+- Zwei kaputte Einstellungsdateien in derselben Sekunde bekamen denselben
+  Namen; die zweite ueberschrieb die erste. Jetzt durchnummeriert, zehn
+  Staende bleiben erhalten.
+- Bei jedem Push nach main laufen die Gates: Version, compileall,
+  Uebersetzungs-Audit, Ausnahmen-Ratchet, ruff, mypy, Lint-Verfahren, Tests.
+  Vorher hing alles am Tag beziehungsweise am [release]-Commit.
+- Der Release-Marker wird nur noch am Anfang der Betreffzeile erkannt;
+  contains() traf ihn auch im Fliesstext und loeste dort einen vollstaendigen
+  Release-Build aus.
+- Der Uebersetzungs-Audit lief in keinem Workflow. Er faellt jetzt auf, wenn
+  ein Schluessel in allen drei Sprachen liegt und nirgends verwendet wird.
+
+SIGNIERUNG BRAUCHT CRYPTOGRAPHY 2.2.66
 -------------------------------------------------------------
 - Der Releaselauf zu 2.2.65 brach im Schritt "Build release assets" ab:
   ModuleNotFoundError: No module named 'cryptography'. Der manifest-Job

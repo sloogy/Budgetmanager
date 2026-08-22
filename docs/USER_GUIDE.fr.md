@@ -1,6 +1,6 @@
-# BudgetManager 2.2.70 – Manuel utilisateur
+# BudgetManager 2.2.71 – Manuel utilisateur
 
-Ce manuel décrit les fonctions réellement disponibles dans la version 2.2.70. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
+Ce manuel décrit les fonctions réellement disponibles dans la version 2.2.71. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
 
 ## Premier démarrage en quatre étapes
 

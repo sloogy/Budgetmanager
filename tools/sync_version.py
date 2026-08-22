@@ -158,14 +158,18 @@ def _swap_version(text: str, old_series: str) -> str:
     "v2.2.63" mitten im Wort und als "_2.2.63.exe" vor einer Endung. Der Blick
     nach vorn wehrt nur laengere Versionen ab.
     """
-    return re.sub(rf"(?<![\d.]){re.escape(old_series)}\.\d+(?!\.?\d)", APP_VERSION, text)
+    return re.sub(
+        rf"(?<![\d.]){re.escape(old_series)}\.\d+(?!\.?\d)", APP_VERSION, text
+    )
 
 
 VERSION_BEARING: tuple[tuple[str, int], ...] = (
     ("README.md", 5),
     ("README_INSTALLATION.md", 5),
     ("updater/README.md", 5),
-    ("updater/generate_manifest.py", 12),
+    # 16 statt 12: Die --base-url-Zeile des Beispiels stand knapp
+    # ausserhalb und blieb deshalb seit 2.2.63 stehen.
+    ("updater/generate_manifest.py", 16),
     ("docs/architecture.md", 5),
     ("docs/DAU_TEST_ERSTSTART.md", 5),
     ("docs/features.md", 5),
@@ -211,20 +215,30 @@ def sync_module_manifest(check: bool) -> bool:
     if check:
         return False
     data["version"] = APP_VERSION
-    p.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    p.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return True
 
 
 def sync_lock_headers(check: bool) -> bool:
     ok = True
-    for name in ("requirements.lock", "requirements-dev.lock", "requirements-build.lock"):
+    for name in (
+        "requirements.lock",
+        "requirements-dev.lock",
+        "requirements-build.lock",
+    ):
         p = ROOT / name
         if not p.exists():
             continue
         src = p.read_text(encoding="utf-8")
-        new = re.sub(r"^# Stand: v[\d.]+ / .*$",
-                     f"# Stand: v{APP_VERSION} / {APP_RELEASE_DATE}",
-                     src, count=1, flags=re.MULTILINE)
+        new = re.sub(
+            r"^# Stand: v[\d.]+ / .*$",
+            f"# Stand: v{APP_VERSION} / {APP_RELEASE_DATE}",
+            src,
+            count=1,
+            flags=re.MULTILINE,
+        )
         if new == src:
             continue
         if check:
@@ -250,7 +264,13 @@ def sync_markdown_headings(check: bool) -> bool:
             new = head + "".join(lines[head_lines:])
         for target, pattern, replacement in EXTRA_PATTERNS:
             if target == rel:
-                new = re.sub(pattern, replacement.format(version=APP_VERSION, release_date=APP_RELEASE_DATE), new)
+                new = re.sub(
+                    pattern,
+                    replacement.format(
+                        version=APP_VERSION, release_date=APP_RELEASE_DATE
+                    ),
+                    new,
+                )
         if new == src:
             continue
         if check:
@@ -278,7 +298,9 @@ def sync_changelog(check: bool) -> bool:
         return False
     if check:
         return False
-    changelog.write_text(src.replace(marker, marker + block + "\n\n", 1), encoding="utf-8")
+    changelog.write_text(
+        src.replace(marker, marker + block + "\n\n", 1), encoding="utf-8"
+    )
     return True
 
 
@@ -292,8 +314,10 @@ def sync_features(check: bool) -> bool:
         return True
     if check:
         return False
-    p.write_text(f"{heading}\n\n- Siehe VERSION_INFO.txt und CHANGELOG.md.\n\n{src}",
-                 encoding="utf-8")
+    p.write_text(
+        f"{heading}\n\n- Siehe VERSION_INFO.txt und CHANGELOG.md.\n\n{src}",
+        encoding="utf-8",
+    )
     return True
 
 
