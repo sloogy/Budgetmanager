@@ -1,6 +1,6 @@
 # 💰 BudgetManager v2.2.73
 
-BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
+Der BudgetManager beantwortet zwei Fragen, die eine Kontoauszugs-App nicht beantwortet: **Wohin soll mein Geld dieses Jahr gehen — und wohin geht es tatsächlich?**
 
 ![Version](https://img.shields.io/badge/version-2.2.73-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
@@ -8,6 +8,34 @@ BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Ka
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
 
 Alle Daten bleiben auf dem eigenen Rechner. Es gibt kein Konto in der Cloud, keine Telemetrie und keinen Serverzwang; die einzige optionale Netzwerkverbindung ist die Update-Prüfung gegen GitHub.
+
+---
+
+## Was du damit tust
+
+**Ein Jahr planen.** Für jede Kategorie einen Monatswert setzen — Miete, Lebensmittel, Freizeit, Rücklagen. Wer nicht weiss, womit anfangen: Der Lernmodus lässt dich erst ein paar Monate nur buchen und schlägt danach Budgets aus deinen tatsächlichen Ausgaben vor.
+
+**Buchen, was passiert.** Einnahmen, Ausgaben, Ersparnisse. Fixkosten und wiederkehrende Zahlungen einmal anlegen und dann monatlich mit einem Klick verbuchen, statt sie jedes Mal neu einzutippen. Kontoauszüge lassen sich als CSV oder Excel einlesen.
+
+**Sehen, wo es klemmt.** Das Cockpit zeigt den laufenden Monat — nicht vom Ersten bis zum Letzten, sondern von Lohneingang zu Lohneingang, denn so lebt man. Die Übersicht stellt Plan und Ist gegenüber: welche Kategorie über Budget liegt, welche Luft hat, wie der Monat im Vergleich zu den vorigen dasteht.
+
+**Für etwas sparen.** Sparziele mit Betrag und Termin. Der Fortschritt wird aus den tatsächlichen Buchungen fortgeschrieben; wer etwas wieder entnimmt, sieht das ebenfalls.
+
+**Unregelmässiges beherrschen.** Nicht jede Ausgabe kommt monatlich. Für Jahresrechnungen, Franchisen und Selbstbehalte gibt es Rückstellungen: Du legst monatlich etwas zurück, und wenn die Rechnung kommt, ist sie gedeckt, statt den Monat zu sprengen.
+
+**Berichte mitnehmen.** Excel-Arbeitsmappen und A4-PDF-Berichte, die auch schwarzweiss gedruckt lesbar bleiben.
+
+## Für wen
+
+Für Menschen, die ihr Haushaltsbudget selbst in der Hand behalten wollen, ohne dafür einer Banking-App Zugriff auf ihre Konten zu geben — und ohne dass ihre Zahlen auf einem fremden Server liegen.
+
+Der einfache Modus reduziert die Oberfläche auf das Nötige: Cockpit, Budget, Tracking, Übersicht. Alles Weitere ist da, wenn du es brauchst.
+
+Oberfläche auf Deutsch, Englisch und Französisch.
+
+## Als eigenständiges Programm oder als Modul
+
+Der BudgetManager läuft für sich allein. Er läuft ebenso als Modul im [LifePlanner](https://github.com/sloogy/Livemanager), zusammen mit FountainPen Manager und FreizeitManager unter einem Dach. Über die Brücke zum FPM kommen dessen Ausgaben in eine Budgetkategorie, und ein Wunschfüller von dort kann hier zum Sparziel werden.
 
 ---
 

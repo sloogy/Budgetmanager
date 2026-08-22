@@ -2,6 +2,15 @@
 
 ## Unveröffentlicht
 
+### Dokumentation
+
+- **Das README sagt jetzt zuerst, was das Programm tut.** Vorher stand dort
+  Technik: ein Satz Beschreibung, dann Installationsanleitung und
+  Funktionsliste. Wer wissen wollte, wofür das Programm da ist, fand einen
+  Satz und danach die Bauanleitung. Der fachliche Teil steht jetzt vorn und
+  beantwortet, was man mit dem Programm tut und für wen es gedacht ist; das
+  Technische folgt darunter. Drei Tests halten die Reihenfolge fest.
+
 ### Sicherheit
 
 - **Der Ausnahmen-Ratchet sah `contextlib.suppress` nicht.** Er zählt stumme
