@@ -34,6 +34,33 @@
   Prüfliste.
 - **Ruff läuft jetzt im Build.** Es fehlte ganz; der NameError oben stand
   seitdem unbemerkt im Quelltext.
+- **Der Release-Marker wurde im Fliesstext getroffen.** `contains()` erkennt
+  `[release]` an jeder Stelle der Commit-Nachricht — auch dort, wo sie das
+  Verfahren nur erklärt. Im BudgetManager blieb es nicht beim Überspringen des
+  Prüflaufs: `build.yml` nutzt dieselbe Bedingung und fuhr einen vollständigen
+  Release-Build für einen gewöhnlichen Arbeitscommit. Jetzt `startsWith` — der
+  Marker gehört an den Anfang der Betreffzeile.
+- **Zwei stumme Schlucker in der Diagnose** räumten alte Berichte auf, ohne je
+  zu sagen, wenn das misslang. Wächst der Ordner weiter, obwohl aufgeräumt
+  wird, war das vorher nirgends zu sehen. Beim Präzisieren zeigte ruff, dass
+  das Modul gar keinen Logger hatte — der Aufruf wäre ein `NameError` gewesen.
+- **Der Übersetzungs-Audit läuft jetzt mit.** `tools/i18n_audit.py` stand nur
+  in der Release-Checkliste und in keinem der beiden Workflows; ein Schlüssel,
+  der in allen drei Sprachen liegt, aber nirgends verwendet wird, fiel dadurch
+  erst von Hand auf. Er läuft jetzt im Push- und im Release-Lauf.
+
+### Zusammenspiel mit FPM
+
+- **Der Zustand der Brücke ist sichtbar.** Im LifePlanner-Dialog war nicht zu
+  erkennen, ob der Austausch stattfindet — und vor allem nicht, welcher Ordner
+  gerade gilt. Der hängt davon ab, wie BudgetManager gestartet wurde: Im
+  LifePlanner gibt ihn der Host vor, eigenständig liegt er im
+  Benutzerverzeichnis. Wer beides gemischt nutzt, hat zwei getrennte Brücken
+  und sieht die jeweils andere nie.
+- Der Dialog zeigt jetzt den aktiven Ordner und alle drei Dateien einzeln,
+  aktualisiert nach dem Neuladen und nach dem Schreiben der Outboxen.
+  Unterschieden wird zwischen „noch nichts geschrieben" und „leer": Fehlt die
+  Datei, hat das andere Programm nichts abgelegt — dann liegt es dort.
 
 ## 2.2.70 – 22. August 2026
 
