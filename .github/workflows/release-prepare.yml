@@ -39,18 +39,23 @@ jobs:
 
           app = Path('app_info.py')
           text = app.read_text(encoding='utf-8')
-          text, count = re.subn(r'^APP_VERSION\s*=\s*"[^"]+"', f'APP_VERSION = "{sys.argv[1]}"', text, count=1, flags=re.M)
+          text, count = re.subn(
+              r'^APP_VERSION\s*=\s*"[^"]+"',
+              f'APP_VERSION = "{sys.argv[1]}"',
+              text,
+              count=1,
+              flags=re.M,
+          )
           if count != 1:
               raise SystemExit('APP_VERSION nicht eindeutig gefunden')
           app.write_text(text, encoding='utf-8')
 
-          # Der bestehende Build bleibt taggebunden. workflow_dispatch ist nur
-          # der explizite Einstieg, damit ein mit GITHUB_TOKEN erzeugter Tag
-          # denselben Workflow auf genau diesem Tag starten kann.
           workflow = Path('.github/workflows/build.yml')
           source = workflow.read_text(encoding='utf-8')
           if 'on:\n  workflow_dispatch:\n' not in source:
-              source = source.replace('on:\n  push:\n', 'on:\n  workflow_dispatch:\n  push:\n', 1)
+              source = source.replace(
+                  'on:\n  push:\n', 'on:\n  workflow_dispatch:\n  push:\n', 1
+              )
           workflow.write_text(source, encoding='utf-8')
           PY
           python tools/sync_version.py
@@ -68,17 +73,31 @@ jobs:
             git push origin "HEAD:${GITHUB_REF_NAME}"
           fi
 
-      - name: Tag einmalig erzeugen und Build-Workflow auf dem Tag starten
+      - name: main, Tag und Release-Lauf auf denselben Commit binden
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF_NAME#release-trigger/}"
+
+          git fetch origin main
+          if ! git merge-base --is-ancestor origin/main HEAD; then
+            echo "Release-Branch ist kein Fast-Forward von main; Abbruch." >&2
+            exit 1
+          fi
+          git push origin HEAD:main
+
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag ${TAG} existiert bereits; Abbruch statt Überschreiben." >&2
             exit 1
           fi
           git tag "$TAG" HEAD
           git push origin "$TAG"
+
           gh workflow run build.yml --ref "$TAG"
+          sleep 5
+          RUN_ID="$(gh run list --workflow build.yml --branch "$TAG" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"
+          test -n "$RUN_ID"
+          echo "Vollständiger Release-Lauf: $RUN_ID"
+          gh run watch "$RUN_ID" --exit-status
