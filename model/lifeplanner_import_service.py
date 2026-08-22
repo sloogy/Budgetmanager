@@ -23,13 +23,14 @@ from typing import Any
 from model.category_model import CategoryModel
 from model.database import db_transaction
 from model.tracking_model import TrackingModel
-from model.typ_constants import TYP_EXPENSES
+from model.typ_constants import TYP_EXPENSES, TYP_SAVINGS
 from utils.atomic_write import atomar_offen
 from utils.money import get_currency
 
 BRIDGE_FILE = "fpm_to_budgetmanager.jsonl"
 FPM_OUTBOX_FILE = "budgetmanager_to_fpm.jsonl"
 SAVINGS_GOALS_OUTBOX_FILE = "budgetmanager_savings_goals.jsonl"
+CATEGORIES_OUTBOX_FILE = "budgetmanager_categories.jsonl"
 SCHEMA = "budgetmanager.import.v1"
 STATE_TABLE = "lifeplanner_import_state"
 MAX_FILE_BYTES = 20 * 1024 * 1024
@@ -757,8 +758,64 @@ def bridge_zustand() -> tuple[Path, tuple[BridgeDateiBefund, ...]]:
     return ordner, tuple(befunde)
 
 
+def default_categories_path() -> Path:
+    return default_bridge_dir() / CATEGORIES_OUTBOX_FILE
+
+
+def export_categories(conn, path: str | Path | None = None) -> BridgeExportResult:
+    """Veroeffentlicht den Kategorienkatalog fuer andere Module.
+
+    Ohne ihn muss ein Modul raten, wie die Kategorien des Nutzers heissen.
+    FPM schickte darum bis Loop 49 fest verdrahtete Namen ("Hobby/Fueller"),
+    die es hier meist gar nicht gibt - der Import legte sie an oder der Nutzer
+    ordnete jede Zahlung von Hand zu.
+
+    Uebertragen werden nur Name und Typ. Kein Budgetwert, kein Ist-Stand,
+    keine Buchung: Der Katalog sagt, *wohin* etwas gebucht werden kann, nicht
+    was dort steht.
+    """
+    out = Path(path) if path is not None else default_categories_path()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    kategorien = CategoryModel(conn)
+
+    count = 0
+    with atomar_offen(out) as handle:
+        handle.write(
+            json.dumps(
+                {
+                    "schema": "budgetmanager.categories.manifest.v1",
+                    "source": "BudgetManager",
+                    "created_at": datetime.now(UTC).isoformat(),
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+            + "\n"
+        )
+        # Einkommen bleibt aussen vor: Ein anderes Modul meldet Ausgaben und
+        # Ersparnisse, keine Einnahmen.
+        for typ in (TYP_EXPENSES, TYP_SAVINGS):
+            for name in kategorien.list_names(typ):
+                handle.write(
+                    json.dumps(
+                        {
+                            "schema": "budgetmanager.category.v1",
+                            "typ": typ,
+                            "name": name,
+                        },
+                        ensure_ascii=False,
+                        sort_keys=True,
+                    )
+                    + "\n"
+                )
+                count += 1
+    return BridgeExportResult(path=out, count=count)
+
+
 def sync_default_outboxes(conn) -> tuple[BridgeExportResult, BridgeExportResult]:
-    return export_fpm_expense_proposals(conn), export_savings_goals(conn)
+    ergebnis = export_fpm_expense_proposals(conn), export_savings_goals(conn)
+    export_categories(conn)
+    return ergebnis
 
 
 def sync_host_notices(conn, heute: date | None = None) -> int:

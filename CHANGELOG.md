@@ -4,6 +4,19 @@
 
 ### Funktion
 
+- **Der Kategorienkatalog wird jetzt veröffentlicht.** Andere Module mussten
+  raten, wie die Kategorien des Nutzers heissen. FPM schickte darum feste
+  Namen mit — „Hobby/Füller" —, die es hier meist gar nicht gibt: Der Import
+  legte sie an oder jede Zahlung musste von Hand zugeordnet werden.
+
+  `budgetmanager_categories.jsonl` trägt jetzt Name und Typ der Kategorien für
+  Ausgaben und Ersparnisse. Kein Budgetwert, kein Ist-Stand, keine Buchung —
+  der Katalog sagt, *wohin* etwas gebucht werden kann, nicht was dort steht.
+  Einkommen bleibt aussen vor: Ein anderes Modul meldet Ausgaben und
+  Ersparnisse, keine Einnahmen. Geschrieben wird mit den übrigen Outboxen.
+
+### Funktion
+
 - **Der LifePlanner zeigt jetzt, was im BudgetManager ansteht.** Bisher sah
   der Host nur, ob ein Modul läuft und wie viele Zeilen in den Brückendateien
   stehen. Ein überzogenes Budget sah nur, wer den BudgetManager öffnete —
