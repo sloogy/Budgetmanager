@@ -25,7 +25,9 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator, TextIO
 
 _log = logging.getLogger(__name__)
 
@@ -100,3 +102,45 @@ def _sichern(pfad: Path) -> None:
         # unbrauchbar sein - aber schweigen darf es nicht, die Datei bleibt
         # dann offen.
         _log.warning("Zugriffsrechte auf %s nicht gesetzt: %s", pfad.name, fehler)
+
+
+@contextmanager
+def atomar_offen(
+    pfad: str | os.PathLike,
+    *,
+    nur_besitzer: bool = True,
+) -> Iterator[TextIO]:
+    """Wie ``atomar_schreiben``, aber fuer Inhalte, die stueckweise entstehen.
+
+    Gedacht fuer Ausgaben, die zeilenweise aufgebaut werden - Brueckendateien
+    etwa, in denen jede Zeile ein Datensatz ist. Wer sie direkt in die
+    Zieldatei schreibt, hinterlaesst bei einem Abbruch eine Datei mit
+    abgeschnittener letzter Zeile, die von einer vollstaendigen nicht zu
+    unterscheiden ist - bis der Empfaenger ueber sie stolpert.
+
+        with atomar_offen(pfad) as datei:
+            for satz in saetze:
+                datei.write(json.dumps(satz) + "\n")
+
+    Sichtbar wird die Datei erst, wenn der Block ohne Fehler endet.
+    """
+    ziel = Path(pfad)
+    ziel.parent.mkdir(parents=True, exist_ok=True)
+    zwischen = ziel.with_name(f"{ziel.name}.tmp-{os.getpid()}")
+    geschafft = False
+    try:
+        with zwischen.open("w", encoding="utf-8", newline="\n") as datei:
+            yield datei
+            datei.flush()
+            os.fsync(datei.fileno())
+        if nur_besitzer:
+            _sichern(zwischen)
+        os.replace(zwischen, ziel)
+        geschafft = True
+    finally:
+        if not geschafft:
+            try:
+                zwischen.unlink(missing_ok=True)
+            except OSError as fehler:
+                _log.debug("%s blieb liegen: %s", zwischen.name, fehler)
+    _fsync_verzeichnis(ziel.parent)

@@ -110,3 +110,32 @@ def test_zwei_prozesse_teilen_sich_keine_zwischendatei(schreiber, tmp_path: Path
     finally:
         schreiber.os.replace = echtes_replace
     assert str(os.getpid()) in gesehen[0]
+
+
+def test_stueckweise_geschrieben_wird_erst_am_ende_sichtbar(
+    schreiber, tmp_path: Path
+) -> None:
+    """Fuer Brueckendateien, in denen jede Zeile ein Datensatz ist."""
+    ziel = tmp_path / "outbox.jsonl"
+    with schreiber.atomar_offen(ziel) as datei:
+        datei.write('{"a": 1}\n')
+        assert not ziel.exists(), "vor dem Ende darf die Datei nicht da sein"
+        datei.write('{"a": 2}\n')
+    assert ziel.read_text(encoding="utf-8").splitlines() == ['{"a": 1}', '{"a": 2}']
+
+
+def test_ein_abbruch_mittendrin_laesst_den_alten_stand_stehen(
+    schreiber, tmp_path: Path
+) -> None:
+    """Sonst laege dort eine Datei mit abgeschnittener letzter Zeile - vom
+    Empfaenger nicht von einer vollstaendigen zu unterscheiden."""
+    ziel = tmp_path / "outbox.jsonl"
+    schreiber.atomar_schreiben(ziel, '{"stand": "alt"}\n')
+
+    with pytest.raises(ValueError):
+        with schreiber.atomar_offen(ziel) as datei:
+            datei.write('{"halb": ')
+            raise ValueError("Abbruch")
+
+    assert ziel.read_text(encoding="utf-8") == '{"stand": "alt"}\n'
+    assert not list(tmp_path.glob("*.tmp*"))
