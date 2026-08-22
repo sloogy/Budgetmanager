@@ -1,6 +1,12 @@
 name: Build Executables
 
 on:
+  # Fest hier, nicht zur Laufzeit eingefuegt: Der Prepare-Lauf hat diesen
+  # Eintrag frueher selbst in diese Datei geschrieben, und GitHub lehnt einen
+  # Push ab, der eine Workflow-Datei aendert, wenn er nur mit dem
+  # GITHUB_TOKEN kommt ("without `workflows` permission"). Daran ist jeder
+  # Release-Versuch fuer 2.2.72 gescheitert.
+  workflow_dispatch:
   push:
     tags:
       - 'v*'

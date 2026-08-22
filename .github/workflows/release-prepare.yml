@@ -58,13 +58,6 @@ jobs:
               raise SystemExit('APP_VERSION nicht eindeutig gefunden')
           app.write_text(text, encoding='utf-8')
 
-          workflow = Path('.github/workflows/build.yml')
-          source = workflow.read_text(encoding='utf-8')
-          if 'on:\n  workflow_dispatch:\n' not in source:
-              source = source.replace(
-                  'on:\n  push:\n', 'on:\n  workflow_dispatch:\n  push:\n', 1
-              )
-          workflow.write_text(source, encoding='utf-8')
           PY
           python tools/sync_version.py
           python tools/sync_version.py --check
@@ -77,6 +70,18 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           rm -f .release-trigger
           git add -A
+          # Frueh und verstaendlich abbrechen: Ein Push mit dem GITHUB_TOKEN,
+          # der eine Workflow-Datei aendert, wird von GitHub abgelehnt
+          # ("without `workflows` permission"). Ohne diese Zeile faellt das
+          # erst beim Push auf, mit einer Meldung, die nach einem
+          # Rechteproblem aussieht statt nach dem, was es ist.
+          if ! git diff --cached --quiet -- .github/workflows; then
+            echo "Der Release-Commit aendert Workflow-Dateien - das kann der" >&2
+            echo "Release-Lauf nicht pushen. Diese Aenderung gehoert in einen" >&2
+            echo "normalen Commit auf main, vor den Release-Trigger:" >&2
+            git diff --cached --name-only -- .github/workflows >&2
+            exit 1
+          fi
           if ! git diff --cached --quiet; then
             git commit -m "[release] BudgetManager v${VERSION}"
           fi
