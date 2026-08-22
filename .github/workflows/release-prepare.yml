@@ -33,6 +33,8 @@ jobs:
           TAG="${GITHUB_REF_NAME#release-trigger/}"
           VERSION="${TAG#v}"
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          echo "TAG=$TAG" >> "$GITHUB_ENV"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           python - "$VERSION" <<'PY'
           import re, sys
           from pathlib import Path
@@ -69,19 +71,15 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
           if ! git diff --cached --quiet; then
-            git commit -m "release: BudgetManager ${GITHUB_REF_NAME#release-trigger/v}"
-            git push origin "HEAD:${GITHUB_REF_NAME}"
+            git commit -m "[release] BudgetManager v${VERSION}"
           fi
+          git push origin "HEAD:${GITHUB_REF_NAME}"
 
-      - name: main, Tag und Release-Lauf auf denselben Commit binden
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Main fast-forwarden und Tag unveränderlich setzen
         shell: bash
         run: |
           set -euo pipefail
-          TAG="${GITHUB_REF_NAME#release-trigger/}"
-
-          git fetch origin main
+          git fetch origin main --tags
           if ! git merge-base --is-ancestor origin/main HEAD; then
             echo "Release-Branch ist kein Fast-Forward von main; Abbruch." >&2
             exit 1
@@ -95,9 +93,22 @@ jobs:
           git tag "$TAG" HEAD
           git push origin "$TAG"
 
+      - name: Bestehenden Full-Release starten und Erfolg verlangen
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET_SHA="$(git rev-parse HEAD)"
           gh workflow run build.yml --ref "$TAG"
-          sleep 5
-          RUN_ID="$(gh run list --workflow build.yml --branch "$TAG" --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId')"
-          test -n "$RUN_ID"
-          echo "Vollständiger Release-Lauf: $RUN_ID"
+          RUN_ID=""
+          for _ in $(seq 1 45); do
+            RUN_ID="$(gh run list --workflow build.yml --event workflow_dispatch --limit 30 \
+              --json databaseId,headSha \
+              --jq ".[] | select(.headSha == \"${TARGET_SHA}\") | .databaseId" | head -n1)"
+            [ -n "$RUN_ID" ] && break
+            sleep 2
+          done
+          test -n "$RUN_ID" || { echo "Release-Run nicht gefunden" >&2; exit 1; }
+          echo "Release workflow run: $RUN_ID"
           gh run watch "$RUN_ID" --exit-status
