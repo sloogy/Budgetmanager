@@ -192,6 +192,18 @@ def _dev_black_pin() -> str | None:
     return None
 
 
+# Feste Liste statt "genau einer": build.yml ist der Release-Weg,
+# push-checks.yml der schnelle Lauf bei jedem main-Push. Die Regel bleibt
+# scharf - ein dritter Workflow faellt weiterhin auf, und damit auch die
+# Frage, welcher davon der massgebliche ist. Vier Tests lesen diese Liste,
+# statt sie abzuschreiben; vorher stand ["build.yml"] viermal im Testbaum und
+# musste bei jeder Aenderung an vier Stellen nachgezogen werden.
+ERLAUBTE_WORKFLOWS = ["build.yml", "push-checks.yml"]
+
+# Nur dieser Workflow darf am Tag haengen und veroeffentlichen.
+RELEASE_WORKFLOW = "build.yml"
+
+
 def check_workflow() -> list[str]:
     errors: list[str] = []
     workflow_dir = ROOT / ".github" / "workflows"
@@ -203,9 +215,11 @@ def check_workflow() -> list[str]:
         for pattern in ("*.yml", "*.yaml")
         for path in workflow_dir.glob(pattern)
     )
-    if workflow_files != ["build.yml"]:
+    if workflow_files != ERLAUBTE_WORKFLOWS:
         errors.append(
-            "Es darf genau einen GitHub-Workflow geben: build.yml; gefunden: "
+            "Erlaubt sind genau diese GitHub-Workflows: "
+            + ", ".join(ERLAUBTE_WORKFLOWS)
+            + "; gefunden: "
             + ", ".join(workflow_files)
         )
 

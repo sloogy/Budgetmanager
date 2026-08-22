@@ -5,10 +5,27 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
+def _erlaubte_workflows() -> list[str]:
+    """Liest die erlaubte Liste aus dem Werkzeug, statt sie abzuschreiben.
+
+    Sie stand hier viermal als ["build.yml"] und musste bei jeder Aenderung an
+    vier Stellen nachgezogen werden - derselbe Fehler wie bei den Versionen in
+    Loop 6.
+    """
+    import importlib.util
+
+    pfad = ROOT / "tools" / "lint_procedure_check.py"
+    spec = importlib.util.spec_from_file_location("lint_procedure_check", pfad)
+    assert spec and spec.loader
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return list(modul.ERLAUBTE_WORKFLOWS)
+
+
 
 def test_tag_build_uses_only_the_single_release_workflow():
     workflow_dir = ROOT / ".github" / "workflows"
-    assert sorted(path.name for path in workflow_dir.glob("*.yml")) == ["build.yml"]
+    assert sorted(path.name for path in workflow_dir.glob("*.yml")) == _erlaubte_workflows()
     workflow = (ROOT / ".github" / "workflows" / "build.yml").read_text(
         encoding="utf-8"
     )

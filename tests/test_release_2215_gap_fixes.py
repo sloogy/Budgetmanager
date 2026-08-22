@@ -19,6 +19,23 @@ from updater.common import validate_staged_payload
 
 ROOT = Path(__file__).resolve().parents[1]
 
+def _erlaubte_workflows() -> list[str]:
+    """Liest die erlaubte Liste aus dem Werkzeug, statt sie abzuschreiben.
+
+    Sie stand hier viermal als ["build.yml"] und musste bei jeder Aenderung an
+    vier Stellen nachgezogen werden - derselbe Fehler wie bei den Versionen in
+    Loop 6.
+    """
+    import importlib.util
+
+    pfad = ROOT / "tools" / "lint_procedure_check.py"
+    spec = importlib.util.spec_from_file_location("lint_procedure_check", pfad)
+    assert spec and spec.loader
+    modul = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modul)
+    return list(modul.ERLAUBTE_WORKFLOWS)
+
+
 
 # ── B2+: onedir-Pflicht fuer ZIP-Assets ────────────────────────────────────
 def test_portable_zip_without_internal_is_rejected(tmp_path):
@@ -121,7 +138,7 @@ def test_apply_source_has_no_continue_after_backup_failure():
 # ── M4: Qualitätschecks im einzigen Tag-Workflow ───────────────────────────
 def test_single_tag_workflow_runs_quality_checks_before_packaging():
     workflows = ROOT / ".github" / "workflows"
-    assert sorted(path.name for path in workflows.glob("*.yml")) == ["build.yml"]
+    assert sorted(path.name for path in workflows.glob("*.yml")) == _erlaubte_workflows()
     text = (workflows / "build.yml").read_text(encoding="utf-8")
     for step in ("compileall", "sync_version.py --check", "pytest", "black", "mypy"):
         assert step in text, f"Release-Schritt fehlt: {step}"

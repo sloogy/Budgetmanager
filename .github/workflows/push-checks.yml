@@ -1,0 +1,83 @@
+name: Push-Gates
+
+# Der volle Release-Lauf laeuft nur am Tag beziehungsweise bei einem
+# [release]-Commit. Gearbeitet wird in dieser Suite aber direkt auf main -
+# dort lief deshalb ueberhaupt nichts, und ein Fehler waere erst beim
+# naechsten Release aufgefallen, zehn Arbeitsrunden spaeter.
+#
+# Dieser Lauf schliesst die Luecke, ohne das Doppellauf-Problem
+# zurueckzubringen, das den Push-Trigger dort ausschloss: Er reagiert nur auf
+# main, nie auf Tags, und macht nur die guenstigen Pruefungen - Linux, ein
+# Python, keine Builds. Zwei bis drei Minuten.
+#
+# Wortgleich aufgebaut in FPM, BudgetManager, FreizeitManager und LifePlanner.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: budgetmanager-push-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gates:
+    name: Gates
+    # Release-Commits gehen ohnehin durch den vollen Lauf.
+    if: "!contains(github.event.head_commit.message, '[release]')"
+    runs-on: ubuntu-latest
+    env:
+      QT_QPA_PLATFORM: offscreen
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+      PYTHONDONTWRITEBYTECODE: "1"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Qt-Systembibliotheken installieren
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 \
+            libdbus-1-3 libfontconfig1
+
+      - name: Python 3.12 einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Abhaengigkeiten mit Hash-Pruefung installieren
+        run: |
+          python -m pip install --upgrade pip
+          python tools/verify_hashed_lock.py
+          python -m pip install --require-hashes -r requirements-build.lock
+          python -m pip install --require-hashes -r requirements-dev.lock
+
+      - name: Version und Uebersetzung
+        run: |
+          python tools/sync_version.py --check
+          python -m compileall -q .
+
+      - name: Ratchet
+        run: python tools/exception_audit.py
+
+      - name: Statische Analyse
+        run: |
+          python -m ruff check . --select E9,F63,F7,F82
+          python -m mypy model/
+
+      - name: Generierte Artefakte entfernen
+        # ruff und mypy legen ihre Caches im Baum ab; lint_procedure_check
+        # beanstandet sie zu Recht. build.yml raeumt an derselben Stelle auf.
+        run: python tools/clean_release_tree.py
+
+      - name: Lint- und Release-Verfahren
+        run: python tools/lint_procedure_check.py
+
+      - name: Tests
+        run: python -m pytest tests/ -q
