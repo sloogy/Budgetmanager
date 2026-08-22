@@ -2,6 +2,25 @@
 
 ## Unveröffentlicht
 
+### Stabilität
+
+- **Der Push-Gate-Lauf war rot.** Die Schwärzung des Crashlogs suchte den
+  Ausnahmetyp zweimal — einmal in der Bedingung, einmal im Text. Für mypy war
+  der zweite Treffer `None`-fähig, und `mypy model/` läuft im Gate mit. Der
+  Treffer wird jetzt einmal gebunden.
+
+### Ordnung
+
+- **Fünfzehn Auditmatrizen lagen im Hauptordner**, eine je Fassung seit
+  2.2.60, dazu vier Nachweise aus 2.2.60 und 2.2.67. Sie liegen jetzt unter
+  `docs/archive/release-evidence/`, und
+  `tools/final_release_audit_1000.py` schreibt seine Matrix beim Lauf direkt
+  dorthin — der Hauptordner wächst nicht mehr mit jedem Release.
+- **Der Index des Beweisarchivs nannte 59 von 129 Dateien.** Von Hand
+  gepflegt driftete er; wer eine Datei nicht im Index fand, hielt sie für
+  nicht vorhanden. `tools/release_evidence_index.py` erzeugt ihn jetzt aus
+  dem Verzeichnis, ein Test hält ihn aktuell.
+
 ### Funktion
 
 - **Die Kategorie im Zahlungsimport wählt man jetzt wie in der

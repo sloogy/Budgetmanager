@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 import sqlite3
+import sys
 from datetime import date
 from pathlib import Path
 
@@ -208,8 +209,10 @@ def test_final_release_audit_tool_shape():
 def test_audit_csv_matrix_present_for_current_version():
     from app_info import APP_VERSION
 
-    csv_path = ROOT / (
-        f"FINAL_RELEASE_AUDIT_1000_MATRIX_v{APP_VERSION.replace('.', '_')}.csv"
+    csv_path = (
+        ROOT
+        / "docs/archive/release-evidence"
+        / (f"FINAL_RELEASE_AUDIT_1000_MATRIX_v{APP_VERSION.replace('.', '_')}.csv")
     )
     assert csv_path.exists(), csv_path.name
 
@@ -235,3 +238,40 @@ def test_readme_version_examples_updated():
     readme = (ROOT / "README.md").read_text(encoding="utf-8")
     assert APP_VERSION in readme
     assert not re.search(r"\b2\.2\.24\b", readme)
+
+
+def test_release_evidence_index_is_current():
+    """Der Archivindex muss das Verzeichnis nennen, nicht die Haelfte davon.
+
+    Von Hand gepflegt driftete er auf 59 von 129 Dateien. Wer eine Datei nicht
+    im Index findet, haelt sie fuer nicht vorhanden.
+    """
+    import subprocess
+
+    fertig = subprocess.run(
+        [sys.executable, "tools/release_evidence_index.py", "--check"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+    )
+    assert fertig.returncode == 0, fertig.stderr
+
+
+def test_project_root_holds_no_release_evidence():
+    """Im Hauptordner liegt kein Auditnachweis mehr.
+
+    Er wuchs um eine Datei je Fassung: fuenfzehn Auditmatrizen von 2.2.60 bis
+    2.2.73 lagen dort nebeneinander.
+    """
+    muster = (
+        "FINAL_RELEASE_AUDIT_",
+        "ENTERPRISE_RELEASE_AUDIT_",
+        "RELEASE_READINESS_",
+        "SOURCE_TREE_SHA256_",
+        "KILLCRITIC_X10THINK_",
+        "UI_USABILITY_ADHS_",
+    )
+    gefunden = [
+        p.name for p in ROOT.iterdir() if p.is_file() and p.name.startswith(muster)
+    ]
+    assert not gefunden, f"gehoert nach docs/archive/release-evidence: {gefunden}"

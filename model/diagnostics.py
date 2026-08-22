@@ -465,12 +465,12 @@ def _sanitize_application_log(text: str) -> str:
             "During handling of the above exception, another exception occurred:",
         }:
             sanitized.append(line)
-        elif _EXCEPTION_LINE_RE.match(line.strip()):
+        elif (treffer := _EXCEPTION_LINE_RE.match(line.strip())) is not None:
             # Nur der Typ bleibt stehen; er sagt, was schiefging, ohne zu
-            # sagen, womit.
-            sanitized.append(
-                f"{_EXCEPTION_LINE_RE.match(line.strip()).group('typ')}: <redacted>"
-            )
+            # sagen, womit. Der Treffer wird einmal gebunden statt zweimal
+            # gesucht - der zweite Aufruf war fuer mypy None-faehig und machte
+            # den Push-Gate-Lauf rot.
+            sanitized.append(f"{treffer.group('typ')}: <redacted>")
         else:
             sanitized.append("<redacted>")
     return "\n".join(sanitized) + ("\n" if text.endswith("\n") else "")

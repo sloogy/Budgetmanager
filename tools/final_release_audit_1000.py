@@ -859,8 +859,13 @@ def main() -> int:
                 f"Loop {(i + 1) * len(DOMAINS):04d}: checks={totals['checks']} "
                 f"fail={totals['FAIL']} warn={totals['WARN']}"
             )
+    # Die Matrix gehoert zu den Releasebeweisen, nicht ins Wurzelverzeichnis.
+    # Dort lagen zuletzt fuenfzehn davon - eine je Fassung seit 2.2.60.
+    evidence = ROOT / "docs" / "archive" / "release-evidence"
+    evidence.mkdir(parents=True, exist_ok=True)
     csv_path = (
-        ROOT / f"FINAL_RELEASE_AUDIT_1000_MATRIX_v{APP_VERSION.replace('.', '_')}.csv"
+        evidence
+        / f"FINAL_RELEASE_AUDIT_1000_MATRIX_v{APP_VERSION.replace('.', '_')}.csv"
     )
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh, lineterminator="\n")
