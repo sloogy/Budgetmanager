@@ -132,10 +132,9 @@ def test_ein_abbruch_mittendrin_laesst_den_alten_stand_stehen(
     ziel = tmp_path / "outbox.jsonl"
     schreiber.atomar_schreiben(ziel, '{"stand": "alt"}\n')
 
-    with pytest.raises(ValueError):
-        with schreiber.atomar_offen(ziel) as datei:
-            datei.write('{"halb": ')
-            raise ValueError("Abbruch")
+    with pytest.raises(ValueError), schreiber.atomar_offen(ziel) as datei:
+        datei.write('{"halb": ')
+        raise ValueError("Abbruch")
 
     assert ziel.read_text(encoding="utf-8") == '{"stand": "alt"}\n'
     assert not list(tmp_path.glob("*.tmp*"))

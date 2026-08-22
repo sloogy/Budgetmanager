@@ -25,9 +25,10 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator, TextIO
+from typing import TextIO
 
 _log = logging.getLogger(__name__)
 
