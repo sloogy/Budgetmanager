@@ -27,14 +27,19 @@ import venv
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CACHE = Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache")) / "budgetmanager-werkzeuge"
+CACHE = (
+    Path(os.environ.get("XDG_CACHE_HOME", Path.home() / ".cache"))
+    / "budgetmanager-werkzeuge"
+)
 
 _PIN = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[^\s;#]+)")
 
 
 def gepinnte_version(werkzeug: str) -> str:
     """Liest die Pinnung aus den requirements-Dateien des Projekts."""
-    for datei in sorted(ROOT.glob("requirements*.txt")) + sorted(ROOT.glob("requirements*.in")):
+    for datei in sorted(ROOT.glob("requirements*.txt")) + sorted(
+        ROOT.glob("requirements*.in")
+    ):
         for zeile in datei.read_text(encoding="utf-8").splitlines():
             treffer = _PIN.match(zeile.strip())
             if treffer and treffer.group("name").lower() == werkzeug.lower():
@@ -51,7 +56,14 @@ def umgebung(werkzeug: str, version: str) -> Path:
     ziel.parent.mkdir(parents=True, exist_ok=True)
     venv.EnvBuilder(with_pip=True, clear=True).create(ziel)
     ergebnis = subprocess.run(
-        [str(ziel / "bin" / "python"), "-m", "pip", "install", "--quiet", f"{werkzeug}=={version}"],
+        [
+            str(ziel / "bin" / "python"),
+            "-m",
+            "pip",
+            "install",
+            "--quiet",
+            f"{werkzeug}=={version}",
+        ],
         check=False,
     )
     if ergebnis.returncode != 0 or not programm.is_file():
@@ -71,7 +83,9 @@ def main() -> int:
     version = gepinnte_version(args.werkzeug)
     programm = umgebung(args.werkzeug, version)
     print(f"+ {args.werkzeug} {version} (gepinnt) {' '.join(args.argumente)}")
-    return subprocess.run([str(programm), *args.argumente], cwd=ROOT, check=False).returncode
+    return subprocess.run(
+        [str(programm), *args.argumente], cwd=ROOT, check=False
+    ).returncode
 
 
 if __name__ == "__main__":

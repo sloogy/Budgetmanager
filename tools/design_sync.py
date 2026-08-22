@@ -62,42 +62,78 @@ _HEX = re.compile(r"#[0-9a-fA-F]{6}")
 # fuehren - sonst faellt ein Modul beim Uebernehmen des Hostprofils auf sein
 # eingebautes Standarddesign zurueck, und genau das war der Fehler.
 CORE_ROLES: tuple[str, ...] = (
-    "hintergrund_app", "hintergrund_panel", "hintergrund_seitenleiste",
-    "seitenleiste_text", "seitenleiste_text_gedimmt", "seitenleiste_aktiv",
-    "text", "text_gedimmt", "text_invers",
-    "akzent", "akzent_text", "akzent_hover",
-    "rand", "eingabe_hintergrund",
-    "tabelle_hintergrund", "tabelle_alt", "tabelle_header", "tabelle_header_text",
-    "tabelle_gitter", "auswahl_hintergrund", "auswahl_text",
-    "hover_hintergrund", "hover_text",
-    "karte_hintergrund", "karte_rand",
-    "erfolg", "erfolg_text", "warnung", "warnung_text", "gefahr", "gefahr_text",
-    "gedaempft", "gedaempft_text",
+    "hintergrund_app",
+    "hintergrund_panel",
+    "hintergrund_seitenleiste",
+    "seitenleiste_text",
+    "seitenleiste_text_gedimmt",
+    "seitenleiste_aktiv",
+    "text",
+    "text_gedimmt",
+    "text_invers",
+    "akzent",
+    "akzent_text",
+    "akzent_hover",
+    "rand",
+    "eingabe_hintergrund",
+    "tabelle_hintergrund",
+    "tabelle_alt",
+    "tabelle_header",
+    "tabelle_header_text",
+    "tabelle_gitter",
+    "auswahl_hintergrund",
+    "auswahl_text",
+    "hover_hintergrund",
+    "hover_text",
+    "karte_hintergrund",
+    "karte_rand",
+    "erfolg",
+    "erfolg_text",
+    "warnung",
+    "warnung_text",
+    "gefahr",
+    "gefahr_text",
+    "gedaempft",
+    "gedaempft_text",
 )
 
 # Bedeutungsfarben einzelner Programme. Sie stehen mit im Katalog, damit ein
 # Wechsel des gemeinsamen Designs auch die fachlichen Farben mitnimmt.
 APP_ROLES: dict[str, tuple[str, ...]] = {
     "budgetmanager": (
-        "typ_einnahmen", "typ_ausgaben", "typ_ersparnisse", "negativ_text",
+        "typ_einnahmen",
+        "typ_ausgaben",
+        "typ_ersparnisse",
+        "negativ_text",
         "akzent_panel_text",
-        "dropdown_bg", "dropdown_text", "dropdown_selection",
-        "dropdown_selection_text", "dropdown_border",
+        "dropdown_bg",
+        "dropdown_text",
+        "dropdown_selection",
+        "dropdown_selection_text",
+        "dropdown_border",
     ),
     "fpm": (
-        "bereich_sammlung", "bereich_rotation", "bereich_service",
+        "bereich_sammlung",
+        "bereich_rotation",
+        "bereich_service",
         "bereich_aktivitaet",
     ),
     "freizeitmanager": (
-        "ruhe_hintergrund", "ruhe_rand", "ruhe_text",
-        "dringlichkeit_frisch", "dringlichkeit_bald", "dringlichkeit_faellig",
-        "dringlichkeit_lange", "dringlichkeit_geplant",
+        "ruhe_hintergrund",
+        "ruhe_rand",
+        "ruhe_text",
+        "dringlichkeit_frisch",
+        "dringlichkeit_bald",
+        "dringlichkeit_faellig",
+        "dringlichkeit_lange",
+        "dringlichkeit_geplant",
     ),
 }
 
 ALL_ROLES: tuple[str, ...] = CORE_ROLES + tuple(
     role for roles in APP_ROLES.values() for role in roles
 )
+
 
 # ── Farbrechnung ─────────────────────────────────────────────────────────────
 def _rgb(color: str) -> tuple[int, int, int]:
@@ -118,8 +154,9 @@ def luminance(color: str) -> float:
     channels = []
     for part in _rgb(color):
         ratio = part / 255.0
-        channels.append(ratio / 12.92 if ratio <= 0.04045
-                        else ((ratio + 0.055) / 1.055) ** 2.4)
+        channels.append(
+            ratio / 12.92 if ratio <= 0.04045 else ((ratio + 0.055) / 1.055) ** 2.4
+        )
     red, green, blue = channels
     return 0.2126 * red + 0.7152 * green + 0.0722 * blue
 
@@ -149,8 +186,13 @@ def readable_on(background: str, dark: str = "#111827", light: str = "#ffffff") 
 DIMMED_MIN_SEPARATION = 1.25
 
 
-def dimmed(text: str, toward: str, backgrounds: tuple[str, ...],
-           target: float = 4.5, separation: float = DIMMED_MIN_SEPARATION) -> str:
+def dimmed(
+    text: str,
+    toward: str,
+    backgrounds: tuple[str, ...],
+    target: float = 4.5,
+    separation: float = DIMMED_MIN_SEPARATION,
+) -> str:
     """Die staerkste Abschwaechung, die auf jedem Grund noch lesbar bleibt."""
     best = text
     for step in range(1, 21):
@@ -163,8 +205,7 @@ def dimmed(text: str, toward: str, backgrounds: tuple[str, ...],
     return best
 
 
-def toward_contrast(color: str, background: str, target: float,
-                    dark_mode: bool) -> str:
+def toward_contrast(color: str, background: str, target: float, dark_mode: bool) -> str:
     """Hellt oder dunkelt ``color`` ab, bis der Kontrast reicht.
 
     Im dunklen Profil wird aufgehellt, im hellen abgedunkelt - so bleibt die
@@ -180,8 +221,11 @@ def toward_contrast(color: str, background: str, target: float,
         if contrast(candidate, background) >= target:
             return candidate
     # Reicht die eigene Richtung nicht, entscheidet die Lesbarkeit.
-    return best if contrast(best, background) >= contrast(readable_on(background), background) \
+    return (
+        best
+        if contrast(best, background) >= contrast(readable_on(background), background)
         else readable_on(background)
+    )
 
 
 # ── Farbfehlsichtigkeit ──────────────────────────────────────────────────────
@@ -189,16 +233,20 @@ def toward_contrast(color: str, background: str, target: float,
 # Farbe die einzige Aussage traegt - Ampel, Bereichskachel, Buchungstyp -, ist
 # ein Farbpaar, das fuer sie gleich aussieht, schlicht keine Aussage. Die
 # Simulation folgt Vienot/Brettel/Mollon (1999) ueber den LMS-Raum.
-_TO_LMS = ((0.31399022, 0.63951294, 0.04649755),
-           (0.15537241, 0.75789446, 0.08670142),
-           (0.01775239, 0.10944209, 0.87256922))
-_FROM_LMS = ((5.47221206, -4.6419601, 0.16963708),
-             (-1.1252419, 2.29317094, -0.1678952),
-             (0.02980165, -0.19318073, 1.16364789))
+_TO_LMS = (
+    (0.31399022, 0.63951294, 0.04649755),
+    (0.15537241, 0.75789446, 0.08670142),
+    (0.01775239, 0.10944209, 0.87256922),
+)
+_FROM_LMS = (
+    (5.47221206, -4.6419601, 0.16963708),
+    (-1.1252419, 2.29317094, -0.1678952),
+    (0.02980165, -0.19318073, 1.16364789),
+)
 VISION = {
-    "protanopie":   ((0, 1.05118294, -0.05116099), (0, 1, 0), (0, 0, 1)),
+    "protanopie": ((0, 1.05118294, -0.05116099), (0, 1, 0), (0, 0, 1)),
     "deuteranopie": ((1, 0, 0), (0.9513092, 0, 0.04866992), (0, 0, 1)),
-    "tritanopie":   ((1, 0, 0), (0, 1, 0), (-0.86744736, 1.86727089, 0)),
+    "tritanopie": ((1, 0, 0), (0, 1, 0), (-0.86744736, 1.86727089, 0)),
 }
 
 # Ab hier gelten zwei Farben als unterscheidbar. dE 20 ist ein deutlich
@@ -212,8 +260,13 @@ SIGNAL_GROUPS: tuple[tuple[str, ...], ...] = (
     ("erfolg", "warnung", "gefahr"),
     ("typ_einnahmen", "typ_ausgaben", "typ_ersparnisse"),
     ("bereich_sammlung", "bereich_rotation", "bereich_service", "bereich_aktivitaet"),
-    ("dringlichkeit_frisch", "dringlichkeit_bald", "dringlichkeit_faellig",
-     "dringlichkeit_lange", "dringlichkeit_geplant"),
+    (
+        "dringlichkeit_frisch",
+        "dringlichkeit_bald",
+        "dringlichkeit_faellig",
+        "dringlichkeit_lange",
+        "dringlichkeit_geplant",
+    ),
 )
 
 
@@ -228,16 +281,18 @@ def _linear(value: float) -> float:
 
 def _companded(value: float) -> float:
     value = max(0.0, min(1.0, value))
-    return (value * 12.92 if value <= 0.0031308
-            else 1.055 * value ** (1 / 2.4) - 0.055) * 255
+    return (
+        value * 12.92 if value <= 0.0031308 else 1.055 * value ** (1 / 2.4) - 0.055
+    ) * 255
 
 
 def simulate(color: str, kind: str) -> str:
     """Wie die Farbe mit der genannten Farbfehlsichtigkeit aussieht."""
     linear = tuple(_linear(part) for part in _rgb(color))
     lms = _apply(_TO_LMS, linear)
-    return _hex(tuple(_companded(part)
-                      for part in _apply(_FROM_LMS, _apply(VISION[kind], lms))))
+    return _hex(
+        tuple(_companded(part) for part in _apply(_FROM_LMS, _apply(VISION[kind], lms)))
+    )
 
 
 def _lab(color: str) -> tuple[float, float, float]:
@@ -283,8 +338,7 @@ def _greyed(color: str) -> str:
     return _hex((high, high, high))
 
 
-def set_apart(color: str, others: tuple[str, ...], card: str,
-              dark: bool) -> str:
+def set_apart(color: str, others: tuple[str, ...], card: str, dark: bool) -> str:
     """Schiebt ``color`` weg, bis es sich von allen ``others`` abhebt.
 
     Gesucht wird in zwei Richtungen zugleich: heller/dunkler und blasser.
@@ -338,12 +392,24 @@ def _get(profile: dict[str, Any], key: str, fallback: str = "#808080") -> str:
 # Achtung. Sie werden nur leicht in Richtung Akzent gemischt, damit sie im
 # Profil sitzen, ohne ihre Aussage zu verlieren.
 _MEANING = {
-    "hell": {"erfolg": "#27ae60", "warnung": "#f39c12", "gefahr": "#e74c3c",
-             "sammlung": "#8e44ad", "rotation": "#d35400", "service": "#c0392b",
-             "aktivitaet": "#2563eb"},
-    "dunkel": {"erfolg": "#22c55e", "warnung": "#eab308", "gefahr": "#ef4444",
-               "sammlung": "#c084fc", "rotation": "#fb923c", "service": "#f87171",
-               "aktivitaet": "#60a5fa"},
+    "hell": {
+        "erfolg": "#27ae60",
+        "warnung": "#f39c12",
+        "gefahr": "#e74c3c",
+        "sammlung": "#8e44ad",
+        "rotation": "#d35400",
+        "service": "#c0392b",
+        "aktivitaet": "#2563eb",
+    },
+    "dunkel": {
+        "erfolg": "#22c55e",
+        "warnung": "#eab308",
+        "gefahr": "#ef4444",
+        "sammlung": "#c084fc",
+        "rotation": "#fb923c",
+        "service": "#f87171",
+        "aktivitaet": "#60a5fa",
+    },
 }
 
 
@@ -356,44 +422,88 @@ DERIVATIONS: tuple[tuple[str, Any], ...] = (
     # Grundflaechen
     ("hintergrund_panel", lambda p: _get(p, "hintergrund_app")),
     ("hintergrund_seitenleiste", lambda p: _get(p, "hintergrund_panel")),
-    ("rand", lambda p: p.get("tabelle_gitter") if is_hex_color(p.get("tabelle_gitter"))
-     else mix(_get(p, "hintergrund_panel"), "#ffffff" if _dark(p) else "#000000", 0.18)),
+    (
+        "rand",
+        lambda p: (
+            p.get("tabelle_gitter")
+            if is_hex_color(p.get("tabelle_gitter"))
+            else mix(
+                _get(p, "hintergrund_panel"), "#ffffff" if _dark(p) else "#000000", 0.18
+            )
+        ),
+    ),
     ("eingabe_hintergrund", lambda p: _get(p, "hintergrund_panel")),
     ("karte_hintergrund", lambda p: _get(p, "hintergrund_panel")),
     ("karte_rand", lambda p: _get(p, "rand")),
     # Schrift
-    ("text_gedimmt", lambda p: mix(_get(p, "text"), _get(p, "hintergrund_panel"), 0.38)),
+    (
+        "text_gedimmt",
+        lambda p: mix(_get(p, "text"), _get(p, "hintergrund_panel"), 0.38),
+    ),
     ("text_invers", lambda p: readable_on(_get(p, "text"))),
     # Akzent
     ("akzent_text", lambda p: readable_on(_get(p, "akzent"))),
-    ("akzent_hover", lambda p: mix(_get(p, "akzent"),
-                                   "#ffffff" if _dark(p) else "#000000", 0.18)),
+    (
+        "akzent_hover",
+        lambda p: mix(_get(p, "akzent"), "#ffffff" if _dark(p) else "#000000", 0.18),
+    ),
     # Seitenleiste - sie hat oft einen eigenen, dunkleren Grund als der Rest.
-    ("seitenleiste_text", lambda p: _get(p, "text")
-     if contrast(_get(p, "text"), _get(p, "hintergrund_seitenleiste")) >= 4.5
-     else readable_on(_get(p, "hintergrund_seitenleiste"))),
-    ("seitenleiste_text_gedimmt", lambda p: mix(_get(p, "seitenleiste_text"),
-                                                _get(p, "hintergrund_seitenleiste"), 0.38)),
+    (
+        "seitenleiste_text",
+        lambda p: (
+            _get(p, "text")
+            if contrast(_get(p, "text"), _get(p, "hintergrund_seitenleiste")) >= 4.5
+            else readable_on(_get(p, "hintergrund_seitenleiste"))
+        ),
+    ),
+    (
+        "seitenleiste_text_gedimmt",
+        lambda p: mix(
+            _get(p, "seitenleiste_text"), _get(p, "hintergrund_seitenleiste"), 0.38
+        ),
+    ),
     ("seitenleiste_aktiv", lambda p: _get(p, "akzent")),
     # Tabellen
     ("tabelle_hintergrund", lambda p: _get(p, "hintergrund_panel")),
-    ("tabelle_alt", lambda p: mix(_get(p, "tabelle_hintergrund"),
-                                  "#ffffff" if _dark(p) else "#000000", 0.05)),
-    ("tabelle_header", lambda p: mix(_get(p, "tabelle_hintergrund"),
-                                     "#ffffff" if _dark(p) else "#000000", 0.08)),
+    (
+        "tabelle_alt",
+        lambda p: mix(
+            _get(p, "tabelle_hintergrund"), "#ffffff" if _dark(p) else "#000000", 0.05
+        ),
+    ),
+    (
+        "tabelle_header",
+        lambda p: mix(
+            _get(p, "tabelle_hintergrund"), "#ffffff" if _dark(p) else "#000000", 0.08
+        ),
+    ),
     ("tabelle_header_text", lambda p: _get(p, "text_gedimmt")),
     ("tabelle_gitter", lambda p: _get(p, "rand")),
     ("auswahl_hintergrund", lambda p: _get(p, "akzent")),
     ("auswahl_text", lambda p: readable_on(_get(p, "auswahl_hintergrund"))),
-    ("hover_hintergrund", lambda p: mix(_get(p, "hintergrund_panel"),
-                                        _get(p, "akzent"), 0.14)),
+    (
+        "hover_hintergrund",
+        lambda p: mix(_get(p, "hintergrund_panel"), _get(p, "akzent"), 0.14),
+    ),
     ("hover_text", lambda p: _get(p, "text")),
     # Bedeutungsfarben. Der BudgetManager fuehrt seine Typfarben laenger als
     # es die Statusrollen gibt - wo sie da sind, sind sie die bessere Quelle.
-    ("erfolg", lambda p: p.get("typ_einnahmen") if is_hex_color(p.get("typ_einnahmen"))
-     else _meaning(p, "erfolg")),
-    ("gefahr", lambda p: p.get("typ_ausgaben") if is_hex_color(p.get("typ_ausgaben"))
-     else _meaning(p, "gefahr")),
+    (
+        "erfolg",
+        lambda p: (
+            p.get("typ_einnahmen")
+            if is_hex_color(p.get("typ_einnahmen"))
+            else _meaning(p, "erfolg")
+        ),
+    ),
+    (
+        "gefahr",
+        lambda p: (
+            p.get("typ_ausgaben")
+            if is_hex_color(p.get("typ_ausgaben"))
+            else _meaning(p, "gefahr")
+        ),
+    ),
     ("warnung", lambda p: _meaning(p, "warnung")),
     ("erfolg_text", lambda p: readable_on(_get(p, "erfolg"))),
     ("warnung_text", lambda p: readable_on(_get(p, "warnung"))),
@@ -404,10 +514,18 @@ DERIVATIONS: tuple[tuple[str, Any], ...] = (
     ("typ_einnahmen", lambda p: _get(p, "erfolg")),
     ("typ_ausgaben", lambda p: _get(p, "gefahr")),
     ("typ_ersparnisse", lambda p: _get(p, "akzent")),
-    ("negativ_text", lambda p: toward_contrast(_get(p, "gefahr"),
-                                               _get(p, "hintergrund_panel"), 4.5, _dark(p))),
-    ("akzent_panel_text", lambda p: toward_contrast(_get(p, "akzent"),
-                                                    _get(p, "hintergrund_panel"), 4.5, _dark(p))),
+    (
+        "negativ_text",
+        lambda p: toward_contrast(
+            _get(p, "gefahr"), _get(p, "hintergrund_panel"), 4.5, _dark(p)
+        ),
+    ),
+    (
+        "akzent_panel_text",
+        lambda p: toward_contrast(
+            _get(p, "akzent"), _get(p, "hintergrund_panel"), 4.5, _dark(p)
+        ),
+    ),
     ("dropdown_bg", lambda p: _get(p, "eingabe_hintergrund")),
     ("dropdown_text", lambda p: _get(p, "text")),
     ("dropdown_selection", lambda p: _get(p, "auswahl_hintergrund")),
@@ -422,16 +540,32 @@ DERIVATIONS: tuple[tuple[str, Any], ...] = (
     # FreizeitManager
     ("dringlichkeit_frisch", lambda p: _get(p, "erfolg")),
     ("dringlichkeit_bald", lambda p: _get(p, "warnung")),
-    ("dringlichkeit_faellig", lambda p: mix(_get(p, "warnung"), _get(p, "gefahr"), 0.5)),
+    (
+        "dringlichkeit_faellig",
+        lambda p: mix(_get(p, "warnung"), _get(p, "gefahr"), 0.5),
+    ),
     ("dringlichkeit_lange", lambda p: _get(p, "akzent")),
     # "Geplant" ist ein neutraler Zustand, kein Signal. Aus dem Akzent gemischt
     # fiel es in gruenen Designs mit "frisch" zusammen; aus der gedaempften
     # Farbe gemischt bleibt es neutral und hebt sich von beiden ab.
-    ("dringlichkeit_geplant", lambda p: mix(_get(p, "gedaempft"), _get(p, "akzent"), 0.25)),
-    ("ruhe_hintergrund", lambda p: mix(_get(p, "hintergrund_panel"), _get(p, "erfolg"), 0.22)),
+    (
+        "dringlichkeit_geplant",
+        lambda p: mix(_get(p, "gedaempft"), _get(p, "akzent"), 0.25),
+    ),
+    (
+        "ruhe_hintergrund",
+        lambda p: mix(_get(p, "hintergrund_panel"), _get(p, "erfolg"), 0.22),
+    ),
     ("ruhe_rand", lambda p: _get(p, "erfolg")),
-    ("ruhe_text", lambda p: toward_contrast(mix(_get(p, "erfolg"), _get(p, "text"), 0.35),
-                                            _get(p, "ruhe_hintergrund"), 4.5, _dark(p))),
+    (
+        "ruhe_text",
+        lambda p: toward_contrast(
+            mix(_get(p, "erfolg"), _get(p, "text"), 0.35),
+            _get(p, "ruhe_hintergrund"),
+            4.5,
+            _dark(p),
+        ),
+    ),
 )
 
 # Wer bei zu wenig Kontrast nachgibt. ``text`` und die beiden Grundflaechen
@@ -478,22 +612,40 @@ FOREGROUND_PAIRS: tuple[tuple[str, str, float, str], ...] = (
 
 # Flaechen, die nachgeben duerfen. App- und Panelhintergrund sind das Design
 # selbst - stimmt dort der Kontrast nicht, ist das ein Befund, keine Reparatur.
-ADJUSTABLE_SURFACES: frozenset[str] = frozenset({
-    "hintergrund_seitenleiste", "tabelle_hintergrund", "tabelle_alt",
-    "karte_hintergrund", "eingabe_hintergrund", "tabelle_header",
-    "hover_hintergrund",
-})
+ADJUSTABLE_SURFACES: frozenset[str] = frozenset(
+    {
+        "hintergrund_seitenleiste",
+        "tabelle_hintergrund",
+        "tabelle_alt",
+        "karte_hintergrund",
+        "eingabe_hintergrund",
+        "tabelle_header",
+        "hover_hintergrund",
+    }
+)
 
 # Farben, die eine Aussage tragen und deshalb auf der Karte erkennbar sein
 # muessen. Ein abgeleitetes Gelb auf hellem Grund erreichte hier 1.77:1 - das
 # ist als Ampelfarbe wertlos. 2.6:1 laesst noch Luft ueber der Untergrenze der
 # Programme (2.0:1), ohne die Farbe zu verfaelschen.
 SIGNAL_ROLES: tuple[str, ...] = (
-    "akzent", "erfolg", "warnung", "gefahr", "gedaempft",
-    "typ_einnahmen", "typ_ausgaben", "typ_ersparnisse",
-    "bereich_sammlung", "bereich_rotation", "bereich_service", "bereich_aktivitaet",
-    "dringlichkeit_frisch", "dringlichkeit_bald", "dringlichkeit_faellig",
-    "dringlichkeit_lange", "dringlichkeit_geplant",
+    "akzent",
+    "erfolg",
+    "warnung",
+    "gefahr",
+    "gedaempft",
+    "typ_einnahmen",
+    "typ_ausgaben",
+    "typ_ersparnisse",
+    "bereich_sammlung",
+    "bereich_rotation",
+    "bereich_service",
+    "bereich_aktivitaet",
+    "dringlichkeit_frisch",
+    "dringlichkeit_bald",
+    "dringlichkeit_faellig",
+    "dringlichkeit_lange",
+    "dringlichkeit_geplant",
 )
 SIGNAL_BACKGROUND = "karte_hintergrund"
 SIGNAL_MIN_CONTRAST = 2.6
@@ -502,11 +654,20 @@ SIGNAL_MIN_CONTRAST = 2.6
 # Reicht keine Schriftfarbe, darf die Bedeutungsflaeche selbst nachgeben.
 # Der Nord-Rotton traegt zum Beispiel weder weisse noch schwarze Schrift mit
 # 4.5:1; eine Nuance dunkler faellt niemandem auf, unlesbare Schrift schon.
-ADJUSTABLE_BACKGROUNDS: frozenset[str] = frozenset({
-    "akzent", "auswahl_hintergrund", "hover_hintergrund", "tabelle_header",
-    "erfolg", "warnung", "gefahr", "gedaempft",
-    "dropdown_selection", "ruhe_hintergrund",
-})
+ADJUSTABLE_BACKGROUNDS: frozenset[str] = frozenset(
+    {
+        "akzent",
+        "auswahl_hintergrund",
+        "hover_hintergrund",
+        "tabelle_header",
+        "erfolg",
+        "warnung",
+        "gefahr",
+        "gedaempft",
+        "dropdown_selection",
+        "ruhe_hintergrund",
+    }
+)
 
 
 def away_from(background: str, front: str, target: float) -> str:
@@ -563,8 +724,14 @@ def local_profile_dir() -> Path | None:
 
 def slugify(name: str) -> str:
     text = str(name or "").strip().lower()
-    for source, target in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss"),
-                           ("–", "-"), ("—", "-")):
+    for source, target in (
+        ("ä", "ae"),
+        ("ö", "oe"),
+        ("ü", "ue"),
+        ("ß", "ss"),
+        ("–", "-"),
+        ("—", "-"),
+    ):
         text = text.replace(source, target)
     text = re.sub(r"\s+", "_", text)
     text = re.sub(r"[^a-z0-9_\-]", "", text).replace("-", "_")
@@ -575,8 +742,9 @@ def canonical_name(name: str) -> str:
     return CANONICAL_NAMES.get(str(name or "").strip(), str(name or "").strip())
 
 
-def _repair_foregrounds(result: dict[str, Any], touched: list[str], *,
-                        passes: int, move_surfaces: bool) -> None:
+def _repair_foregrounds(
+    result: dict[str, Any], touched: list[str], *, passes: int, move_surfaces: bool
+) -> None:
     """Zieht Schriftfarben nach, bis sie auf ihrem Grund lesbar sind.
 
     ``move_surfaces`` entscheidet, ob dabei auch die Flaeche nachgeben darf.
@@ -585,7 +753,9 @@ def _repair_foregrounds(result: dict[str, Any], touched: list[str], *,
     """
     for _ in range(passes):
         for role, background, target, gives_way in FOREGROUND_PAIRS:
-            if not (is_hex_color(result.get(role)) and is_hex_color(result.get(background))):
+            if not (
+                is_hex_color(result.get(role)) and is_hex_color(result.get(background))
+            ):
                 continue
             if contrast(result[role], result[background]) >= target - 0.005:
                 continue
@@ -596,13 +766,18 @@ def _repair_foregrounds(result: dict[str, Any], touched: list[str], *,
                 if background not in touched:
                     touched.append(background)
                 continue
-            fixed = toward_contrast(result[role], result[background], target, _dark(result))
+            fixed = toward_contrast(
+                result[role], result[background], target, _dark(result)
+            )
             if fixed != result[role]:
                 result[role] = fixed
                 if role not in touched:
                     touched.append(role)
-            if (contrast(result[role], result[background]) < target - 0.005
-                    and move_surfaces and background in ADJUSTABLE_BACKGROUNDS):
+            if (
+                contrast(result[role], result[background]) < target - 0.005
+                and move_surfaces
+                and background in ADJUSTABLE_BACKGROUNDS
+            ):
                 result[background] = away_from(result[background], result[role], target)
                 if background not in touched:
                     touched.append(background)
@@ -635,7 +810,8 @@ def complete(profile: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     if is_hex_color(side) and _dark(result) != (luminance(side) < 0.5):
         base = _get(result, "hintergrund_app")
         result["hintergrund_seitenleiste"] = mix(
-            base, "#000000", 0.35 if _dark(result) else 0.06)
+            base, "#000000", 0.35 if _dark(result) else 0.06
+        )
         if "hintergrund_seitenleiste" not in touched:
             touched.append("hintergrund_seitenleiste")
 
@@ -661,22 +837,40 @@ def complete(profile: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     # jedem Grund lesbar bleiben. Reicht der Spielraum nicht, bekommt der
     # Fliesstext etwas mehr Kontrast; das ist nie ein Nachteil.
     for strong, weak, grounds in (
-        ("text", "text_gedimmt",
-         ("hintergrund_app", "hintergrund_panel", "hintergrund_seitenleiste",
-          "karte_hintergrund")),
-        ("seitenleiste_text", "seitenleiste_text_gedimmt",
-         ("hintergrund_seitenleiste",)),
+        (
+            "text",
+            "text_gedimmt",
+            (
+                "hintergrund_app",
+                "hintergrund_panel",
+                "hintergrund_seitenleiste",
+                "karte_hintergrund",
+            ),
+        ),
+        (
+            "seitenleiste_text",
+            "seitenleiste_text_gedimmt",
+            ("hintergrund_seitenleiste",),
+        ),
     ):
         grounds = tuple(result[g] for g in grounds if is_hex_color(result.get(g)))
-        if not (is_hex_color(result.get(strong)) and is_hex_color(result.get(weak)) and grounds):
+        if not (
+            is_hex_color(result.get(strong))
+            and is_hex_color(result.get(weak))
+            and grounds
+        ):
             continue
-        toward = _get(result, "hintergrund_panel" if strong == "text"
-                      else "hintergrund_seitenleiste")
+        toward = _get(
+            result,
+            "hintergrund_panel" if strong == "text" else "hintergrund_seitenleiste",
+        )
         for _ in range(4):
             candidate = dimmed(result[strong], toward, grounds)
             if contrast(result[strong], candidate) >= DIMMED_MIN_SEPARATION:
                 break
-            result[strong] = mix(result[strong], "#ffffff" if _dark(result) else "#000000", 0.12)
+            result[strong] = mix(
+                result[strong], "#ffffff" if _dark(result) else "#000000", 0.12
+            )
             if strong not in touched:
                 touched.append(strong)
         if candidate != result[weak]:
@@ -691,7 +885,9 @@ def complete(profile: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         for role in SIGNAL_ROLES:
             if not is_hex_color(result.get(role)):
                 continue
-            fixed = toward_contrast(result[role], card, SIGNAL_MIN_CONTRAST, _dark(result))
+            fixed = toward_contrast(
+                result[role], card, SIGNAL_MIN_CONTRAST, _dark(result)
+            )
             if fixed != result[role]:
                 result[role] = fixed
                 if role not in touched:
@@ -717,15 +913,15 @@ def complete(profile: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
                 # beieinander, dass nur ein Helligkeitsabstand hilft, und der
                 # geht manchmal nur nach der anderen Seite.
                 for earlier in present[:index]:
-                    rest = tuple(result[other] for other in present[:index]
-                                 if other != earlier) + (result[role],)
+                    rest = tuple(
+                        result[other] for other in present[:index] if other != earlier
+                    ) + (result[role],)
                     moved = set_apart(result[earlier], rest, card, _dark(result))
                     if moved != result[earlier]:
                         result[earlier] = moved
                         if earlier not in touched:
                             touched.append(earlier)
                         break
-
 
     # Die Bedeutungsfarben haben sich eben verschoben - die Schrift darauf muss
     # nachziehen. Diesmal ohne Flaechen zu bewegen, sonst waere der eben
@@ -734,8 +930,11 @@ def complete(profile: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
 
     result["schriftgroesse"] = DEFAULT_FONT_SIZE
     result[DERIVED_KEY] = sorted(created)
-    result[SOURCE_KEY] = {role: profile[role] for role in sorted(touched)
-                          if role not in created and is_hex_color(profile.get(role))}
+    result[SOURCE_KEY] = {
+        role: profile[role]
+        for role in sorted(touched)
+        if role not in created and is_hex_color(profile.get(role))
+    }
     return result, touched
 
 
@@ -749,8 +948,10 @@ def audit(profile: dict[str, Any]) -> list[str]:
 
     size = profile.get("schriftgroesse")
     if not isinstance(size, int) or not FONT_SIZE_MIN <= size <= FONT_SIZE_MAX:
-        problems.append(f"{name}: schriftgroesse {size!r} liegt ausserhalb "
-                        f"{FONT_SIZE_MIN}-{FONT_SIZE_MAX}")
+        problems.append(
+            f"{name}: schriftgroesse {size!r} liegt ausserhalb "
+            f"{FONT_SIZE_MIN}-{FONT_SIZE_MAX}"
+        )
 
     marked = profile.get(DERIVED_KEY)
     if marked is not None and not isinstance(marked, list):
@@ -770,8 +971,10 @@ def audit(profile: dict[str, Any]) -> list[str]:
                 continue
             ratio = contrast(profile[role], card)
             if ratio < SIGNAL_MIN_CONTRAST - 0.05:
-                problems.append(f"{name}: {role} hebt sich mit {ratio:.2f}:1 zu wenig "
-                                f"von der Karte ab (noetig {SIGNAL_MIN_CONTRAST}:1)")
+                problems.append(
+                    f"{name}: {role} hebt sich mit {ratio:.2f}:1 zu wenig "
+                    f"von der Karte ab (noetig {SIGNAL_MIN_CONTRAST}:1)"
+                )
 
     side = profile.get("hintergrund_seitenleiste")
     if is_hex_color(side) and _dark(profile) != (luminance(side) < 0.5):
@@ -781,27 +984,37 @@ def audit(profile: dict[str, Any]) -> list[str]:
     for group in SIGNAL_GROUPS:
         present = [role for role in group if is_hex_color(profile.get(role))]
         for index, role in enumerate(present):
-            for other in present[index + 1:]:
+            for other in present[index + 1 :]:
                 if not tells_apart(profile[role], profile[other]):
-                    problems.append(f"{name}: {role} und {other} sind bei "
-                                    f"Farbfehlsichtigkeit nicht zu unterscheiden")
+                    problems.append(
+                        f"{name}: {role} und {other} sind bei "
+                        f"Farbfehlsichtigkeit nicht zu unterscheiden"
+                    )
 
-    for strong, weak in (("text", "text_gedimmt"),
-                         ("seitenleiste_text", "seitenleiste_text_gedimmt")):
+    for strong, weak in (
+        ("text", "text_gedimmt"),
+        ("seitenleiste_text", "seitenleiste_text_gedimmt"),
+    ):
         if not (is_hex_color(profile.get(strong)) and is_hex_color(profile.get(weak))):
             continue
         ratio = contrast(profile[strong], profile[weak])
         if ratio < DIMMED_MIN_SEPARATION - 0.02:
-            problems.append(f"{name}: {weak} unterscheidet sich mit {ratio:.2f}:1 kaum "
-                            f"von {strong} (noetig {DIMMED_MIN_SEPARATION}:1)")
+            problems.append(
+                f"{name}: {weak} unterscheidet sich mit {ratio:.2f}:1 kaum "
+                f"von {strong} (noetig {DIMMED_MIN_SEPARATION}:1)"
+            )
 
     for role, background, target, _gives_way in FOREGROUND_PAIRS:
-        if not (is_hex_color(profile.get(role)) and is_hex_color(profile.get(background))):
+        if not (
+            is_hex_color(profile.get(role)) and is_hex_color(profile.get(background))
+        ):
             continue
         ratio = contrast(profile[role], profile[background])
         if ratio < target - 0.05:
-            problems.append(f"{name}: {role} auf {background} nur {ratio:.2f}:1 "
-                            f"(noetig {target}:1)")
+            problems.append(
+                f"{name}: {role} auf {background} nur {ratio:.2f}:1 "
+                f"(noetig {target}:1)"
+            )
     return problems
 
 
@@ -883,12 +1096,14 @@ def serialise(profile: dict[str, Any]) -> str:
     return json.dumps(ordered, ensure_ascii=False, indent=2) + "\n"
 
 
-def write_catalog(catalog: dict[str, dict[str, Any]], directory: Path,
-                  prune: bool = True) -> tuple[int, int, list[str]]:
+def write_catalog(
+    catalog: dict[str, dict[str, Any]], directory: Path, prune: bool = True
+) -> tuple[int, int, list[str]]:
     """Schreibt den Katalog. Liefert (geschrieben, entfernt, unveraendert)."""
     directory.mkdir(parents=True, exist_ok=True)
-    wanted = {f"{slugify(name)}.json": serialise(profile)
-              for name, profile in catalog.items()}
+    wanted = {
+        f"{slugify(name)}.json": serialise(profile) for name, profile in catalog.items()
+    }
 
     written, unchanged = 0, []
     for filename, payload in sorted(wanted.items()):
@@ -936,8 +1151,10 @@ def build(repo_root: Path, only: Iterable[str] | None = None) -> int:
             print(f"  uebersprungen: {directory} (Programm nicht vorhanden)")
             continue
         written, removed, unchanged = write_catalog(catalog, directory)
-        print(f"  {key:16s} {written:2d} neu/geaendert, {removed:2d} entfernt, "
-              f"{len(unchanged):2d} unveraendert -> {relative}")
+        print(
+            f"  {key:16s} {written:2d} neu/geaendert, {removed:2d} entfernt, "
+            f"{len(unchanged):2d} unveraendert -> {relative}"
+        )
     return 0
 
 
@@ -964,8 +1181,9 @@ def check(directory: Path) -> int:
 
 
 # ── Neues Design ─────────────────────────────────────────────────────────────
-def make_profile(name: str, mode: str, akzent: str,
-                 grund: str | None = None) -> dict[str, Any]:
+def make_profile(
+    name: str, mode: str, akzent: str, grund: str | None = None
+) -> dict[str, Any]:
     """Baut aus Name, Helligkeit und Akzentfarbe ein vollstaendiges Design.
 
     Die uebrigen 50 Rollen entstehen ueber dieselben Ableitungen und
@@ -984,16 +1202,25 @@ def make_profile(name: str, mode: str, akzent: str,
         "modus": mode,
         "hintergrund_app": grund,
         "hintergrund_panel": mix(grund, "#ffffff" if dark else "#000000", 0.05),
-        "text": readable_on(grund, dark="#12161c", light="#f5f7fa") if dark
-        else readable_on(grund),
+        "text": (
+            readable_on(grund, dark="#12161c", light="#f5f7fa")
+            if dark
+            else readable_on(grund)
+        ),
         "akzent": akzent,
     }
     profile, _ = complete(profile)
     return profile
 
 
-def create(name: str, mode: str, akzent: str, grund: str | None,
-           repo_root: Path, only: Iterable[str] | None = None) -> int:
+def create(
+    name: str,
+    mode: str,
+    akzent: str,
+    grund: str | None,
+    repo_root: Path,
+    only: Iterable[str] | None = None,
+) -> int:
     if not is_hex_color(akzent):
         print(f"Akzent {akzent!r} ist keine Farbe wie #2563eb", file=sys.stderr)
         return 2
@@ -1011,7 +1238,7 @@ def create(name: str, mode: str, akzent: str, grund: str | None,
 
     payload = serialise(profile)
     filename = f"{slugify(profile['name'])}.json"
-    for key in (list(only) if only else list(TARGETS)):
+    for key in list(only) if only else list(TARGETS):
         repo, relative = TARGETS[key]
         directory = repo_root / repo / relative
         if not directory.is_dir():
@@ -1028,20 +1255,53 @@ def create(name: str, mode: str, akzent: str, grund: str | None,
 # dann die Bedeutungsfarben. Farbwerte allein sagen niemandem, wie ein Design
 # wirkt - deshalb gibt es diese Seite.
 PREVIEW_SWATCHES: tuple[tuple[str, tuple[str, ...]], ...] = (
-    ("Flächen", ("hintergrund_app", "hintergrund_panel", "karte_hintergrund",
-                 "hintergrund_seitenleiste", "eingabe_hintergrund", "rand")),
+    (
+        "Flächen",
+        (
+            "hintergrund_app",
+            "hintergrund_panel",
+            "karte_hintergrund",
+            "hintergrund_seitenleiste",
+            "eingabe_hintergrund",
+            "rand",
+        ),
+    ),
     ("Schrift", ("text", "text_gedimmt", "seitenleiste_text", "text_invers")),
-    ("Bedienung", ("akzent", "akzent_hover", "auswahl_hintergrund",
-                   "hover_hintergrund", "seitenleiste_aktiv")),
-    ("Tabelle", ("tabelle_hintergrund", "tabelle_alt", "tabelle_header",
-                 "tabelle_gitter")),
+    (
+        "Bedienung",
+        (
+            "akzent",
+            "akzent_hover",
+            "auswahl_hintergrund",
+            "hover_hintergrund",
+            "seitenleiste_aktiv",
+        ),
+    ),
+    (
+        "Tabelle",
+        ("tabelle_hintergrund", "tabelle_alt", "tabelle_header", "tabelle_gitter"),
+    ),
     ("Bedeutung", ("erfolg", "warnung", "gefahr", "gedaempft")),
     ("BudgetManager", ("typ_einnahmen", "typ_ausgaben", "typ_ersparnisse")),
-    ("FountainPen Manager", ("bereich_sammlung", "bereich_rotation",
-                             "bereich_service", "bereich_aktivitaet")),
-    ("FreizeitManager", ("dringlichkeit_frisch", "dringlichkeit_bald",
-                         "dringlichkeit_faellig", "dringlichkeit_lange",
-                         "dringlichkeit_geplant")),
+    (
+        "FountainPen Manager",
+        (
+            "bereich_sammlung",
+            "bereich_rotation",
+            "bereich_service",
+            "bereich_aktivitaet",
+        ),
+    ),
+    (
+        "FreizeitManager",
+        (
+            "dringlichkeit_frisch",
+            "dringlichkeit_bald",
+            "dringlichkeit_faellig",
+            "dringlichkeit_lange",
+            "dringlichkeit_geplant",
+        ),
+    ),
 )
 
 
@@ -1055,22 +1315,30 @@ def _preview_card(profile: dict[str, Any]) -> str:
             f'border-color:{get("rand")}"></span>'
             f'<span class="role">{role}</span>'
             f'<span class="hex">{get(role)}</span></div>'
-            for role in roles if role in profile)
-        groups.append(f'<div class="group"><h4>{label}</h4><div class="chips">{chips}</div></div>')
+            for role in roles
+            if role in profile
+        )
+        groups.append(
+            f'<div class="group"><h4>{label}</h4><div class="chips">{chips}</div></div>'
+        )
 
     # Wie ein Farbfehlsichtiger die Signalfarben sieht. Erst hier wird
     # nachvollziehbar, warum manche Toene im Katalog anders sitzen als in der
     # Vorlage - sie mussten auseinanderruecken.
-    signal_roles = tuple(role for role in ("erfolg", "warnung", "gefahr")
-                         if role in profile)
+    signal_roles = tuple(
+        role for role in ("erfolg", "warnung", "gefahr") if role in profile
+    )
     rows = []
     for kind in ("normal", *VISION):
         cells = "".join(
             f'<span style="background:'
             f'{get(role) if kind == "normal" else simulate(get(role), kind)}"></span>'
-            for role in signal_roles)
-        rows.append(f'<div class="visrow"><span class="vislabel">{kind}</span>'
-                    f'<span class="viscells">{cells}</span></div>')
+            for role in signal_roles
+        )
+        rows.append(
+            f'<div class="visrow"><span class="vislabel">{kind}</span>'
+            f'<span class="viscells">{cells}</span></div>'
+        )
     vision = f'<div class="vision">{"".join(rows)}</div>' if signal_roles else ""
 
     worst_role, worst = "", 99.0
@@ -1166,20 +1434,23 @@ def preview(directory: Path, target: Path) -> int:
     if not profiles:
         print(f"Keine Profile in {directory}", file=sys.stderr)
         return 2
-    order = sorted(profiles, key=lambda n: (profiles[n].get("modus") != "hell", n.casefold()))
+    order = sorted(
+        profiles, key=lambda n: (profiles[n].get("modus") != "hell", n.casefold())
+    )
     cards = "\n".join(_preview_card(profiles[name]) for name in order)
     hell = sum(1 for n in profiles if profiles[n].get("modus") == "hell")
     target.write_text(
         f"<title>Designkatalog</title>\n<style>{PREVIEW_CSS}</style>\n"
         f"<h1>Gemeinsamer Designkatalog</h1>\n"
-        f"<p class=\"lead\">{len(profiles)} Designs &middot; {hell} hell, "
+        f'<p class="lead">{len(profiles)} Designs &middot; {hell} hell, '
         f"{len(profiles) - hell} dunkel &middot; {len(ALL_ROLES)} Rollen je Design. "
         f"Dieselben Dateien liegen in LifePlanner, BudgetManager, FountainPen Manager "
         f"und FreizeitManager. Jede Karte zeigt die Signalfarben zusaetzlich so, wie "
         f"sie bei Rot-, Gruen- und Blauschwaeche erscheinen - dort muessen sie "
         f"unterscheidbar bleiben.</p>\n"
-        f"<div class=\"grid\">\n{cards}\n</div>\n",
-        encoding="utf-8")
+        f'<div class="grid">\n{cards}\n</div>\n',
+        encoding="utf-8",
+    )
     print(f"{len(profiles)} Designs -> {target}")
     return 0
 
@@ -1187,17 +1458,26 @@ def preview(directory: Path, target: Path) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("befehl", choices=("build", "check", "preview", "new"))
-    parser.add_argument("--repo-root", type=Path, default=Path(__file__).resolve().parents[2],
-                        help="Ordner, der die vier Programme enthaelt")
+    parser.add_argument(
+        "--repo-root",
+        type=Path,
+        default=Path(__file__).resolve().parents[2],
+        help="Ordner, der die vier Programme enthaelt",
+    )
     parser.add_argument("--dir", type=Path, help="Profilverzeichnis fuer check")
     parser.add_argument("--name", help="Name des neuen Designs")
     parser.add_argument("--modus", default="hell", choices=("hell", "dunkel"))
     parser.add_argument("--akzent", help="Akzentfarbe, z. B. #2563eb")
-    parser.add_argument("--grund", help="Grundfarbe; ohne Angabe aus dem Akzent abgeleitet")
-    parser.add_argument("--out", type=Path,
-                        help="Zieldatei fuer preview")
-    parser.add_argument("--only", action="append", choices=sorted(TARGETS),
-                        help="nur dieses Programm schreiben")
+    parser.add_argument(
+        "--grund", help="Grundfarbe; ohne Angabe aus dem Akzent abgeleitet"
+    )
+    parser.add_argument("--out", type=Path, help="Zieldatei fuer preview")
+    parser.add_argument(
+        "--only",
+        action="append",
+        choices=sorted(TARGETS),
+        help="nur dieses Programm schreiben",
+    )
     args = parser.parse_args(argv)
 
     if args.befehl == "build":
@@ -1205,8 +1485,9 @@ def main(argv: list[str] | None = None) -> int:
     if args.befehl == "new":
         if not (args.name and args.akzent):
             parser.error("new braucht --name und --akzent")
-        return create(args.name, args.modus, args.akzent, args.grund,
-                      args.repo_root, args.only)
+        return create(
+            args.name, args.modus, args.akzent, args.grund, args.repo_root, args.only
+        )
     target = args.dir or local_profile_dir()
     if target is None:
         parser.error("Kein Profilverzeichnis gefunden - bitte --dir angeben")

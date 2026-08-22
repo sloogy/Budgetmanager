@@ -94,9 +94,7 @@ def test_help_corner_button_has_geometry_rules():
     for groesse in (8, 10, 16):
         profile.data["schriftgroesse"] = groesse
         qss = manager.build_stylesheet(profile)
-        block = re.search(
-            r"QToolButton#menuBarHelpButton \{[^}]*\}", qss
-        )
+        block = re.search(r"QToolButton#menuBarHelpButton \{[^}]*\}", qss)
         assert block, "Regel fuer den Hilfe-Knopf fehlt"
         radius = int(re.search(r"border-radius:\s*(\d+)px", block.group()).group(1))
         hoehe = int(re.search(r"min-height:\s*(\d+)px", block.group()).group(1))
@@ -104,9 +102,9 @@ def test_help_corner_button_has_geometry_rules():
         # Kapselform: der Radius ist die halbe Hoehe, die Breite ist groesser.
         # Ein Pixel Abweichung ist unvermeidlich - bei ungerader Hoehe geht die
         # Haelfte nicht auf, und Qt begrenzt den Radius ohnehin darauf.
-        assert abs(radius * 2 - hoehe) <= 1, (
-            f"bei {groesse}pt: Radius {radius}, Hoehe {hoehe} - keine Kapsel mehr"
-        )
+        assert (
+            abs(radius * 2 - hoehe) <= 1
+        ), f"bei {groesse}pt: Radius {radius}, Hoehe {hoehe} - keine Kapsel mehr"
         assert breite >= hoehe
 
     # Bei Standardgroesse bleiben die bisherigen Werte erhalten.

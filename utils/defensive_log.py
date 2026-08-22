@@ -19,6 +19,7 @@ pro Programmlauf.
 
 Wortgleich in FPM, BudgetManager, FreizeitManager und LifePlanner.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,7 +30,9 @@ _gesehen: set[str] = set()
 _sperre = threading.Lock()
 
 
-def uebersprungen(was: str, fehler: BaseException, *, stufe: int = logging.DEBUG) -> None:
+def uebersprungen(
+    was: str, fehler: BaseException, *, stufe: int = logging.DEBUG
+) -> None:
     """Meldet einen bewusst verschluckten Fehler - je Ursache einmal.
 
     ``was`` benennt die Stelle, nicht den Fehler: "Uebersetzungslauf",

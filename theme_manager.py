@@ -64,7 +64,7 @@ def _is_hex_color(v: str) -> bool:
 
 # Nur 2 Fallback-Profile im Code (wie gewünscht)
 def system_mode() -> Optional[str]:
-    """"hell" oder "dunkel" nach dem Betriebssystem - None, wenn es nichts sagt.
+    """ "hell" oder "dunkel" nach dem Betriebssystem - None, wenn es nichts sagt.
 
     Qt meldet ``Unknown``, solange die Plattform keine Auskunft gibt. Dann
     bleibt es bei der bisherigen Vorgabe, statt auf gut Glueck umzuschalten.
@@ -390,9 +390,7 @@ class ThemeManager:
             # Prozessnummer statt eines festen Namens.
             from utils.atomic_write import atomar_schreiben
 
-            atomar_schreiben(
-                path, json.dumps(payload, indent=2, ensure_ascii=False)
-            )
+            atomar_schreiben(path, json.dumps(payload, indent=2, ensure_ascii=False))
 
             # Re-Index
             self._user_index[name] = path
@@ -565,6 +563,7 @@ class ThemeManager:
             scale = max(0.85, min(1.50, float(font_size) / 10.0))
         except (TypeError, ValueError):
             scale = 1.0
+
         # Groessen wachsen mit der eingestellten Schrift. Vorher standen hier
         # feste Pixelwerte: Wer die Schrift zur besseren Lesbarkeit hochstellte,
         # bekam groesseren Text in unveraendert engen Feldern, und einzelne

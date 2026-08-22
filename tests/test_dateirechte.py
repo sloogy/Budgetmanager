@@ -62,6 +62,7 @@ def test_der_inhalt_bleibt_lesbar(tmp_path):
 
 # ── Die Bruecke zu FPM ──────────────────────────────────────────────────────
 
+
 @posix_only
 def test_der_brueckenordner_ist_geschlossen(tmp_path, monkeypatch):
     """Eigenstaendig liegt er offen im Benutzerverzeichnis. Was darin steht,

@@ -6,6 +6,7 @@ Geschrieben wird weiterhin nur in den aktiven - gelesen aus allen.
 
 Wortgleich in FPM, BudgetManager und LifePlanner.
 """
+
 from __future__ import annotations
 
 import json

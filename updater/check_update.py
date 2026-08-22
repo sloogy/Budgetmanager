@@ -46,8 +46,12 @@ def main() -> int:
         # Problem. Eine pauschale Netzwerk-Meldung waere irrefuehrend.
         print(f"❌ Update-Sicherheitsprüfung fehlgeschlagen: {e}")
         if "Kein eingebetteter Update-Public-Key" in str(e):
-            print("   Diese installierte Version besitzt keinen Update-Vertrauensanker.")
-            print("   Bei v2.2.61 kann der offizielle Trust Bridge den Public Key einmalig")
+            print(
+                "   Diese installierte Version besitzt keinen Update-Vertrauensanker."
+            )
+            print(
+                "   Bei v2.2.61 kann der offizielle Trust Bridge den Public Key einmalig"
+            )
             print("   hinterlegen; danach kann diese Installation das signierte Update")
             print("   ohne Neuinstallation pruefen und einspielen.")
         write_check_result(

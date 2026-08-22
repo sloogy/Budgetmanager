@@ -21,6 +21,7 @@ Datenordner ab.
 
 Wortgleich in FPM, BudgetManager, FreizeitManager und LifePlanner.
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,8 +46,9 @@ def _fsync_verzeichnis(ordner: Path) -> None:
     try:
         fd = os.open(str(ordner), os.O_RDONLY)
     except OSError as fehler:
-        _log.debug("Verzeichnis %s nicht zum Synchronisieren zu oeffnen: %s",
-                   ordner, fehler)
+        _log.debug(
+            "Verzeichnis %s nicht zum Synchronisieren zu oeffnen: %s", ordner, fehler
+        )
         return
     try:
         os.fsync(fd)

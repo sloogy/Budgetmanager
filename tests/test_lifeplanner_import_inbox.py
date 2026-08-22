@@ -131,6 +131,7 @@ def test_changed_upsert_keeps_previous_user_category(tmp_path):
 
 # ── Loop 31: Zwei Startarten, eine Bruecke ──────────────────────────────────
 
+
 def test_offene_buchungen_kommen_auch_aus_der_anderen_bruecke(tmp_path, monkeypatch):
     """Der Fall, um den es geht: FPM lief im LifePlanner und legte seinen
     Export im Profilordner ab. Der BudgetManager wird danach eigenstaendig

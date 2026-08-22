@@ -11,6 +11,7 @@ Dieser Test haelt den Katalog zusammen. Er prueft dieselben Regeln, die auch
 ``tools/design_sync.py build`` durchsetzt - schlaegt er an, ist eine Profildatei
 von Hand geaendert worden, ohne den Katalog nachzuziehen.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -37,14 +38,31 @@ ds = _load_design_sync()
 
 # Die 26 Designs, die alle vier Programme gemeinsam anbieten.
 EXPECTED = {
-    "Dracula - Dunkel", "Dunkel - Blau", "Dunkel - Grün",
-    "Dunkel - OLED (Kontrastarm)", "Dunkel - Warm (Sepia)", "Gruvbox - Dunkel",
-    "Gruvbox - Hell", "Hell - Grün", "Hell - Warm (Sepia)",
-    "Kontrast - Schwarz/Weiß", "Mitternacht - Violett", "Modern Cyan (V2)",
-    "Monokai - Dunkel", "Nord - Dunkel", "Ocean - Dunkel", "Pastell - Sanft",
-    "Solarized - Dunkel", "Solarized - Hell", "Standard - Dunkel",
-    "Standard - Hell", "V2 Dunkel – Graphite Cyan", "V2 Dunkel – Purple Night",
-    "V2 Hell – Neon Cyan", "V2 Hell – Pastel Mint", "V2 Hell – Warm Sand",
+    "Dracula - Dunkel",
+    "Dunkel - Blau",
+    "Dunkel - Grün",
+    "Dunkel - OLED (Kontrastarm)",
+    "Dunkel - Warm (Sepia)",
+    "Gruvbox - Dunkel",
+    "Gruvbox - Hell",
+    "Hell - Grün",
+    "Hell - Warm (Sepia)",
+    "Kontrast - Schwarz/Weiß",
+    "Mitternacht - Violett",
+    "Modern Cyan (V2)",
+    "Monokai - Dunkel",
+    "Nord - Dunkel",
+    "Ocean - Dunkel",
+    "Pastell - Sanft",
+    "Solarized - Dunkel",
+    "Solarized - Hell",
+    "Standard - Dunkel",
+    "Standard - Hell",
+    "V2 Dunkel – Graphite Cyan",
+    "V2 Dunkel – Purple Night",
+    "V2 Hell – Neon Cyan",
+    "V2 Hell – Pastel Mint",
+    "V2 Hell – Warm Sand",
     "Warm - Hell",
 }
 

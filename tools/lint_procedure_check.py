@@ -204,9 +204,13 @@ def check_workflow() -> list[str]:
                     f"release-prepare.yml darf nicht veroeffentlichen: Marker {marker!r} gefunden"
                 )
         if "release-trigger/v*" not in prepare:
-            errors.append("release-prepare.yml fehlt der reproduzierbare release-trigger/v*-Branch")
+            errors.append(
+                "release-prepare.yml fehlt der reproduzierbare release-trigger/v*-Branch"
+            )
         if "git ls-remote --exit-code --tags" not in prepare:
-            errors.append("release-prepare.yml muss existierende Tags fail-closed ablehnen")
+            errors.append(
+                "release-prepare.yml muss existierende Tags fail-closed ablehnen"
+            )
 
     if "--force-reinstall" in workflow and "black==" in workflow:
         errors.append(

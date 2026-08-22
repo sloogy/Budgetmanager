@@ -13,6 +13,7 @@ tatsaechlich doppelt.
 
 Alle vier Programme der Suite fuehren diesen Test unter demselben Namen.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -30,7 +31,12 @@ def _bauende_workflows() -> list[Path]:
         text = pfad.read_text(encoding="utf-8")
         if any(
             wort in text
-            for wort in ("action-gh-release", "gh release create", "pyinstaller", "PyInstaller")
+            for wort in (
+                "action-gh-release",
+                "gh release create",
+                "pyinstaller",
+                "PyInstaller",
+            )
         ):
             treffer.append(pfad)
     return treffer

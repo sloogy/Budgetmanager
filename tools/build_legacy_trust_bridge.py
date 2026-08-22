@@ -26,15 +26,13 @@ def _validate_public_key(value: str) -> str:
     except (binascii.Error, ValueError) as exc:
         raise SystemExit(f"Update-Public-Key ist kein gueltiges Base64: {exc}") from exc
     if len(raw) != 32:
-        raise SystemExit(
-            f"Update-Public-Key muss 32 Bytes haben, erhalten: {len(raw)}"
-        )
+        raise SystemExit(f"Update-Public-Key muss 32 Bytes haben, erhalten: {len(raw)}")
     return value
 
 
 def render_bridge(public_key_b64: str) -> str:
     key = _validate_public_key(public_key_b64)
-    return rf'''# BudgetManager v2.2.61 -> v2.2.67 Trust Bridge
+    return rf"""# BudgetManager v2.2.61 -> v2.2.67 Trust Bridge
 # Einmalige Vertrauensanker-Nachruestung. Keine Neuinstallation, keine Nutzerdaten-Aenderung.
 param(
     [string]$InstallDir = (Join-Path $env:LOCALAPPDATA "Programs\BudgetManager")
@@ -97,7 +95,7 @@ catch {{
     Read-Host "Enter zum Schliessen"
     exit 1
 }}
-'''
+"""
 
 
 def main() -> int:

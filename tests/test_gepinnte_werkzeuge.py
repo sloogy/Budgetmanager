@@ -31,7 +31,9 @@ _ZEILE = re.compile(r"^(?P<name>[A-Za-z0-9_.-]+)\s*(?P<rest>[^\s;#]*)")
 @pytest.mark.parametrize("werkzeug", GATE_WERKZEUGE)
 def test_gate_werkzeuge_sind_exakt_gepinnt(werkzeug: str) -> None:
     gesehen = False
-    for datei in sorted(ROOT.glob("requirements*.txt")) + sorted(ROOT.glob("requirements*.in")):
+    for datei in sorted(ROOT.glob("requirements*.txt")) + sorted(
+        ROOT.glob("requirements*.in")
+    ):
         for rohzeile in datei.read_text(encoding="utf-8").splitlines():
             zeile = rohzeile.split("#", 1)[0].strip()
             treffer = _ZEILE.match(zeile)
@@ -66,4 +68,6 @@ def test_pinnungen_sind_ueber_alle_dateien_gleich() -> None:
                 treffer = re.fullmatch(rf"{werkzeug}==([^\s;]+)", zeile)
                 if treffer:
                     versionen.add(treffer.group(1))
-        assert len(versionen) <= 1, f"{werkzeug} ist uneinheitlich gepinnt: {sorted(versionen)}"
+        assert (
+            len(versionen) <= 1
+        ), f"{werkzeug} ist uneinheitlich gepinnt: {sorted(versionen)}"

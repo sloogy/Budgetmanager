@@ -11,6 +11,13 @@
 
 ### Ordnung
 
+- **Die Formatprüfung lief nur über `model/`.** `views/`, `utils/`,
+  `updater/`, `tools/` und `tests/` waren zwar formatiert, aber ungeprüft —
+  eine Änderung dort brach die Formatierung, ohne dass ein Gate anschlug.
+  Genau das passierte beim Umstellen des Auditpfads. `black --check` deckt
+  jetzt jede Python-Datei ab, und ein Test hält die Abdeckung fest: Ein neues
+  Verzeichnis fällt auf, weil kein Prüfziel es enthält. 29 Dateien einmalig
+  nachformatiert.
 - **Fünfzehn Auditmatrizen lagen im Hauptordner**, eine je Fassung seit
   2.2.60, dazu vier Nachweise aus 2.2.60 und 2.2.67. Sie liegen jetzt unter
   `docs/archive/release-evidence/`, und

@@ -223,4 +223,3 @@ def resolve_combo_category(combo: QComboBox) -> str:
     # 4) Letzter Fallback: Anzeige-Marker entfernen. Die aufrufende View muss
     #    danach gegen das Kategorie-Modell validieren.
     return _clean_category_label(text)
-

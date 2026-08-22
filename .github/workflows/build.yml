@@ -140,10 +140,10 @@ jobs:
       - name: Compile all sources
         run: python -m compileall -q . -x '_attic|__pycache__|.venv|venv'
 
-      - name: Check model formatting
+      - name: Check formatting
         run: |
           python -m black --version
-          python -m black --check model/
+          python -m black --check model/ views/ utils/ updater/ tools/ tests/ main.py app_info.py settings.py settings_dialog.py theme_manager.py
 
       - name: Type-check model layer
         run: python -m mypy model/

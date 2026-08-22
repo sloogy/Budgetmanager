@@ -36,6 +36,7 @@ def manager(tmp_path, monkeypatch):
 
 # ── Abfrage beim Betriebssystem ─────────────────────────────────────────────
 
+
 def test_ohne_qt_anwendung_meldet_das_system_nichts():
     """Ohne laufende QApplication gibt es keine Auskunft - und keinen Absturz."""
     from PySide6.QtWidgets import QApplication
@@ -47,6 +48,7 @@ def test_ohne_qt_anwendung_meldet_das_system_nichts():
 
 
 # ── Aufloesung im ThemeManager ──────────────────────────────────────────────
+
 
 def test_system_folgt_dem_dunklen_betriebssystem(manager, monkeypatch):
     manager.settings["theme"] = "system"
@@ -88,6 +90,7 @@ def test_die_ausdrueckliche_wahl_bleibt_unberuehrt(
 
 # ── Die Wahl muss als "system" gespeichert werden ───────────────────────────
 
+
 def _method(tree: ast.AST, class_name: str, method_name: str) -> ast.FunctionDef:
     for node in getattr(tree, "body", []):
         if isinstance(node, ast.ClassDef) and node.name == class_name:
@@ -111,24 +114,27 @@ def test_gespeichert_wird_die_wahl_nicht_der_aufgeloeste_modus():
         for node in ast.walk(persist)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
     }
-    assert "_theme_setting_value" in aufrufe, (
-        "_persist_design_selection leitet den Wert wieder aus dem Modus ab"
-    )
+    assert (
+        "_theme_setting_value" in aufrufe
+    ), "_persist_design_selection leitet den Wert wieder aus dem Modus ab"
 
 
 def test_das_dropdown_hat_die_dritte_wahl():
     source = SETTINGS_DIALOG.read_text(encoding="utf-8")
     assert 'tr("settings.theme_system")' in source
-    assert 'tr("settings.theme_system_hint")' in source, (
-        "Der uebersetzte Hinweis wird nirgends angezeigt"
-    )
+    assert (
+        'tr("settings.theme_system_hint")' in source
+    ), "Der uebersetzte Hinweis wird nirgends angezeigt"
 
 
 # ── Uebersetzungen ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.parametrize("sprache", ["de", "en", "fr"])
 def test_die_dritte_wahl_ist_uebersetzt(sprache):
-    daten = json.loads((ROOT / "locales" / f"{sprache}.json").read_text(encoding="utf-8"))
+    daten = json.loads(
+        (ROOT / "locales" / f"{sprache}.json").read_text(encoding="utf-8")
+    )
     eintraege = daten.get("settings", {})
     for schluessel in ("theme_system", "theme_system_hint"):
         assert eintraege.get(schluessel), f"{sprache}: {schluessel} fehlt"

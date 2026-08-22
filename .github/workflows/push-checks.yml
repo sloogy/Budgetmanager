@@ -70,7 +70,10 @@ jobs:
       - name: Statische Analyse
         run: |
           python -m ruff check . --select E9,F63,F7,F82
-          python -m black --check model/
+          # black prueft das ganze Projekt, nicht nur model/. Vorher waren
+          # tools/ und tests/ zwar formatiert, aber ungeprueft - eine Aenderung
+          # dort brach die Formatierung, ohne dass ein Gate anschlug.
+          python -m black --check model/ views/ utils/ updater/ tools/ tests/ main.py app_info.py settings.py settings_dialog.py theme_manager.py
           python -m mypy model/
 
       - name: Generierte Artefakte entfernen

@@ -516,11 +516,13 @@ class SettingsDialog(QDialog):
         # Die dritte Wahl folgt dem Betriebssystem. Sie nutzt dieselbe
         # Mechanik: _current_mode() liefert dann hell oder dunkel, und die
         # Profilliste filtert wie gehabt danach.
-        self.cmb_theme.addItems([
-            tr("settings.theme_light"),
-            tr("settings.theme_dark"),
-            tr("settings.theme_system"),
-        ])
+        self.cmb_theme.addItems(
+            [
+                tr("settings.theme_light"),
+                tr("settings.theme_dark"),
+                tr("settings.theme_system"),
+            ]
+        )
         self.cmb_theme.setToolTip(tr("settings.theme_system_hint"))
         fl.addRow(tr("settings.design"), self.cmb_theme)
 
@@ -868,7 +870,8 @@ class SettingsDialog(QDialog):
             self.cmb_theme.setCurrentText(tr("settings.theme_system"))
         else:
             self.cmb_theme.setCurrentText(
-                tr("settings.theme_dark") if theme == "dark"
+                tr("settings.theme_dark")
+                if theme == "dark"
                 else tr("settings.theme_light")
             )
         del blocker

@@ -43,16 +43,19 @@ def test_die_masse_wachsen_mit_der_schrift(manager, eigenschaft):
     klein = _groessen(_stylesheet(manager, 8), eigenschaft)
     gross = _groessen(_stylesheet(manager, 16), eigenschaft)
     assert klein and len(klein) == len(gross), f"{eigenschaft} nicht vergleichbar"
-    assert sum(gross) > sum(klein) * 1.3, (
-        f"{eigenschaft} waechst kaum mit: {sum(klein)} -> {sum(gross)}"
-    )
+    assert (
+        sum(gross) > sum(klein) * 1.3
+    ), f"{eigenschaft} waechst kaum mit: {sum(klein)} -> {sum(gross)}"
 
 
 def test_der_cockpit_titel_waechst_mit(manager):
     """Er stand fest bei 22px und ueberschrieb damit die Profilschrift."""
     treffer = [
-        int(re.search(r"QLabel#cockpitTitle[^}]*font-size:\s*(\d+)px",
-                      _stylesheet(manager, g)).group(1))
+        int(
+            re.search(
+                r"QLabel#cockpitTitle[^}]*font-size:\s*(\d+)px", _stylesheet(manager, g)
+            ).group(1)
+        )
         for g in (8, 10, 16)
     ]
     assert treffer[0] < treffer[1] < treffer[2], treffer
@@ -65,8 +68,14 @@ def test_bei_standardgroesse_bleibt_alles_wie_bisher(manager):
     ist der Massstab, an dem sich die anderen ausrichten.
     """
     css = _stylesheet(manager, 10)
-    for erwartet in ("font-size: 22px", "min-height: 22px", "border-radius: 11px",
-                     "border-radius: 6px", "border-radius: 4px",
-                     "border-radius: 8px", "border-radius: 10px",
-                     "border-radius: 12px"):
+    for erwartet in (
+        "font-size: 22px",
+        "min-height: 22px",
+        "border-radius: 11px",
+        "border-radius: 6px",
+        "border-radius: 4px",
+        "border-radius: 8px",
+        "border-radius: 10px",
+        "border-radius: 12px",
+    ):
         assert erwartet in css, erwartet

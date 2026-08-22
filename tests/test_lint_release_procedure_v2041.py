@@ -34,7 +34,10 @@ def test_release_checklist_contains_cleaner_and_lint_procedure_check():
     assert "python -m pytest tests/ -v -ra --tb=short" in checklist
     # Ueber den Wrapper: die Checkliste soll die gepinnte Version aufrufen,
     # nicht die zufaellig installierte.
-    assert "python tools/gepinnte_werkzeuge.py black --check --workers 1 main.py" in checklist
+    assert (
+        "python tools/gepinnte_werkzeuge.py black --check --workers 1 main.py"
+        in checklist
+    )
     assert "python tools/gepinnte_werkzeuge.py mypy model/" in checklist
 
 

@@ -8,6 +8,7 @@ aufgefallen - bis zu zehn Arbeitsrunden spaeter.
 
 Alle vier Programme der Suite fuehren diesen Test unter demselben Namen.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -64,3 +65,44 @@ def test_der_release_marker_muss_am_anfang_stehen(inhalt: str) -> None:
     """
     assert "contains(github.event.head_commit.message, '[release]')" not in inhalt
     assert "startsWith(github.event.head_commit.message, '[release]')" in inhalt
+
+
+def test_black_gate_deckt_jede_python_datei_ab():
+    """Die Formatpruefung darf keine Datei auslassen.
+
+    Sie lief lange nur ueber ``model/``. ``tools/`` und ``tests/`` waren zwar
+    formatiert, aber ungeprueft: Eine Aenderung dort brach die Formatierung,
+    ohne dass ein Gate anschlug. Genau das passierte in Loop 43.
+
+    Geprueft wird die Abdeckung, nicht die Zielliste selbst - sonst waere
+    dieser Test nur eine zweite Kopie davon. Ein neues Verzeichnis faellt auf,
+    weil keines der genannten Ziele es enthaelt.
+    """
+    import subprocess
+
+    for datei in (WORKFLOW, WURZEL / ".github" / "workflows" / "build.yml"):
+        zeile = next(
+            (
+                z
+                for z in datei.read_text(encoding="utf-8").splitlines()
+                if "black --check" in z
+            ),
+            None,
+        )
+        assert zeile is not None, f"{datei.name}: keine black-Pruefung"
+        ziele = zeile.split("black --check", 1)[1].split()
+        assert ziele, f"{datei.name}: black-Pruefung ohne Ziel"
+
+        verfolgt = subprocess.run(
+            ["git", "ls-files", "*.py"],
+            cwd=WURZEL,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.split()
+        ungedeckt = [
+            pfad
+            for pfad in verfolgt
+            if not any(pfad == ziel or pfad.startswith(ziel) for ziel in ziele)
+        ]
+        assert not ungedeckt, f"{datei.name}: nicht von black geprueft: {ungedeckt}"

@@ -25,9 +25,13 @@ def test_theme_editor_close_bar_stays_in_setup_layout_scope() -> None:
     init_names = {n.id for n in ast.walk(init) if isinstance(n, ast.Name)}
     setup_names = {n.id for n in ast.walk(setup) if isinstance(n, ast.Name)}
 
-    assert "outer" not in init_names, "__init__ greift wieder auf die lokale Layout-Variable `outer` zu"
+    assert (
+        "outer" not in init_names
+    ), "__init__ greift wieder auf die lokale Layout-Variable `outer` zu"
     assert "outer" in setup_names, "_setup_ui muss das Hauptlayout weiterhin besitzen"
 
-    setup_source = ast.get_source_segment(THEME_EDITOR.read_text(encoding="utf-8"), setup) or ""
+    setup_source = (
+        ast.get_source_segment(THEME_EDITOR.read_text(encoding="utf-8"), setup) or ""
+    )
     assert "buttons.rejected.connect(self.reject)" in setup_source
     assert "outer.addWidget(buttons)" in setup_source

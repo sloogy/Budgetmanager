@@ -7,6 +7,7 @@ Objekte liegen.
 
 Alle vier Programme der Suite fuehren diesen Test unter demselben Namen.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -68,7 +69,9 @@ def test_eine_andere_stelle_wird_wieder_gemeldet(melder, caplog) -> None:
 def test_die_stufe_laesst_sich_anheben(melder, caplog) -> None:
     """Wo ein Fehlschlag Folgen hat, soll er auffallen."""
     with caplog.at_level(logging.WARNING):
-        melder.uebersprungen("Dateirechte", OSError("nur lesbar"), stufe=logging.WARNING)
+        melder.uebersprungen(
+            "Dateirechte", OSError("nur lesbar"), stufe=logging.WARNING
+        )
     assert "Dateirechte" in caplog.text
 
 

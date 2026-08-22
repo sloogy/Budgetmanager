@@ -32,7 +32,9 @@ def test_ein_harmloses_archiv_wird_entpackt(tmp_path):
     assert (ziel / "unter" / "b.txt").read_bytes() == b"y"
 
 
-@pytest.mark.parametrize("name", ["../ausbruch.txt", "unter/../../ausbruch.txt", "/absolut.txt"])
+@pytest.mark.parametrize(
+    "name", ["../ausbruch.txt", "unter/../../ausbruch.txt", "/absolut.txt"]
+)
 def test_pfad_traversal_wird_abgewiesen(tmp_path, name):
     quelle = _archiv(tmp_path / "boese.zip", {name: b"x"})
     with pytest.raises(ValueError):
@@ -44,7 +46,7 @@ def test_ein_symlink_wird_abgewiesen(tmp_path):
     quelle = tmp_path / "link.zip"
     with zipfile.ZipFile(quelle, "w") as z:
         eintrag = zipfile.ZipInfo("link")
-        eintrag.external_attr = (0o120777 << 16)
+        eintrag.external_attr = 0o120777 << 16
         z.writestr(eintrag, "/etc/passwd")
     with pytest.raises(ValueError):
         safe_extract_zip(quelle, tmp_path / "ziel")

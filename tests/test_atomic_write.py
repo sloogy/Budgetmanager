@@ -6,6 +6,7 @@ Stelle ueberschreibt, hinterlaesst bei einem Absturz die halbe.
 
 Alle vier Programme der Suite fuehren diesen Test unter demselben Namen.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -21,7 +22,8 @@ WURZEL = Path(__file__).resolve().parents[1]
 @pytest.fixture()
 def schreiber():
     treffer = [
-        p for p in sorted(WURZEL.rglob("atomic_write.py"))
+        p
+        for p in sorted(WURZEL.rglob("atomic_write.py"))
         if "test" not in p.parts and "build" not in p.parts
     ]
     assert treffer, "atomic_write.py fehlt"
@@ -95,7 +97,9 @@ def test_ein_abbruch_laesst_nichts_liegen(
     assert not ziel.exists()
 
 
-def test_zwei_prozesse_teilen_sich_keine_zwischendatei(schreiber, tmp_path: Path) -> None:
+def test_zwei_prozesse_teilen_sich_keine_zwischendatei(
+    schreiber, tmp_path: Path
+) -> None:
     """Die Instanzsperre aus Loop 14 deckt nur denselben Datenordner ab."""
     gesehen = []
     echtes_replace = schreiber.os.replace

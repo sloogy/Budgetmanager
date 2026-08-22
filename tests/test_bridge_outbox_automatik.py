@@ -56,6 +56,7 @@ def _ruft(methode: ast.FunctionDef, name: str) -> bool:
 
 # ── Die drei Ausloeser ──────────────────────────────────────────────────────
 
+
 def test_ein_voll_refresh_zieht_die_bruecke_nach(baum):
     """Ein Voll-Refresh folgt auf eine Datenaenderung - genau dann.
 
@@ -77,6 +78,7 @@ def test_beim_start_wird_einmal_geschrieben(quelle):
 
 
 # ── Der Abgleich darf die Buchhaltung nie stoeren ───────────────────────────
+
 
 def test_der_abgleich_faengt_seine_fehler_selbst(baum):
     """Die Bruecke ist eine Spiegelung. Ein getrenntes Netzlaufwerk oder ein
@@ -108,6 +110,7 @@ def test_der_zeitgeber_buendelt_mehrere_aenderungen(baum):
 
 
 # ── Der Export selbst bleibt erreichbar ─────────────────────────────────────
+
 
 def test_beide_richtungen_werden_geschrieben():
     """sync_default_outboxes deckt Ausgabenvorschlaege *und* Sparziele ab.

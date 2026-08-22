@@ -9,6 +9,7 @@ Zeilen.
 
 Alle vier Programme der Suite fuehren diesen Test unter demselben Namen.
 """
+
 from __future__ import annotations
 
 import importlib.util

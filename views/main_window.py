@@ -3250,7 +3250,9 @@ class MainWindow(QMainWindow):
 
             expenses, savings = sync_default_outboxes(self.conn)
         except Exception:
-            logger.warning("Bridge-Outbox konnte nicht geschrieben werden", exc_info=True)
+            logger.warning(
+                "Bridge-Outbox konnte nicht geschrieben werden", exc_info=True
+            )
             return
         logger.debug(
             "Bridge-Outbox geschrieben: %s Ausgaben, %s Sparziele nach %s",
