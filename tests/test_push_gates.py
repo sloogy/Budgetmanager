@@ -52,3 +52,15 @@ def test_er_laeuft_die_tests(inhalt: str) -> None:
 def test_release_commits_werden_uebersprungen(inhalt: str) -> None:
     """Die gehen ohnehin durch den vollen Lauf."""
     assert "[release]" in inhalt
+
+
+def test_der_release_marker_muss_am_anfang_stehen(inhalt: str) -> None:
+    """`contains` traf jede Erwaehnung im Fliesstext.
+
+    Der Commit, der diesen Prueflauf einbaute, erklaerte in seiner Nachricht,
+    dass Release-Commits uebersprungen werden - und wurde deshalb selbst
+    uebersprungen. Im BudgetManager loeste derselbe Text sogar einen echten
+    Release-Build aus, weil build.yml dieselbe Bedingung nutzt.
+    """
+    assert "contains(github.event.head_commit.message, '[release]')" not in inhalt
+    assert "startsWith(github.event.head_commit.message, '[release]')" in inhalt
