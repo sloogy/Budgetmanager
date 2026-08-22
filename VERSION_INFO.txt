@@ -22,6 +22,11 @@ ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.71
   Release-Build aus.
 - Der Uebersetzungs-Audit lief in keinem Workflow. Er faellt jetzt auf, wenn
   ein Schluessel in allen drei Sprachen liegt und nirgends verwendet wird.
+- Einstellungen, Bruecke und Themes werden atomar und mit fsync geschrieben.
+  Wo "atomar" draufstand, fehlte meist das Durchschreiben auf den Datentraeger;
+  ein Absturz mitten im Speichern hinterliess eine halbe Datei.
+- Fehler, die scheitern duerfen, laufen ueber ein gemeinsames Werkzeug: Sie
+  bleiben folgenlos, hinterlassen aber eine Spur im Log.
 
 SIGNIERUNG BRAUCHT CRYPTOGRAPHY 2.2.66
 -------------------------------------------------------------

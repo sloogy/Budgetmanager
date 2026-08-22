@@ -13,6 +13,8 @@ Benutzerdaten in data/users.json.
 """
 
 from __future__ import annotations
+
+from utils.atomic_write import atomar_schreiben
 import logging
 
 logger = logging.getLogger(__name__)
@@ -227,25 +229,20 @@ class UserModel:
     def _save(self) -> bool:
         path = _users_file_path()
         path.parent.mkdir(parents=True, exist_ok=True)
-        tmp = path.with_suffix(".tmp")
         try:
             data = {"users": [asdict(u) for u in self._users.values()]}
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-                f.flush()
-                os.fsync(f.fileno())
             # SICHERHEIT (v2.2.11): users.json enthaelt bei Quick-Konten den
-            # db_key im Klartext und sonst wrapped_db_key + pw_hash. Rechte
-            # BEVOR dem os.replace setzen – sonst existiert ein Zeitfenster,
-            # in dem die Datei mit umask-Rechten (typisch 0644) lesbar ist.
-            secure_file(tmp)
-            os.replace(str(tmp), str(path))
-            secure_file(path)  # falls die Zieldatei schon existierte
+            # db_key im Klartext und sonst wrapped_db_key + pw_hash. Die
+            # Rechte werden BEVOR dem Umbenennen gesetzt - sonst existiert
+            # ein Zeitfenster, in dem die Datei mit umask-Rechten (typisch
+            # 0644) lesbar ist. Genau das macht der Helfer; seit Loop 29
+            # traegt er zusaetzlich den Verzeichnis-fsync und eine
+            # Zwischendatei mit Prozessnummer bei, damit zwei gleichzeitig
+            # laufende Instanzen sich nicht dieselbe teilen.
+            atomar_schreiben(path, json.dumps(data, indent=2, ensure_ascii=False))
             return True
         except Exception as e:
             logger.error("Fehler beim Speichern der Benutzerdatei: %s", e)
-            if tmp.exists():
-                tmp.unlink(missing_ok=True)
             return False
 
     # ── Abfragen ─────────────────────────────────

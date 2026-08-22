@@ -64,6 +64,7 @@ from views.category_properties_dialog import (
     BulkCategoryEditDialog,
     QuickCategoryDialog,
 )
+from utils.defensive_log import uebersprungen as _uebersprungen
 
 
 def _months() -> list[str]:
@@ -169,14 +170,14 @@ class _BudgetDragTableWidget(QTableWidget):
                     )
                     try:
                         editor.clearFocus()
-                    except Exception:
-                        pass
+                    except Exception as fehler:
+                        _uebersprungen("safe_close_active_editor", fehler)
 
             try:
                 self.clearFocus()
                 self.viewport().clearFocus()
-            except Exception:
-                pass
+            except Exception as fehler:
+                _uebersprungen("safe_close_active_editor", fehler)
 
             # Wichtig: posted commitData/DeferredDelete gezielt abarbeiten,
             # solange der Editor noch nicht durch den Tabellen-Rebuild verwaist ist.
@@ -197,8 +198,8 @@ class _BudgetDragTableWidget(QTableWidget):
         finally:
             try:
                 self.setEditTriggers(old_triggers)
-            except Exception:
-                pass
+            except Exception as fehler:
+                _uebersprungen("safe_close_active_editor", fehler)
             self._closing_editor_guard = False
 
     def dropEvent(self, event):  # noqa: N802 (Qt naming)
@@ -618,8 +619,8 @@ class BudgetTab(QWidget):
             else:
                 msg = trf("categories.moved_count", count=1, target=target_label)
             self.window().statusBar().showMessage(msg, 2500)
-        except Exception:
-            pass
+        except Exception as fehler:
+            _uebersprungen("_handle_budget_category_drop", fehler)
         self.budget_data_changed.emit()
         return True
 
@@ -675,8 +676,8 @@ class BudgetTab(QWidget):
                             reason,
                         )
                         return
-                except Exception:
-                    pass
+                except Exception as fehler:
+                    _uebersprungen("_safe_set_current_cell", fehler)
                 if (
                     0 <= row < self.table.rowCount()
                     and 0 <= column < self.table.columnCount()
@@ -1181,8 +1182,8 @@ class BudgetTab(QWidget):
                     self.table.clearFocus()
                     self.table.viewport().clearFocus()
                     self.setFocus(Qt.OtherFocusReason)
-                except Exception:
-                    pass
+                except Exception as fehler:
+                    _uebersprungen("load", fehler)
                 self.table.setRowCount(0)
 
                 # Budget-Saldo IMMER anzeigen (auch bei einzelnem Typ)
@@ -1973,8 +1974,8 @@ class BudgetTab(QWidget):
             def _finished(*_args) -> None:
                 try:
                     self._active_budget_entry_dialog = None
-                except Exception:
-                    pass
+                except Exception as fehler:
+                    _uebersprungen("_open_leaf_ask_due_dialog", fehler)
 
             dlg.accepted.connect(_accepted)
             dlg.finished.connect(_finished)
@@ -2726,8 +2727,8 @@ class BudgetTab(QWidget):
                 self.window().statusBar().showMessage(
                     trf("categories.moved_to_root", name=cat_obj.name), 2500
                 )
-            except Exception:
-                pass
+            except Exception as fehler:
+                _uebersprungen("_make_category_root", fehler)
             self.budget_data_changed.emit()
         except Exception as e:
             QMessageBox.critical(

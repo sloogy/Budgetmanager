@@ -140,8 +140,11 @@ class AutosaveConnection(sqlite3.Connection):
             normalized = str(sql).strip().upper().rstrip(";")
             if normalized in {"COMMIT", "END"}:
                 self._notify_after_commit("execute_commit")
-        except Exception:
-            pass
+        except Exception as fehler:
+            # Die Benachrichtigung darf die Anweisung selbst nie scheitern
+            # lassen - sie ist schon ausgefuehrt. Aber wer sich auf sie
+            # verlaesst und nichts hoert, soll den Grund finden.
+            logger.warning("Commit-Benachrichtigung fehlgeschlagen: %s", fehler)
         return cursor
 
 
@@ -189,13 +192,23 @@ def suspend_after_commit_autosave(conn: sqlite3.Connection):
 
 
 def _secure_file(path) -> None:
-    """0600 auf sensible Dateien. Lazy-Import haelt crypto.py abhaengigkeitsarm."""
+    """0600 auf sensible Dateien. Lazy-Import haelt crypto.py abhaengigkeitsarm.
+
+    Scheitern darf das - auf FAT/exFAT gibt es keine POSIX-Modi, und ein
+    Stick soll deswegen nicht unbrauchbar sein. Schweigen darf es nicht:
+    Bis Loop 25 blieb die Datei dann weltlesbar, und niemand erfuhr davon.
+    Es sind dieselben Daten, die Loop 12 gerade zugesperrt hat.
+    """
     try:
         from model.file_permissions import secure_file
 
         secure_file(path)
-    except Exception:  # pragma: no cover - nie fatal
-        pass
+    except Exception as fehler:  # nie fatal, aber nie stumm
+        logger.warning(
+            "Zugriffsrechte auf %s nicht gesetzt - die Datei bleibt offen: %s",
+            path,
+            fehler,
+        )
 
 
 PBKDF2_ITERATIONS = 600_000  # OWASP-2023-Empfehlung (PBKDF2-HMAC-SHA256)

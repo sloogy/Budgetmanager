@@ -301,30 +301,25 @@ class Settings:
     def save(self) -> None:
         """Speichert Einstellungen atomar in Datei.
 
-        Schreibt zuerst in eine temporäre Datei (.tmp), dann wird diese
-        per os.replace() atomar auf den Zielpfad verschoben.  So kann die
+        Schreibt zuerst in eine Zwischendatei, dann wird diese per
+        os.replace() atomar auf den Zielpfad verschoben. So kann die
         Settings-Datei bei einem Absturz oder Stromentzug nicht korrupt werden.
+
+        Seit Loop 27 macht das der gemeinsame Helfer. Er trägt zwei Dinge
+        nach, die hier fehlten: fsync auf das Verzeichnis - ohne den überlebt
+        der Inhalt, aber nicht der Eintrag, der auf ihn zeigt - und eine
+        Zwischendatei mit Prozessnummer im Namen. Zwei Instanzen, die
+        gleichzeitig speichern, benutzten vorher dieselbe .tmp-Datei.
         """
         try:
-            self.settings_file.parent.mkdir(parents=True, exist_ok=True)
-            tmp_path = self.settings_file.with_suffix(".tmp")
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(self.settings, f, indent=2, ensure_ascii=False)
-                f.flush()
-                os.fsync(f.fileno())
-            os.replace(str(tmp_path), str(self.settings_file))
+            from utils.atomic_write import atomar_schreiben
+
+            atomar_schreiben(
+                self.settings_file,
+                json.dumps(self.settings, indent=2, ensure_ascii=False),
+            )
         except Exception as e:
             logger.error("Fehler beim Speichern der Einstellungen: %s", e)
-            # Aufräumen: temporäre Datei entfernen falls vorhanden
-            try:
-                tmp_path = self.settings_file.with_suffix(".tmp")
-                if tmp_path.exists():
-                    tmp_path.unlink()
-            except Exception as cleanup_err:
-                logger.debug(
-                    "Temporäre Settings-Datei konnte nicht gelöscht werden: %s",
-                    cleanup_err,
-                )
 
     def get(self, key: str, default: Any = None) -> Any:
         """Holt einen Wert"""

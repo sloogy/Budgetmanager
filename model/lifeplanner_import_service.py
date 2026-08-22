@@ -15,6 +15,7 @@ import os
 import re
 import sqlite3
 from dataclasses import dataclass, replace
+from utils.atomic_write import atomar_offen
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -539,7 +540,7 @@ def export_fpm_expense_proposals(
         (TYP_EXPENSES,),
     ).fetchall()
     count = 0
-    with out.open("w", encoding="utf-8", newline="\n") as handle:
+    with atomar_offen(out) as handle:
         handle.write(
             json.dumps(
                 {
@@ -615,7 +616,7 @@ def export_savings_goals(conn, path: str | Path | None = None) -> BridgeExportRe
             "FROM savings_goals ORDER BY id"  # nosec B608 -- identifiers are fixed from audited allow-list
         ).fetchall()
     count = 0
-    with out.open("w", encoding="utf-8", newline="\n") as handle:
+    with atomar_offen(out) as handle:
         handle.write(
             json.dumps(
                 {

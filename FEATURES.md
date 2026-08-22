@@ -5,6 +5,8 @@
 - Beiseitegelegte Einstellungsdateien werden durchnummeriert; zehn Stände bleiben erhalten.
 - Gates bei jedem Push nach main: Version, compileall, Übersetzungs-Audit, Ausnahmen-Ratchet, ruff, mypy, Lint-Verfahren, Tests.
 - Der Release-Marker `[release]` zählt nur am Anfang der Betreffzeile.
+- Atomares Schreiben mit fsync für Einstellungen, Brücke und Themes: Ein Absturz mitten im Speichern hinterlässt keine halbe Datei mehr.
+- Ein gemeinsames Werkzeug für Fehler, die scheitern dürfen: Sie bleiben folgenlos, hinterlassen aber eine Spur im Log.
 
 ## Neu in v2.2.70
 

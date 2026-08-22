@@ -383,10 +383,16 @@ class ThemeManager:
         payload = {"name": name, **data}
 
         try:
-            tmp = path.with_suffix(".json.tmp")
-            with open(tmp, "w", encoding="utf-8") as f:
-                json.dump(payload, f, indent=2, ensure_ascii=False)
-            tmp.replace(path)
+            # Seit Loop 29 der gemeinsame Helfer: Er traegt fsync und den
+            # Verzeichnis-fsync nach - ohne die war das Umbenennen zwar
+            # atomar, konnte nach einem Stromausfall aber eine leere Datei
+            # an den Platz schieben - und gibt der Zwischendatei die
+            # Prozessnummer statt eines festen Namens.
+            from utils.atomic_write import atomar_schreiben
+
+            atomar_schreiben(
+                path, json.dumps(payload, indent=2, ensure_ascii=False)
+            )
 
             # Re-Index
             self._user_index[name] = path

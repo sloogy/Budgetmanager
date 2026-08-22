@@ -77,8 +77,8 @@ EXCLUDED_FILES = frozenset({"conftest.py", "dev_check.py", "setup.py"})
 # Ratchet-Obergrenzen. Nur senken, nie erhoehen.
 BARE_EXCEPT_LIMIT = 0
 BASE_EXCEPTION_LIMIT = 0
-SILENT_EXCEPT_LIMIT = 46
-BROAD_EXCEPTION_LIMIT = 660
+SILENT_EXCEPT_LIMIT = 24
+BROAD_EXCEPTION_LIMIT = 658
 
 
 def _production_files() -> list[Path]:

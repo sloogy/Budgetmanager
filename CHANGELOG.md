@@ -48,6 +48,32 @@
   in der Release-Checkliste und in keinem der beiden Workflows; ein Schlüssel,
   der in allen drei Sprachen liegt, aber nirgends verwendet wird, fiel dadurch
   erst von Hand auf. Er läuft jetzt im Push- und im Release-Lauf.
+- **Black lief nur im Release-Lauf.** Der Push-Lauf prüfte die Formatierung
+  nicht, deshalb fiel erst der Release-Build zu 2.2.71 über drei ungeformte
+  Dateien in `model/` — nach dem Tag, mit rotem Build und ohne Artefakte.
+  `black --check model/` läuft jetzt auch bei jedem Push.
+
+### Sicherheit
+
+- **Die Dateirechte schlugen still fehl.** `_secure_file` und
+  `_secure_bundle_file` setzen `0600` auf Schlüsselmaterial und Sicherungen und
+  schluckten bisher jeden Fehlschlag. Blieb eine Datei weltlesbar, war das
+  nirgends zu sehen.
+- **`users.json` wurde atomar geschrieben, aber mit fester `.tmp`-Endung**, die
+  sich zwei gleichzeitig laufende Instanzen teilen. Bei Quick-Konten steht dort
+  der Datenbankschlüssel im Klartext.
+
+### Wo „atomar" draufstand, fehlte der fsync
+
+- Umbenennen ist atomar, aber ohne `fsync` steht der Inhalt zu diesem Zeitpunkt
+  nur im Cache — nach einem Stromausfall kann eine leere Datei an den Platz
+  geschoben werden. Einstellungen, Brückendateien und Themes laufen jetzt über
+  denselben Helfer, der beides tut.
+- Die beiden Brücken-Outboxen gingen zeilenweise direkt in die Zieldatei. Brach
+  der Lauf ab, lag dort eine JSONL-Datei mit abgeschnittener letzter Zeile — von
+  einer vollständigen nicht zu unterscheiden.
+- Fehler, die folgenlos bleiben dürfen, laufen über ein gemeinsames Werkzeug:
+  Sie blockieren weiterhin nichts, hinterlassen aber eine Spur im Log.
 
 ### Zusammenspiel mit FPM
 

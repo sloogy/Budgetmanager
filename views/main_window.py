@@ -77,6 +77,7 @@ from views.tabs.budget_tab import BudgetTab
 from views.tabs.cockpit_tab import CockpitTab
 from views.tabs.categories_tab import CategoriesTab
 from views.tabs.overview_tab import OverviewTab
+from utils.defensive_log import uebersprungen as _uebersprungen
 from views.tabs.overview_savings_panel import OverviewSavingsPanel
 from views.tabs.tracking_tab import TrackingTab
 from views.tags_manager_dialog import TagsManagerDialog
@@ -696,8 +697,8 @@ class MainWindow(QMainWindow):
         try:
             widgets.extend(self.cockpit_tab.findChildren(QFrame))
             widgets.extend(self.cockpit_tab.findChildren(QTableWidget))
-        except Exception:
-            pass
+        except Exception as fehler:
+            _uebersprungen("_install_edit_context_menus", fehler)
 
         seen: set[int] = set()
         for widget in widgets:
@@ -729,8 +730,8 @@ class MainWindow(QMainWindow):
 
         try:
             self._update_edit_menu()
-        except Exception:
-            pass
+        except Exception as fehler:
+            _uebersprungen("_show_edit_context_menu", fehler)
         menu = QMenu(self)
         last_sep = True
         for act in self.edit_menu.actions():
@@ -940,8 +941,8 @@ class MainWindow(QMainWindow):
             self.cockpit_tab.layout_mode_changed.connect(
                 self._sync_cockpit_layout_action
             )
-        except Exception:
-            pass
+        except Exception as fehler:
+            _uebersprungen("_create_view_menu", fehler)
 
         view_menu.addSeparator()
 
@@ -1457,15 +1458,15 @@ class MainWindow(QMainWindow):
             try:
                 self.settings.set("tab_position", pos_key)
                 self.settings.set("tab_position_scaling_migrated_v2031", True)
-            except Exception:
-                pass
+            except Exception as fehler:
+                _uebersprungen("_apply_tab_position", fehler)
         qt_pos = self._TAB_POS_MAP.get(pos_key, QTabWidget.North)
         self.tabs.setTabPosition(qt_pos)
         try:
             self.tabs.tabBar().setUsesScrollButtons(True)
             self.tabs.tabBar().setElideMode(Qt.ElideNone)
-        except Exception:
-            pass
+        except Exception as fehler:
+            _uebersprungen("_apply_tab_position", fehler)
 
     def _apply_tab_bar_visibility(self) -> None:
         """Zeigt/versteckt die Tab-Leiste gemäß Settings."""
@@ -2352,8 +2353,8 @@ class MainWindow(QMainWindow):
             finally:
                 try:
                     timer.deleteLater()
-                except Exception:
-                    pass
+                except Exception as fehler:
+                    _uebersprungen("schedule_unclean_shutdown_prompt", fehler)
 
         timer.timeout.connect(_show)
         timer.start(max(0, int(delay_ms)))
@@ -2687,8 +2688,8 @@ class MainWindow(QMainWindow):
                     self._startup_auto_backup_timer = None
                 try:
                     timer.deleteLater()
-                except Exception:
-                    pass
+                except Exception as fehler:
+                    _uebersprungen("_schedule_startup_auto_backup", fehler)
 
         timer.timeout.connect(_run_safely)
         safe_delay = max(250, int(delay_ms))
@@ -3058,8 +3059,8 @@ class MainWindow(QMainWindow):
             finally:
                 try:
                     timer.deleteLater()
-                except Exception:
-                    pass
+                except Exception as fehler:
+                    _uebersprungen("schedule_startup_update_check", fehler)
 
         timer.timeout.connect(_run)
         self._startup_update_timer = timer
@@ -3072,8 +3073,8 @@ class MainWindow(QMainWindow):
             return
         try:
             clear_startup_check_result()
-        except Exception:
-            pass
+        except Exception as fehler:
+            _uebersprungen("_start_startup_update_check", fehler)
 
         cmd = self._startup_update_cmd()
         proc = QProcess(self)
@@ -3467,8 +3468,8 @@ class MainWindow(QMainWindow):
                             self._setup_assistant_finalize_timer = None
                         try:
                             timer.deleteLater()
-                        except Exception:
-                            pass
+                        except Exception as fehler:
+                            _uebersprungen("_start_setup_assistant", fehler)
 
                 timer.timeout.connect(_finalize_after_native_close)
                 # 250 ms statt SingleShot(0): Unter XCB koennen nach closeEvent
