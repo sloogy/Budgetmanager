@@ -8,8 +8,11 @@ from __future__ import annotations
 
 from datetime import datetime
 import json
+import logging
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 import platform
 import re
 import shutil
@@ -629,17 +632,24 @@ def create_diagnostic_report_zip(
 
 
 def remove_old_diagnostic_reports(*, keep: int = 10) -> None:
-    """Hält den Diagnoseordner klein. Fehler werden bewusst ignoriert."""
+    """Hält den Diagnoseordner klein.
+
+    Fehler brechen das Aufräumen nicht ab - ein Bericht, der liegen bleibt,
+    ist harmloser als ein Diagnoselauf, der daran scheitert. Stumm bleiben
+    dürfen sie trotzdem nicht: Wächst der Ordner weiter, obwohl hier
+    aufgeräumt wird, war das vorher nirgends zu sehen.
+    """
     try:
         reports = sorted(
             diagnostics_dir().glob("budgetmanager_diagnostics_*.zip"),
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
-        for old in reports[int(keep) :]:
-            try:
-                old.unlink()
-            except Exception:
-                pass
-    except Exception:
-        pass
+    except OSError as fehler:
+        logger.warning("Diagnoseordner nicht auflistbar: %s", fehler)
+        return
+    for old in reports[int(keep) :]:
+        try:
+            old.unlink()
+        except OSError as fehler:
+            logger.debug("%s bleibt liegen: %s", old.name, fehler)
