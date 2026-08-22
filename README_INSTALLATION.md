@@ -1,7 +1,7 @@
-# 📦 BudgetManager v2.2.70 — Installation, Start & Update
+# 📦 BudgetManager v2.2.71 — Installation, Start & Update
 
 
-## Diagramm-Hinweis v2.2.70
+## Diagramm-Hinweis v2.2.71
 
 Für eine eigene Kachelanordnung oben im Cockpit **Kacheln frei anordnen** aktivieren. Danach die Kachel an ihrer gesamten Kopfzeile oder am Griff `≡` nach oben, unten oder in die andere Spalte ziehen. Die Anordnung wird automatisch gespeichert.
 

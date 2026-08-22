@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.2.70
+# 💰 BudgetManager v2.2.71
 
 BudgetManager ist eine lokale Desktop-Anwendung für Jahresbudget, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
-![Version](https://img.shields.io/badge/version-2.2.70-blue)
+![Version](https://img.shields.io/badge/version-2.2.71-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -296,8 +296,8 @@ BudgetManager/
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.2.70"
-APP_RELEASE_DATE = "21. August 2026"
+APP_VERSION = "2.2.71"
+APP_RELEASE_DATE = "22. August 2026"
 ```
 
 Vor einem Release prüfen:

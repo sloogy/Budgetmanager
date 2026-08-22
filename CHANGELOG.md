@@ -1,6 +1,6 @@
 # Changelog
 
-## Unveröffentlicht
+## 2.2.71 – 22. August 2026
 
 ### Stabilität
 
