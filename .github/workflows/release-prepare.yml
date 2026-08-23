@@ -106,6 +106,16 @@ jobs:
             views/bank_import_dialog_runtime.py
           python tools/sync_version.py
           python tools/sync_version.py --check
+          # Der Release-Nachweis haengt an APP_VERSION: Sobald die Version
+          # steigt, verlangt tests/test_release_2225_final_audit.py eine
+          # Matrix unter dem neuen Namen. Kein Schritt hat sie je erzeugt,
+          # also scheiterte jeder automatische Release an den Tests des
+          # Builds - und der naechste Versuch hob die Version erneut, was
+          # den Nachweis erneut entwertete. v3.0.1 bis v3.0.4 sind genau
+          # daran gestorben, ohne dass je ein Release entstand.
+          QT_QPA_PLATFORM=offscreen python tools/final_release_audit_1000.py
+          python tools/release_evidence_index.py
+          python tools/release_evidence_index.py --check
 
       - name: Synchronisierten Release-Commit erzeugen
         if: env.IS_RETRY != 'true'

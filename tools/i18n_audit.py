@@ -250,7 +250,32 @@ def _write_report(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def _force_utf8_output() -> None:
+    """Der Report darf die Konsole nicht sprengen koennen.
+
+    Der Windows-Runner faehrt ohne PYTHONUTF8 cp1252 auf stdout. Sobald ein
+    gemeldeter String einen Pfeil oder ein anderes Sonderzeichen trug, starb
+    das Audit an UnicodeEncodeError - mit Exit 1, aber ohne Befund. So ist der
+    Bau von v3.0.1 gescheitert: Die Meldung, die den Fehler beschrieb, war
+    selbst der Fehler.
+
+    ``errors="replace"`` statt ``strict``: Ein unschreibbares Zeichen soll den
+    Befund verstuemmeln, nicht verschlucken.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except (ValueError, OSError):
+            # Umgeleitete oder bereits geschlossene Stroeme: Der Befund zaehlt,
+            # nicht die Kosmetik.
+            pass
+
+
 def main(argv: list[str]) -> int:
+    _force_utf8_output()
     ap = argparse.ArgumentParser(description="BudgetManager i18n Audit")
     ap.add_argument("--root", default=".", help="Projekt-Root (Default: .)")
     ap.add_argument(

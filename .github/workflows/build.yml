@@ -93,6 +93,15 @@ jobs:
 
     runs-on: ${{ matrix.os }}
 
+    # Jobweit, nicht je Schritt: Der Windows-Runner faehrt sonst cp1252 auf
+    # stdout, und jeder Schritt, der einen Pfeil oder ein anderes Sonderzeichen
+    # ausgibt, stirbt an UnicodeEncodeError. Genau daran ist v3.0.1 gescheitert
+    # - beim i18n-Audit, das die Variablen nicht hatte, waehrend der Testschritt
+    # daneben sie schon lange setzte.
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
