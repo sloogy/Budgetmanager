@@ -1,3 +1,7 @@
+## Neu in v3.0.0
+
+- Siehe VERSION_INFO.txt und CHANGELOG.md.
+
 ## Neu in v2.5.0
 
 - Freigabe je Kategorie und Sparziel für die FPM-Brücke: **Extras → Freigabe für FPM** entscheidet Eintrag für Eintrag, was den BudgetManager verlässt. Neu angelegtes ist von sich aus nicht freigegeben.
