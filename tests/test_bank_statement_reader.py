@@ -104,6 +104,8 @@ def test_pdf_reader_uses_pypdf_text_and_parses_booking_line(tmp_path, monkeypatc
 def test_zkb_pdf_separates_amount_valuta_and_balance(tmp_path, monkeypatch):
     path = tmp_path / "zkb-konto.pdf"
     path.write_bytes(b"%PDF-1.4 test placeholder")
+    balance_debit = "5'179.55"
+    balance_credit = "5'219.55"
 
     header = (
         f"{'Datum':<12}{'Buchungstext':<42}{'Belastung CHF':<16}"
@@ -111,11 +113,11 @@ def test_zkb_pdf_separates_amount_valuta_and_balance(tmp_path, monkeypatch):
     )
     debit_line = (
         f"{'21.08.2026':<12}{'Kartenzahlung COOP':<42}{'19.85':<16}"
-        f"{'':<22}{'21.08.2026':<12}{"5'179.55"}"
+        f"{'':<22}{'21.08.2026':<12}{balance_debit}"
     )
     credit_line = (
         f"{'22.08.2026':<12}{'TWINT Zahlung erhalten':<42}{'':<16}"
-        f"{'40.00':<22}{'22.08.2026':<12}{"5'219.55"}"
+        f"{'40.00':<22}{'22.08.2026':<12}{balance_credit}"
     )
 
     class FakePage:
@@ -134,7 +136,7 @@ def test_zkb_pdf_separates_amount_valuta_and_balance(tmp_path, monkeypatch):
     assert rows[0].booking_date == date(2026, 8, 21)
     assert rows[0].amount == Decimal("-19.85")
     assert rows[0].raw["valuta"] == "21.08.2026"
-    assert rows[0].raw["saldo"] == "5'179.55"
+    assert rows[0].raw["saldo"] == balance_debit
     assert rows[1].booking_date == date(2026, 8, 22)
     assert rows[1].amount == Decimal("40.00")
-    assert rows[1].raw["saldo"] == "5'219.55"
+    assert rows[1].raw["saldo"] == balance_credit
