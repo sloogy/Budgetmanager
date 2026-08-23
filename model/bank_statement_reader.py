@@ -363,6 +363,9 @@ _PDF_LINE = re.compile(
     rf"(?P<text>.+?)\s+(?P<amount>{_PDF_AMOUNT_TOKEN})"
     r"\s*(?P<currency>[A-Z]{3})?$"
 )
+_ZKB_FLAT_TAIL = re.compile(
+    rf"\s{_PDF_AMOUNT_TOKEN}\s+{_PDF_DATE_TOKEN}\s+{_PDF_AMOUNT_TOKEN}\s*$"
+)
 
 
 def _zkb_header_positions(line: str) -> dict[str, int] | None:
@@ -555,7 +558,13 @@ def load_pdf(
 
     result: list[BankTransaction] = []
     for index, line in enumerate(lines, start=1):
-        match = _PDF_LINE.match(line.strip())
+        stripped = line.strip()
+        # ZKB-Flachtext ohne Layout endet typischerweise mit
+        # "<Betrag> <Valuta> <Saldo>". Die letzte Zahl ist der Kontosaldo und
+        # darf niemals als Buchungsbetrag in den generischen Parser fallen.
+        if _ZKB_FLAT_TAIL.search(stripped):
+            continue
+        match = _PDF_LINE.match(stripped)
         if not match:
             continue
         amount = _parse_decimal(match.group("amount"))
