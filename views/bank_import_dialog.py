@@ -347,17 +347,17 @@ class BankImportDialog(_BankImportDialogV3):
         self.search_input.textChanged.connect(self._apply_search_filter)
         tools.addWidget(self.search_input, 1)
 
-        tools.addWidget(QLabel("Sortierung:"))
+        tools.addWidget(QLabel("↕"))
         self.cmb_sort = QComboBox()
-        self.cmb_sort.addItem("Originalreihenfolge", "original")
-        self.cmb_sort.addItem("Datum: neu → alt", "date_desc")
-        self.cmb_sort.addItem("Datum: alt → neu", "date_asc")
-        self.cmb_sort.addItem("Betrag: hoch → tief", "amount_desc")
-        self.cmb_sort.addItem("Betrag: tief → hoch", "amount_asc")
-        self.cmb_sort.addItem("Buchungstext: A → Z", "text_asc")
-        self.cmb_sort.addItem("Kategorie: A → Z", "category_asc")
-        self.cmb_sort.addItem("Tags: A → Z", "tags_asc")
-        self.cmb_sort.addItem("Quelldatei: A → Z", "source_asc")
+        self.cmb_sort.addItem("↺", "original")
+        self.cmb_sort.addItem(f"{tr('header.date')} ↓", "date_desc")
+        self.cmb_sort.addItem(f"{tr('header.date')} ↑", "date_asc")
+        self.cmb_sort.addItem(f"{tr('header.amount')} ↓", "amount_desc")
+        self.cmb_sort.addItem(f"{tr('header.amount')} ↑", "amount_asc")
+        self.cmb_sort.addItem(f"{tr('header.details')} A → Z", "text_asc")
+        self.cmb_sort.addItem(f"{tr('header.category')} A → Z", "category_asc")
+        self.cmb_sort.addItem(f"{tr('header.tags')} A → Z", "tags_asc")
+        self.cmb_sort.addItem(f"{tr('header.source')} A → Z", "source_asc")
         self.cmb_sort.setToolTip(
             "Sortiert sicher und erhält manuelle Typ-, Kategorie-, Tag- und "
             "Import-Auswahlen."

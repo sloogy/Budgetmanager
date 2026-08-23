@@ -1,4 +1,4 @@
-# Theme-System — BudgetManager v3.0.1
+# Theme-System — BudgetManager v3.0.2
 
 ## Überblick
 
