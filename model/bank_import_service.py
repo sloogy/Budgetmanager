@@ -1,10 +1,4 @@
-"""Atomarer, idempotenter Bankimport für den lokalen PDF/CSV-Reader.
-
-Der Service ist die einzige Stelle, die bestätigte Reader-Zeilen in Tracking
-überführt. Er verhindert Doppelimporte derselben Quelldatei bzw. – wenn die
-Bank eine stabile Referenz liefert – derselben Buchung aus überlappenden
-Exporten. Kategorie, Tags, Tracking und KI-Lernen werden gemeinsam committed.
-"""
+"""Atomarer, idempotenter Bankimport für den lokalen PDF/CSV-Reader."""
 from __future__ import annotations
 
 import hashlib
@@ -89,18 +83,16 @@ def _payload_hash(tx: BankTransaction) -> str:
         "counterparty": tx.counterparty,
     }
     encoded = json.dumps(
-        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
 def external_id(tx: BankTransaction, document_digest: str) -> str:
-    """Stabile ID mit konservativer Fallback-Strategie.
-
-    Bankreferenz: überlappende Neu-Exporte werden erkannt.
-    Ohne Bankreferenz: nur dieselbe Datei/Zeile wird dedupliziert, damit zwei
-    echte, textgleiche Kartenzahlungen nicht versehentlich zusammenfallen.
-    """
+    """Stabile ID; ohne Bankreferenz bewusst nur datei-idempotent."""
     reference = _bank_reference(tx)
     if reference:
         seed = "|".join(
@@ -151,22 +143,23 @@ class BankImportService:
         self.conn.commit()
 
     def is_duplicate(self, tx: BankTransaction, document_digest: str) -> bool:
-        ext_id = external_id(tx, document_digest)
         row = self.conn.execute(
             "SELECT tracking_id FROM bank_import_state WHERE external_id=?",
-            (ext_id,),
+            (external_id(tx, document_digest),),
         ).fetchone()
         if not row:
             return False
-        tracking_id = int(row[0])
         return bool(
             self.conn.execute(
-                "SELECT 1 FROM tracking WHERE id=?", (tracking_id,)
+                "SELECT 1 FROM tracking WHERE id=?",
+                (int(row[0]),),
             ).fetchone()
         )
 
     def duplicate_indexes(
-        self, transactions: list[BankTransaction], document_digest: str
+        self,
+        transactions: list[BankTransaction],
+        document_digest: str,
     ) -> set[int]:
         return {
             index
@@ -191,7 +184,8 @@ class BankImportService:
         ids: list[int] = []
         for tag in tags:
             row = self.conn.execute(
-                "SELECT id FROM tags WHERE name=? COLLATE NOCASE", (tag,)
+                "SELECT id FROM tags WHERE name=? COLLATE NOCASE",
+                (tag,),
             ).fetchone()
             if not row:
                 raise ValueError(f"Tag {tag!r} existiert nicht im BudgetManager.")
@@ -209,9 +203,9 @@ class BankImportService:
                 """,
                 (typ, category),
             ).fetchall()
-            return {int(row[0]) for row in rows}
         except sqlite3.OperationalError:
             return set()
+        return {int(row[0]) for row in rows}
 
     def _validate_item(self, item: BankImportItem) -> tuple[float, list[int]]:
         if item.typ not in {TYP_EXPENSES, TYP_INCOME}:
@@ -220,26 +214,28 @@ class BankImportService:
             raise ValueError(
                 f"Kategorie {item.category!r} existiert nicht für {item.typ!r}."
             )
-        amount = require_finite_amount(item.amount, field="Bankimport-Betrag")
-        if float(amount) <= 0:
+        amount = float(
+            require_finite_amount(item.amount, field="Bankimport-Betrag")
+        )
+        if amount <= 0:
             raise ValueError("Bankimport-Betrag muss größer als 0 sein.")
-        return float(amount), self._tag_ids(item.tags)
+        return amount, self._tag_ids(item.tags)
 
     def _insert_tracking(self, item: BankImportItem, amount: float) -> int:
+        values = (
+            item.transaction.booking_date.isoformat(),
+            item.typ,
+            item.category,
+            amount,
+            item.details,
+        )
         if self._tracking_has_source(self.conn):
             cur = self.conn.execute(
                 """
                 INSERT INTO tracking(date, typ, category, amount, details, source)
                 VALUES(?,?,?,?,?,?)
                 """,
-                (
-                    item.transaction.booking_date.isoformat(),
-                    item.typ,
-                    item.category,
-                    amount,
-                    item.details,
-                    "bank_import",
-                ),
+                (*values, "bank_import"),
             )
         else:
             cur = self.conn.execute(
@@ -247,18 +243,16 @@ class BankImportService:
                 INSERT INTO tracking(date, typ, category, amount, details)
                 VALUES(?,?,?,?,?)
                 """,
-                (
-                    item.transaction.booking_date.isoformat(),
-                    item.typ,
-                    item.category,
-                    amount,
-                    item.details,
-                ),
+                values,
             )
         return int(cur.lastrowid)
 
     def _attach_tags(
-        self, tracking_id: int, typ: str, category: str, manual_tag_ids: list[int]
+        self,
+        tracking_id: int,
+        typ: str,
+        category: str,
+        manual_tag_ids: list[int],
     ) -> None:
         tag_ids = set(manual_tag_ids) | self._fixed_tag_ids(typ, category)
         for tag_id in sorted(tag_ids):
@@ -301,7 +295,7 @@ class BankImportService:
         )
 
     def _record_undo_group(self, tracking_ids: list[int]) -> None:
-        """Best-effort: der Datenimport selbst bleibt auch bei Undo-Fehler intakt."""
+        """Best-effort Undo-Gruppe nach erfolgreichem Daten-Commit."""
         if not tracking_ids:
             return
         undo = UndoRedoModel(self.conn)
@@ -309,17 +303,19 @@ class BankImportService:
         try:
             for index, tracking_id in enumerate(tracking_ids):
                 row = self.conn.execute(
-                    "SELECT * FROM tracking WHERE id=?", (tracking_id,)
+                    "SELECT * FROM tracking WHERE id=?",
+                    (tracking_id,),
                 ).fetchone()
                 if not row:
                     continue
                 new_data = dict(row)
                 try:
                     tag_rows = self.conn.execute(
-                        "SELECT tag_id FROM entry_tags WHERE entry_id=? ORDER BY tag_id",
+                        "SELECT tag_id FROM entry_tags "
+                        "WHERE entry_id=? ORDER BY tag_id",
                         (tracking_id,),
                     ).fetchall()
-                    new_data["_tag_ids"] = [int(tag_row[0]) for tag_row in tag_rows]
+                    new_data["_tag_ids"] = [int(item[0]) for item in tag_rows]
                 except sqlite3.OperationalError:
                     new_data["_tag_ids"] = []
                 undo.record_operation(
@@ -330,16 +326,21 @@ class BankImportService:
                     group_id=group_id,
                     clear_redo=index == 0,
                 )
-        except Exception as exc:
-            logger.warning("Undo-Gruppe für Bankimport konnte nicht erstellt werden: %s", exc)
+        except (sqlite3.Error, TypeError, ValueError) as exc:
+            logger.warning(
+                "Undo-Gruppe für Bankimport konnte nicht erstellt werden: %s",
+                exc,
+            )
             try:
                 self.conn.execute(
-                    "DELETE FROM undo_stack WHERE group_id=?", (group_id,)
+                    "DELETE FROM undo_stack WHERE group_id=?",
+                    (group_id,),
                 )
                 self.conn.commit()
-            except Exception as cleanup_exc:
+            except sqlite3.Error as cleanup_exc:
                 logger.warning(
-                    "Unvollständige Bankimport-Undo-Gruppe konnte nicht bereinigt werden: %s",
+                    "Unvollständige Bankimport-Undo-Gruppe konnte nicht "
+                    "bereinigt werden: %s",
                     cleanup_exc,
                 )
 
@@ -349,7 +350,7 @@ class BankImportService:
         *,
         document_digest: str,
     ) -> BankImportResult:
-        """Importiert den bestätigten Batch atomar und lernt im selben Commit."""
+        """Importiert bestätigte Zeilen atomar und lernt im selben Commit."""
         validated: list[tuple[BankImportItem, float, list[int], str]] = []
         skipped = 0
         for item in items:
@@ -367,7 +368,12 @@ class BankImportService:
         with db_transaction(self.conn):
             for item, amount, tag_ids, ext_id in validated:
                 tracking_id = self._insert_tracking(item, amount)
-                self._attach_tags(tracking_id, item.typ, item.category, tag_ids)
+                self._attach_tags(
+                    tracking_id,
+                    item.typ,
+                    item.category,
+                    tag_ids,
+                )
                 self._record_state(
                     ext_id=ext_id,
                     tracking_id=tracking_id,
@@ -385,4 +391,8 @@ class BankImportService:
                 tracking_ids.append(tracking_id)
 
         self._record_undo_group(tracking_ids)
-        return BankImportResult(len(tracking_ids), skipped, tuple(tracking_ids))
+        return BankImportResult(
+            len(tracking_ids),
+            skipped,
+            tuple(tracking_ids),
+        )
