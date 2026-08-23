@@ -28,6 +28,11 @@ class BankImportDialog(_BankImportDialogV3):
         super().__init__(conn, parent)
         self._fix_intro_text()
         self._install_bulk_editor()
+        self.chk_net_twint.setChecked(False)
+        self.chk_net_twint.setToolTip(
+            "TWINT-Verrechnung ist bewusst Opt-in: Treffer zuerst prüfen und "
+            "erst danach die Verrechnung aktivieren."
+        )
 
     def _fix_intro_text(self) -> None:
         """V3 leitet Tags aus Kategorien ab; der V2-Hinweis war veraltet."""
