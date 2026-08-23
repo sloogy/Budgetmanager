@@ -1,4 +1,4 @@
-# BudgetManager Hilfe 3.0.4
+# BudgetManager Hilfe 3.0.5
 
 ## Vereinheitlichte Bedienung
 
@@ -17,9 +17,9 @@ Die **linke Seitenleiste** ist die Hauptnavigation. Neue Buchungen aus Cockpit, 
 
 ---
 
-# BudgetManager 3.0.4 – Benutzerhandbuch
+# BudgetManager 3.0.5 – Benutzerhandbuch
 
-Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 3.0.4. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
+Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 3.0.5. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
 
 ## Erststart in vier Schritten
 

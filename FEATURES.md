@@ -1,3 +1,7 @@
+## Neu in v3.0.5
+
+- Siehe VERSION_INFO.txt und CHANGELOG.md.
+
 ## Neu in v3.0.4
 
 - Siehe VERSION_INFO.txt und CHANGELOG.md.
