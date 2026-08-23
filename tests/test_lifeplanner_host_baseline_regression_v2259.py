@@ -13,7 +13,7 @@ def test_manifest_and_host_paths(monkeypatch, tmp_path):
     assert manifest["schema"] == "lifeplanner.module.v2"
     assert manifest["id"] == "budgetmanager"
     assert manifest["version"] == APP_VERSION
-    assert manifest["requires_host"] == ">=0.5.15,<0.6"
+    assert manifest["requires_host"] == ">=0.5.15,<1.0"
     monkeypatch.setenv("BUDGETMANAGER_DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(tmp_path / "bridge"))
     assert app_paths.data_dir() == (tmp_path / "data").resolve()

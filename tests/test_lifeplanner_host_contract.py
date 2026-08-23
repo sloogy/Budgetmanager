@@ -31,7 +31,7 @@ def test_module_manifest_matches_budgetmanager_version():
     assert manifest["schema"] == "lifeplanner.module.v2"
     assert manifest["id"] == "budgetmanager"
     assert manifest["version"] == APP_VERSION
-    assert manifest["requires_host"] == ">=0.5.15,<0.6"
+    assert manifest["requires_host"] == ">=0.5.15,<1.0"
     assert manifest["environment"]["BUDGETMANAGER_DATA_DIR"] == "{module_data_dir}"
     assert manifest["environment"]["LIFEPLANNER_BRIDGE_DIR"] == "{bridge_dir}"
     published = {entry["file"] for entry in manifest["bridge"]["publishes"]}
