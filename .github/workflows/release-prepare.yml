@@ -82,6 +82,8 @@ jobs:
               raise SystemExit('APP_VERSION nicht eindeutig gefunden')
           app.write_text(text, encoding='utf-8')
           PY
+          python tools/normalize_bank_import_sort_i18n.py
+          python tools/normalize_bank_import_sort_i18n.py --check
           python tools/sync_version.py
           python tools/sync_version.py --check
 
