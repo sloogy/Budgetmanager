@@ -10,7 +10,9 @@ def test_global_ui_usability_filter_is_installed():
     assert "setAccessibleName" in utility
     assert "setAccessibleDescription" in utility
     assert "setAutoDefault(False)" in utility
-    assert "QEvent.Show" in utility
+    # Seit Loop 56 vollqualifiziert: In Qt6 gehoert ein Enum in seinen
+    # Namensraum, und nur so ist es typisiert. Der Wert ist derselbe.
+    assert "QEvent.Type.Show" in utility
 
 
 def test_cockpit_has_three_density_presets():

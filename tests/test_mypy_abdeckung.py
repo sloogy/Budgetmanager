@@ -8,14 +8,15 @@ Die Ausweitung kostete zwei Funde: einen fehlenden Stub für `requests` und
 ein Dict, aus dem heraus aufgerufen wird, ohne dass sein Typ beschrieben war
 (`utils/rechner.py`, Loop 52). Beide sind behoben.
 
-**Und einen dritten, der wichtiger ist als beide.** `utils/` war lokal grün
-und in der CI rot — 43 Fehler. Der Grund: `tools/gepinnte_werkzeuge.py`
-garantiert die *Version* des Werkzeugs, nicht die installierten
-Abhängigkeiten. In seiner Wegwerf-Umgebung fehlt PySide6, und dann ist jeder
-Qt-Typ `Any` — alles geht durch. Die CI hat PySide6 und löst die Typen echt
-auf. Ein lokal grüner mypy-Lauf über Qt-nahen Code sagt also nichts.
+**Und einen dritten, der wichtiger war als beide.** `utils/` war lokal grün
+und in der CI rot — 43 Fehler. Der Grund lag im Wrapper: Er garantierte die
+*Version* des Werkzeugs, nicht die installierten Abhängigkeiten, und ohne
+PySide6 ist jeder Qt-Typ `Any`.
 
-`utils/` bleibt darum vorerst offen, wie `views/`.
+Seit Loop 56 installiert der Wrapper für mypy die Projektabhängigkeiten mit;
+lokal und in der CI steht damit dieselbe Zahl. `utils/` bleibt trotzdem offen
+— nach dem Vollqualifizieren der Qt-Enums (18 Stellen) sind es noch 25 Fehler
+mit verschiedenen Ursachen.
 
 Wie beim black-Gate aus Loop 44 prüft dieser Test die **Abdeckung**, nicht die
 Liste: Ein neues Verzeichnis fällt auf, weil kein Prüfziel es enthält.
@@ -36,10 +37,9 @@ GEPRUEFT = ("model", "updater")
 OFFEN = {
     "views": "Qt-lastig; mypy.ini schliesst es ausdruecklich aus",
     "utils": (
-        "Qt-lastig wie views/. Der Versuch in Loop 55 war lokal gruen und in "
-        "der CI rot: 43 Fehler in ui_usability, notifications, icons. Grund "
-        "siehe Modul-Docstring - lokal fehlt PySide6, und dann sind alle "
-        "Qt-Typen Any"
+        "Qt-lastig wie views/. In Loop 55 waren es 43 Fehler, in Loop 56 nach "
+        "dem Vollqualifizieren der Qt-Enums noch 25 - verschiedene Ursachen, "
+        "nichts mehr mechanisch"
     ),
     "tools": "generate_sbom.py kollidiert im Modulpfad (Loop 55)",
     "tests": "Testcode wird nicht typgeprueft",

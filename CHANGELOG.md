@@ -4,6 +4,24 @@
 
 ### Ordnung
 
+- **Der Prüf-Wrapper bringt für `mypy` jetzt die Projektabhängigkeiten mit.**
+  Die Wegwerf-Umgebung enthielt nur das Werkzeug selbst. Für black und ruff ist
+  das richtig — sie lesen nur Text. `mypy` löst Importe auf: Ohne PySide6 ist
+  jeder Qt-Typ `Any`, und ein Lauf über Qt-nahen Code geht grün durch, während
+  die CI dieselben Dateien ablehnt. Genau so entstand im letzten Loop ein
+  lokal grüner, in der CI roter Lauf.
+
+  Der erste Aufruf dauert dadurch einige Minuten, danach nichts mehr. Schlägt
+  die Installation fehl, bricht das Skript ab, statt einen leeren Lauf grün zu
+  melden — ein Urteil ohne die Abhängigkeiten wäre keines.
+
+- **18 Qt-Enums vollqualifiziert.** `Qt.AlignCenter` statt
+  `Qt.AlignmentFlag.AlignCenter`: Die Kurzform funktioniert zur Laufzeit, ist
+  aber nicht typisiert — in Qt6 gehört ein Enum in seinen Namensraum. Jede
+  Zuordnung wurde vor der Umstellung gegen die Bibliothek geprüft; Kurz- und
+  Langform sind dasselbe Objekt.
+
+
 - **Die Typprüfung deckt jetzt auch `updater/` ab.** `mypy` lief nur über
   `model/`; der ganze Updater war ungeprüft, obwohl dort Code steht, der
   Dateien schreibt und Signaturen prüft.

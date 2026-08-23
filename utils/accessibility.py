@@ -33,7 +33,7 @@ def _is_focus_candidate(widget: QWidget, dialog: QDialog) -> bool:
     # unzuverlässig.
     if widget.window() is not dialog:
         return False
-    if widget.focusPolicy() == Qt.NoFocus:
+    if widget.focusPolicy() == Qt.FocusPolicy.NoFocus:
         return False
     if not widget.isEnabled():
         return False

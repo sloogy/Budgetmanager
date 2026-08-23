@@ -212,8 +212,12 @@ def _is_transient_window(widget: QWidget) -> bool:
     if isinstance(widget, QMenu):
         return True
     flags = widget.windowFlags()
-    for transient in (Qt.Popup, Qt.ToolTip, Qt.SplashScreen):
-        if (flags & Qt.WindowType_Mask) == transient:
+    for transient in (
+        Qt.WindowType.Popup,
+        Qt.WindowType.ToolTip,
+        Qt.WindowType.SplashScreen,
+    ):
+        if (flags & Qt.WindowType.WindowType_Mask) == transient:
             return True
     return False
 
@@ -352,7 +356,7 @@ class UiUsabilityFilter(QObject):
     """Wendet UI-Regeln auf jedes sichtbar werdende Top-Level-Widget an."""
 
     def eventFilter(self, watched: QObject, event: QEvent) -> bool:
-        if event.type() == QEvent.Show and isinstance(watched, QWidget):
+        if event.type() == QEvent.Type.Show and isinstance(watched, QWidget):
             try:
                 if _is_transient_window(watched):
                     return False

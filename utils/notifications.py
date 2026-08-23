@@ -80,19 +80,23 @@ def _show_toast(
     toast.setObjectName("budgetmanagerNotificationToast")
     toast.setWordWrap(True)
     toast.setTextInteractionFlags(Qt.TextSelectableByMouse)
-    toast.setFocusPolicy(Qt.NoFocus)
+    toast.setFocusPolicy(Qt.FocusPolicy.NoFocus)
     toast.setAttribute(Qt.WA_TransparentForMouseEvents, True)
     toast.setAccessibleName(visible_title or prefix)
     toast.setAccessibleDescription(visible_message)
 
     palette = top.palette()
-    background_role = QPalette.Highlight if level == "warning" else QPalette.Window
+    background_role = (
+        QPalette.ColorRole.Highlight
+        if level == "warning"
+        else QPalette.ColorRole.Window
+    )
     foreground_role = (
         QPalette.HighlightedText if level == "warning" else QPalette.WindowText
     )
     background = palette.color(background_role)
     foreground = palette.color(foreground_role)
-    border = palette.color(QPalette.Mid)
+    border = palette.color(QPalette.ColorRole.Mid)
     toast.setStyleSheet(
         "QLabel#budgetmanagerNotificationToast {"
         f"background-color: {background.name()};"

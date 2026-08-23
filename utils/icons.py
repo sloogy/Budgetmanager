@@ -142,11 +142,11 @@ def get_icon(emoji: str, size: int = _DEFAULT_SIZE) -> QIcon:
             return themed
 
     pixmap = QPixmap(size, size)
-    pixmap.fill(Qt.transparent)
+    pixmap.fill(Qt.GlobalColor.transparent)
 
     painter = QPainter(pixmap)
-    painter.setRenderHint(QPainter.Antialiasing, True)
-    painter.setRenderHint(QPainter.TextAntialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.TextAntialiasing, True)
 
     rect = QRect(0, 0, size, size)
 
@@ -159,7 +159,7 @@ def get_icon(emoji: str, size: int = _DEFAULT_SIZE) -> QIcon:
     emoji_width = fm.horizontalAdvance(emoji_norm)
 
     if emoji_width > 0 and _emoji_renders_visible(emoji_norm, font, size):
-        painter.drawText(rect, Qt.AlignCenter, emoji_norm)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, emoji_norm)
     else:
         # Fallback: Farbiger Buchstabe auf rundem Hintergrund
         fb_char, fb_color = _EMOJI_FALLBACK.get(
@@ -169,7 +169,7 @@ def get_icon(emoji: str, size: int = _DEFAULT_SIZE) -> QIcon:
 
         # Runder Hintergrund
         painter.setBrush(color)
-        painter.setPen(Qt.NoPen)
+        painter.setPen(Qt.PenStyle.NoPen)
         margin = int(size * 0.05)
         painter.drawEllipse(margin, margin, size - 2 * margin, size - 2 * margin)
 
@@ -179,7 +179,7 @@ def get_icon(emoji: str, size: int = _DEFAULT_SIZE) -> QIcon:
         bold_font.setPixelSize(int(size * 0.55))
         bold_font.setBold(True)
         painter.setFont(bold_font)
-        painter.drawText(rect, Qt.AlignCenter, fb_char)
+        painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, fb_char)
 
     painter.end()
     return QIcon(pixmap)
@@ -189,11 +189,11 @@ def _emoji_renders_visible(emoji: str, font: QFont, size: int) -> bool:
     """Prueft heuristisch ob ein Emoji sichtbar gerendert wird."""
     try:
         test_pm = QPixmap(size, size)
-        test_pm.fill(Qt.transparent)
+        test_pm.fill(Qt.GlobalColor.transparent)
         p = QPainter(test_pm)
         p.setFont(font)
         p.setPen(QColor("#000000"))
-        p.drawText(QRect(0, 0, size, size), Qt.AlignCenter, emoji)
+        p.drawText(QRect(0, 0, size, size), Qt.AlignmentFlag.AlignCenter, emoji)
         p.end()
 
         img = test_pm.toImage()
