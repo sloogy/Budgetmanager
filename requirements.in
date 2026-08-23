@@ -5,4 +5,4 @@ cryptography==50.0.0
 requests==2.34.2
 packaging==26.3
 defusedxml==0.7.1
-pypdf>=5.0,<7
+pypdf==6.16.1
