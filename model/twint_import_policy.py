@@ -5,6 +5,7 @@ Erstattungs-/Zuordnungssignal markiert und einer echten Kategorie zugeordnet
 werden, erzeugen aber niemals einen Tracking-Eintrag. Die Kategoriezuordnung
 lebt ausschließlich im lokalen KI-Gedächtnis.
 """
+
 from __future__ import annotations
 
 import re
@@ -166,8 +167,7 @@ class BankImportMarkerStore:
         if not fingerprint:
             return "", ""
         row = self.conn.execute(
-            "SELECT category_typ, category FROM ai_twint_memory "
-            "WHERE fingerprint=?",
+            "SELECT category_typ, category FROM ai_twint_memory " "WHERE fingerprint=?",
             (fingerprint,),
         ).fetchone()
         if not row:

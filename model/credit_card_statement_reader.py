@@ -8,14 +8,20 @@ Das Vorzeichen von ``Amount`` wird absichtlich unverändert übernommen. Der
 Importdialog schlägt daraus einen BudgetManager-Typ vor, der Nutzer kann ihn
 vor dem Import jedoch ändern.
 """
+
 from __future__ import annotations
 
 import csv
 import re
+from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-from model.bank_statement_reader import BankStatementError, BankTransaction
+from model.bank_statement_reader import (
+    BankStatementError,
+    BankTransaction,
+    SemicolonExcel,
+)
 
 _REQUIRED_HEADERS = frozenset(
     {
@@ -45,16 +51,14 @@ def _decode(path: Path) -> str:
     raise BankStatementError("CSV-Zeichensatz konnte nicht erkannt werden.")
 
 
-def _dialect(text: str) -> csv.Dialect:
+def _dialect(text: str) -> type[csv.Dialect]:
     try:
         return csv.Sniffer().sniff(text[:8192], delimiters=",;\t|")
     except csv.Error:
-        dialect = csv.excel
-        dialect.delimiter = ";"
-        return dialect
+        return SemicolonExcel
 
 
-def _header_map(fieldnames: list[str] | None) -> dict[str, str]:
+def _header_map(fieldnames: Sequence[str] | None) -> dict[str, str]:
     return {_norm(name): str(name) for name in (fieldnames or []) if name is not None}
 
 
@@ -167,7 +171,11 @@ def load_credit_card_csv(
     for index, raw_row in enumerate(reader, start=1):
         if index > _MAX_ROWS:
             raise BankStatementError(f"CSV enthält mehr als {_MAX_ROWS:,} Datenzeilen.")
-        row = {str(key): str(value or "") for key, value in raw_row.items() if key is not None}
+        row = {
+            str(key): str(value or "")
+            for key, value in raw_row.items()
+            if key is not None
+        }
         if not any(value.strip() for value in row.values()):
             continue
 

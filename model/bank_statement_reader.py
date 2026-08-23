@@ -3,15 +3,17 @@
 Keine Netzwerkzugriffe. CSV unterstützt u.a. ZKB-Exporte; PDF nutzt pypdf
 für Text-PDFs. Scan-PDFs werden bewusst abgelehnt, bis lokale OCR vorhanden ist.
 """
+
 from __future__ import annotations
 
 import csv
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 MAX_SOURCE_BYTES = 50 * 1024 * 1024
 MAX_CSV_ROWS = 50_000
@@ -132,13 +134,7 @@ def _matching_columns(fieldnames: Iterable[str], aliases: set[str]) -> list[str]
 
 
 def _parse_date(raw: str) -> date:
-    value = (
-        str(raw or "")
-        .replace("\u00a0", " ")
-        .strip()
-        .strip('"')
-        .strip("'")
-    )
+    value = str(raw or "").replace("\u00a0", " ").strip().strip('"').strip("'")
     if not value:
         raise BankStatementError("Leeres Datum.")
     try:
@@ -224,17 +220,26 @@ def _joined_text(row: dict[str, str], columns: list[str]) -> str:
     return " | ".join(values)
 
 
-def load_csv(
-    path: str | Path, default_currency: str = "CHF"
-) -> list[BankTransaction]:
+class SemicolonExcel(csv.excel):
+    """Fallback-Dialekt, wenn der Sniffer kein Trennzeichen erkennt.
+
+    Vorher wurde dafuer ``csv.excel.delimiter`` selbst auf ";" gesetzt. Das
+    ist eine Klasse, kein Objekt - die Zuweisung veraenderte den
+    Standarddialekt fuer den gesamten Prozess, also auch fuer jeden spaeteren
+    CSV-Leser ausserhalb des Bankimports.
+    """
+
+    delimiter = ";"
+
+
+def load_csv(path: str | Path, default_currency: str = "CHF") -> list[BankTransaction]:
     source = Path(path)
     _validate_source(source)
     text = _decode_csv(source)
     try:
         dialect = csv.Sniffer().sniff(text[:8192], delimiters=",;\t|")
     except csv.Error:
-        dialect = csv.excel
-        dialect.delimiter = ";"
+        dialect = SemicolonExcel
     reader = csv.DictReader(text.splitlines(), dialect=dialect)
     if not reader.fieldnames:
         raise BankStatementError("CSV enthält keine Kopfzeile.")
@@ -248,17 +253,14 @@ def load_csv(
     amount_col = _pick(reader.fieldnames, _AMOUNT_ALIASES, prefix=False)
     debit_col = _pick(reader.fieldnames, _DEBIT_ALIASES)
     credit_col = _pick(reader.fieldnames, _CREDIT_ALIASES)
-    currency_col = _pick(
-        reader.fieldnames, _CURRENCY_ALIASES, prefix=False
-    )
+    currency_col = _pick(reader.fieldnames, _CURRENCY_ALIASES, prefix=False)
     party_col = _pick(reader.fieldnames, _PARTY_ALIASES)
     text_cols = _matching_columns(reader.fieldnames, _DESC_ALIASES)
 
     if not date_col or not (amount_col or debit_col or credit_col):
         raise BankStatementError(
             "CSV benötigt Datum und Betrag oder Belastung/Gutschrift. "
-            "Gefundene Spalten: "
-            + ", ".join(str(name) for name in reader.fieldnames)
+            "Gefundene Spalten: " + ", ".join(str(name) for name in reader.fieldnames)
         )
 
     # ZKB: Betrag Detail ist Fremdwährungs-Detail; Belastung/Gutschrift CHF
@@ -279,14 +281,10 @@ def load_csv(
             amount = _parse_decimal(row.get(amount_col, ""))
         else:
             debit = (
-                _parse_decimal(row.get(debit_col, ""))
-                if debit_col
-                else Decimal("0")
+                _parse_decimal(row.get(debit_col, "")) if debit_col else Decimal("0")
             )
             credit = (
-                _parse_decimal(row.get(credit_col, ""))
-                if credit_col
-                else Decimal("0")
+                _parse_decimal(row.get(credit_col, "")) if credit_col else Decimal("0")
             )
             amount = credit - abs(debit)
         if amount == 0:
@@ -299,26 +297,17 @@ def load_csv(
             ) from exc
 
         if debit_col or credit_col:
-            currency = (
-                _currency_from_columns(debit_col, credit_col)
-                or default_currency
-            )
+            currency = _currency_from_columns(debit_col, credit_col) or default_currency
         else:
             currency = (
-                row.get(currency_col, "")
-                if currency_col
-                else default_currency
+                row.get(currency_col, "") if currency_col else default_currency
             ) or default_currency
         currency = currency.strip().upper()
         if not re.fullmatch(r"[A-Z]{3}", currency):
-            raise BankStatementError(
-                f"Ungültiger Währungscode: {currency!r}"
-            )
+            raise BankStatementError(f"Ungültiger Währungscode: {currency!r}")
 
         description = _joined_text(row, text_cols)
-        counterparty = (
-            row.get(party_col, "").strip() if party_col else ""
-        )
+        counterparty = row.get(party_col, "").strip() if party_col else ""
         result.append(
             BankTransaction(
                 source_kind="csv",
@@ -355,9 +344,7 @@ _ZKB_LAYOUT_LABELS = (
     "saldo chf",
 )
 _PDF_DATE_TOKEN = r"(?:\d{1,2}[./-]\d{1,2}[./-]\d{2,4}|\d{4}-\d{2}-\d{2})"
-_PDF_AMOUNT_TOKEN = (
-    r"(?:[+\-(]?(?:\d{1,3}(?:[' ]\d{3})+|\d+)(?:[.,]\d{1,2})?[)]?)"
-)
+_PDF_AMOUNT_TOKEN = r"(?:[+\-(]?(?:\d{1,3}(?:[' ]\d{3})+|\d+)(?:[.,]\d{1,2})?[)]?)"
 _PDF_LINE = re.compile(
     rf"^(?P<date>{_PDF_DATE_TOKEN})\s+"
     rf"(?P<text>.+?)\s+(?P<amount>{_PDF_AMOUNT_TOKEN})"
@@ -379,9 +366,7 @@ def _zkb_header_positions(line: str) -> dict[str, int] | None:
     return positions
 
 
-def _slice_layout_column(
-    line: str, start: int, end: int | None = None
-) -> str:
+def _slice_layout_column(line: str, start: int, end: int | None = None) -> str:
     if start >= len(line):
         return ""
     return line[start:end].strip()
@@ -452,9 +437,7 @@ def _parse_zkb_layout_lines(
         valuta_raw = _slice_layout_column(line, value_start, balance_start)
         saldo_raw = _slice_layout_column(line, balance_start, None)
 
-        is_transaction_start = bool(
-            re.fullmatch(_PDF_DATE_TOKEN, raw_date)
-        )
+        is_transaction_start = bool(re.fullmatch(_PDF_DATE_TOKEN, raw_date))
         if not is_transaction_start:
             # Fortsetzungszeilen im Buchungstext gehören zur vorherigen
             # Transaktion. Kontakt-/Footertext außerhalb der Textspalte wird
@@ -466,9 +449,7 @@ def _parse_zkb_layout_lines(
         flush_pending()
 
         debit = _parse_decimal(debit_raw) if debit_raw else Decimal("0")
-        credit = (
-            _parse_decimal(credit_raw) if credit_raw else Decimal("0")
-        )
+        credit = _parse_decimal(credit_raw) if credit_raw else Decimal("0")
         if debit and credit:
             raise BankStatementError(
                 f"ZKB-PDF-Zeile {index}: Belastung und Gutschrift sind "
@@ -516,9 +497,7 @@ def _extract_pdf_page_text(page: Any) -> str:
         return str(extract_text() or "")
 
 
-def load_pdf(
-    path: str | Path, default_currency: str = "CHF"
-) -> list[BankTransaction]:
+def load_pdf(path: str | Path, default_currency: str = "CHF") -> list[BankTransaction]:
     try:
         from pypdf import PdfReader
     except ImportError as exc:
@@ -529,23 +508,18 @@ def load_pdf(
     _validate_source(source)
     reader = PdfReader(str(source))
     if len(reader.pages) > MAX_PDF_PAGES:
-        raise BankStatementError(
-            f"PDF enthält mehr als {MAX_PDF_PAGES} Seiten."
-        )
+        raise BankStatementError(f"PDF enthält mehr als {MAX_PDF_PAGES} Seiten.")
     lines: list[str] = []
     text_chars = 0
     for page in reader.pages:
         text = _extract_pdf_page_text(page)
         text_chars += len(text)
         if text_chars > MAX_PDF_TEXT_CHARS:
-            raise BankStatementError(
-                "PDF enthält zu viel extrahierten Text."
-            )
+            raise BankStatementError("PDF enthält zu viel extrahierten Text.")
         lines.extend(line.rstrip() for line in text.splitlines() if line.strip())
     if not lines:
         raise BankStatementError(
-            "PDF enthält keinen extrahierbaren Text. "
-            "Scan-PDFs benötigen lokale OCR."
+            "PDF enthält keinen extrahierbaren Text. " "Scan-PDFs benötigen lokale OCR."
         )
 
     zkb_rows = _parse_zkb_layout_lines(

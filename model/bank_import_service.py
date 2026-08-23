@@ -1,4 +1,5 @@
 """Atomarer, idempotenter Bankimport für den lokalen PDF/CSV-Reader."""
+
 from __future__ import annotations
 
 import hashlib
@@ -214,9 +215,7 @@ class BankImportService:
             raise ValueError(
                 f"Kategorie {item.category!r} existiert nicht für {item.typ!r}."
             )
-        amount = float(
-            require_finite_amount(item.amount, field="Bankimport-Betrag")
-        )
+        amount = float(require_finite_amount(item.amount, field="Bankimport-Betrag"))
         if amount <= 0:
             raise ValueError("Bankimport-Betrag muss größer als 0 sein.")
         return amount, self._tag_ids(item.tags)

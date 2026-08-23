@@ -3,6 +3,7 @@
 Sie läuft vollständig auf der bestehenden SQLite-Verbindung, lernt nur aus
 bestätigten Buchungen und darf weder Kategorien noch Tags erfinden.
 """
+
 from __future__ import annotations
 
 import json
