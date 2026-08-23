@@ -16,7 +16,7 @@ entfernt; so wuchs der Hauptordner um eine Datei je Version.
 Diese Liste erzeugt `tools/release_evidence_index.py`. Von Hand gepflegt
 driftete sie: Zuletzt nannte sie 59 von 129 Dateien.
 
-**131 Nachweise.**
+**132 Nachweise.**
 
 ## Matrizen und Messdaten
 
@@ -55,6 +55,7 @@ driftete sie: Zuletzt nannte sie 59 von 129 Dateien.
 - `FINAL_RELEASE_AUDIT_1000_MATRIX_v2_3_0.csv`
 - `FINAL_RELEASE_AUDIT_1000_MATRIX_v2_4_0.csv`
 - `FINAL_RELEASE_AUDIT_1000_MATRIX_v2_4_1.csv`
+- `FINAL_RELEASE_AUDIT_1000_MATRIX_v2_5_0.csv`
 - `KILLCRITIC_X10THINK_10000_MATRIX_v2_2_25.csv`
 - `KILLCRITIC_X10THINK_10000_MATRIX_v2_2_27.csv`
 - `KILLCRITIC_X10THINK_10000_MATRIX_v2_2_28.csv`

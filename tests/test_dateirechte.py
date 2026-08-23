@@ -65,14 +65,19 @@ def test_der_inhalt_bleibt_lesbar(tmp_path):
 
 @posix_only
 def test_der_brueckenordner_ist_geschlossen(tmp_path, monkeypatch):
-    """Eigenstaendig liegt er offen im Benutzerverzeichnis. Was darin steht,
-    sind Buchungen und Sparziele."""
+    """Eigenstaendig liegt er neben dem Programm. Was darin steht, sind
+    Buchungen und Sparziele."""
     from pathlib import Path
 
+    from model import app_paths
     from model import lifeplanner_import_service as bridge
 
     monkeypatch.delenv("LIFEPLANNER_BRIDGE_DIR", raising=False)
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    # Auch den Datenordner umbiegen, sonst legt der Test den Bruecken-
+    # ordner im echten Datenverzeichnis an und prueft dessen Rechte statt
+    # der frisch vergebenen.
+    monkeypatch.setattr(app_paths, "data_dir", lambda: tmp_path / "data")
 
     ordner = bridge.default_bridge_dir()
 

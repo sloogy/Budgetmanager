@@ -1,12 +1,19 @@
-Budgetmanager Version 2.4.1
+Budgetmanager Version 2.5.0
 Datum: 23. August 2026
 
-ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.73 2.3.0 2.4.1
+ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.73 2.3.0 2.4.1 2.5.0
 -------------------------------------------------------------
+- Was an FPM geht, entscheidet der Nutzer Eintrag fuer Eintrag:
+  "Extras -> Freigabe fuer FPM" zeigt Ausgabenkategorien, Sparkategorien und
+  Sparziele mit je einem Haekchen. Neu Angelegtes ist nicht freigegeben; beim
+  Update auf 2.5.0 bleibt freigegeben, was bisher schon uebertragen wurde.
+- Der Brueckenordner liegt eigenstaendig neben dem Programm (Datenordner)
+  statt im Benutzerprofil - sonst nimmt eine portable Kopie alles mit ausser
+  der Bruecke. Ein vorhandener Ordner am alten Ort wird weiterverwendet.
 - Der LifePlanner-Dialog zeigt den aktiven Brueckenordner und alle drei
   Dateien einzeln. Welcher Ordner gilt, haengt vom Startmodus ab: Im
-  LifePlanner gibt ihn der Host vor, eigenstaendig liegt er im
-  Benutzerverzeichnis. Unterschieden wird zwischen "noch nichts geschrieben"
+  LifePlanner gibt ihn der Host vor, eigenstaendig liegt er im Datenordner
+  neben dem Programm. Unterschieden wird zwischen "noch nichts geschrieben"
   und "leer".
 - Beim Beenden konnte ein NameError auftreten: Der Timer fuer den
   Setup-Assistenten holte sich das Hauptfenster ueber die Closure und griff

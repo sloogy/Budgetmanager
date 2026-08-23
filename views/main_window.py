@@ -1044,6 +1044,14 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
         import_action.triggered.connect(self._show_lifeplanner_imports)
         extras_menu.addAction(import_action)
 
+        # Direkt daneben, weil es dieselbe Bruecke ist - nur die andere
+        # Richtung. Wer den Import kennt, findet die Freigabe.
+        share_action = QAction(tr("bridge.share_menu"), self)
+        share_action.setIcon(get_icon("📤"))
+        share_action.setStatusTip(tr("bridge.share_hint"))
+        share_action.triggered.connect(self._show_bridge_share)
+        extras_menu.addAction(share_action)
+
         extras_menu.addSeparator()
 
         category_manager_action = QAction(tr("menu.category_manager"), self)
@@ -2601,6 +2609,16 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
             self._save_encrypted_session()
             self._schedule_refresh_all_tabs(reason="lifeplanner_import", delay_ms=0)
         self._update_lifeplanner_import_badge()
+
+    def _show_bridge_share(self):
+        """Zeigt, was an FPM weitergegeben wird, und laesst es einzeln waehlen."""
+        from views.bridge_share_dialog import BridgeShareDialog
+
+        BridgeShareDialog(self.conn, self).exec()
+        # Nach dem Schliessen schreiben, auch wenn der Nutzer "Jetzt senden"
+        # nicht gedrueckt hat: Eine zurueckgenommene Freigabe soll nicht bis
+        # zur naechsten Buchung in der Brueckendatei stehen bleiben.
+        self._sync_bridge_outboxes_safely()
 
     def _show_quick_add(self):
         """Zeigt Schnelleingabe-Dialog (Strg+N)"""

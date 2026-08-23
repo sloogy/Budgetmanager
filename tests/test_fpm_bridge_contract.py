@@ -144,6 +144,10 @@ def _sparziel_anlegen(conn: sqlite3.Connection) -> None:
         "notes": "",
         "status": "sparend",
         "created_date": "2026-01-01",
+        # Seit v19 exportiert der BudgetManager nur Freigegebenes. Diese
+        # Tests pruefen das Dateiformat, nicht die Freigabe - also wird sie
+        # hier gesetzt, damit ueberhaupt eine Zeile entsteht.
+        "bridge_share": 1,
     }
     vorhanden = {k: v for k, v in werte.items() if k in spalten}
     conn.execute(

@@ -196,6 +196,10 @@ class SavingsGoal:
     released_date: str | None = None
     contributed_amount: float = 0.0
     withdrawn_amount: float = 0.0
+    # Ob dieses Ziel an FPM gespiegelt wird. Vorgabe aus: Ein Sparziel traegt
+    # Name, Betrag und Frist - das verlaesst den BudgetManager erst, wenn der
+    # Nutzer es sagt.
+    bridge_share: bool = False
 
     @property
     def effective_contributed_amount(self) -> float:
@@ -285,10 +289,22 @@ class SavingsGoalsModel:
     def _has_action_column(self) -> bool:
         return "savings_action" in self._tracking_columns
 
+    @property
+    def _has_bridge_column(self) -> bool:
+        return "bridge_share" in self._goal_columns
+
     def _select_sql(self) -> str:
-        # Beide Varianten sind vollständig statische SQL-Literale. Das hält die
+        # Alle Varianten sind vollständig statische SQL-Literale. Das hält die
         # Abfrage auditierbar und verhindert, dass Spaltennamen aus externen
         # Eingaben in SQL gelangen können.
+        # Der Ausdruck bleibt bewusst *im* return: Das Release-Audit erkennt
+        # eine Methode nur dann als literal, wenn jeder Rueckgabeausdruck aus
+        # Literalen, Ternaeren und Verkettung besteht. Ueber eine Zwischen-
+        # variable gefuehrt, gilt jede Abfrage darauf als dynamisches SQL.
+        #
+        # Zum zweiten Teil: Vor v19 gab es die Spalte nicht; "1" statt "0" als
+        # Ersatz, damit eine aeltere Datenbank sich wie frueher verhaelt und
+        # alles spiegelt, statt die Bruecke wortlos leerzuraeumen.
         return (
             "id, name, target_amount, current_amount, deadline, category, notes, "
             "created_date, status, released_amount, released_date, "
@@ -297,7 +313,7 @@ class SavingsGoalsModel:
             else "id, name, target_amount, current_amount, deadline, category, notes, "
             "created_date, status, released_amount, released_date, "
             "current_amount AS contributed_amount, 0 AS withdrawn_amount"
-        )
+        ) + (", bridge_share" if self._has_bridge_column else ", 1 AS bridge_share")
 
     def _snapshot(self, goal_id: int):
         return self.conn.execute(
@@ -320,6 +336,7 @@ class SavingsGoalsModel:
             released_date=row[10],
             contributed_amount=float(row[11] or 0.0),
             withdrawn_amount=float(row[12] or 0.0),
+            bridge_share=bool(row[13]),
         )
 
     def create(
@@ -531,6 +548,21 @@ class SavingsGoalsModel:
                 "UPDATE savings_goals SET current_amount=current_amount+? WHERE id=?",
                 (delta, goal_id),
             )
+        self.conn.commit()
+
+    def set_bridge_share(self, goal_id: int, geteilt: bool) -> None:
+        """Gibt ein Sparziel fuer die FPM-Bruecke frei oder nimmt es zurueck.
+
+        Das Zuruecknehmen wirkt erst beim naechsten Schreiben der Brueckendatei
+        - die ist eine Momentaufnahme und wird vollstaendig ersetzt. Wer es
+        sofort will, benutzt "Jetzt senden" im Freigabe-Dialog.
+        """
+        if not self._has_bridge_column:
+            return
+        self.conn.execute(
+            "UPDATE savings_goals SET bridge_share=? WHERE id=?",
+            (int(geteilt), goal_id),
+        )
         self.conn.commit()
 
     def delete(self, goal_id: int) -> None:

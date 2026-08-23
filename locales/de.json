@@ -467,6 +467,20 @@
     "kind_variable_recurring_short": "Wied. variabel",
     "title_fix_recurring": "Fixkosten & Wiederkehrende"
   },
+  "bridge": {
+    "share_column_name": "Name",
+    "share_hint": "Nur Angehaktes verlässt den BudgetManager. Kategorien geben FPM die Namen, unter denen es Ausgaben vorschlagen darf; Sparziele werden mit Name, Betrag und Frist gespiegelt. Was hier aus ist, steht auch nicht in der Brückendatei.",
+    "share_menu": "Freigabe für FPM…",
+    "share_select_all": "Alle im Reiter",
+    "share_select_none": "Keine im Reiter",
+    "share_send_now": "Jetzt an FPM senden",
+    "share_sent": "{goals} Sparziel(e) und {expenses} Ausgabe(n) geschrieben nach:\n{path}",
+    "share_status": "Freigegeben: {categories} von {categories_total} Kategorien, {goals} von {goals_total} Sparzielen.",
+    "share_tab_expenses": "Ausgabenkategorien",
+    "share_tab_goals": "Sparziele",
+    "share_tab_savings_cats": "Sparkategorien",
+    "share_title": "Was geht an FPM?"
+  },
   "btn": {
     "add": "Hinzufügen",
     "all": "Alle",

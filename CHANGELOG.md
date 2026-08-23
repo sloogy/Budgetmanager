@@ -1,5 +1,60 @@
 # Changelog
 
+## 2.5.0 — 23. August 2026
+
+Die Brücke zu FPM spiegelte alles: jede Kategorie, jedes Sparziel. Ab jetzt
+entscheidet ein Häkchen je Eintrag, was den BudgetManager verlässt. Und der
+Brückenordner liegt endlich dort, wo die übrigen Daten liegen.
+
+### Zusammenspiel mit FPM
+
+- **Freigabe je Kategorie und Sparziel.** Wer 40 Kategorien führt, schickte
+  bisher 40 Namen an ein Programm, das drei davon braucht — und Kategorienamen
+  sind keine neutralen Etiketten: Da steht „Anwalt Scheidung" oder „Therapie",
+  und ein Sparziel trägt Betrag und Frist gleich mit. Die Brücke ist eine Datei
+  im Dateisystem; was dort nicht hineingehört, gehört auch dann nicht hinein,
+  wenn es „nur" ein Name ist.
+
+  Der neue Dialog *Extras → Freigabe für FPM…* zeigt beides an einer Stelle:
+  Ausgabenkategorien, Sparkategorien, Sparziele, je ein Häkchen. Bewusst nicht
+  verteilt auf Kategorie-Eigenschaften und Sparziel-Dialog — wer wissen will,
+  was sein Rechner an das andere Programm weitergibt, soll an *einem* Ort
+  nachsehen können. Es gibt keinen OK-Knopf: Jedes Häkchen wird sofort
+  geschrieben, und beim Schliessen werden die Brückendateien neu geschrieben,
+  damit eine zurückgenommene Freigabe nicht bis zur nächsten Buchung in der
+  Datei stehen bleibt. „Alle" und „Keine" wirken nur auf den sichtbaren Reiter,
+  sonst räumt ein Klick auf der Kategorienliste nebenbei die Sparziele mit ab.
+
+  Beim Update (Schema v19) bleibt freigegeben, was heute schon gespiegelt wird
+  — sonst wäre FPMs Kategorien-Zuordnung nach dem Update schlagartig leer und
+  der Nutzer suchte den Fehler dort, wo keiner ist. Neu angelegte Einträge sind
+  dagegen ausgeschaltet: Eine Freigabe ist eine Entscheidung, keine Vorgabe.
+  Eine Ausnahme gilt für ein Sparziel, das aus einem FPM-Wunsch übernommen
+  wurde — wer den Wunsch dort stellt und hier bestätigt, will den Fortschritt
+  dort sehen.
+
+  Sparziele tragen jetzt zusätzlich `visible`, obwohl in der Datei nur noch
+  Freigegebenes steht: FPM wertet das Feld seit jeher aus und wirft ohne es
+  nichts weg — ein zurückgenommenes Ziel verschwände dort sonst erst beim
+  nächsten vollständigen Schreiben.
+
+- **Der Brückenordner liegt jetzt neben dem Programm.** Datenbank,
+  Einstellungen und Backups liegen längst im Datenordner, nur die Brücke
+  schrieb ins Benutzerprofil. Wer den Ordner auf einen Stick kopierte, nahm
+  damit alles mit ausser ihr — und wunderte sich, dass am anderen Rechner keine
+  Sparziele ankamen. Ein bereits vorhandener Ordner am alten Ort gewinnt
+  weiterhin: Dort liegt der Stand des Nutzers, und ihn stehen zu lassen und
+  daneben einen leeren zweiten zu eröffnen, wäre schlimmer als der alte Ort. Im
+  LifePlanner gibt weiterhin der Host den Ordner vor.
+
+### Ordnung
+
+- **Ein Rechte-Test prüfte den falschen Ordner.** `test_der_brueckenordner_ist_
+  geschlossen` bog nur `Path.home()` um. Nachdem der Brückenordner in den
+  Datenordner gezogen ist, legte der Test ihn im *echten* Datenverzeichnis an
+  und maß dessen Rechte — grün, aber ohne Aussage über den Fall, den er
+  festhalten soll. Er patcht jetzt auch `data_dir()`.
+
 ## 2.4.1 — 23. August 2026
 
 „Wie das System" greift jetzt sofort statt erst beim nächsten Start, und die

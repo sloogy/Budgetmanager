@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import stat
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -120,3 +121,59 @@ def test_der_pfad_folgt_der_umgebung(tmp_path, monkeypatch):
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "cfg"))
 
     assert register_pfad() == tmp_path / "cfg" / "fpm-suite" / "bridges.json"
+
+
+# ── Wo die Bruecke liegt, wenn kein Host sie vorgibt ────────────────────────
+
+
+def test_eigenstaendig_liegt_die_bruecke_neben_dem_programm(
+    tmp_path, monkeypatch, register
+):
+    """Portabel heisst portabel.
+
+    Datenbank, Einstellungen und Backups liegen im Datenordner. Lag die
+    Bruecke als einzige im Benutzerprofil, nahm ein Kopieren des Ordners auf
+    einen Stick alles mit ausser ihr - am anderen Rechner kam nichts an.
+    """
+    from model import app_paths
+    from model.lifeplanner_import_service import default_bridge_dir
+
+    monkeypatch.delenv("LIFEPLANNER_BRIDGE_DIR", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "profil"))
+    monkeypatch.setattr(app_paths, "data_dir", lambda: tmp_path / "data")
+
+    assert default_bridge_dir() == tmp_path / "data" / "fpm_budgetmanager_bridge"
+
+
+def test_ein_vorhandener_ordner_am_alten_ort_gewinnt(tmp_path, monkeypatch, register):
+    """Dort liegt der Stand des Nutzers.
+
+    Ihn stehen zu lassen und daneben einen leeren zweiten zu eroeffnen, waere
+    schlimmer als der alte Ort: Der Abgleich liefe ins Leere, ohne dass etwas
+    fehlt.
+    """
+    from model import app_paths
+    from model.lifeplanner_import_service import default_bridge_dir
+
+    heim = tmp_path / "profil"
+    alt = heim / "fpm_budgetmanager_bridge"
+    alt.mkdir(parents=True)
+    monkeypatch.delenv("LIFEPLANNER_BRIDGE_DIR", raising=False)
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: heim))
+    monkeypatch.setattr(app_paths, "data_dir", lambda: tmp_path / "data")
+
+    assert default_bridge_dir() == alt
+
+
+def test_der_host_hat_weiterhin_das_letzte_wort(tmp_path, monkeypatch, register):
+    """Im LifePlanner liegt die Bruecke im geschuetzten Profil des Hosts -
+    daran aendert der portable Standardort nichts."""
+    from model import app_paths
+    from model.lifeplanner_import_service import default_bridge_dir
+
+    vorgabe = tmp_path / "host" / "bridge"
+    monkeypatch.setenv("LIFEPLANNER_BRIDGE_DIR", str(vorgabe))
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "profil"))
+    monkeypatch.setattr(app_paths, "data_dir", lambda: tmp_path / "data")
+
+    assert default_bridge_dir() == vorgabe.resolve()

@@ -1,6 +1,6 @@
-# BudgetManager 2.4.1 – User guide
+# BudgetManager 2.5.0 – User guide
 
-This guide describes the functions actually available in version 2.4.1. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
+This guide describes the functions actually available in version 2.5.0. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
 
 ## First start in four steps
 
@@ -112,6 +112,29 @@ written on exit and fully replaced next time, so resolved items disappear on
 their own.
 
 Without LifePlanner, nothing happens here.
+
+### 6.8 What is shared with FPM
+
+The bridge works both ways: FPM proposes expenses, and in return BudgetManager
+provides category names and savings goals — so FPM can map its expenses to your
+categories and show the progress of a wish.
+
+Since v2.5.0 you decide entry by entry.
+**Extras → Sharing for FPM** lists expense categories, savings categories and savings goals, each with a
+checkbox. Only ticked entries end up in the bridge file; everything else stays
+in your database. Categories are shared by name only — no budget figure, no
+transaction; a savings goal is shared with its name, amount and deadline.
+
+There is no OK button: every tick takes effect immediately, and the bridge
+files are rewritten when you close the dialog. **All in tab** and **None in
+tab** apply only to the tab you are looking at. **Send to FPM now** rewrites the
+files right away and names the folder they are in.
+
+Updating to 2.5.0 keeps everything that was already being transferred shared —
+otherwise FPM would suddenly be left without categories. Newly created
+categories and savings goals, however, are not shared by default. One
+exception: a savings goal created from an FPM wish is mirrored so the progress
+is visible there; you can withdraw it in the same dialog.
 
 ## 7. Overview
 

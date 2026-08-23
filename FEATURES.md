@@ -1,3 +1,9 @@
+## Neu in v2.5.0
+
+- Freigabe je Kategorie und Sparziel für die FPM-Brücke: **Extras → Freigabe für FPM** entscheidet Eintrag für Eintrag, was den BudgetManager verlässt. Neu angelegtes ist von sich aus nicht freigegeben.
+- Beim Update bleibt freigegeben, was bisher schon übertragen wurde — FPM steht nach dem Update nicht plötzlich ohne Kategorien da.
+- Der Brückenordner liegt jetzt neben dem Programm statt im Benutzerprofil; ein vorhandener Ordner am alten Ort wird weiterverwendet.
+
 ## Neu in v2.4.1
 
 - Siehe VERSION_INFO.txt und CHANGELOG.md.

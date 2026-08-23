@@ -1,4 +1,4 @@
-# 📦 BudgetManager v2.4.1 — Installation, Start & Update
+# 📦 BudgetManager v2.5.0 — Installation, Start & Update
 
 Diese Anleitung beschreibt Installation, Start, Update und Notstart für Windows, Linux und den Betrieb aus dem Quellcode. Die Kurzfassung steht in [README.md](README.md), die Bedienung im [Benutzerhandbuch](docs/USER_GUIDE.de.md).
 

@@ -1,6 +1,6 @@
-# BudgetManager 2.4.1 – Manuel utilisateur
+# BudgetManager 2.5.0 – Manuel utilisateur
 
-Ce manuel décrit les fonctions réellement disponibles dans la version 2.4.1. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
+Ce manuel décrit les fonctions réellement disponibles dans la version 2.5.0. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
 
 ## Premier démarrage en quatre étapes
 
@@ -117,6 +117,33 @@ L'état est écrit à la fermeture et entièrement remplacé la fois suivante ; 
 qui est réglé disparaît de lui-même.
 
 Sans LifePlanner, rien ne se passe ici.
+
+### 6.8 Ce qui est transmis à FPM
+
+La passerelle fonctionne dans les deux sens : FPM propose des dépenses, et en
+retour BudgetManager met à disposition des noms de catégories et des objectifs
+d'épargne — afin que FPM puisse rattacher ses dépenses à vos catégories et
+afficher la progression d'un souhait.
+
+Depuis la version 2.5.0, vous en décidez entrée par entrée.
+**Extras → Partage vers FPM** présente les catégories de dépenses, les catégories d'épargne et
+les objectifs d'épargne, chacun avec une case à cocher. Seul ce qui est coché
+figure dans le fichier de la passerelle ; le reste demeure dans votre base de
+données. Des catégories, seul le nom sort — ni montant budgété, ni écriture ;
+d'un objectif d'épargne, le nom, le montant et l'échéance.
+
+Il n'y a pas de bouton OK : chaque case agit immédiatement, et les fichiers de
+la passerelle sont réécrits à la fermeture de la boîte de dialogue. **Tout dans
+l'onglet** et **Rien dans l'onglet** ne valent que pour l'onglet affiché.
+**Envoyer à FPM maintenant** réécrit les fichiers sur-le-champ et indique le
+dossier où ils se trouvent.
+
+Lors de la mise à jour vers 2.5.0, tout ce qui était déjà transmis reste
+partagé — sinon FPM se retrouverait subitement sans catégories. En revanche,
+les catégories et objectifs d'épargne créés ensuite ne sont pas partagés
+d'office. Une exception : un objectif d'épargne issu d'un souhait FPM est
+répercuté afin que la progression y soit visible ; vous pouvez le retirer dans
+la même boîte de dialogue.
 
 ## 7. Aperçu
 
