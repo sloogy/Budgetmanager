@@ -1,6 +1,6 @@
-# BudgetManager 2.5.0 – User guide
+# BudgetManager 3.0.0 – User guide
 
-This guide describes the functions actually available in version 2.5.0. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
+This guide describes the functions actually available in version 3.0.0. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
 
 ## First start in four steps
 
@@ -135,6 +135,36 @@ otherwise FPM would suddenly be left without categories. Newly created
 categories and savings goals, however, are not shared by default. One
 exception: a savings goal created from an FPM wish is mirrored so the progress
 is visible there; you can withdraw it in the same dialog.
+
+### 6.9 Bank import from PDF and CSV
+
+**Import → Bank PDF/CSV…** reads a bank statement or credit card statement.
+Reading happens on your own machine; no line ever leaves it.
+
+Every recognised row is listed with date, type, amount, text, category, tags
+and a checkbox. **Only checked rows are booked.** Suggestions for type and
+category come from the local memory, which only ever proposes categories and
+tags that already exist.
+
+Select several rows with **Ctrl+click**, **Shift+click** or **Ctrl+A**. The
+drop-downs above the table apply type, category, tags and selection state to
+all marked rows at once.
+
+The mandatory tags of the chosen category are set and stay set; further
+existing tags can be ticked in the tag drop-down.
+
+Opening the same file twice does not create duplicates: every row carries an
+identifier built from date, amount and text. The import runs as one
+transaction — it completes fully or not at all.
+
+Learning happens **after** the import and only from what you confirmed. A
+suggestion you changed or unchecked is not learned.
+
+**TWINT credits are not booked as income.** A positive TWINT amount is usually
+the repayment of an expense already in your figures — booked as income, the
+month would be wrong twice over. Such rows get the type **TWINT (KI)**: you
+assign a real category, the program remembers the assignment, and the entry
+itself has 0.00 effect on your budget.
 
 ## 7. Overview
 

@@ -1,4 +1,4 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BudgetManager Hilfe 2.5.0</title><style>:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.58;max-width:1120px;margin:32px auto;padding:0 24px;color:#18202a;background:#fff}h1,h2,h3,h4{color:#0b7285;line-height:1.25;margin-top:1.7em}h1{border-bottom:2px solid #0b7285;padding-bottom:.35rem}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #cbd3da;padding:.55rem .7rem;text-align:left;vertical-align:top}th{background:#eef6f7}pre{background:#f3f5f7;padding:14px;border-radius:7px;overflow:auto}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}blockquote{border-left:4px solid #0b7285;margin:1rem 0;padding:.45rem 1rem;background:#f5fafb}a{color:#0b7285}hr{border:0;border-top:1px solid #d9e0e5;margin:2rem 0}@media(prefers-color-scheme:dark){body{color:#e8edf2;background:#15191d}h1,h2,h3,h4,a{color:#67c7d2}th{background:#263238}th,td{border-color:#48545d}pre,blockquote{background:#20272c}}</style></head><body><h1>BudgetManager Hilfe 2.5.0</h1>
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BudgetManager Hilfe 3.0.0</title><style>:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.58;max-width:1120px;margin:32px auto;padding:0 24px;color:#18202a;background:#fff}h1,h2,h3,h4{color:#0b7285;line-height:1.25;margin-top:1.7em}h1{border-bottom:2px solid #0b7285;padding-bottom:.35rem}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #cbd3da;padding:.55rem .7rem;text-align:left;vertical-align:top}th{background:#eef6f7}pre{background:#f3f5f7;padding:14px;border-radius:7px;overflow:auto}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}blockquote{border-left:4px solid #0b7285;margin:1rem 0;padding:.45rem 1rem;background:#f5fafb}a{color:#0b7285}hr{border:0;border-top:1px solid #d9e0e5;margin:2rem 0}@media(prefers-color-scheme:dark){body{color:#e8edf2;background:#15191d}h1,h2,h3,h4,a{color:#67c7d2}th{background:#263238}th,td{border-color:#48545d}pre,blockquote{background:#20272c}}</style></head><body><h1>BudgetManager Hilfe 3.0.0</h1>
 <h2>Vereinheitlichte Bedienung</h2>
 <p>Die <strong>linke Seitenleiste</strong> ist die Hauptnavigation. Neue Buchungen aus Cockpit, Tracking und Aktionsleiste öffnen <strong>denselben vollständigen Buchungsdialog</strong>. Budget ist der Plan, Tracking enthält die echten Buchungen.</p>
 <table>
@@ -39,8 +39,8 @@
 <p>Direkt anzeigbare Mindmap: <code>docs/help/mindmap.de.html</code>. Die In-App-Hilfe ist mit <strong>F1</strong> durchsuchbar.</p>
 </blockquote>
 <hr />
-<h1>BudgetManager 2.5.0 – Benutzerhandbuch</h1>
-<p>Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.5.0. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt <strong>Budget (Plan)</strong> klar von <strong>Tracking (echte Buchungen)</strong>.</p>
+<h1>BudgetManager 3.0.0 – Benutzerhandbuch</h1>
+<p>Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 3.0.0. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt <strong>Budget (Plan)</strong> klar von <strong>Tracking (echte Buchungen)</strong>.</p>
 <h2>Erststart in vier Schritten</h2>
 <ol>
 <li>Sprache, Währung und Zahlenformat wählen.</li>
@@ -259,6 +259,31 @@ sonst stünde FPM plötzlich ohne Kategorien da. Neu angelegte Kategorien und
 Sparziele sind dagegen von sich aus nicht freigegeben. Ausnahme: Ein Sparziel,
 das aus einem FPM-Wunsch entstanden ist, wird gespiegelt, damit der
 Fortschritt dort sichtbar ist; zurücknehmen können Sie es im selben Dialog.</p>
+<h3>6.9 Bankimport aus PDF und CSV</h3>
+<p><strong>Import → Bank PDF/CSV…</strong> liest einen Kontoauszug oder eine
+Kreditkartenabrechnung ein. Gelesen wird auf Ihrem Rechner; es geht keine
+Zeile an einen fremden Dienst.</p>
+<p>Nach dem Öffnen zeigt der Dialog jede erkannte Zeile mit Datum, Typ, Betrag,
+Text, Kategorie, Tags und einem Haken. <strong>Nur angehakte Zeilen werden
+gebucht.</strong> Vorschläge für Typ und Kategorie stammen aus dem lokalen
+Gedächtnis; es schlägt nur Kategorien und Tags vor, die es schon gibt.</p>
+<p>Mehrere Zeilen wählen Sie mit <strong>Strg+Mausklick</strong>, <strong>Umschalt+Mausklick</strong> oder
+<strong>Strg+A</strong>. Die Dropdowns über der Tabelle setzen Typ, Kategorie, Tags und
+Auswahlstatus für alle markierten Zeilen auf einmal.</p>
+<p>Die Pflicht-Tags der gewählten Kategorie werden gesetzt und bleiben gesetzt;
+weitere vorhandene Tags können Sie im Tag-Dropdown ankreuzen.</p>
+<p>Dieselbe Datei zweimal zu öffnen erzeugt keine doppelten Buchungen: Jede Zeile
+trägt eine Kennung aus Datum, Betrag und Text. Der Import läuft in einem
+Zug — er geht ganz durch oder gar nicht.</p>
+<p>Gelernt wird erst <strong>nach</strong> dem Import und nur aus dem, was Sie bestätigt
+haben. Ein Vorschlag, den Sie geändert oder abgewählt haben, wird nicht
+gelernt.</p>
+<p><strong>TWINT-Eingänge werden nicht als Einkommen gebucht.</strong> Ein positiver
+TWINT-Betrag ist meist die Rückzahlung einer Auslage, die als Ausgabe schon
+in Ihren Zahlen steht — als Einkommen gebucht stünde der Monat doppelt
+falsch. Solche Zeilen bekommen den Typ <strong>TWINT (KI)</strong>: Sie ordnen ihnen eine
+echte Kategorie zu, das Programm merkt sich die Zuordnung, und die Buchung
+selbst hat 0.00 Wirkung auf Ihr Budget.</p>
 <h2>7. Übersicht und Diagramme</h2>
 <p>Die Übersicht bietet Jahr, Monat oder benutzerdefinierten Zeitraum. Rechts können Typ, Kategorie inklusive Unterkategorien, Tags, Bemerkung und Betragsgrenzen kombiniert werden.</p>
 <h3>7.1 Kennzahlen und Tabellen</h3>

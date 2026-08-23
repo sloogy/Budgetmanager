@@ -1,6 +1,6 @@
-# BudgetManager 2.5.0 – Manuel utilisateur
+# BudgetManager 3.0.0 – Manuel utilisateur
 
-Ce manuel décrit les fonctions réellement disponibles dans la version 2.5.0. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
+Ce manuel décrit les fonctions réellement disponibles dans la version 3.0.0. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
 
 ## Premier démarrage en quatre étapes
 
@@ -144,6 +144,39 @@ les catégories et objectifs d'épargne créés ensuite ne sont pas partagés
 d'office. Une exception : un objectif d'épargne issu d'un souhait FPM est
 répercuté afin que la progression y soit visible ; vous pouvez le retirer dans
 la même boîte de dialogue.
+
+### 6.9 Import bancaire depuis PDF et CSV
+
+**Import → Relevé bancaire PDF/CSV…** lit un relevé de compte ou un relevé de
+carte de crédit. La lecture se fait sur votre ordinateur ; aucune ligne n'est
+transmise à un service tiers.
+
+Chaque ligne reconnue est affichée avec sa date, son type, son montant, son
+texte, sa catégorie, ses étiquettes et une case à cocher. **Seules les lignes
+cochées sont enregistrées.** Les propositions de type et de catégorie
+proviennent de la mémoire locale, qui ne propose que des catégories et des
+étiquettes existantes.
+
+Sélectionnez plusieurs lignes avec **Ctrl+clic**, **Maj+clic** ou **Ctrl+A**.
+Les listes déroulantes au-dessus du tableau appliquent le type, la catégorie,
+les étiquettes et l'état de sélection à toutes les lignes marquées.
+
+Les étiquettes obligatoires de la catégorie choisie sont posées et le restent ;
+d'autres étiquettes existantes peuvent être cochées dans la liste déroulante.
+
+Ouvrir deux fois le même fichier ne crée pas de doublons : chaque ligne porte
+un identifiant composé de la date, du montant et du texte. L'import se
+déroule d'un seul tenant — il aboutit entièrement ou pas du tout.
+
+L'apprentissage a lieu **après** l'import et uniquement à partir de ce que vous
+avez confirmé. Une proposition modifiée ou décochée n'est pas apprise.
+
+**Les entrées TWINT ne sont pas enregistrées comme revenus.** Un montant TWINT
+positif est le plus souvent le remboursement d'une dépense déjà présente dans
+vos chiffres ; enregistré comme revenu, le mois serait faux deux fois. Ces
+lignes reçoivent le type **TWINT (KI)** : vous leur attribuez une vraie
+catégorie, le programme retient l'attribution, et l'écriture elle-même a un
+effet de 0.00 sur votre budget.
 
 ## 7. Aperçu
 

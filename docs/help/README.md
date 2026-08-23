@@ -1,4 +1,4 @@
-# BudgetManager Hilfe 2.5.0
+# BudgetManager Hilfe 3.0.0
 
 ## Vereinheitlichte Bedienung
 
@@ -17,9 +17,9 @@ Die **linke Seitenleiste** ist die Hauptnavigation. Neue Buchungen aus Cockpit, 
 
 ---
 
-# BudgetManager 2.5.0 – Benutzerhandbuch
+# BudgetManager 3.0.0 – Benutzerhandbuch
 
-Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.5.0. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
+Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 3.0.0. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
 
 ## Erststart in vier Schritten
 
@@ -288,6 +288,39 @@ sonst stünde FPM plötzlich ohne Kategorien da. Neu angelegte Kategorien und
 Sparziele sind dagegen von sich aus nicht freigegeben. Ausnahme: Ein Sparziel,
 das aus einem FPM-Wunsch entstanden ist, wird gespiegelt, damit der
 Fortschritt dort sichtbar ist; zurücknehmen können Sie es im selben Dialog.
+
+### 6.9 Bankimport aus PDF und CSV
+
+**Import → Bank PDF/CSV…** liest einen Kontoauszug oder eine
+Kreditkartenabrechnung ein. Gelesen wird auf Ihrem Rechner; es geht keine
+Zeile an einen fremden Dienst.
+
+Nach dem Öffnen zeigt der Dialog jede erkannte Zeile mit Datum, Typ, Betrag,
+Text, Kategorie, Tags und einem Haken. **Nur angehakte Zeilen werden
+gebucht.** Vorschläge für Typ und Kategorie stammen aus dem lokalen
+Gedächtnis; es schlägt nur Kategorien und Tags vor, die es schon gibt.
+
+Mehrere Zeilen wählen Sie mit **Strg+Mausklick**, **Umschalt+Mausklick** oder
+**Strg+A**. Die Dropdowns über der Tabelle setzen Typ, Kategorie, Tags und
+Auswahlstatus für alle markierten Zeilen auf einmal.
+
+Die Pflicht-Tags der gewählten Kategorie werden gesetzt und bleiben gesetzt;
+weitere vorhandene Tags können Sie im Tag-Dropdown ankreuzen.
+
+Dieselbe Datei zweimal zu öffnen erzeugt keine doppelten Buchungen: Jede Zeile
+trägt eine Kennung aus Datum, Betrag und Text. Der Import läuft in einem
+Zug — er geht ganz durch oder gar nicht.
+
+Gelernt wird erst **nach** dem Import und nur aus dem, was Sie bestätigt
+haben. Ein Vorschlag, den Sie geändert oder abgewählt haben, wird nicht
+gelernt.
+
+**TWINT-Eingänge werden nicht als Einkommen gebucht.** Ein positiver
+TWINT-Betrag ist meist die Rückzahlung einer Auslage, die als Ausgabe schon
+in Ihren Zahlen steht — als Einkommen gebucht stünde der Monat doppelt
+falsch. Solche Zeilen bekommen den Typ **TWINT (KI)**: Sie ordnen ihnen eine
+echte Kategorie zu, das Programm merkt sich die Zuordnung, und die Buchung
+selbst hat 0.00 Wirkung auf Ihr Budget.
 
 ## 7. Übersicht und Diagramme
 
