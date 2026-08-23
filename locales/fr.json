@@ -467,6 +467,20 @@
     "kind_variable_recurring_short": "Réc. variable",
     "title_fix_recurring": "Frais fixes et récurrents"
   },
+  "bridge": {
+    "share_column_name": "Nom",
+    "share_hint": "Seules les entrées cochées quittent BudgetManager. Les catégories donnent à FPM les noms sous lesquels il peut proposer des dépenses ; les objectifs d'épargne sont reflétés avec nom, montant et échéance. Ce qui est désactivé ici ne figure pas non plus dans le fichier pont.",
+    "share_menu": "Partage vers FPM…",
+    "share_select_all": "Tout dans l'onglet",
+    "share_select_none": "Rien dans l'onglet",
+    "share_send_now": "Envoyer à FPM maintenant",
+    "share_sent": "{goals} objectif(s) et {expenses} dépense(s) écrits dans :\n{path}",
+    "share_status": "Partagé : {categories} sur {categories_total} catégories, {goals} sur {goals_total} objectifs.",
+    "share_tab_expenses": "Catégories de dépenses",
+    "share_tab_goals": "Objectifs d'épargne",
+    "share_tab_savings_cats": "Catégories d'épargne",
+    "share_title": "Que transmettre à FPM ?"
+  },
   "btn": {
     "add": "Ajouter",
     "all": "Tous",

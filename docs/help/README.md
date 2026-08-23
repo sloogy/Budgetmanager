@@ -1,4 +1,4 @@
-# BudgetManager Hilfe 2.4.1
+# BudgetManager Hilfe 2.5.0
 
 ## Vereinheitlichte Bedienung
 
@@ -17,9 +17,9 @@ Die **linke Seitenleiste** ist die Hauptnavigation. Neue Buchungen aus Cockpit, 
 
 ---
 
-# BudgetManager 2.4.1 – Benutzerhandbuch
+# BudgetManager 2.5.0 – Benutzerhandbuch
 
-Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.4.1. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
+Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.5.0. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
 
 ## Erststart in vier Schritten
 
@@ -264,6 +264,30 @@ Stand wird beim Beenden geschrieben und beim nächsten Mal vollständig ersetzt 
 was erledigt ist, verschwindet von selbst.
 
 Ohne LifePlanner passiert hier nichts.
+
+### 6.8 Was an FPM weitergegeben wird
+
+Die Brücke läuft in beide Richtungen: FPM schlägt Ausgaben vor, und
+BudgetManager stellt im Gegenzug Kategorienamen und Sparziele bereit — damit
+FPM seine Ausgaben Ihren Kategorien zuordnen und den Fortschritt eines
+Wunsches anzeigen kann.
+
+Sie entscheiden das seit v2.5.0 Eintrag für Eintrag.
+**Extras → Freigabe für FPM** zeigt Ausgabenkategorien, Sparkategorien und Sparziele
+mit je einem Häkchen. Nur Angehaktes steht in der Brückendatei; alles andere
+bleibt in Ihrer Datenbank. Von Kategorien geht nur der Name hinaus, kein
+Budgetwert und keine Buchung; von einem Sparziel Name, Betrag und Frist.
+
+Es gibt keinen OK-Knopf — jedes Häkchen wirkt sofort, und beim Schliessen des
+Dialogs werden die Brückendateien neu geschrieben. **Alle** und **Keine**
+gelten nur für den Reiter, den Sie gerade sehen. **Jetzt an FPM senden**
+schreibt die Dateien sofort neu und nennt den Ordner, in dem sie liegen.
+
+Beim Update auf 2.5.0 bleibt freigegeben, was bisher schon übertragen wurde —
+sonst stünde FPM plötzlich ohne Kategorien da. Neu angelegte Kategorien und
+Sparziele sind dagegen von sich aus nicht freigegeben. Ausnahme: Ein Sparziel,
+das aus einem FPM-Wunsch entstanden ist, wird gespiegelt, damit der
+Fortschritt dort sichtbar ist; zurücknehmen können Sie es im selben Dialog.
 
 ## 7. Übersicht und Diagramme
 

@@ -11,7 +11,7 @@ from utils.defensive_log import uebersprungen as _uebersprungen
 logger = logging.getLogger(__name__)
 
 # Aktuelle Schema-Version
-CURRENT_VERSION = 18
+CURRENT_VERSION = 19
 
 
 def _cols(conn: sqlite3.Connection, table: str) -> set[str]:
@@ -237,6 +237,12 @@ def migrate_all(
         _migrate_v17_to_v18(conn)
         migrations_applied.append(
             "v17→v18: Sparziel-Flussbestand, Teilfreigaben und Buchungsarten"
+        )
+
+    if old_version < 19:
+        _migrate_v18_to_v19(conn)
+        migrations_applied.append(
+            "v18→v19: Freigabe je Kategorie und Sparziel für die FPM-Brücke"
         )
 
     # Version setzen
@@ -890,4 +896,28 @@ def _migrate_v15_to_v16(conn: sqlite3.Connection) -> None:
         conn.execute(
             "ALTER TABLE tags ADD COLUMN action_text TEXT NOT NULL DEFAULT '';"
         )
+    conn.commit()
+
+
+def _migrate_v18_to_v19(conn: sqlite3.Connection) -> None:
+    """Migration v18 → v19: Freigabe je Eintrag für die FPM-Brücke.
+
+    Bis hierher spiegelte der Export *alles*: jede Kategorie, jedes Sparziel.
+    Wer 40 Kategorien führt, schickte 40 Namen an ein Programm, das drei davon
+    braucht. Die Brücke ist eine Datei im Benutzerverzeichnis - was nicht
+    hineingehört, gehört auch nicht hinein, wenn es "nur" ein Name ist.
+
+    Bestandsschutz statt Datensparsamkeit bei der Umstellung: Alles, was heute
+    schon gespiegelt wird, bleibt freigegeben. Sonst wäre FPMs
+    Kategorien-Zuordnung nach dem Update schlagartig leer und der Nutzer
+    suchte den Fehler dort, wo keiner ist. Neue Einträge sind dagegen
+    ausgeschaltet - eine Freigabe ist eine Entscheidung, keine Vorgabe.
+    """
+    for tabelle in ("categories", "savings_goals"):
+        if "bridge_share" in _cols(conn, tabelle):
+            continue
+        conn.execute(
+            f"ALTER TABLE {tabelle} ADD COLUMN bridge_share INTEGER NOT NULL DEFAULT 0;"  # nosec B608 -- Tabellenname aus fester Liste
+        )
+        conn.execute(f"UPDATE {tabelle} SET bridge_share = 1;")  # nosec B608 -- dito
     conn.commit()

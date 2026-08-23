@@ -220,12 +220,18 @@ def uebernehmen(conn: sqlite3.Connection, wunsch: SparzielWunsch) -> int:
     if kategorie and kategorie not in CategoryModel(conn).list_names(TYP_SAVINGS):
         kategorie = None
 
-    goal_id = SavingsGoalsModel(conn).create(
+    ziele = SavingsGoalsModel(conn)
+    goal_id = ziele.create(
         name=wunsch.name,
         target_amount=wunsch.target_amount,
         category=kategorie,
         notes=wunsch.notes or None,
     )
+    # Ausnahme von der Vorgabe "nicht freigegeben": Dieses Ziel kommt aus dem
+    # anderen Programm. Wer dort einen Wunsch stellt und ihn hier bestaetigt,
+    # will den Fortschritt dort sehen - sonst haette er die Bestaetigung
+    # gerade umsonst gegeben. Zuruecknehmen laesst es sich im Freigabe-Dialog.
+    ziele.set_bridge_share(int(goal_id), True)
     _merke(conn, wunsch, "imported", int(goal_id))
     return int(goal_id)
 

@@ -467,6 +467,20 @@
     "kind_variable_recurring_short": "Rec. variable",
     "title_fix_recurring": "Fixed & recurring items"
   },
+  "bridge": {
+    "share_column_name": "Name",
+    "share_hint": "Only ticked entries leave BudgetManager. Categories give FPM the names it may propose expenses under; savings goals are mirrored with name, amount and deadline. Anything switched off here is absent from the bridge file as well.",
+    "share_menu": "Sharing for FPM…",
+    "share_select_all": "All in tab",
+    "share_select_none": "None in tab",
+    "share_send_now": "Send to FPM now",
+    "share_sent": "Wrote {goals} savings goal(s) and {expenses} expense(s) to:\n{path}",
+    "share_status": "Shared: {categories} of {categories_total} categories, {goals} of {goals_total} savings goals.",
+    "share_tab_expenses": "Expense categories",
+    "share_tab_goals": "Savings goals",
+    "share_tab_savings_cats": "Savings categories",
+    "share_title": "What goes to FPM?"
+  },
   "btn": {
     "add": "Add",
     "all": "All",

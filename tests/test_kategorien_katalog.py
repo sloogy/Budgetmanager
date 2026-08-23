@@ -45,6 +45,8 @@ def test_katalog_traegt_ausgaben_und_ersparnisse(tmp_path) -> None:
         kategorien = CategoryModel(conn)
         kategorien.create(TYP_EXPENSES, "Freizeit")
         kategorien.create(TYP_SAVINGS, "Wunschliste")
+        kategorien.set_bridge_share(TYP_EXPENSES, "Freizeit", True)
+        kategorien.set_bridge_share(TYP_SAVINGS, "Wunschliste", True)
         ergebnis = export_categories(conn, tmp_path / CATEGORIES_OUTBOX_FILE)
     finally:
         conn.close()
@@ -78,6 +80,7 @@ def test_katalog_traegt_keine_betraege(tmp_path) -> None:
     conn = _db(tmp_path)
     try:
         CategoryModel(conn).create(TYP_EXPENSES, "Miete")
+        CategoryModel(conn).set_bridge_share(TYP_EXPENSES, "Miete", True)
         ergebnis = export_categories(conn, tmp_path / CATEGORIES_OUTBOX_FILE)
     finally:
         conn.close()
@@ -96,6 +99,7 @@ def test_zeilenformat_passt_zu_fpm(tmp_path) -> None:
     conn = _db(tmp_path)
     try:
         CategoryModel(conn).create(TYP_EXPENSES, "Freizeit")
+        CategoryModel(conn).set_bridge_share(TYP_EXPENSES, "Freizeit", True)
         ergebnis = export_categories(conn, tmp_path / CATEGORIES_OUTBOX_FILE)
     finally:
         conn.close()

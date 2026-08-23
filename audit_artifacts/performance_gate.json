@@ -17,17 +17,17 @@
     "tracking_year_filter": 4745
   },
   "rows": 50000,
-  "seed_seconds": 0.8391,
+  "seed_seconds": 1.0821,
   "seeded": {
     "budget_rows": 12000,
     "categories": 100,
     "tracking_rows": 50000
   },
   "timings_seconds": {
-    "category_carryover": 0.0172,
-    "database_quick_check": 0.0205,
-    "overview_full_year": 0.0044,
-    "tracking_combined_filter": 0.001,
-    "tracking_year_filter": 0.012
+    "category_carryover": 0.0222,
+    "database_quick_check": 0.0189,
+    "overview_full_year": 0.0046,
+    "tracking_combined_filter": 0.0012,
+    "tracking_year_filter": 0.0138
   }
 }

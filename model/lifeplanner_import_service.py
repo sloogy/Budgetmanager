@@ -86,21 +86,41 @@ class BridgeExportResult:
     count: int
 
 
+def _standalone_bridge_dir() -> Path:
+    """Der Brueckenordner, wenn kein Host ihn vorgibt.
+
+    Frueher fest ``~/fpm_budgetmanager_bridge``. Das war bei einer portablen
+    Installation falsch: Datenbank, Einstellungen und Backups liegen laengst
+    im Datenordner (``data_dir()``, portabel neben dem Programm), nur die
+    Bruecke schrieb ins Benutzerprofil. Wer den Ordner auf einen Stick kopiert, nahm damit alles
+    mit ausser der Bruecke - und wunderte sich, dass am anderen Rechner keine
+    Sparziele ankamen.
+
+    Ein bereits vorhandener Ordner am alten Ort gewinnt trotzdem: Dort liegt
+    der Stand des Nutzers. Ihn stillschweigend stehen zu lassen und daneben
+    einen leeren zweiten zu eroeffnen, waere schlimmer als der alte Ort.
+    """
+    from model.app_paths import data_dir
+
+    legacy = Path.home() / "fpm_budgetmanager_bridge"
+    if legacy.is_dir():
+        return legacy
+    return data_dir() / "fpm_budgetmanager_bridge"
+
+
 def default_bridge_dir() -> Path:
     """Gemeinsamer Brückenordner.
 
     Im LifePlanner gibt der Host den Ordner vor; er liegt dann im bereits
-    geschützten Profil. Eigenständig landet er im Benutzerverzeichnis - dort
-    wird er beim Anlegen auf 0700 gesetzt, denn was darin liegt, sind
-    Buchungen und Sparziele.
+    geschützten Profil. Eigenständig landet er neben dem Programm im
+    Datenordner - dort wird er beim Anlegen auf 0700 gesetzt, denn was darin
+    liegt, sind Buchungen und Sparziele.
     """
     from model.bridge_registry import eintragen
 
     override = os.environ.get("LIFEPLANNER_BRIDGE_DIR", "").strip()
     path = (
-        Path(override).expanduser().resolve()
-        if override
-        else Path.home() / "fpm_budgetmanager_bridge"
+        Path(override).expanduser().resolve() if override else _standalone_bridge_dir()
     )
     neu = not path.exists()
     path.mkdir(parents=True, exist_ok=True)
@@ -649,10 +669,16 @@ def export_savings_goals(conn, path: str | Path | None = None) -> BridgeExportRe
             else "current_amount"
         )
         withdrawn = "withdrawn_amount" if "withdrawn_amount" in columns else "0"
+        # Nur, was der Nutzer freigegeben hat. Ein Sparziel trägt seinen Namen,
+        # seinen Betrag und sein Datum - "Notgroschen 5000 bis März" gehört
+        # niemandem sonst, auch keinem Schwesterprogramm. Fehlt die Spalte
+        # (Datenbank vor v19), bleibt es beim alten Verhalten: Sonst wäre die
+        # Spiegelung nach einem Downgrade wortlos leer.
+        wo = " WHERE bridge_share=1" if "bridge_share" in columns else ""
         rows = conn.execute(
             f"SELECT id, name, target_amount, current_amount, deadline, category, notes, "
             f"status, {contributed} AS contributed_amount, {withdrawn} AS withdrawn_amount "
-            "FROM savings_goals ORDER BY id"  # nosec B608 -- identifiers are fixed from audited allow-list
+            f"FROM savings_goals{wo} ORDER BY id"  # nosec B608 -- identifiers are fixed from audited allow-list
         ).fetchall()
     count = 0
     with atomar_offen(out) as handle:
@@ -678,6 +704,11 @@ def export_savings_goals(conn, path: str | Path | None = None) -> BridgeExportRe
                 "external_id": f"budgetmanager:savings-goal:{int(row[0])}",
                 "source": "BudgetManager",
                 "item_type": "savings_goal",
+                # Ausgeschrieben, obwohl hier nur noch Freigegebenes ankommt:
+                # FPM wertet das Feld seit jeher aus und wirft ohne es nichts
+                # weg - ein zurückgenommenes Ziel verschwände sonst erst beim
+                # nächsten vollständigen Schreiben der Datei.
+                "visible": True,
                 "label": str(row[1] or ""),
                 "goal_name": str(row[1] or ""),
                 "status": str(row[7] or "sparend"),
@@ -718,7 +749,8 @@ def bridge_zustand() -> tuple[Path, tuple[BridgeDateiBefund, ...]]:
 
     Warum das sichtbar sein muss: Der Ordner hängt davon ab, wie BudgetManager
     gestartet wurde. Im LifePlanner gibt ihn der Host über
-    LIFEPLANNER_BRIDGE_DIR vor, eigenständig liegt er im Benutzerverzeichnis.
+    LIFEPLANNER_BRIDGE_DIR vor, eigenständig liegt er im Datenordner neben
+    dem Programm.
     Wer beides gemischt nutzt, hat zwei getrennte Brücken - und wundert sich,
     warum nichts ankommt.
 
@@ -773,6 +805,10 @@ def export_categories(conn, path: str | Path | None = None) -> BridgeExportResul
     Uebertragen werden nur Name und Typ. Kein Budgetwert, kein Ist-Stand,
     keine Buchung: Der Katalog sagt, *wohin* etwas gebucht werden kann, nicht
     was dort steht.
+
+    Und seit v19 auch nur noch, was freigegeben ist. Der ganze Katalog waren
+    bei 40 gefuehrten Kategorien 40 Namen fuer ein Programm, das drei davon
+    braucht - Kontonamen und Lebensumstaende stehen in solchen Namen drin.
     """
     out = Path(path) if path is not None else default_categories_path()
     out.parent.mkdir(parents=True, exist_ok=True)
@@ -795,7 +831,7 @@ def export_categories(conn, path: str | Path | None = None) -> BridgeExportResul
         # Einkommen bleibt aussen vor: Ein anderes Modul meldet Ausgaben und
         # Ersparnisse, keine Einnahmen.
         for typ in (TYP_EXPENSES, TYP_SAVINGS):
-            for name in kategorien.list_names(typ):
+            for name in kategorien.list_shared_names(typ):
                 handle.write(
                     json.dumps(
                         {

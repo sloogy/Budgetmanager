@@ -346,6 +346,45 @@ class CategoryModel:
         )
         return [r["name"] for r in cur.fetchall()]
 
+    def list_shared_names(self, typ: str) -> builtins.list[str]:
+        """Nur die Kategorien, die an andere Programme gehen dürfen.
+
+        Getrennt von ``list_names``, weil es eine andere Frage beantwortet:
+        Dort geht es darum, wohin *hier* gebucht werden kann, hier darum, was
+        ein anderes Programm überhaupt zu sehen bekommt. Eine fehlende Spalte
+        (Datenbank vor v19) heißt "alles" - dann verhält sich der Export wie
+        vorher, statt stillschweigend nichts mehr zu liefern.
+        """
+        if "bridge_share" not in self._cols("categories"):
+            return self.list_names(typ)
+        cur = self.conn.execute(
+            "SELECT name FROM categories WHERE typ=? AND bridge_share=1 "
+            "ORDER BY name COLLATE NOCASE",
+            (typ,),
+        )
+        return [r["name"] for r in cur.fetchall()]
+
+    def set_bridge_share(self, typ: str, name: str, geteilt: bool) -> None:
+        """Gibt eine Kategorie für die Brücke frei oder nimmt sie zurück."""
+        if "bridge_share" not in self._cols("categories"):
+            return
+        self.conn.execute(
+            "UPDATE categories SET bridge_share=? WHERE typ=? AND name=?",
+            (int(geteilt), typ, name),
+        )
+        self.conn.commit()
+
+    def bridge_share_flags(self, typ: str) -> dict[str, bool]:
+        """Name → freigegeben, für die Anzeige im Freigabe-Dialog."""
+        if "bridge_share" not in self._cols("categories"):
+            return dict.fromkeys(self.list_names(typ), True)
+        cur = self.conn.execute(
+            "SELECT name, bridge_share FROM categories WHERE typ=? "
+            "ORDER BY name COLLATE NOCASE",
+            (typ,),
+        )
+        return {r["name"]: bool(r["bridge_share"]) for r in cur.fetchall()}
+
     def list_names_tree(self, typ: str) -> builtins.list[tuple[str, str]]:
         """Hierarchische Namensliste für Dropdowns.
 
