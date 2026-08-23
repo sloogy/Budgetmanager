@@ -1,4 +1,7 @@
+import os
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -47,6 +50,42 @@ def test_bulk_tags_can_be_added_or_removed_but_required_tags_stay_locked():
     assert "tag_combo.set_tag_checked(" in block
     assert "tag_combo.locked_tags()" in block
     assert "skipped_required_tag += 1" in block
+
+
+def test_category_change_drops_old_required_tags_but_keeps_manual_tags():
+    src = _source()
+    block = src.split("def set_locked_tags", 1)[1].split("def set_tag_checked", 1)[0]
+    assert "previous_locked" in block
+    assert "selected_optional" in block
+    assert "if self._key(name) not in previous_locked" in block
+
+
+def test_checkable_tag_combo_runtime_preserves_only_optional_tags():
+    pytest.importorskip("PySide6")
+    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+    from PySide6.QtWidgets import QApplication
+
+    from views.bank_import_dialog import CheckableTagCombo
+
+    app = QApplication.instance() or QApplication([])
+    combo = CheckableTagCombo(
+        ("Alt-Pflicht", "Neu-Pflicht", "Optional"),
+        selected=("Optional",),
+        locked=("Alt-Pflicht",),
+    )
+    try:
+        assert combo.selected_tags() == ("Alt-Pflicht", "Optional")
+        assert not combo.set_tag_checked("Alt-Pflicht", False)
+
+        combo.set_locked_tags(("Neu-Pflicht",))
+        assert combo.selected_tags() == ("Neu-Pflicht", "Optional")
+        assert combo.locked_tags() == ("Neu-Pflicht",)
+
+        assert combo.set_tag_checked("Optional", False)
+        assert combo.selected_tags() == ("Neu-Pflicht",)
+    finally:
+        combo.deleteLater()
+        app.processEvents()
 
 
 def test_positive_twint_credit_type_dropdown_is_ai_only():
