@@ -1,4 +1,4 @@
-# 📦 BudgetManager v2.2.73 — Installation, Start & Update
+# 📦 BudgetManager v2.3.0 — Installation, Start & Update
 
 Diese Anleitung beschreibt Installation, Start, Update und Notstart für Windows, Linux und den Betrieb aus dem Quellcode. Die Kurzfassung steht in [README.md](README.md), die Bedienung im [Benutzerhandbuch](docs/USER_GUIDE.de.md).
 
@@ -28,12 +28,12 @@ Im GitHub-Release liegen mehrere Dateien:
 
 | Datei | Wofür |
 | --- | --- |
-| `BudgetManager_Setup_2.2.71.zip` | Empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren. |
-| `BudgetManager_Setup_2.2.71.exe` | Direkter Installer. |
-| `BudgetManager-v2.2.71-portable-windows.zip` | Portable Windows-Version ohne Installation. |
-| `BudgetManager-v2.2.71-portable-linux.zip` | Portable Linux-Version. |
-| `budgetmanager_2.2.71_Windows_x86_64.lpmodule` | Unsigned LifePlanner-/LiveManager-Modul für Windows. |
-| `budgetmanager_2.2.71_Linux_x86_64.lpmodule` | Unsigned LifePlanner-/LiveManager-Modul für Linux. |
+| `BudgetManager_Setup_2.3.0.zip` | Empfohlen, wenn Browser oder Windows den direkten EXE-Download blockieren. |
+| `BudgetManager_Setup_2.3.0.exe` | Direkter Installer. |
+| `BudgetManager-v2.3.0-portable-windows.zip` | Portable Windows-Version ohne Installation. |
+| `BudgetManager-v2.3.0-portable-linux.zip` | Portable Linux-Version. |
+| `budgetmanager_2.3.0_Windows_x86_64.lpmodule` | Unsigned LifePlanner-/LiveManager-Modul für Windows. |
+| `budgetmanager_2.3.0_Linux_x86_64.lpmodule` | Unsigned LifePlanner-/LiveManager-Modul für Linux. |
 | `latest.json` / `latest.json.sig` | Update-Manifest und Ed25519-Signatur. |
 | `SHA256SUMS.txt` | Prüfsummen aller Artefakte. |
 | `BudgetManager-v<Version>.cdx.json` | CycloneDX-SBOM. |
@@ -49,7 +49,7 @@ Faustregel: Installer, wenn BudgetManager fest auf dem Rechner bleiben soll — 
 PowerShell im Download-Ordner öffnen:
 
 ```powershell
-Get-FileHash .\BudgetManager_Setup_2.2.71.exe -Algorithm SHA256
+Get-FileHash .\BudgetManager_Setup_2.3.0.exe -Algorithm SHA256
 ```
 
 Den angezeigten Hash mit der passenden Zeile in `SHA256SUMS.txt` vergleichen.
@@ -57,7 +57,7 @@ Den angezeigten Hash mit der passenden Zeile in `SHA256SUMS.txt` vergleichen.
 Falls Windows die Datei nach dem Download blockiert:
 
 ```powershell
-Unblock-File .\BudgetManager_Setup_2.2.71.exe
+Unblock-File .\BudgetManager_Setup_2.3.0.exe
 ```
 
 Unter Linux:
@@ -70,10 +70,10 @@ sha256sum -c SHA256SUMS.txt --ignore-missing
 
 ## Windows Installer
 
-1. `BudgetManager_Setup_2.2.71.zip` herunterladen.
+1. `BudgetManager_Setup_2.3.0.zip` herunterladen.
 2. ZIP entpacken.
 3. Optional, aber empfohlen: SHA-256 gegen `SHA256SUMS.txt` prüfen.
-4. `BudgetManager_Setup_2.2.71.exe` starten.
+4. `BudgetManager_Setup_2.3.0.exe` starten.
 5. Datenverzeichnis wählen.
 6. Sprache, Währung und bevorzugten Buchungstag auswählen.
 7. BudgetManager starten.
@@ -83,7 +83,7 @@ Der Installer schreibt `installation.json` in den Programmordner und nutzt den g
 Für eine unbeaufsichtigte Installation unterstützt das Setup die üblichen Inno-Setup-Schalter:
 
 ```powershell
-.\BudgetManager_Setup_2.2.71.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\Programme\BudgetManager" /DATA_DIR="D:\BudgetManagerDaten" /LANG=german
+.\BudgetManager_Setup_2.3.0.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /DIR="C:\Programme\BudgetManager" /DATA_DIR="D:\BudgetManagerDaten" /LANG=german
 ```
 
 Genau dieser Ablauf — Silent-Install, Start der installierten App, Selbsttest, Silent-Uninstall — wird im Release-Workflow automatisch geprüft.
@@ -92,7 +92,7 @@ Genau dieser Ablauf — Silent-Install, Start der installierten App, Selbsttest,
 
 ## Windows Portable
 
-1. `BudgetManager-v2.2.71-portable-windows.zip` herunterladen.
+1. `BudgetManager-v2.3.0-portable-windows.zip` herunterladen.
 2. ZIP in einen normalen Benutzerordner entpacken, zum Beispiel `Dokumente\BudgetManager`, oder auf einen USB-Stick.
 3. `start-windows.cmd` oder `BudgetManager.exe` starten.
 
@@ -108,7 +108,7 @@ Nicht in `C:\Program Files` entpacken. Dort fehlen die Schreibrechte für Daten 
 
 ### Portable Paket
 
-1. `BudgetManager-v2.2.71-portable-linux.zip` herunterladen und entpacken.
+1. `BudgetManager-v2.3.0-portable-linux.zip` herunterladen und entpacken.
 2. Starten:
 
 ```bash

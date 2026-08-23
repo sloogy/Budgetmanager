@@ -1,3 +1,11 @@
+## Neu in v2.3.0
+
+- Das LifePlanner-Dashboard zeigt, was im BudgetManager ansteht: überzogene Budgets, Sparziele kurz vor oder nach ihrem Termin.
+- Der Kategorienkatalog wird für andere Programme veröffentlicht — FPM ordnet seine Ausgaben damit den eigenen Kategorien zu, statt eigene Namen mitzuschicken.
+- Massenbearbeitung mehrerer Kategorien über das Kontextmenü im Budget-Tab: Fixkosten, Wiederkehrend, Fälligkeitstag und Forecast-Modus für alle markierten auf einmal.
+- Kategorienwahl im Zahlungsimport mit Suchfeld und gefiltertem Dropdown wie in der Schnelleingabe.
+- Ein Abbruch im Sparziel-Dialog wird nicht mehr als Korrektur gewertet.
+
 ## Neu in v2.2.73
 
 - Siehe VERSION_INFO.txt und CHANGELOG.md.

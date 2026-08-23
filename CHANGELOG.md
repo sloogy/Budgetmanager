@@ -1,6 +1,12 @@
 # Changelog
 
-## Unveröffentlicht
+## 2.3.0 — 23. August 2026
+
+Der BudgetManager meldet dem LifePlanner-Dashboard, was gerade schiefläuft, und
+veröffentlicht seinen Kategorienkatalog für die anderen Programme. Dazu die
+gemeinsame Lint-Grundlage der Suite und die Funde, die sie zutage gefördert
+hat — darunter zwanzig Module, die ihren Docstring verloren hatten, und eine
+Massenbearbeitung, die gebaut, getestet und nicht erreichbar war.
 
 ### Funktion
 

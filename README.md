@@ -1,8 +1,8 @@
-# 💰 BudgetManager v2.2.73
+# 💰 BudgetManager v2.3.0
 
 Der BudgetManager beantwortet zwei Fragen, die eine Kontoauszugs-App nicht beantwortet: **Wohin soll mein Geld dieses Jahr gehen — und wohin geht es tatsächlich?**
 
-![Version](https://img.shields.io/badge/version-2.2.73-blue)
+![Version](https://img.shields.io/badge/version-2.3.0-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -47,7 +47,7 @@ Der BudgetManager läuft für sich allein. Er läuft ebenso als Modul im [LifePl
 - [Hilfe in der App](#hilfe-in-der-app)
 - [Notstart- und Diagnoseschalter](#notstart--und-diagnoseschalter)
 - [Funktionsumfang](#funktionsumfang)
-- [Neu in v2.2.71](#neu-in-v2271)
+- [Neu in v2.3.0](#neu-in-v2271)
 - [Für Entwickler](#für-entwickler)
 - [Weitere Dokumentation](#weitere-dokumentation)
 
@@ -58,7 +58,7 @@ Der BudgetManager läuft für sich allein. Er läuft ebenso als Modul im [LifePl
 ### Windows — empfohlen für normale Nutzer
 
 1. Aktuelles [Release](https://github.com/sloogy/Budgetmanager/releases) herunterladen.
-2. Entweder `BudgetManager_Setup_2.2.71.exe` (Installer) starten **oder** `BudgetManager-v2.2.71-portable-windows.zip` entpacken.
+2. Entweder `BudgetManager_Setup_2.3.0.exe` (Installer) starten **oder** `BudgetManager-v2.3.0-portable-windows.zip` entpacken.
 3. Portable Version: `start-windows.cmd` beziehungsweise `BudgetManager.exe` starten.
 
 Portable Daten liegen im Ordner `data/` neben dem Programm. Dadurch kann der komplette Ordner auch auf einem USB-Stick genutzt werden. Der Installer fragt beim ersten Start nach einem Datenordner.
@@ -67,7 +67,7 @@ Die Pakete sind bewusst nicht Authenticode-signiert. Windows SmartScreen warnt d
 
 ### Linux
 
-Fertiges Paket `BudgetManager-v2.2.71-portable-linux.zip` entpacken und starten:
+Fertiges Paket `BudgetManager-v2.3.0-portable-linux.zip` entpacken und starten:
 
 ```bash
 ./start-linux.sh
@@ -317,7 +317,7 @@ BM_DISABLE_COCKPIT_CHARTS=1 ./run.sh
 
 ---
 
-## Neu in v2.2.71
+## Neu in v2.3.0
 
 - **Der Zustand der Brücke ist sichtbar.** Der LifePlanner-Dialog zeigt jetzt den aktiven Brückenordner und alle drei Dateien einzeln. Welcher Ordner gilt, hängt vom Startmodus ab: Im LifePlanner gibt ihn der Host vor, eigenständig liegt er im Benutzerverzeichnis — wer beides mischt, hat zwei getrennte Brücken. Unterschieden wird zwischen „noch nichts geschrieben" und „leer".
 - **Kein NameError mehr beim Beenden.** Der Timer für den Setup-Assistenten holte sich das Hauptfenster über die Closure; beim Herunterfahren konnte er auf eine bereits geleerte Zelle greifen.
@@ -412,8 +412,8 @@ GUI-Tests werden ohne PySide6 automatisch übersprungen. Headless läuft alles m
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "2.2.73"
-APP_RELEASE_DATE = "22. August 2026"
+APP_VERSION = "2.3.0"
+APP_RELEASE_DATE = "23. August 2026"
 ```
 
 Prüfen und synchronisieren:
@@ -433,12 +433,12 @@ Das Update-Manifest wird aus dem Template generiert:
 
 ```bash
 python -m updater.generate_manifest \
-  --version 2.2.71 \
-  --release-tag v2.2.71 \
+  --version 2.3.0 \
+  --release-tag v2.3.0 \
   --channel stable \
-  --windows-zip dist/BudgetManager-v2.2.71-portable-windows.zip \
-  --linux-zip dist/BudgetManager-v2.2.71-portable-linux.zip \
-  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.2.71 \
+  --windows-zip dist/BudgetManager-v2.3.0-portable-windows.zip \
+  --linux-zip dist/BudgetManager-v2.3.0-portable-linux.zip \
+  --base-url https://github.com/sloogy/Budgetmanager/releases/download/v2.3.0 \
   --out latest.json
 ```
 

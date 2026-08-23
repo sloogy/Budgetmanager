@@ -1,4 +1,4 @@
-# BudgetManager Hilfe 2.2.73
+# BudgetManager Hilfe 2.3.0
 
 ## Vereinheitlichte Bedienung
 
@@ -17,9 +17,9 @@ Die **linke Seitenleiste** ist die Hauptnavigation. Neue Buchungen aus Cockpit, 
 
 ---
 
-# BudgetManager 2.2.73 – Benutzerhandbuch
+# BudgetManager 2.3.0 – Benutzerhandbuch
 
-Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.2.73. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
+Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.3.0. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt **Budget (Plan)** klar von **Tracking (echte Buchungen)**.
 
 ## Erststart in vier Schritten
 
@@ -93,6 +93,12 @@ Vor grossen Strukturänderungen immer ein Backup erstellen.
 ### 3.4 Excel-Vorlage im Setup
 
 Der Setup-Assistent kann Kategorien aus einer XLSX-Vorlage importieren. Die normale tägliche Kategorienverwaltung läuft über **Strg+K** bzw. den Kategorie-Manager.
+
+### 3.5 Mehrere Kategorien auf einmal bearbeiten
+
+Im Budget-Tab mehrere Zeilen markieren und rechtsklicken: **⚙️ N Kategorien bearbeiten…** öffnet die Massenbearbeitung. Dort lassen sich Fixkosten, Wiederkehrend, Fälligkeitstag und Forecast-Modus für alle markierten Kategorien gemeinsam setzen. Felder, die du unverändert lässt, bleiben je Kategorie bei ihrem bisherigen Wert.
+
+Das lohnt sich, wenn du nach einem Import viele Kategorien gleich einstellen willst - sonst öffnest du den Eigenschaften-Dialog einmal je Kategorie.
 
 ## 4. Budget
 
@@ -231,6 +237,21 @@ Buchung existiert und würde einer nachträglichen Änderung nicht folgen.
 
 Weicht die Fremdwährung von Ihrer Kontowährung ab, verlangt BudgetManager
 eine ausdrückliche Bestätigung, bevor der Betrag übernommen wird.
+
+### 6.7 Meldungen im LifePlanner
+
+Läuft BudgetManager als Modul im LifePlanner, meldet er dorthin, was gerade
+ansteht: überzogene Budgets, Sparziele kurz vor oder nach ihrem Termin und
+erreichte Sparziele. Der LifePlanner zeigt diese Meldungen auf seiner
+Übersichtsseite, über den Modulkacheln — Sie sehen sie also, ohne den
+BudgetManager zu öffnen.
+
+Übertragen wird nur die fertige Meldung: eine Zeile Text und wie dringend sie
+ist. Beträge, Buchungen und Kategorienamen bleiben in Ihrer Datenbank. Der
+Stand wird beim Beenden geschrieben und beim nächsten Mal vollständig ersetzt —
+was erledigt ist, verschwindet von selbst.
+
+Ohne LifePlanner passiert hier nichts.
 
 ## 7. Übersicht und Diagramme
 

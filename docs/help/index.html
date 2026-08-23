@@ -1,4 +1,4 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BudgetManager Hilfe 2.2.73</title><style>:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.58;max-width:1120px;margin:32px auto;padding:0 24px;color:#18202a;background:#fff}h1,h2,h3,h4{color:#0b7285;line-height:1.25;margin-top:1.7em}h1{border-bottom:2px solid #0b7285;padding-bottom:.35rem}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #cbd3da;padding:.55rem .7rem;text-align:left;vertical-align:top}th{background:#eef6f7}pre{background:#f3f5f7;padding:14px;border-radius:7px;overflow:auto}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}blockquote{border-left:4px solid #0b7285;margin:1rem 0;padding:.45rem 1rem;background:#f5fafb}a{color:#0b7285}hr{border:0;border-top:1px solid #d9e0e5;margin:2rem 0}@media(prefers-color-scheme:dark){body{color:#e8edf2;background:#15191d}h1,h2,h3,h4,a{color:#67c7d2}th{background:#263238}th,td{border-color:#48545d}pre,blockquote{background:#20272c}}</style></head><body><h1>BudgetManager Hilfe 2.2.73</h1>
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BudgetManager Hilfe 2.3.0</title><style>:root{color-scheme:light dark}body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.58;max-width:1120px;margin:32px auto;padding:0 24px;color:#18202a;background:#fff}h1,h2,h3,h4{color:#0b7285;line-height:1.25;margin-top:1.7em}h1{border-bottom:2px solid #0b7285;padding-bottom:.35rem}table{border-collapse:collapse;width:100%;margin:1rem 0}th,td{border:1px solid #cbd3da;padding:.55rem .7rem;text-align:left;vertical-align:top}th{background:#eef6f7}pre{background:#f3f5f7;padding:14px;border-radius:7px;overflow:auto}code{font-family:ui-monospace,SFMono-Regular,Consolas,monospace}blockquote{border-left:4px solid #0b7285;margin:1rem 0;padding:.45rem 1rem;background:#f5fafb}a{color:#0b7285}hr{border:0;border-top:1px solid #d9e0e5;margin:2rem 0}@media(prefers-color-scheme:dark){body{color:#e8edf2;background:#15191d}h1,h2,h3,h4,a{color:#67c7d2}th{background:#263238}th,td{border-color:#48545d}pre,blockquote{background:#20272c}}</style></head><body><h1>BudgetManager Hilfe 2.3.0</h1>
 <h2>Vereinheitlichte Bedienung</h2>
 <p>Die <strong>linke Seitenleiste</strong> ist die Hauptnavigation. Neue Buchungen aus Cockpit, Tracking und Aktionsleiste öffnen <strong>denselben vollständigen Buchungsdialog</strong>. Budget ist der Plan, Tracking enthält die echten Buchungen.</p>
 <table>
@@ -39,8 +39,8 @@
 <p>Direkt anzeigbare Mindmap: <code>docs/help/mindmap.de.html</code>. Die In-App-Hilfe ist mit <strong>F1</strong> durchsuchbar.</p>
 </blockquote>
 <hr />
-<h1>BudgetManager 2.2.73 – Benutzerhandbuch</h1>
-<p>Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.2.73. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt <strong>Budget (Plan)</strong> klar von <strong>Tracking (echte Buchungen)</strong>.</p>
+<h1>BudgetManager 2.3.0 – Benutzerhandbuch</h1>
+<p>Dieses Handbuch beschreibt die tatsächlich vorhandenen Funktionen der Version 2.3.0. BudgetManager arbeitet lokal, bucht nichts ohne deine Bestätigung und trennt <strong>Budget (Plan)</strong> klar von <strong>Tracking (echte Buchungen)</strong>.</p>
 <h2>Erststart in vier Schritten</h2>
 <ol>
 <li>Sprache, Währung und Zahlenformat wählen.</li>
@@ -124,6 +124,9 @@
 <p>Vor grossen Strukturänderungen immer ein Backup erstellen.</p>
 <h3>3.4 Excel-Vorlage im Setup</h3>
 <p>Der Setup-Assistent kann Kategorien aus einer XLSX-Vorlage importieren. Die normale tägliche Kategorienverwaltung läuft über <strong>Strg+K</strong> bzw. den Kategorie-Manager.</p>
+<h3>3.5 Mehrere Kategorien auf einmal bearbeiten</h3>
+<p>Im Budget-Tab mehrere Zeilen markieren und rechtsklicken: <strong>⚙️ N Kategorien bearbeiten…</strong> öffnet die Massenbearbeitung. Dort lassen sich Fixkosten, Wiederkehrend, Fälligkeitstag und Forecast-Modus für alle markierten Kategorien gemeinsam setzen. Felder, die du unverändert lässt, bleiben je Kategorie bei ihrem bisherigen Wert.</p>
+<p>Das lohnt sich, wenn du nach einem Import viele Kategorien gleich einstellen willst - sonst öffnest du den Eigenschaften-Dialog einmal je Kategorie.</p>
 <h2>4. Budget</h2>
 <p>Budgetwerte sind Sollbeträge. Sie erzeugen keine Buchungen.</p>
 <h3>4.1 Budget erfassen</h3>
@@ -219,6 +222,17 @@ ihn ändert. Bereits übernommene Vorschläge bleiben unverändert stehen: Ihre
 Buchung existiert und würde einer nachträglichen Änderung nicht folgen.</p>
 <p>Weicht die Fremdwährung von Ihrer Kontowährung ab, verlangt BudgetManager
 eine ausdrückliche Bestätigung, bevor der Betrag übernommen wird.</p>
+<h3>6.7 Meldungen im LifePlanner</h3>
+<p>Läuft BudgetManager als Modul im LifePlanner, meldet er dorthin, was gerade
+ansteht: überzogene Budgets, Sparziele kurz vor oder nach ihrem Termin und
+erreichte Sparziele. Der LifePlanner zeigt diese Meldungen auf seiner
+Übersichtsseite, über den Modulkacheln — Sie sehen sie also, ohne den
+BudgetManager zu öffnen.</p>
+<p>Übertragen wird nur die fertige Meldung: eine Zeile Text und wie dringend sie
+ist. Beträge, Buchungen und Kategorienamen bleiben in Ihrer Datenbank. Der
+Stand wird beim Beenden geschrieben und beim nächsten Mal vollständig ersetzt —
+was erledigt ist, verschwindet von selbst.</p>
+<p>Ohne LifePlanner passiert hier nichts.</p>
 <h2>7. Übersicht und Diagramme</h2>
 <p>Die Übersicht bietet Jahr, Monat oder benutzerdefinierten Zeitraum. Rechts können Typ, Kategorie inklusive Unterkategorien, Tags, Bemerkung und Betragsgrenzen kombiniert werden.</p>
 <h3>7.1 Kennzahlen und Tabellen</h3>
