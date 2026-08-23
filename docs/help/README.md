@@ -310,6 +310,22 @@ Workflow:
 
 Bestand und Einzahlungsfortschritt dürfen nicht negativ werden. Einzahlungen über den Zielbetrag sowie Bezüge über den vorhandenen Bestand werden blockiert.
 
+### 8.1 Sparzielwünsche aus anderen Programmen
+
+Läuft FPM als Teil der Suite, können Wunschfüller von dort als Sparziel
+hierher kommen. Im Sparziel-Dialog öffnet **Wünsche aus FPM…** die offenen
+Vorschläge und fragt einzeln nach — einzeln, weil ein Sparziel eine
+Entscheidung über Geld ist, das monatlich zurückgelegt wird.
+
+Zu jedem Wunsch steht der Zielbetrag und die Kategorie, unter der er erscheinen
+soll. Sie kommt aus Ihrem eigenen Kategorienbaum; **gibt es sie nicht, wird sie
+auch nicht angelegt** — das Ziel entsteht dann ohne Kategorie, und Sie ordnen
+es hier zu. Ein anderes Programm soll Ihren Kategorienbaum nicht verändern.
+
+„Nein" blendet den Vorschlag dauerhaft aus, „Abbrechen" lässt die übrigen
+offen. Übernommene und abgelehnte Wünsche kommen nicht wieder, auch wenn FPM
+sie weiterhin schickt.
+
 ## 9. Cockpit
 
 Das Cockpit zeigt Monatsampel, nächste Schritte, KPI, offene Fälligkeiten, Warnungen, POT-Reststände, Favoriten, Sparziele und letzte Buchungen. Über **Cockpit gestalten** blendest du Karten ein/aus und änderst ihre Reihenfolge.

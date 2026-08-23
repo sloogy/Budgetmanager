@@ -130,6 +130,8 @@ Graphiques : donut prévu/réel, classement, comparaison des types, évolution m
 
 Un objectif est un flux de projet. L’application sépare **cible**, **versé**, **utilisé/retiré**, **solde actuel** et **reste à verser**. Exemple : cible `50 000`, versé `30 000`, utilisé `15 000` donne un solde de `15 000` et `20 000` encore à verser. Une opération négative est par défaut un **retrait**. Choisissez explicitement **correction** pour une erreur afin qu’elle ne compte pas comme utilisation. Une **libération partielle** rend disponible un montant choisi sans fermer l’objectif.
 
+Si FPM fait partie de la suite, les stylos souhaités peuvent arriver ici comme objectifs d'épargne. Dans la boîte de dialogue des objectifs, **Souhaits de FPM…** affiche les propositions ouvertes et demande pour chacune séparément. Une catégorie qui n'existe pas ici n'est **pas créée** — l'objectif est créé sans catégorie et vous l'affectez vous-même ; un autre programme ne doit pas modifier votre arborescence.
+
 ## 9. Cockpit
 
 Le cockpit montre feu, prochaines étapes, KPI, échéances, alertes, restes de POT, favoris, objectifs et opérations récentes. Vous pouvez choisir l’ordre et la visibilité des cartes.

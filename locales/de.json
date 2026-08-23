@@ -1873,6 +1873,12 @@
       "target": "Ziel",
       "used": "Verwendet"
     },
+    "import_wishes": "Wünsche aus FPM…",
+    "import_wishes_done": "{count} Sparziel(e) angelegt.",
+    "import_wishes_no_category": "ohne Kategorie",
+    "import_wishes_none": "Es liegen keine offenen Wünsche vor.",
+    "import_wishes_question": "{name}\n\nZielbetrag {amount} in Kategorie „{category}“.\n\nAls Sparziel anlegen?",
+    "import_wishes_title": "Sparzielwünsche übernehmen",
     "label": {
       "contributed_amount": "Bisher eingezahlt"
     },

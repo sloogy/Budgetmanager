@@ -1873,6 +1873,12 @@
       "target": "Target",
       "used": "Used"
     },
+    "import_wishes": "Wishes from FPM…",
+    "import_wishes_done": "{count} savings goal(s) created.",
+    "import_wishes_no_category": "no category",
+    "import_wishes_none": "There are no open wishes.",
+    "import_wishes_question": "{name}\n\nTarget {amount} in category \"{category}\".\n\nCreate as a savings goal?",
+    "import_wishes_title": "Import savings goal requests",
     "label": {
       "contributed_amount": "Deposited so far"
     },

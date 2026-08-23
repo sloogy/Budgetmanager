@@ -125,6 +125,8 @@ Charts include planned/actual donut, category ranking, type comparison, monthly 
 
 Savings goals are project cash flows. The app shows **target**, **contributed**, **used/withdrawn**, **current stock**, and **still to contribute** separately. Example: target `50,000`, contributed `30,000`, used `15,000` means stock `15,000` and `20,000` still to contribute. A negative savings transaction defaults to **withdrawal**. Choose **correction** explicitly for an erroneous booking so it does not count as project use. **Partial release** makes a selected amount available while the goal remains active.
 
+If FPM runs as part of the suite, wished-for pens can arrive here as savings goals. In the savings goals dialog, **Wishes from FPM…** shows the open proposals and asks about each one separately. A category that does not exist here is **not created** — the goal is made without one and you assign it yourself; another program should not change your category tree.
+
 ## 9. Cockpit
 
 The cockpit shows traffic light, next steps, KPIs, due items, warnings, pot balances, favorites, goals and recent transactions. Customise card visibility and order.

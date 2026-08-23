@@ -33,6 +33,7 @@ from model.savings_goals_model import (
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from utils.accessibility import configure_dialog_tab_order
+from utils.defensive_log import uebersprungen as _uebersprungen
 from utils.i18n import display_typ, tr, trf
 from utils.icons import get_icon
 from utils.money import format_money, get_symbol
@@ -129,6 +130,9 @@ class SavingsGoalsDialog(QDialog):
         btn_layout.addWidget(self.btn_delete)
         btn_layout.addWidget(self.btn_add_progress)
         btn_layout.addWidget(self.btn_sync)
+        self.btn_import_wishes = QPushButton(tr("savings.import_wishes"))
+        self.btn_import_wishes.setIcon(get_icon("📥"))
+        btn_layout.addWidget(self.btn_import_wishes)
         btn_layout.addStretch()
         btn_layout.addWidget(self.btn_release)
         btn_layout.addWidget(self.btn_complete)
@@ -156,6 +160,7 @@ class SavingsGoalsDialog(QDialog):
         self.btn_delete.clicked.connect(self.delete_goal)
         self.btn_add_progress.clicked.connect(self.add_progress)
         self.btn_sync.clicked.connect(self.sync_with_tracking)
+        self.btn_import_wishes.clicked.connect(self._import_wishes)
         self.btn_release.clicked.connect(self._release_goal)
         self.btn_complete.clicked.connect(self._complete_goal)
         self.btn_reopen.clicked.connect(self._reopen_goal)
@@ -431,6 +436,61 @@ class SavingsGoalsDialog(QDialog):
                 show_savings_goal_bounds_warning(self, e)
                 return
             self.refresh()
+
+    def _import_wishes(self) -> None:
+        """Zeigt die offenen Sparzielwuensche und fragt einzeln nach.
+
+        Einzeln und nicht als Sammelaktion: Ein Sparziel ist eine
+        Entscheidung ueber Geld, das monatlich zurueckgelegt wird. Wer
+        fuenf davon auf einmal bestaetigt, hat keine davon bedacht.
+        """
+        from model.savings_goal_import import ablehnen, offene_wuensche, uebernehmen
+
+        try:
+            offen = offene_wuensche(self.conn)
+        except (OSError, sqlite3.Error) as fehler:
+            _uebersprungen("Sparzielwuensche lesen", fehler)
+            offen = []
+
+        if not offen:
+            show_info(
+                self,
+                tr("savings.import_wishes_title"),
+                tr("savings.import_wishes_none"),
+            )
+            return
+
+        angelegt = 0
+        for wunsch in offen:
+            antwort = QMessageBox.question(
+                self,
+                tr("savings.import_wishes_title"),
+                trf(
+                    "savings.import_wishes_question",
+                    name=wunsch.name,
+                    amount=format_money(wunsch.target_amount),
+                    category=wunsch.category or tr("savings.import_wishes_no_category"),
+                ),
+                QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel,
+                QMessageBox.Yes,
+            )
+            if antwort == QMessageBox.Cancel:
+                # Abbrechen heisst "nicht jetzt" - die uebrigen bleiben
+                # offen und werden nicht stillschweigend abgelehnt.
+                break
+            if antwort == QMessageBox.Yes:
+                uebernehmen(self.conn, wunsch)
+                angelegt += 1
+            else:
+                ablehnen(self.conn, wunsch)
+
+        if angelegt:
+            self.load_goals()
+            show_info(
+                self,
+                tr("savings.import_wishes_title"),
+                trf("savings.import_wishes_done", count=angelegt),
+            )
 
     def sync_with_tracking(self):
         goal = self._selected_goal()

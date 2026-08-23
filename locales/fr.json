@@ -1873,6 +1873,12 @@
       "target": "Objectif",
       "used": "Utilisé"
     },
+    "import_wishes": "Souhaits de FPM…",
+    "import_wishes_done": "{count} objectif(s) d'épargne créé(s).",
+    "import_wishes_no_category": "sans catégorie",
+    "import_wishes_none": "Aucun souhait ouvert.",
+    "import_wishes_question": "{name}\n\nMontant cible {amount} dans la catégorie « {category} ».\n\nCréer comme objectif d'épargne ?",
+    "import_wishes_title": "Reprendre les demandes d'objectif",
     "label": {
       "contributed_amount": "Versé jusqu’ici"
     },

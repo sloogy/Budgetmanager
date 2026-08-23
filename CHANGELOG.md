@@ -4,6 +4,22 @@
 
 ### Funktion
 
+- **Sparzielwünsche aus FPM werden übernommen.** FPM legt sie seit seiner
+  Version 1.3.0 im Brückenordner ab; hier las sie niemand — der Nutzer sah dort
+  eine Einstellung, die im BudgetManager nichts bewirkte. Im Sparziel-Dialog
+  zeigt **Wünsche aus FPM…** die offenen Vorschläge und fragt einzeln nach.
+
+  Einzeln, nicht als Sammelaktion: Ein Sparziel ist eine Entscheidung über
+  Geld, das monatlich zurückgelegt wird. Wer fünf davon auf einmal bestätigt,
+  hat keine davon bedacht.
+
+  **Eine unbekannte Kategorie wird nicht angelegt.** Ein anderes Programm soll
+  den Kategorienbaum des Nutzers nicht verändern; das Ziel entsteht dann ohne
+  Kategorie und wird hier zugeordnet. Was einmal übernommen oder abgelehnt
+  wurde, kommt nicht wieder — der Zustand hängt an der Kennung des Absenders
+  und wird hier geführt, nicht in der Datei.
+
+
 - **In Betragsfeldern lässt sich rechnen.** `23,40 + 12,60` ergibt beim
   Verlassen des Feldes 36,00 — in den Dialogen wie direkt in den Zellen der
   Budgettabelle. Wer eine Quittung mit mehreren Posten bucht, tippt sie ab,
