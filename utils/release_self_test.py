@@ -11,6 +11,8 @@ import traceback
 from pathlib import Path
 from typing import TextIO
 
+from utils.defensive_log import uebersprungen as _uebersprungen
+
 MIN_SAMPLE_COLOURS = 4
 
 
@@ -185,7 +187,9 @@ def run_release_self_test() -> int:
             try:
                 window.close()
                 window.deleteLater()
-            except Exception:
-                pass
+            except RuntimeError as fehler:
+                # Das Qt-Objekt kann schon abgeraeumt sein. Kein Grund
+                # abzubrechen, aber einer, es zu sagen.
+                _uebersprungen("Selbsttest-Fenster schliessen", fehler)
         if connection is not None:
             connection.close()

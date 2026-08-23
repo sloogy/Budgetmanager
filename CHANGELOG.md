@@ -2,6 +2,19 @@
 
 ## Unveröffentlicht
 
+### Stabilität
+
+- **Sechs stumme Stellen melden sich jetzt.** Alle sechs trugen einen
+  erklärenden Kommentar *im* Handler — der Grund war richtig, das Schweigen
+  nicht. Am schwersten wogen die beiden Migrationen: Scheitert das Aufräumen
+  verwaister Tags, bleiben sie stehen; scheitert die Cockpit-Migration, läuft
+  sie bei jedem Start neu, und niemand weiss warum.
+
+  Gefangen wird weiterhin breit, wo der Kommentar es begründet — eine
+  Migration darf den Start nicht verhindern. Drei Stellen liessen sich dabei
+  enger fassen (`OSError`, `RuntimeError`). Der Ratchet steht jetzt bei 18
+  stummen und 654 breiten Handlern.
+
 ### Ordnung
 
 - **Der Prüf-Wrapper bringt für `mypy` jetzt die Projektabhängigkeiten mit.**

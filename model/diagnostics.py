@@ -21,6 +21,7 @@ from typing import cast
 
 from app_info import APP_NAME, APP_VERSION
 from model.app_paths import app_dir, data_dir, installation_marker_path, settings_path
+from utils.defensive_log import uebersprungen as _uebersprungen
 
 logger = logging.getLogger(__name__)
 
@@ -134,8 +135,10 @@ def _write_json_atomic(path: Path, data: dict) -> None:
         try:
             if tmp_path.exists():
                 tmp_path.unlink()
-        except Exception:
-            pass
+        except OSError as fehler:
+            # Bleibt folgenlos, aber nicht spurlos: Ein Zwischenfile, das
+            # nicht weggeht, sammelt sich mit jedem Diagnoselauf an.
+            _uebersprungen("Diagnose-Zwischendatei loeschen", fehler)
 
 
 def _pid_alive(pid: int | None) -> bool:
@@ -256,8 +259,10 @@ def _mask_paths(value: object):
         home = str(Path.home())
         if home:
             candidates.append(home)
-    except Exception:
-        pass
+    except (OSError, RuntimeError) as fehler:
+        # Ohne Heimatverzeichnis faellt ein Pruefpfad aus der Diagnose -
+        # der Bericht ist dann unvollstaendig, ohne es zu sagen.
+        _uebersprungen("Heimatverzeichnis fuer die Diagnose", fehler)
     for env_name in ("USERPROFILE", "HOME"):
         raw = os.environ.get(env_name)
         if raw:

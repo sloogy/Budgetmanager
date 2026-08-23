@@ -17,6 +17,7 @@ from model.category_forecast_mode import (
     effective_forecast_mode,
 )
 from model.typ_constants import is_income
+from utils.defensive_log import uebersprungen as _uebersprungen
 
 
 @dataclass(frozen=True)
@@ -230,7 +231,8 @@ def list_year_copy_review_rows(
                 )
             )
             existing.add(key)
-    except Exception:
+    except Exception as fehler:
+        _uebersprungen("Lernvorschlaege fuer die Jahreskopie", fehler)
         # Jahreskopie darf nie daran scheitern, dass Lernvorschläge nicht
         # berechnet werden können. Dann bleiben nur die klassischen Review-Zeilen.
         pass

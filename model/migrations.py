@@ -6,6 +6,8 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+from utils.defensive_log import uebersprungen as _uebersprungen
+
 logger = logging.getLogger(__name__)
 
 # Aktuelle Schema-Version
@@ -112,7 +114,12 @@ def _migrate_v17_cleanup_orphaned_entry_tags(conn) -> None:
         conn.execute(
             "DELETE FROM entry_tags WHERE entry_id NOT IN" " (SELECT id FROM tracking)"
         )
-    except Exception:
+    except Exception as fehler:
+        # Bleibt gefangen: In sehr alten Bestaenden fehlt die Tabelle, und
+        # migrate_all legt sie gleich an. Aber nicht mehr stumm - schlaegt
+        # das DELETE aus einem anderen Grund fehl, bleiben verwaiste Tags
+        # stehen, und das saehe niemand.
+        _uebersprungen("Verwaiste entry_tags aufraeumen", fehler)
         # Tabelle kann in sehr alten Bestaenden fehlen; migrate_all legt
         # sie in frueheren Schritten an.
         pass

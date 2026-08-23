@@ -32,6 +32,8 @@ Semantik:
 
 from __future__ import annotations
 
+from utils.defensive_log import uebersprungen as _uebersprungen
+
 PANEL_KEYS = (
     "kpis",
     "quick_actions",
@@ -146,8 +148,11 @@ def migrate_v2014(settings) -> None:
         stored["action_needed"] = True
         settings.set("cockpit_visible_panels", stored)
         settings.set(_MIGRATION_MARKER, True)
-    except Exception:
-        # Migration darf den Start nie verhindern.
+    except Exception as fehler:
+        # Migration darf den Start nie verhindern - aber sie darf auch nicht
+        # stumm halb angewandt bleiben. Ohne Meldung liefe sie bei jedem
+        # Start neu, und niemand wuesste warum.
+        _uebersprungen("Cockpit-Voreinstellungen migrieren", fehler)
         pass
 
 
