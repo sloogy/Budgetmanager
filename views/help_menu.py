@@ -47,6 +47,7 @@ from PySide6.QtWidgets import (
 from app_info import APP_VERSION
 from utils.i18n import tr, trf
 from utils.icons import get_icon
+from views.bank_import_dialog import BankImportDialog
 from views.help_launcher import help_file_candidates
 
 logger = logging.getLogger(__name__)
@@ -76,8 +77,49 @@ def _add(
     return action
 
 
+def _open_bank_import(window: QWidget) -> None:
+    """Öffnet den lokalen Review-Import und aktualisiert danach Tracking/Tags."""
+    conn = getattr(window, "conn", None)
+    if conn is None:
+        logger.warning("Bankimport ohne aktive Datenbankverbindung angefordert")
+        return
+    dialog = BankImportDialog(conn, window)
+    if dialog.exec() != QDialog.Accepted:
+        return
+    tracking = getattr(window, "tracking_tab", None)
+    if tracking is not None:
+        try:
+            tracking._reload_tags()
+            tracking._reload_categories()
+            tracking.refresh()
+        except Exception as exc:
+            logger.warning("Tracking nach Bankimport nicht vollständig aktualisiert: %s", exc)
+    # Die übrigen Tabs dürfen ihre Summen nach dem Import ebenfalls neu lesen.
+    refresh = getattr(window, "_refresh_all_tabs", None)
+    if callable(refresh):
+        try:
+            refresh()
+        except Exception as exc:
+            logger.debug("Voll-Refresh nach Bankimport fehlgeschlagen: %s", exc)
+
+
+def _build_bank_import_menu(window: QWidget, menubar: QMenuBar) -> QMenu:
+    """Eigener Import-Bereich; getrennt von LifePlanner- und Hilfe-Funktionen."""
+    import_menu = menubar.addMenu("&Import")
+    action = QAction("Bank &PDF/CSV…", window)
+    action.setIcon(get_icon("📥"))
+    action.setStatusTip("Kontoauszug lokal lesen, prüfen, kategorisieren und importieren")
+    action.triggered.connect(lambda _checked=False: _open_bank_import(window))
+    import_menu.addAction(action)
+    return import_menu
+
+
 def build_help_menu(window: QWidget, menubar: QMenuBar) -> QMenu:
     """Baut das Hilfe-Menü auf und hängt es an die Menüleiste.
+
+    Zusätzlich wird unmittelbar davor der eigenständige Bankimport-Bereich
+    registriert. Er gehört fachlich nicht ins Hilfe-Menü, nutzt aber denselben
+    zentralen Menüaufbau-Aufruf, damit ``MainWindow`` unverändert bleiben kann.
 
     Aufbau (fünf Gruppen, neun oberste Einträge, zwei Untermenüs)::
 
@@ -95,6 +137,7 @@ def build_help_menu(window: QWidget, menubar: QMenuBar) -> QMenu:
         ─────────────────────────────
         Über Budgetmanager…
     """
+    _build_bank_import_menu(window, menubar)
     menu = menubar.addMenu(tr("menu.help"))
 
     # ── Nachschlagen ────────────────────────────────────────────
