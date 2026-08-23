@@ -18,7 +18,9 @@ from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
 _ALLOWED_TYPES = frozenset({TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS})
 _LONG_NUMBER = re.compile(r"\b\d{5,}\b")
-_NOISE = re.compile(r"\b(?:ref|referenz|zahlung|kartenzahlung|belastung|gutschrift)\b", re.I)
+_NOISE = re.compile(
+    r"\b(?:ref|referenz|zahlung|kartenzahlung|belastung|gutschrift)\b", re.I
+)
 
 
 @dataclass(frozen=True)
@@ -106,7 +108,6 @@ def match_twint_reimbursement(
         if credit_amount > expense_abs * 1.02:
             continue
         ratio = min(1.0, credit_amount / expense_abs)
-        # Nähe in Zeit und typische Teil-/Vollerstattung erhöhen die Evidenz.
         shape = max(0.0, 1.0 - min(abs(ratio - 0.5), abs(ratio - 1.0)))
         score = 0.62 + 0.22 * (1 - days / max(1, max_days)) + 0.16 * shape
         if best is None or score > best[0]:
@@ -159,7 +160,8 @@ class BankImportAI:
             );
             CREATE TABLE IF NOT EXISTS ai_tag_rules (
                 tag_name TEXT PRIMARY KEY COLLATE NOCASE,
-                allocation_percent REAL NOT NULL CHECK(allocation_percent >= 0 AND allocation_percent <= 100),
+                allocation_percent REAL NOT NULL
+                    CHECK(allocation_percent >= 0 AND allocation_percent <= 100),
                 priority INTEGER NOT NULL DEFAULT 0,
                 updated_at TEXT NOT NULL
             );
@@ -170,19 +172,22 @@ class BankImportAI:
         self.conn.commit()
 
     def _validate_typ(self, typ: str) -> str:
-        typ = str(typ or "").strip()
-        if typ not in _ALLOWED_TYPES:
-            raise ValueError(f"Unbekannter BudgetManager-Typ: {typ!r}")
-        return typ
+        value = str(typ or "").strip()
+        if value not in _ALLOWED_TYPES:
+            raise ValueError(f"Unbekannter BudgetManager-Typ: {value!r}")
+        return value
 
     def _validate_category(self, typ: str, category: str) -> str:
         typ = self._validate_typ(typ)
         row = self.conn.execute(
-            "SELECT name FROM categories WHERE typ=? AND name=? COLLATE NOCASE LIMIT 1",
+            "SELECT name FROM categories "
+            "WHERE typ=? AND name=? COLLATE NOCASE LIMIT 1",
             (typ, str(category or "").strip()),
         ).fetchone()
         if not row:
-            raise ValueError(f"Kategorie {category!r} existiert nicht im BudgetManager-Typ {typ!r}.")
+            raise ValueError(
+                f"Kategorie {category!r} existiert nicht im BudgetManager-Typ {typ!r}."
+            )
         return str(row[0])
 
     def _validate_tags(self, tags: tuple[str, ...] | list[str]) -> tuple[str, ...]:
@@ -201,7 +206,9 @@ class BankImportAI:
                 valid.append(name)
         return tuple(valid)
 
-    def set_tag_allocation_rule(self, tag_name: str, percent: float, *, priority: int = 0) -> None:
+    def set_tag_allocation_rule(
+        self, tag_name: str, percent: float, *, priority: int = 0
+    ) -> None:
         tag = self._validate_tags((tag_name,))[0]
         percent = float(percent)
         if not 0 <= percent <= 100:
@@ -219,16 +226,21 @@ class BankImportAI:
         )
         self.conn.commit()
 
-    def allocation_for_tags(self, tags: tuple[str, ...] | list[str]) -> tuple[float | None, str]:
+    def allocation_for_tags(
+        self, tags: tuple[str, ...] | list[str]
+    ) -> tuple[float | None, str]:
         names = self._validate_tags(tags)
         if not names:
             return None, ""
-        placeholders = ",".join("?" for _ in names)
-        rows = self.conn.execute(
-            f"SELECT tag_name, allocation_percent, priority FROM ai_tag_rules "
-            f"WHERE tag_name IN ({placeholders}) ORDER BY priority DESC, tag_name COLLATE NOCASE",  # nosec B608
-            names,
-        ).fetchall()
+        wanted = {name.casefold() for name in names}
+        rows = [
+            row
+            for row in self.conn.execute(
+                "SELECT tag_name, allocation_percent, priority "
+                "FROM ai_tag_rules ORDER BY priority DESC, tag_name COLLATE NOCASE"
+            ).fetchall()
+            if str(row[0]).casefold() in wanted
+        ]
         if not rows:
             return None, ""
         highest = int(rows[0][2])
@@ -246,7 +258,9 @@ class BankImportAI:
         description: str,
         counterparty: str = "",
         tags: tuple[str, ...] | list[str] = (),
+        commit: bool = True,
     ) -> None:
+        """Lernt nur bestätigte Daten; ``commit=False`` dient atomaren Batch-Imports."""
         typ = self._validate_typ(typ)
         category = self._validate_category(typ, category)
         tags = self._validate_tags(tags)
@@ -255,53 +269,80 @@ class BankImportAI:
             raise ValueError("Buchung enthält keinen lernbaren Text.")
         now = datetime.now(UTC).isoformat()
         row = self.conn.execute(
-            "SELECT category, tags_json, confirmations FROM ai_merchant_memory WHERE fingerprint=? AND typ=?",
+            "SELECT category, tags_json, confirmations FROM ai_merchant_memory "
+            "WHERE fingerprint=? AND typ=?",
             (fingerprint, typ),
         ).fetchone()
         confirmations = 1
         tags_json = json.dumps(tags, ensure_ascii=False)
-        if row and str(row[0]).casefold() == category.casefold() and str(row[1]) == tags_json:
+        if (
+            row
+            and str(row[0]).casefold() == category.casefold()
+            and str(row[1]) == tags_json
+        ):
             confirmations = int(row[2]) + 1
         self.conn.execute(
             """
-            INSERT INTO ai_merchant_memory(fingerprint,typ,category,tags_json,confirmations,updated_at)
-            VALUES(?,?,?,?,?,?)
+            INSERT INTO ai_merchant_memory(
+                fingerprint,typ,category,tags_json,confirmations,updated_at
+            ) VALUES(?,?,?,?,?,?)
             ON CONFLICT(fingerprint,typ) DO UPDATE SET
-              category=excluded.category,tags_json=excluded.tags_json,
-              confirmations=excluded.confirmations,updated_at=excluded.updated_at
+              category=excluded.category,
+              tags_json=excluded.tags_json,
+              confirmations=excluded.confirmations,
+              updated_at=excluded.updated_at
             """,
             (fingerprint, typ, category, tags_json, confirmations, now),
         )
         self.conn.execute(
-            "UPDATE ai_feedback SET active=0 WHERE fingerprint=? AND typ=? AND active=1",
+            "UPDATE ai_feedback SET active=0 "
+            "WHERE fingerprint=? AND typ=? AND active=1",
             (fingerprint, typ),
         )
         raw_text = " ".join(part for part in (counterparty, description) if part)
         self.conn.execute(
             """
-            INSERT INTO ai_feedback(fingerprint,typ,raw_text,category,tags_json,tokens_json,active,created_at)
-            VALUES(?,?,?,?,?,?,1,?)
+            INSERT INTO ai_feedback(
+                fingerprint,typ,raw_text,category,tags_json,tokens_json,active,created_at
+            ) VALUES(?,?,?,?,?,?,1,?)
             """,
-            (fingerprint, typ, raw_text, category, tags_json,
-             json.dumps(_tokens(raw_text), ensure_ascii=False), now),
+            (
+                fingerprint,
+                typ,
+                raw_text,
+                category,
+                tags_json,
+                json.dumps(_tokens(raw_text), ensure_ascii=False),
+                now,
+            ),
         )
-        self.conn.commit()
+        if commit:
+            self.conn.commit()
 
     def _available_categories(self, typ: str) -> set[str]:
-        return {str(row[0]) for row in self.conn.execute(
-            "SELECT name FROM categories WHERE typ=?", (self._validate_typ(typ),)
-        ).fetchall()}
+        return {
+            str(row[0])
+            for row in self.conn.execute(
+                "SELECT name FROM categories WHERE typ=?", (self._validate_typ(typ),)
+            ).fetchall()
+        }
 
     def _safe_tags(self, raw_json: str) -> tuple[str, ...]:
         try:
             values = tuple(str(v) for v in json.loads(str(raw_json or "[]")))
-            return tuple(v for v in values if self.conn.execute(
-                "SELECT 1 FROM tags WHERE name=? COLLATE NOCASE", (v,)
-            ).fetchone())
+            return tuple(
+                v
+                for v in values
+                if self.conn.execute(
+                    "SELECT 1 FROM tags WHERE name=? COLLATE NOCASE", (v,)
+                ).fetchone()
+            )
         except (TypeError, ValueError, json.JSONDecodeError):
             return ()
 
-    def predict(self, *, typ: str, description: str, counterparty: str = "") -> AIPrediction:
+    def predict(
+        self, *, typ: str, description: str, counterparty: str = ""
+    ) -> AIPrediction:
         typ = self._validate_typ(typ)
         available = self._available_categories(typ)
         if not available:
@@ -309,20 +350,31 @@ class BankImportAI:
         fingerprint = _fingerprint(description, counterparty)
         if fingerprint:
             row = self.conn.execute(
-                "SELECT category,tags_json,confirmations FROM ai_merchant_memory WHERE fingerprint=? AND typ=?",
+                "SELECT category,tags_json,confirmations FROM ai_merchant_memory "
+                "WHERE fingerprint=? AND typ=?",
                 (fingerprint, typ),
             ).fetchone()
             if row and str(row[0]) in available:
                 tags = self._safe_tags(str(row[1]))
                 allocation, source_tag = self.allocation_for_tags(tags)
-                return AIPrediction(str(row[0]), tags,
-                    min(0.995, 0.90 + 0.015 * int(row[2])), "merchant_memory",
-                    allocation, source_tag)
+                return AIPrediction(
+                    str(row[0]),
+                    tags,
+                    min(0.995, 0.90 + 0.015 * int(row[2])),
+                    "merchant_memory",
+                    allocation,
+                    source_tag,
+                )
 
-        examples = [row for row in self.conn.execute(
-            "SELECT fingerprint,category,tags_json,tokens_json FROM ai_feedback WHERE active=1 AND typ=?",
-            (typ,),
-        ).fetchall() if str(row[1]) in available]
+        examples = [
+            row
+            for row in self.conn.execute(
+                "SELECT fingerprint,category,tags_json,tokens_json "
+                "FROM ai_feedback WHERE active=1 AND typ=?",
+                (typ,),
+            ).fetchall()
+            if str(row[1]) in available
+        ]
         if not examples:
             return AIPrediction("", (), 0.0, "untrained")
 
@@ -330,15 +382,23 @@ class BankImportAI:
         query_set = set(query)
         best = None
         for row in examples:
-            sim = _jaccard(query_set or set(fingerprint.split()), set(str(row[0]).split()))
+            sim = _jaccard(
+                query_set or set(fingerprint.split()), set(str(row[0]).split())
+            )
             if best is None or sim > best[0]:
                 best = (sim, row)
         if best and best[0] >= 0.72:
             row = best[1]
             tags = self._safe_tags(str(row[2]))
             allocation, source_tag = self.allocation_for_tags(tags)
-            return AIPrediction(str(row[1]), tags, min(0.89, 0.62 + best[0] * 0.30),
-                                "similar_merchant", allocation, source_tag)
+            return AIPrediction(
+                str(row[1]),
+                tags,
+                min(0.89, 0.62 + best[0] * 0.30),
+                "similar_merchant",
+                allocation,
+                source_tag,
+            )
         if not query:
             return AIPrediction("", (), 0.0, "no_features")
 
@@ -358,7 +418,9 @@ class BankImportAI:
         vocab_size = max(1, len(vocabulary))
         scores: dict[str, float] = {}
         for category in category_docs:
-            score = math.log((category_docs[category] + 1) / (total_docs + len(category_docs)))
+            score = math.log(
+                (category_docs[category] + 1) / (total_docs + len(category_docs))
+            )
             counts = category_tokens[category]
             denominator = sum(counts.values()) + vocab_size
             for token in query:
@@ -370,7 +432,13 @@ class BankImportAI:
         confidence = weights[top] / sum(weights.values())
         if len(scores) == 1:
             confidence = min(confidence, 0.70)
-        tags = tuple(tag for tag, count in tag_votes[top].most_common() if count >= 1)
+        tags = tuple(tag for tag, _count in tag_votes[top].most_common())
         allocation, source_tag = self.allocation_for_tags(tags)
-        return AIPrediction(top, tags, round(float(confidence), 4), "naive_bayes",
-                            allocation, source_tag)
+        return AIPrediction(
+            top,
+            tags,
+            round(float(confidence), 4),
+            "naive_bayes",
+            allocation,
+            source_tag,
+        )
