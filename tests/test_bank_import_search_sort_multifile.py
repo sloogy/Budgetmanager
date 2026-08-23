@@ -13,7 +13,10 @@ def test_bank_import_can_load_multiple_statements_in_one_review():
     src = _source()
     assert "QFileDialog.getOpenFileNames(" in src
     assert "self._transaction_digests" in src
-    assert "local_duplicates = self.service.duplicate_indexes(file_transactions, digest)" in src
+    assert (
+        "local_duplicates = self.service.duplicate_indexes(file_transactions, digest)"
+        in src
+    )
     assert "digests.extend(digest for _tx in file_transactions)" in src
 
 
@@ -50,7 +53,9 @@ def test_import_sorting_preserves_manual_review_state():
 
 def test_tag_dropdown_is_alphabetical_and_searchable():
     src = _source()
-    combo = src.split("class CheckableTagCombo", 1)[1].split("class BankImportDialog", 1)[0]
+    combo = src.split("class CheckableTagCombo", 1)[1].split(
+        "class BankImportDialog", 1
+    )[0]
     assert "for name in sorted(tag_names, key=str.casefold):" in combo
     assert "def showPopup(self)" in combo
     assert "def _filter_items(self, text: str)" in combo
