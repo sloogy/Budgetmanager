@@ -115,6 +115,18 @@ Du kannst einen Betrag setzen für:
 
 Die Budgettabelle unterstützt Jahr, Monat/Gesamt, Kontotyp und Kategoriebaum. Parent-Zeilen zeigen eigene Werte plus Kinder.
 
+### 4.1a Im Betragsfeld rechnen
+
+Betragsfelder nehmen auch eine Rechnung entgegen: `23,40 + 12,60` ergibt beim
+Verlassen des Feldes 36,00. Wer eine Quittung mit mehreren Posten bucht, tippt
+sie ab, statt vorher im Kopf zu addieren.
+
+Erlaubt sind die vier Grundrechenarten, Klammern und Vorzeichen — `2 * (3 +
+4,50)`. Steht etwas im Feld, das keine Rechnung ist, bleibt es stehen und wird
+gemeldet; es wird nie stillschweigend zu einer Null.
+
+Das gilt in den Dialogen ebenso wie direkt in den Zellen der Budgettabelle.
+
 ### 4.2 Jahr kopieren
 
 **Jahr kopieren** bietet:

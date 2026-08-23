@@ -1375,6 +1375,7 @@
     "all_goals_reached": "<b style='color:{color};'>All goals reached! 🎉</b>",
     "all_years": "All Years",
     "amount": "Amount:",
+    "amount_calc_hint": "You can do arithmetic here: 23.40 + 12.60",
     "amount_with_currency": "Amount ({currency})",
     "annual_balance": "Annual Balance",
     "annual_expenses": "Annual Expenses",

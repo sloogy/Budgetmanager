@@ -40,6 +40,18 @@ Budgets are planned values and do not create transactions. Enter one month, all 
 
 Forecasts use completed months and stable patterns; nothing is applied automatically.
 
+### Arithmetic in amount fields
+
+Amount fields also accept a calculation: `23.40 + 12.60` becomes 36.00 when you
+leave the field. Booking a receipt with several items means typing it out
+instead of adding up in your head first.
+
+The four basic operations, brackets and signs are allowed — `2 * (3 + 4.50)`.
+Anything that is not a calculation stays in the field and is reported; it is
+never silently turned into a zero.
+
+This works in the dialogs as well as directly in the budget table cells.
+
 ## 5. Forecast modes and learning
 
 - **Normal/Flexible:** everyday variable spending.

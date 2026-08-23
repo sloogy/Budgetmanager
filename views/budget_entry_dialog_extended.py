@@ -63,12 +63,18 @@ def _get_months():
 
 
 from utils.i18n import tr, trf
-from utils.money import currency_header, format_short, parse_money
+from utils.money import currency_header, format_short
+from utils.rechner import rechne_oder_lies
 from views.category_delete_dialog import ask_category_delete_decision
 
 
 def parse_amount(text: str) -> float:
-    return parse_money(text, empty_is_zero=False)
+    """Liest einen Betrag - und rechnet, wenn eine Rechnung dasteht.
+
+    "23,40 + 12,60" ist eine gueltige Eingabe: Wer eine Quittung mit drei
+    Posten bucht, tippt sie ab, statt vorher im Kopf zu addieren.
+    """
+    return rechne_oder_lies(text, empty_is_zero=False)
 
 
 @dataclass(frozen=True)
@@ -774,6 +780,10 @@ class BudgetEntryDialogExtended(QDialog):
         self.amount.setPlaceholderText(
             trf("lbl.example_amount", amount=format_short(1200))
         )
+        # Ohne Hinweis findet niemand eine Fähigkeit, die man dem Feld nicht
+        # ansieht - und wer sie kennt, spart bei jeder mehrteiligen Quittung
+        # einen Schritt.
+        self.amount.setToolTip(tr("lbl.amount_calc_hint"))
 
         # === Modus ===
         self.mode = QComboBox()

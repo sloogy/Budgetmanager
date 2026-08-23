@@ -40,6 +40,19 @@ Le budget est une prévision et ne crée pas d’opération. Saisissez un mois, 
 
 Les prévisions utilisent les mois terminés et des modèles stables ; rien n’est appliqué automatiquement.
 
+### Calculer dans les champs de montant
+
+Les champs de montant acceptent aussi un calcul : `23,40 + 12,60` donne 36,00
+lorsque vous quittez le champ. Pour saisir un reçu à plusieurs postes, vous le
+recopiez au lieu d'additionner de tête.
+
+Les quatre opérations de base, les parenthèses et les signes sont autorisés —
+`2 * (3 + 4,50)`. Ce qui n'est pas un calcul reste dans le champ et est
+signalé ; cela ne devient jamais un zéro en silence.
+
+Cela vaut dans les boîtes de dialogue comme directement dans les cellules du
+tableau budgétaire.
+
 ## 5. Prévisions — Modes de prévision et apprentissage
 
 - **Normal/Flexible :** dépenses variables courantes.

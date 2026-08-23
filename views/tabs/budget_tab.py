@@ -84,13 +84,14 @@ ROLE_TYP = Qt.UserRole + 10  # str (bereits im alten Code genutzt)
 ROLE_ROW_KIND = Qt.UserRole + 11  # str: "header"/"footer"
 
 
-from utils.money import format_short, parse_money
+from utils.money import format_short
+from utils.rechner import rechne_oder_lies
 from views.category_delete_dialog import ask_category_delete_decision
 from views.ui_colors import ui_colors
 
 
 def parse_amount(text: str) -> float:
-    return parse_money(text, empty_is_zero=True)
+    return rechne_oder_lies(text, empty_is_zero=True)
 
 
 def fmt_amount(val: float) -> str:

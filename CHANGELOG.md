@@ -1,5 +1,29 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Funktion
+
+- **In Betragsfeldern lässt sich rechnen.** `23,40 + 12,60` ergibt beim
+  Verlassen des Feldes 36,00 — in den Dialogen wie direkt in den Zellen der
+  Budgettabelle. Wer eine Quittung mit mehreren Posten bucht, tippt sie ab,
+  statt vorher im Kopf zu addieren.
+
+  **Ohne `eval`.** Ein Betragsfeld ist eine Stelle, an der Text von aussen
+  hereinkommt — aus einer Zwischenablage, aus einem Kontoauszug. `eval` würde
+  dort beliebigen Python-Code ausführen; `__import__("os").system(...)` ist ein
+  gültiger Ausdruck. Stattdessen wird der Syntaxbaum gelesen und nur
+  zugelassen, was ausdrücklich erlaubt ist: die vier Grundrechenarten,
+  Klammern, Vorzeichen, Zahlen. Die Liste ist die Erlaubnis, nicht eine
+  Sammlung von Verboten, die jemand vergessen kann.
+
+  Potenzieren fehlt bewusst: `2**10000000` hält das Programm minutenlang an,
+  und ein Programm, das beim Tippen einfriert, sieht aus wie ein Absturz.
+
+  Was keine Rechnung ist, bleibt stehen und wird gemeldet — nie
+  stillschweigend zu einer Null. Ein Betragsfeld, das aus Unverstandenem eine
+  Null macht, bucht falsch.
+
 ## 2.3.0 — 23. August 2026
 
 Der BudgetManager meldet dem LifePlanner-Dashboard, was gerade schiefläuft, und
