@@ -68,8 +68,8 @@ def test_jedes_python_verzeichnis_ist_geprueft_oder_begruendet_offen() -> None:
         if eintrag.name in GEPRUEFT or eintrag.name in OFFEN:
             continue
         unbekannt.append(eintrag.name)
-    assert not unbekannt, (
-        "weder geprueft noch als offen vermerkt: " + ", ".join(unbekannt)
+    assert not unbekannt, "weder geprueft noch als offen vermerkt: " + ", ".join(
+        unbekannt
     )
 
 
