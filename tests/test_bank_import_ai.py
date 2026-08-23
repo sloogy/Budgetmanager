@@ -61,7 +61,10 @@ def test_tag_rule_can_control_personal_cost_share():
     ai.set_tag_allocation_rule("Lebensmittel", 50, priority=10)
     ai.set_tag_allocation_rule("Mittagessen", 100, priority=20)
     assert ai.allocation_for_tags(("Lebensmittel",)) == (50.0, "Lebensmittel")
-    assert ai.allocation_for_tags(("Lebensmittel", "Mittagessen")) == (100.0, "Mittagessen")
+    assert ai.allocation_for_tags(("Lebensmittel", "Mittagessen")) == (
+        100.0,
+        "Mittagessen",
+    )
 
 
 def test_equal_priority_conflict_is_not_guessed():

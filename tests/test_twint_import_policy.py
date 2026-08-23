@@ -7,8 +7,8 @@ import pytest
 from model.bank_import_service import BankImportItem
 from model.bank_statement_reader import BankTransaction
 from model.twint_import_policy import (
-    BankImportMarkerStore,
     TYP_TWINT_AI,
+    BankImportMarkerStore,
     TwintAwareBankImportService,
     is_twint_credit,
 )
@@ -64,7 +64,9 @@ def _conn() -> sqlite3.Connection:
     return conn
 
 
-def _twint_credit(description: str = "TWINT Zahlung erhalten | Geteilte Kosten") -> BankTransaction:
+def _twint_credit(
+    description: str = "TWINT Zahlung erhalten | Geteilte Kosten",
+) -> BankTransaction:
     return BankTransaction(
         source_kind="csv",
         source_name="zkb.csv",
@@ -218,7 +220,9 @@ def test_legacy_marking_stays_idempotent_without_tracking_entry():
     assert first == 1
     assert second == 0
     assert store.is_marked(tx, "g" * 64) is True
-    assert conn.execute("SELECT COUNT(*) FROM bank_import_marker_state").fetchone()[0] == 1
+    assert (
+        conn.execute("SELECT COUNT(*) FROM bank_import_marker_state").fetchone()[0] == 1
+    )
     assert conn.execute("SELECT COUNT(*) FROM tracking").fetchone()[0] == 0
 
 

@@ -52,8 +52,7 @@ def test_zkb_csv_prefers_datum_when_valuta_is_empty(tmp_path):
 def test_csv_uses_valuta_only_when_booking_date_column_is_missing(tmp_path):
     path = tmp_path / "valuta-only.csv"
     path.write_text(
-        "Valuta;Beschreibung;Betrag;Währung\n"
-        "23.08.2026;Kaffee;-4,50;CHF\n",
+        "Valuta;Beschreibung;Betrag;Währung\n" "23.08.2026;Kaffee;-4,50;CHF\n",
         encoding="utf-8",
     )
 

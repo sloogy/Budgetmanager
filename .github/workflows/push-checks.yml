@@ -1,14 +1,23 @@
 name: Push-Gates
 
 # Der volle Release-Lauf laeuft nur am Tag beziehungsweise bei einem
-# [release]-Commit. Dieser schnelle Lauf prueft main und Entwicklungszweige,
-# ohne Tags oder Builds auszulösen: Linux, ein Python, keine Release-Artefakte.
-# So werden Integrationsfehler vor dem Merge sichtbar.
+# [release]-Commit. Gearbeitet wird in dieser Suite aber direkt auf main -
+# dort lief deshalb ueberhaupt nichts, und ein Fehler waere erst beim
+# naechsten Release aufgefallen, zehn Arbeitsrunden spaeter.
+#
+# Dieser Lauf schliesst die Luecke, ohne das Doppellauf-Problem
+# zurueckzubringen, das den Push-Trigger dort ausschloss: Er reagiert nie auf
+# Tags und macht nur die guenstigen Pruefungen - Linux, ein Python, keine
+# Builds. Zwei bis drei Minuten.
+#
+# Seit dem Bankimport-Zweig laeuft er zusaetzlich auf feature/**. Dessen
+# Gate-Bruch (ruff, black, mypy, Ausnahmen-Ratchet, i18n) fiel sonst erst
+# beim Merge nach main auf, also genau einen Schritt zu spaet.
+#
+# Wortgleich aufgebaut in FPM, BudgetManager, FreizeitManager und LifePlanner.
 on:
   push:
-    branches:
-      - main
-      - 'feature/**'
+    branches: [main, 'feature/**']
   workflow_dispatch:
 
 permissions:
@@ -66,11 +75,20 @@ jobs:
 
       - name: Statische Analyse
         run: |
+          # Ohne --select: die Auswahl steht in ruff.toml, begruendet und
+          # fuer lokale Laeufe und CI dieselbe. Vorher galt hier nur die
+          # Syntax-Klasse, waehrend lokal die globale Ruff-Konfiguration
+          # des Entwicklerrechners etwas anderes sagte.
           python -m ruff check .
+          # black prueft das ganze Projekt, nicht nur model/. Vorher waren
+          # tools/ und tests/ zwar formatiert, aber ungeprueft - eine Aenderung
+          # dort brach die Formatierung, ohne dass ein Gate anschlug.
           python -m black --check model/ views/ utils/ updater/ tools/ tests/ main.py app_info.py settings.py settings_dialog.py theme_manager.py
           python -m mypy model/ updater/
 
       - name: Generierte Artefakte entfernen
+        # ruff und mypy legen ihre Caches im Baum ab; lint_procedure_check
+        # beanstandet sie zu Recht. build.yml raeumt an derselben Stelle auf.
         run: python tools/clean_release_tree.py
 
       - name: Lint- und Release-Verfahren

@@ -11,6 +11,7 @@ Alle vier Programme der Suite fuehren diesen Test unter demselben Namen.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -26,8 +27,19 @@ def inhalt() -> str:
 
 
 def test_der_prueflauf_haengt_am_push_nach_main(inhalt: str) -> None:
+    """main muss erfasst sein - weitere Zweige duerfen dazukommen.
+
+    Geprueft wird die Zusicherung, nicht die Schreibweise. Vorher stand hier
+    ein wortgenaues ``branches: [main]``; als der Bankimport-Zweig
+    ``feature/**`` ergaenzte, schlug der Test an, obwohl main weiterhin
+    geprueft wurde.
+    """
+
     assert "push:" in inhalt
-    assert "branches: [main]" in inhalt
+    liste = re.search(r"branches:\s*\[([^\]]*)\]", inhalt)
+    assert liste, "der Push-Trigger nennt keine Branch-Liste"
+    zweige = {eintrag.strip().strip("'\"") for eintrag in liste.group(1).split(",")}
+    assert "main" in zweige, zweige
 
 
 def test_er_reagiert_nicht_auf_tags(inhalt: str) -> None:

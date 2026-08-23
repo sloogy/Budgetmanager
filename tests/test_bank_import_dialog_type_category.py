@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DIALOG = ROOT / "views/bank_import_dialog_v2.py"
 
@@ -20,7 +19,9 @@ def test_category_is_rebuilt_after_type_change():
     src = _source()
     type_change = src.split("def _type_changed", 1)[1].split("def _populate", 1)[0]
     assert "self._set_prediction_for_row(row, replace_tags=True)" in type_change
-    prediction = src.split("def _set_prediction_for_row", 1)[1].split("def _type_changed", 1)[0]
+    prediction = src.split("def _set_prediction_for_row", 1)[1].split(
+        "def _type_changed", 1
+    )[0]
     assert "typ = self._row_type(row)" in prediction
     assert "self._category_combo(typ, prediction.category)" in prediction
 

@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 DIALOG = ROOT / "views/bank_import_dialog.py"
 
@@ -28,7 +27,7 @@ def test_bulk_editor_uses_dropdowns_for_mass_editable_fields():
     assert "self.cmb_bulk_tag = QComboBox()" in src
     assert "self.cmb_bulk_tag_action = QComboBox()" in src
     assert "self.cmb_bulk_use = QComboBox()" in src
-    assert 'QPushButton("Auf Auswahl anwenden")' in src
+    assert 'QPushButton(tr("bank_import.bulk_apply"))' in src
     assert "self._apply_bulk_changes" in src
 
 
@@ -37,7 +36,7 @@ def test_tags_are_checkbox_dropdown_with_locked_category_tags():
     assert "class CheckableTagCombo(QComboBox):" in src
     assert "item.setCheckable(True)" in src
     assert 'item.setText(f"🔒 {name}")' in src
-    assert 'item.setToolTip("Pflicht-Tag der gewählten Kategorie")' in src
+    assert 'item.setToolTip(tr("bank_import.tag_required_tip"))' in src
     assert "weitere vorhandene Tags lassen sich im Tag-Dropdown per" in src
     assert "Checkbox ergänzen" in src
 
@@ -45,8 +44,8 @@ def test_tags_are_checkbox_dropdown_with_locked_category_tags():
 def test_bulk_tags_can_be_added_or_removed_but_required_tags_stay_locked():
     src = _source()
     block = src.split("def _apply_bulk_changes", 1)[1]
-    assert 'self.cmb_bulk_tag_action.addItem("Tag hinzufügen", "add")' in src
-    assert 'self.cmb_bulk_tag_action.addItem("Tag entfernen", "remove")' in src
+    assert 'addItem(tr("bank_import.bulk_tag_add"), "add")' in src
+    assert 'addItem(tr("bank_import.bulk_tag_remove"), "remove")' in src
     assert "tag_combo.set_tag_checked(" in block
     assert "tag_combo.locked_tags()" in block
     assert "skipped_required_tag += 1" in block
