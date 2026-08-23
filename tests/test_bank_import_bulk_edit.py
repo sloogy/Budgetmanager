@@ -22,14 +22,36 @@ def test_bulk_editor_uses_dropdowns_for_mass_editable_fields():
     src = _source()
     assert "self.cmb_bulk_type = QComboBox()" in src
     assert "self.cmb_bulk_category = QComboBox()" in src
+    assert "self.cmb_bulk_tag = QComboBox()" in src
+    assert "self.cmb_bulk_tag_action = QComboBox()" in src
     assert "self.cmb_bulk_use = QComboBox()" in src
     assert 'QPushButton("Auf Auswahl anwenden")' in src
     assert "self._apply_bulk_changes" in src
 
 
+def test_tags_are_checkbox_dropdown_with_locked_category_tags():
+    src = _source()
+    assert "class CheckableTagCombo(QComboBox):" in src
+    assert "item.setCheckable(True)" in src
+    assert 'item.setText(f"🔒 {name}")' in src
+    assert 'item.setToolTip("Pflicht-Tag der gewählten Kategorie")' in src
+    assert "weitere vorhandene Tags lassen sich im Tag-Dropdown per" in src
+    assert "Checkbox ergänzen" in src
+
+
+def test_bulk_tags_can_be_added_or_removed_but_required_tags_stay_locked():
+    src = _source()
+    block = src.split("def _apply_bulk_changes", 1)[1]
+    assert 'self.cmb_bulk_tag_action.addItem("Tag hinzufügen", "add")' in src
+    assert 'self.cmb_bulk_tag_action.addItem("Tag entfernen", "remove")' in src
+    assert "tag_combo.set_tag_checked(" in block
+    assert "tag_combo.locked_tags()" in block
+    assert "skipped_required_tag += 1" in block
+
+
 def test_positive_twint_credit_type_dropdown_is_ai_only():
     src = _source()
-    block = src.split("def _type_combo", 1)[1].split("def _selected_rows", 1)[0]
+    block = src.split("def _type_combo", 1)[1].split("def _populate", 1)[0]
     assert "is_twint_credit(self.transactions[tx_index])" in block
     assert "combo.addItem(TYP_TWINT_AI, TYP_TWINT_AI)" in block
     assert "return super()._type_combo(typ, row)" in block
@@ -49,7 +71,8 @@ def test_twint_netting_requires_explicit_review_opt_in():
     assert "TWINT-Verrechnung ist bewusst Opt-in" in src
 
 
-def test_intro_matches_category_derived_read_only_tags():
+def test_intro_explains_category_and_optional_tags():
     src = _source()
-    assert "Tags werden automatisch aus der gewählten" in src
-    assert "Kategorie übernommen" in src
+    assert "Kategorie-Tags werden automatisch übernommen" in src
+    assert "weitere vorhandene Tags lassen sich im Tag-Dropdown per" in src
+    assert "Checkbox ergänzen" in src
