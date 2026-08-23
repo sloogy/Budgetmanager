@@ -4,10 +4,9 @@
 
 ### Ordnung
 
-- **Die Typprüfung deckt jetzt auch `utils/` und `updater/` ab.** `mypy` lief
-  nur über `model/`; was daneben lag — die Helfer, der ganze Updater — war
-  ungeprüft, obwohl dort Code steht, der Dateien schreibt und Signaturen prüft.
-  79 Dateien statt 45.
+- **Die Typprüfung deckt jetzt auch `updater/` ab.** `mypy` lief nur über
+  `model/`; der ganze Updater war ungeprüft, obwohl dort Code steht, der
+  Dateien schreibt und Signaturen prüft.
 
   Die Ausweitung kostete zwei Funde: einen fehlenden Stub für `requests` (die
   globale `ignore_missing_imports`-Regel deckt den Fall nicht ab, weil mypy die
@@ -15,9 +14,18 @@
   `utils/rechner.py`, aus dem heraus aufgerufen wird, ohne dass sein Typ
   beschrieben war — beides aus dem letzten Loop.
 
+  **Und einen dritten Fund, der wichtiger ist als beide.** `utils/` war lokal
+  grün und in der CI rot — 43 Fehler. Der Grund liegt im Wrapper
+  `tools/gepinnte_werkzeuge.py`: Er garantiert die *Version* des Werkzeugs,
+  nicht die installierten Abhängigkeiten. In seiner Wegwerf-Umgebung fehlt
+  PySide6, und dann ist jeder Qt-Typ `Any` — alles geht durch. Für black und
+  ruff ist das richtig, sie lesen nur Text; mypy löst Importe auf. Ein lokal
+  grüner mypy-Lauf über Qt-nahen Code sagt also nichts. Die Grenze steht jetzt
+  im Docstring des Wrappers, und `utils/` bleibt vorerst offen wie `views/`.
+
   Wie beim black-Gate prüft ein Test die **Abdeckung**, nicht die Liste: Ein
   neues Verzeichnis fällt auf, weil es weder geprüft wird noch als bekannte
-  Lücke vermerkt ist. `views/` und `tools/` stehen dort mit Grund.
+  Lücke vermerkt ist. `views/`, `utils/` und `tools/` stehen dort mit Grund.
 
 
 ### Funktion

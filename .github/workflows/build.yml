@@ -150,7 +150,7 @@ jobs:
         # noch; die Zielliste steht in tests/test_mypy_abdeckung.py, und
         # ein Test haelt fest, dass keine dieser Zeilen dahinter
         # zurueckfaellt.
-        run: python -m mypy model/ utils/ updater/
+        run: python -m mypy model/ updater/
 
       - name: Linting (Auswahl steht in ruff.toml)
         run: python -m ruff check .

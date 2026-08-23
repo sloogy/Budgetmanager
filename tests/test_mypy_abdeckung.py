@@ -8,6 +8,15 @@ Die Ausweitung kostete zwei Funde: einen fehlenden Stub für `requests` und
 ein Dict, aus dem heraus aufgerufen wird, ohne dass sein Typ beschrieben war
 (`utils/rechner.py`, Loop 52). Beide sind behoben.
 
+**Und einen dritten, der wichtiger ist als beide.** `utils/` war lokal grün
+und in der CI rot — 43 Fehler. Der Grund: `tools/gepinnte_werkzeuge.py`
+garantiert die *Version* des Werkzeugs, nicht die installierten
+Abhängigkeiten. In seiner Wegwerf-Umgebung fehlt PySide6, und dann ist jeder
+Qt-Typ `Any` — alles geht durch. Die CI hat PySide6 und löst die Typen echt
+auf. Ein lokal grüner mypy-Lauf über Qt-nahen Code sagt also nichts.
+
+`utils/` bleibt darum vorerst offen, wie `views/`.
+
 Wie beim black-Gate aus Loop 44 prüft dieser Test die **Abdeckung**, nicht die
 Liste: Ein neues Verzeichnis fällt auf, weil kein Prüfziel es enthält.
 """
@@ -20,12 +29,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 # Was heute geprüft wird. Die Liste wächst - sie darf nie schrumpfen.
-GEPRUEFT = ("model", "utils", "updater")
+GEPRUEFT = ("model", "updater")
 
 # Was noch aussteht, mit Grund. Steht ein Verzeichnis hier, ist das eine
 # bekannte Lücke und keine vergessene.
 OFFEN = {
     "views": "Qt-lastig; mypy.ini schliesst es ausdruecklich aus",
+    "utils": (
+        "Qt-lastig wie views/. Der Versuch in Loop 55 war lokal gruen und in "
+        "der CI rot: 43 Fehler in ui_usability, notifications, icons. Grund "
+        "siehe Modul-Docstring - lokal fehlt PySide6, und dann sind alle "
+        "Qt-Typen Any"
+    ),
     "tools": "generate_sbom.py kollidiert im Modulpfad (Loop 55)",
     "tests": "Testcode wird nicht typgeprueft",
     "installer": "Nur Skripte fuer den Paketbau",

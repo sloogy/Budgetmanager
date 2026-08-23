@@ -14,6 +14,15 @@ es das und bricht ab, statt still die falsche Version zu nehmen.
 
     python3 tools/gepinnte_werkzeuge.py black --check model/
     python3 tools/gepinnte_werkzeuge.py ruff check .
+
+**Grenze, die in Loop 55 Geld gekostet hat:** Das Skript garantiert die
+*Version* des Werkzeugs, nicht die installierten Abhaengigkeiten. Seine
+Wegwerf-Umgebung enthaelt nur das Werkzeug selbst. Fuer black und ruff ist das
+richtig - sie lesen nur Text. ``mypy`` dagegen loest Importe auf: Ohne PySide6
+ist jeder Qt-Typ ``Any``, und ein Lauf ueber Qt-nahen Code geht gruen durch,
+waehrend die CI mit installiertem PySide6 dieselben Dateien ablehnt. Wer mypy
+ueber solchen Code laufen laesst, muss es in einer Umgebung mit den echten
+Abhaengigkeiten tun.
 """
 
 from __future__ import annotations
