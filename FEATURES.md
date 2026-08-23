@@ -1,4 +1,10 @@
-## Neu in v2.3.0
+## Neu in v2.4.0
+
+- In Betragsfeldern lässt sich rechnen: `23,40 + 12,60` ergibt 36,00 — in den Dialogen wie in den Zellen der Budgettabelle.
+- Sparzielwünsche aus FPM werden im Sparziel-Dialog gezeigt und einzeln bestätigt.
+- Die Typprüfung deckt jetzt auch den Updater ab.
+
+## Neu in v2.4.0
 
 - Das LifePlanner-Dashboard zeigt, was im BudgetManager ansteht: überzogene Budgets, Sparziele kurz vor oder nach ihrem Termin.
 - Der Kategorienkatalog wird für andere Programme veröffentlicht — FPM ordnet seine Ausgaben damit den eigenen Kategorien zu, statt eigene Namen mitzuschicken.

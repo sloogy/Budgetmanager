@@ -1,6 +1,6 @@
 # DAU-Test — Usability & Durchführung nach dem ersten Start
 
-Stand: v2.3.0 · 20. August 2026
+Stand: v2.4.0 · 20. August 2026
 
 „DAU" = der technisch völlig unbedarfte Nutzer. Getestet wurde der komplette
 Weg vom allerersten Start bis zur ersten eigenen Buchung — einerseits als

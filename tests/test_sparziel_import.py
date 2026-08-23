@@ -213,3 +213,25 @@ def test_das_schema_stimmt_mit_der_senderseite_ueberein() -> None:
     assert SCHEMA == "budgetmanager.savings_goal_request.v1"
     assert MANIFEST_SCHEMA == "budgetmanager.savings_goal_request.manifest.v1"
     assert WISHES_FILE == "fpm_savings_wishes.jsonl"
+
+
+def test_der_tabellenname_steht_ueberall_gleich() -> None:
+    """Die Abfragen schreiben den Namen aus, die Konstante nennt ihn.
+
+    SQL aus einem f-String zu bauen ist auch dann eine schlechte
+    Gewohnheit, wenn der eingesetzte Wert eine Konstante ist - die
+    Release-Prüfung ``d1_sql_surface`` beanstandet es zu Recht. Dann muss
+    aber jemand dafür sorgen, dass die beiden nicht auseinanderlaufen.
+    """
+    from pathlib import Path
+
+    from model.savings_goal_import import STATE_TABLE
+
+    quelle = Path(__file__).resolve().parents[1] / "model" / "savings_goal_import.py"
+    text = quelle.read_text(encoding="utf-8")
+
+    # Jede SQL-Zeile, die eine Tabelle nennt, muss genau diese nennen.
+    for schluessel in ("CREATE TABLE IF NOT EXISTS", "INSERT OR REPLACE INTO", "FROM"):
+        for zeile in text.splitlines():
+            if schluessel in zeile and "savings_goal" in zeile:
+                assert STATE_TABLE in zeile, f"anderer Tabellenname: {zeile.strip()}"

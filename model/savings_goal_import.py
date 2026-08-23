@@ -31,6 +31,9 @@ from model.typ_constants import TYP_SAVINGS
 WISHES_FILE = "fpm_savings_wishes.jsonl"
 SCHEMA = "budgetmanager.savings_goal_request.v1"
 MANIFEST_SCHEMA = "budgetmanager.savings_goal_request.manifest.v1"
+# Der Name steht auch in den Abfragen ausgeschrieben: SQL aus einem
+# f-String zu bauen ist auch dann eine schlechte Gewohnheit, wenn der
+# eingesetzte Wert eine Konstante ist. Ein Test haelt beide gleich.
 STATE_TABLE = "savings_goal_import_state"
 
 # Wie beim Zahlungsimport: Grenzen, damit eine fehlerhafte Gegenseite hier
@@ -57,8 +60,8 @@ class SparzielWunsch:
 
 def ensure_state_table(conn: sqlite3.Connection) -> None:
     conn.execute(
-        f"""
-        CREATE TABLE IF NOT EXISTS {STATE_TABLE} (
+        """
+        CREATE TABLE IF NOT EXISTS savings_goal_import_state (
             external_id TEXT PRIMARY KEY,
             source TEXT NOT NULL,
             payload_hash TEXT NOT NULL,
@@ -67,7 +70,7 @@ def ensure_state_table(conn: sqlite3.Connection) -> None:
             processed_at TEXT NOT NULL,
             source_payload TEXT NOT NULL
         )
-        """  # nosec B608 -- Tabellenname ist eine Konstante dieses Moduls
+        """
     )
     conn.commit()
 
@@ -161,9 +164,7 @@ def offene_wuensche(
     ensure_state_table(conn)
     entschieden = {
         str(zeile[0])
-        for zeile in conn.execute(
-            f"SELECT external_id FROM {STATE_TABLE}"  # nosec B608
-        )
+        for zeile in conn.execute("SELECT external_id FROM savings_goal_import_state")
     }
     return [w for w in lies_wuensche(pfad) if w.external_id not in entschieden]
 
@@ -175,12 +176,12 @@ def _merke(
     goal_id: int | None,
 ) -> None:
     conn.execute(
-        f"""
-        INSERT OR REPLACE INTO {STATE_TABLE}
+        """
+        INSERT OR REPLACE INTO savings_goal_import_state
             (external_id, source, payload_hash, status, goal_id,
              processed_at, source_payload)
         VALUES (?, ?, ?, ?, ?, ?, ?)
-        """,  # nosec B608 -- Tabellenname ist eine Konstante dieses Moduls
+        """,
         (
             wunsch.external_id,
             wunsch.source,

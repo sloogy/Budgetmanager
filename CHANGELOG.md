@@ -1,6 +1,10 @@
 # Changelog
 
-## Unveröffentlicht
+## 2.4.0 — 23. August 2026
+
+In Betragsfeldern lässt sich rechnen, Sparzielwünsche aus FPM werden
+übernommen, und die Typprüfung deckt mehr ab. Dazu sechs Stellen, die
+schwiegen, obwohl der Grund im Kommentar stand.
 
 ### Stabilität
 
