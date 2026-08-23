@@ -53,6 +53,7 @@ class CheckableTagCombo(QComboBox):
         self.setMaxVisibleItems(24)
         self.view().pressed.connect(self._toggle_index)
         self._rebuild(tag_names, selected=selected, locked=locked)
+        self.currentIndexChanged.connect(lambda _index: self._refresh_text())
 
     @staticmethod
     def _key(value: str) -> str:
@@ -131,13 +132,19 @@ class CheckableTagCombo(QComboBox):
         return tuple(names)
 
     def set_locked_tags(self, locked: tuple[str, ...]) -> None:
-        selected = self.selected_tags()
+        """Wechselt Pflicht-Tags, ohne alte Kategorie-Tags mitzuschleppen."""
+        previous_locked = {self._key(name) for name in self.locked_tags()}
+        selected_optional = tuple(
+            name
+            for name in self.selected_tags()
+            if self._key(name) not in previous_locked
+        )
         catalog = tuple(
             str(self.model().item(row).data(self._NAME_ROLE) or "")
             for row in range(self.model().rowCount())
             if self.model().item(row) is not None
         )
-        self._rebuild(catalog, selected=selected, locked=locked)
+        self._rebuild(catalog, selected=selected_optional, locked=locked)
 
     def set_tag_checked(self, name: str, checked: bool) -> bool:
         wanted = self._key(name)
