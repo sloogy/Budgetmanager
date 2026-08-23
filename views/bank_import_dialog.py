@@ -165,7 +165,6 @@ class BankImportDialog(_BankImportDialogV2):
                 status = "TWINT-Eingang · bereits markiert · nicht gebucht"
             else:
                 use_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
-                use_item.setCheckState(Qt.Checked)
                 status = (
                     "TWINT-Erstattung · nur markieren · Ausgabe zugeordnet"
                     if matched
