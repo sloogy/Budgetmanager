@@ -2,6 +2,24 @@
 
 ## Unveröffentlicht
 
+### Ordnung
+
+- **Die Typprüfung deckt jetzt auch `utils/` und `updater/` ab.** `mypy` lief
+  nur über `model/`; was daneben lag — die Helfer, der ganze Updater — war
+  ungeprüft, obwohl dort Code steht, der Dateien schreibt und Signaturen prüft.
+  79 Dateien statt 45.
+
+  Die Ausweitung kostete zwei Funde: einen fehlenden Stub für `requests` (die
+  globale `ignore_missing_imports`-Regel deckt den Fall nicht ab, weil mypy die
+  Stubs kennt und nur ihre Installation vermisst) und ein Dict in
+  `utils/rechner.py`, aus dem heraus aufgerufen wird, ohne dass sein Typ
+  beschrieben war — beides aus dem letzten Loop.
+
+  Wie beim black-Gate prüft ein Test die **Abdeckung**, nicht die Liste: Ein
+  neues Verzeichnis fällt auf, weil es weder geprüft wird noch als bekannte
+  Lücke vermerkt ist. `views/` und `tools/` stehen dort mit Grund.
+
+
 ### Funktion
 
 - **Sparzielwünsche aus FPM werden übernommen.** FPM legt sie seit seiner

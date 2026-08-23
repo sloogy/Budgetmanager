@@ -78,7 +78,7 @@ jobs:
           # tools/ und tests/ zwar formatiert, aber ungeprueft - eine Aenderung
           # dort brach die Formatierung, ohne dass ein Gate anschlug.
           python -m black --check model/ views/ utils/ updater/ tools/ tests/ main.py app_info.py settings.py settings_dialog.py theme_manager.py
-          python -m mypy model/
+          python -m mypy model/ utils/ updater/
 
       - name: Generierte Artefakte entfernen
         # ruff und mypy legen ihre Caches im Baum ab; lint_procedure_check

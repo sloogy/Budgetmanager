@@ -24,18 +24,25 @@ from __future__ import annotations
 import ast
 import operator
 import re
+from collections.abc import Callable
 
 from utils.money import get_decimal_separator, parse_money
 
 # Genau die vier Grundrechenarten. Kein Potenzieren: ``2**10000000`` haelt das
 # Programm minutenlang an, und in einem Betragsfeld hat es nichts zu suchen.
-_OPERATOREN = {
+# Ausdruecklich annotiert: Ohne die Typen kann mypy nicht sehen, dass die
+# Werte aufrufbar sind - und meldet zu Recht "Cannot call function of unknown
+# type". Ein Dict, aus dem heraus aufgerufen wird, gehoert beschrieben.
+_OPERATOREN: dict[type[ast.operator], Callable[[float, float], float]] = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
     ast.Mult: operator.mul,
     ast.Div: operator.truediv,
 }
-_VORZEICHEN = {ast.UAdd: operator.pos, ast.USub: operator.neg}
+_VORZEICHEN: dict[type[ast.unaryop], Callable[[float], float]] = {
+    ast.UAdd: operator.pos,
+    ast.USub: operator.neg,
+}
 
 # Ein Ausdruck, der nur aus Zahlen und diesen Zeichen besteht. Die Pruefung
 # davor spart den Syntaxbaum fuer den haeufigsten Fall - eine blosse Zahl.

@@ -39,7 +39,7 @@ python -m ruff check . --select E9,F63,F7,F82
 python tools/i18n_audit.py
 python tools/dau_first_run_check.py
 python tools/gepinnte_werkzeuge.py black --check --workers 1 main.py app_info.py settings.py settings_dialog.py theme_manager.py model updater utils views tools tests
-python tools/gepinnte_werkzeuge.py mypy model/ updater/manifest_signing.py utils/secure_excel.py utils/ui_experience_mode.py
+python tools/gepinnte_werkzeuge.py mypy model/ utils/ updater/
 python tools/bandit_release_gate.py --bandit-json audit_artifacts/BANDIT_CURRENT.json --summary-json audit_artifacts/BANDIT_RELEASE_GATE.json
 python -m pytest tests/ -v -ra --tb=short --cov --cov-branch --cov-report=json:audit_artifacts/coverage_full.json --cov-fail-under=40
 python tools/coverage_gate.py --json audit_artifacts/coverage_full.json --summary-json audit_artifacts/coverage_gate_summary.json --overall-min 40

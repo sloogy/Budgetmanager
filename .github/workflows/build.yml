@@ -146,7 +146,11 @@ jobs:
           python -m black --check model/ views/ utils/ updater/ tools/ tests/ main.py app_info.py settings.py settings_dialog.py theme_manager.py
 
       - name: Type-check model layer
-        run: python -m mypy model/
+        # Seit Loop 55 auch utils/ und updater/. views/ und tools/ fehlen
+        # noch; die Zielliste steht in tests/test_mypy_abdeckung.py, und
+        # ein Test haelt fest, dass keine dieser Zeilen dahinter
+        # zurueckfaellt.
+        run: python -m mypy model/ utils/ updater/
 
       - name: Linting (Auswahl steht in ruff.toml)
         run: python -m ruff check .
