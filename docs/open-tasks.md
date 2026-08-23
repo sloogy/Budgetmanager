@@ -1,4 +1,4 @@
-# Offene Release-Aufgaben — BudgetManager v3.0.0
+# Offene Release-Aufgaben — BudgetManager v3.0.1
 
 Stand: 23. August 2026
 
