@@ -31,6 +31,39 @@ def test_zkb_csv_uses_chf_debit_credit_not_betrag_detail(tmp_path):
     assert rows[1].amount == Decimal("25.00")
 
 
+def test_zkb_csv_prefers_datum_when_valuta_is_empty(tmp_path):
+    path = tmp_path / "zkb-empty-valuta.csv"
+    path.write_text(
+        "Datum;Buchungstext;Whg;Betrag Detail;ZKB-Referenz;Referenznummer;"
+        "Belastung CHF;Gutschrift CHF;Valuta;Saldo CHF;Zahlungszweck;Details\n"
+        "23.08.2026;Kartenzahlung;CHF;;ZKB-3;REF-3;19,85;;;5'179,55;"
+        "COOP Einkauf;Filiale Winterthur\n",
+        encoding="utf-8",
+    )
+
+    rows = load_csv(path)
+
+    assert len(rows) == 1
+    assert rows[0].booking_date == date(2026, 8, 23)
+    assert rows[0].amount == Decimal("-19.85")
+    assert rows[0].raw["Valuta"] == ""
+
+
+def test_csv_uses_valuta_only_when_booking_date_column_is_missing(tmp_path):
+    path = tmp_path / "valuta-only.csv"
+    path.write_text(
+        "Valuta;Beschreibung;Betrag;Währung\n"
+        "23.08.2026;Kaffee;-4,50;CHF\n",
+        encoding="utf-8",
+    )
+
+    rows = load_csv(path)
+
+    assert len(rows) == 1
+    assert rows[0].booking_date == date(2026, 8, 23)
+    assert rows[0].amount == Decimal("-4.50")
+
+
 def test_csv_accepts_timestamp_and_short_date(tmp_path):
     path = tmp_path / "bank.csv"
     path.write_text(
@@ -66,3 +99,42 @@ def test_pdf_reader_uses_pypdf_text_and_parses_booking_line(tmp_path, monkeypatc
     assert rows[0].amount == Decimal("-12.50")
     assert rows[0].currency == "CHF"
     assert rows[0].description == "COOP Einkauf"
+
+
+def test_zkb_pdf_separates_amount_valuta_and_balance(tmp_path, monkeypatch):
+    path = tmp_path / "zkb-konto.pdf"
+    path.write_bytes(b"%PDF-1.4 test placeholder")
+
+    header = (
+        f"{'Datum':<12}{'Buchungstext':<42}{'Belastung CHF':<16}"
+        f"{'Gutschrift CHF':<22}{'Valuta':<12}{'Saldo CHF'}"
+    )
+    debit_line = (
+        f"{'21.08.2026':<12}{'Kartenzahlung COOP':<42}{'19.85':<16}"
+        f"{'':<22}{'21.08.2026':<12}{"5'179.55"}"
+    )
+    credit_line = (
+        f"{'22.08.2026':<12}{'TWINT Zahlung erhalten':<42}{'':<16}"
+        f"{'40.00':<22}{'22.08.2026':<12}{"5'219.55"}"
+    )
+
+    class FakePage:
+        def extract_text(self, *, extraction_mode=None):
+            assert extraction_mode == "layout"
+            return "\n".join((header, debit_line, credit_line))
+
+    class FakeReader:
+        def __init__(self, _path):
+            self.pages = [FakePage()]
+
+    monkeypatch.setattr(pypdf, "PdfReader", FakeReader)
+    rows = load_pdf(path)
+
+    assert len(rows) == 2
+    assert rows[0].booking_date == date(2026, 8, 21)
+    assert rows[0].amount == Decimal("-19.85")
+    assert rows[0].raw["valuta"] == "21.08.2026"
+    assert rows[0].raw["saldo"] == "5'179.55"
+    assert rows[1].booking_date == date(2026, 8, 22)
+    assert rows[1].amount == Decimal("40.00")
+    assert rows[1].raw["saldo"] == "5'219.55"
