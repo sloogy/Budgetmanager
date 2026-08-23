@@ -1,18 +1,17 @@
-## 3.0.3 – 23. August 2026
+## 3.0.4 – 23. August 2026
 
-3.0.2 hat den i18n-Fehler aus 3.0.1 erfolgreich behoben und das Übersetzungs-Audit bestanden. Der Full-Release stoppte danach am nächsten Gate: Die beiden neuen Bankimport-Dateien waren nicht mit der im Projekt gepinnten Black-Version 25.1.0 formatiert. 3.0.3 übernimmt die Bankimport-Verbesserungen mit identischer Fachlogik und formatiert diese Dateien vor dem unveränderlichen Release-Tag mit genau der CI-Version.
+3.0.3 hat i18n, Black und mypy erfolgreich bestanden. Der Full-Release stoppte anschließend am Ruff-Gate: zwei neue Testdateien und der Runtime-Importblock waren nicht nach Ruff sortiert, außerdem verwendete die neue Sortierfunktion sieben Lambda-Zuweisungen, die die Projektregeln verbieten. 3.0.4 übernimmt dieselbe Fachlogik und normalisiert diese vier Dateien vor dem Tag mit der im Projekt gepinnten Ruff-Version, formatiert sie danach erneut mit Black und prüft beide Werkzeuge nochmals.
 
 ### Bankimport
 
-- Mehrere CSV- und PDF-Dateien können gemeinsam geladen und geprüft werden; Duplikat- und Marker-Identität bleibt pro Quelldatei getrennt.
-- Globale Suche und sichere Sortierung nach Datum, Betrag, Buchungstext, Kategorie, Tags und Quelldatei.
-- Durchsuchbares Tag-Dropdown sowie Tag-Erstellung direkt im Import.
-- `Alle auswählen` / `Alle abwählen`, Umschalt-Auswahl und Strg+A wirken bei aktivem Filter ausschließlich auf sichtbare Zeilen.
-- Versteckte Zeilen sind zusätzlich von der Massenbearbeitung ausgeschlossen; manuelle Review-Änderungen bleiben beim Sortieren erhalten.
+- Mehrere CSV- und PDF-Dateien gemeinsam laden, suchen und sortieren.
+- Durchsuchbares Tag-Dropdown und Tag-Erstellung direkt im Import.
+- `Alle auswählen` / `Alle abwählen` sowie Umschalt-Auswahl und Strg+A wirken bei aktivem Filter nur auf sichtbare Zeilen.
+- Versteckte Zeilen bleiben von Massenbearbeitung ausgeschlossen; manuelle Review-Änderungen bleiben beim Sortieren erhalten.
 
 ### Release-Härtung
 
-- Die Sortierbeschriftungen bestehen das i18n-Audit ohne neue hartcodierte deutsche UI-Texte.
-- `views/bank_import_dialog.py` und `views/bank_import_dialog_runtime.py` werden für den Release mit der projektweit gepinnten Black-Version formatiert und anschließend nochmals mit `--check` geprüft.
-- Release-Retries mit `-rN` bauen existierende unveränderliche Tags neu, statt sie zu verschieben.
-- Fehlgeschlagene Full-Releases hinterlassen einen `.failed`-Marker mit der konkreten GitHub-Actions-Run-ID; erfolgreiche Läufe einen `.ok`-Marker.
+- Die neue Bankimport-Sortierung besteht das i18n-Audit ohne neue hartcodierte deutsche UI-Texte.
+- Die vier Feature-/Testdateien werden mit der gepinnten Ruff-Version korrigiert und danach mit der gepinnten Black-Version formatiert.
+- Ruff und Black werden vor dem unveränderlichen Release-Tag nochmals explizit als Check ausgeführt.
+- Release-Retries bauen bestehende Tags unverändert neu; fehlgeschlagene Full-Releases speichern die konkrete Actions-Run-ID in einem `.failed`-Marker.
