@@ -601,9 +601,7 @@ class BankImportDialog(_BankImportDialogV3):
             self.search_input.clear()
 
         if len(valid_paths) == 1:
-            self.lbl_file.setText(
-                f"{Path(valid_paths[0]).name} · {self.source_format}"
-            )
+            self.lbl_file.setText(f"{Path(valid_paths[0]).name} · {self.source_format}")
         else:
             self.lbl_file.setText(
                 f"{len(valid_paths)} Dateien · {len(transactions)} Buchungen · "
@@ -633,7 +631,9 @@ class BankImportDialog(_BankImportDialogV3):
             groups[self._digest_for_index(index)].append(index)
 
         for digest, global_indexes in groups.items():
-            grouped_transactions = [self.transactions[index] for index in global_indexes]
+            grouped_transactions = [
+                self.transactions[index] for index in global_indexes
+            ]
             twint_marked = self.marker_store.marked_indexes(
                 grouped_transactions,
                 digest,
@@ -931,9 +931,7 @@ class BankImportDialog(_BankImportDialogV3):
             )
             return
 
-        file_count = len(
-            set(plan_groups) | set(twint_groups) | set(ai_groups)
-        )
+        file_count = len(set(plan_groups) | set(twint_groups) | set(ai_groups))
         answer = QMessageBox.question(
             self,
             "Bankimport bestätigen",

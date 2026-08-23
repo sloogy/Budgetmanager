@@ -207,9 +207,7 @@ class BankImportDialog(_BankImportDialog):
     def _selected_rows(self) -> list[int]:
         """Massenbearbeitung sieht ausschließlich aktuell sichtbare Zeilen."""
         return [
-            row
-            for row in super()._selected_rows()
-            if not self.table.isRowHidden(row)
+            row for row in super()._selected_rows() if not self.table.isRowHidden(row)
         ]
 
 

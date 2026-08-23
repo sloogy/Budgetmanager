@@ -1,42 +1,42 @@
 {
   "app": "Budgetmanager",
   "channel": "stable",
-  "version": "3.0.2",
-  "release_tag": "v3.0.2",
+  "version": "3.0.3",
+  "release_tag": "v3.0.3",
   "assets": {
     "windows": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.2/BudgetManager-v3.0.2-portable-windows.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.3/BudgetManager-v3.0.3-portable-windows.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "linux": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.2/BudgetManager-v3.0.2-portable-linux.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.3/BudgetManager-v3.0.3-portable-linux.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "portable_windows_zip": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.2/BudgetManager-v3.0.2-portable-windows.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.3/BudgetManager-v3.0.3-portable-windows.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "portable_linux_zip": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.2/BudgetManager-v3.0.2-portable-linux.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.3/BudgetManager-v3.0.3-portable-linux.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "portable_zip": {
       "type": "portable-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.2/BudgetManager-v3.0.2-portable-windows.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.3/BudgetManager-v3.0.3-portable-windows.zip",
       "sha256": "PUT_SHA256_HERE"
     },
     "windows_installer": {
       "type": "installer",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.2/BudgetManager_Setup_3.0.2.exe",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.3/BudgetManager_Setup_3.0.3.exe",
       "sha256": "PUT_SHA256_HERE"
     },
     "windows_installer_zip": {
       "type": "installer-zip",
-      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.2/BudgetManager_Setup_3.0.2.zip",
+      "url": "https://github.com/sloogy/Budgetmanager/releases/download/v3.0.3/BudgetManager_Setup_3.0.3.zip",
       "sha256": "PUT_SHA256_HERE"
     }
   }
