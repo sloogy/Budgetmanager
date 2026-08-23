@@ -8,6 +8,7 @@ Fachliche Invarianten:
 - Wechselt Typ oder Kategorie, werden die angezeigten Tags sofort aus der
   BudgetManager-Datenbank neu gelesen.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -17,12 +18,14 @@ from PySide6.QtWidgets import QComboBox, QLineEdit, QMessageBox, QTableWidgetIte
 
 from model.bank_import_ai import match_twint_reimbursement
 from model.twint_import_policy import (
-    BankImportMarkerStore,
     TYP_TWINT_AI,
+    BankImportMarkerStore,
     TwintAwareBankImportService,
     is_twint_credit,
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from utils.i18n import tr
+from utils.notifications import show_info, show_warning
 from views.bank_import_dialog_v2 import BankImportDialog as _BankImportDialogV2
 
 _CATEGORY_SEPARATOR = "\x1f"
@@ -49,7 +52,11 @@ class BankImportDialog(_BankImportDialogV2):
 
     @staticmethod
     def _default_type(tx):
-        return TYP_TWINT_AI if is_twint_credit(tx) else _BankImportDialogV2._default_type(tx)
+        return (
+            TYP_TWINT_AI
+            if is_twint_credit(tx)
+            else _BankImportDialogV2._default_type(tx)
+        )
 
     def _type_combo(self, typ: str, row: int) -> QComboBox:
         combo = QComboBox()
@@ -96,9 +103,7 @@ class BankImportDialog(_BankImportDialogV2):
 
     def _refresh_twint_sets(self) -> None:
         self.twint_credit_indexes = {
-            index
-            for index, tx in enumerate(self.transactions)
-            if is_twint_credit(tx)
+            index for index, tx in enumerate(self.transactions) if is_twint_credit(tx)
         }
         if not self.document_digest:
             self.marked_twint_indexes = set()
@@ -147,7 +152,7 @@ class BankImportDialog(_BankImportDialogV2):
     def _ai_category_combo(self, index: int, row: int) -> QComboBox:
         tx = self.transactions[index]
         combo = QComboBox()
-        combo.addItem("— Kategorie nur für KI wählen —", "")
+        combo.addItem(tr("bank_import.ai_category_placeholder"), "")
         for typ in (TYP_EXPENSES, TYP_INCOME):
             for name in self.categories.list_names(typ):
                 combo.addItem(
@@ -206,7 +211,7 @@ class BankImportDialog(_BankImportDialogV2):
         edit.setReadOnly(True)
         edit.setEnabled(True)
         edit.setText(", ".join(names))
-        edit.setPlaceholderText("Keine Tags an dieser Kategorie")
+        edit.setPlaceholderText(tr("bank_import.no_category_tags"))
         edit.blockSignals(False)
 
     def _category_changed(self, row: int) -> None:
@@ -235,7 +240,9 @@ class BankImportDialog(_BankImportDialogV2):
         if use_item is None:
             return
         index = int(use_item.data(Qt.UserRole))
-        self.table.setCellWidget(row, self.COL_CATEGORY, self._ai_category_combo(index, row))
+        self.table.setCellWidget(
+            row, self.COL_CATEGORY, self._ai_category_combo(index, row)
+        )
         self._sync_category_tags(row)
 
         suggested = self.marker_store.suggest_category(self.transactions[index])
@@ -331,7 +338,7 @@ class BankImportDialog(_BankImportDialogV2):
 
     def import_selected(self) -> None:
         if not self.transactions or not self.document_digest:
-            QMessageBox.information(
+            show_info(
                 self,
                 "Bankimport",
                 "Bitte zuerst eine PDF- oder CSV-Datei öffnen.",
@@ -365,12 +372,12 @@ class BankImportDialog(_BankImportDialogV2):
                 if item is not None:
                     plan.append(item)
         except ValueError as exc:
-            QMessageBox.warning(self, "Import prüfen", str(exc))
+            show_warning(self, "Import prüfen", str(exc))
             return
 
         ai_count = len(twint_classifications) + len(ai_classifications)
         if not plan and not ai_count:
-            QMessageBox.information(
+            show_info(
                 self,
                 "Bankimport",
                 "Keine neuen Budgetbuchungen oder KI-Zuordnungen ausgewählt.",
@@ -392,7 +399,9 @@ class BankImportDialog(_BankImportDialogV2):
         skipped = 0
         try:
             if plan:
-                result = self.service.import_items(plan, document_digest=self.document_digest)
+                result = self.service.import_items(
+                    plan, document_digest=self.document_digest
+                )
                 imported = result.imported
                 skipped = result.skipped_duplicates
         except (sqlite3.Error, OSError, RuntimeError, TypeError, ValueError) as exc:
@@ -420,7 +429,7 @@ class BankImportDialog(_BankImportDialogV2):
                 )
                 learned += len(ai_classifications)
         except (sqlite3.Error, ValueError) as exc:
-            QMessageBox.warning(
+            show_warning(
                 self,
                 "KI-Zuordnung unvollständig",
                 f"{imported} Budgetbuchungen wurden übernommen, aber die "
@@ -429,7 +438,7 @@ class BankImportDialog(_BankImportDialogV2):
             )
             return
 
-        QMessageBox.information(
+        show_info(
             self,
             "Bankimport abgeschlossen",
             f"{imported} Budgetbuchungen importiert; {skipped} Duplikate "

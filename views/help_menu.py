@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import logging
 import re
+import sqlite3
 from pathlib import Path
 
 from PySide6.QtCore import Qt
@@ -92,23 +93,27 @@ def _open_bank_import(window: QWidget) -> None:
             tracking._reload_tags()
             tracking._reload_categories()
             tracking.refresh()
-        except Exception as exc:
-            logger.warning("Tracking nach Bankimport nicht vollständig aktualisiert: %s", exc)
+        except (AttributeError, RuntimeError, sqlite3.Error) as exc:
+            logger.warning(
+                "Tracking nach Bankimport nicht vollständig aktualisiert: %s", exc
+            )
     # Die übrigen Tabs dürfen ihre Summen nach dem Import ebenfalls neu lesen.
     refresh = getattr(window, "_refresh_all_tabs", None)
     if callable(refresh):
         try:
             refresh()
-        except Exception as exc:
+        except (AttributeError, RuntimeError, sqlite3.Error) as exc:
             logger.debug("Voll-Refresh nach Bankimport fehlgeschlagen: %s", exc)
 
 
 def _build_bank_import_menu(window: QWidget, menubar: QMenuBar) -> QMenu:
     """Eigener Import-Bereich; getrennt von LifePlanner- und Hilfe-Funktionen."""
     import_menu = menubar.addMenu("&Import")
-    action = QAction("Bank &PDF/CSV…", window)
+    action = QAction(tr("bank_import.menu_action"), window)
     action.setIcon(get_icon("📥"))
-    action.setStatusTip("Kontoauszug lokal lesen, prüfen, kategorisieren und importieren")
+    action.setStatusTip(
+        "Kontoauszug lokal lesen, prüfen, kategorisieren und importieren"
+    )
     action.triggered.connect(lambda _checked=False: _open_bank_import(window))
     import_menu.addAction(action)
     return import_menu

@@ -4,6 +4,7 @@ Ergänzt den V3-Review-Import um sichere Mehrfachauswahl, Dropdown-
 Massenbearbeitung und eine checkbare Tag-Auswahl. Kategorie-Tags bleiben
 verbindlich; zusätzliche vorhandene Tags können bewusst ergänzt werden.
 """
+
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
@@ -14,13 +15,14 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
-    QMessageBox,
     QPushButton,
     QVBoxLayout,
 )
 
 from model.twint_import_policy import TYP_TWINT_AI, is_twint_credit
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from utils.i18n import tr
+from utils.notifications import show_info
 from views.bank_import_dialog_v3 import BankImportDialog as _BankImportDialogV3
 
 
@@ -49,7 +51,7 @@ class CheckableTagCombo(QComboBox):
         line_edit = self.lineEdit()
         if line_edit is not None:
             line_edit.setReadOnly(True)
-            line_edit.setPlaceholderText("Tags wählen…")
+            line_edit.setPlaceholderText(tr("bank_import.tags_placeholder"))
         self.setMaxVisibleItems(24)
         self.view().pressed.connect(self._toggle_index)
         self._rebuild(tag_names, selected=selected, locked=locked)
@@ -78,7 +80,7 @@ class CheckableTagCombo(QComboBox):
             item.setData(is_locked, self._LOCK_ROLE)
             if is_locked:
                 item.setText(f"🔒 {name}")
-                item.setToolTip("Pflicht-Tag der gewählten Kategorie")
+                item.setToolTip(tr("bank_import.tag_required_tip"))
             item.setCheckState(
                 Qt.CheckState.Checked
                 if is_locked or self._key(name) in selected_keys
@@ -105,7 +107,7 @@ class CheckableTagCombo(QComboBox):
         line_edit = self.lineEdit()
         if line_edit is not None:
             line_edit.setText(text)
-        self.setToolTip(text or "Keine Tags gewählt")
+        self.setToolTip(text or tr("bank_import.no_tags_selected"))
 
     def selected_tags(self) -> tuple[str, ...]:
         names: list[str] = []
@@ -201,11 +203,11 @@ class BankImportDialog(_BankImportDialogV3):
         )
 
         bulk = QHBoxLayout()
-        bulk.addWidget(QLabel("Mehrfachauswahl:"))
+        bulk.addWidget(QLabel(tr("bank_import.bulk_label")))
 
         self.cmb_bulk_type = QComboBox()
-        self.cmb_bulk_type.setToolTip("Typ für alle ausgewählten Zeilen setzen")
-        self.cmb_bulk_type.addItem("Typ nicht ändern", "")
+        self.cmb_bulk_type.setToolTip(tr("bank_import.bulk_type_tip"))
+        self.cmb_bulk_type.addItem(tr("bank_import.bulk_type_keep"), "")
         self.cmb_bulk_type.addItem(TYP_EXPENSES, TYP_EXPENSES)
         self.cmb_bulk_type.addItem(TYP_INCOME, TYP_INCOME)
         self.cmb_bulk_type.addItem(TYP_TWINT_AI, TYP_TWINT_AI)
@@ -215,7 +217,7 @@ class BankImportDialog(_BankImportDialogV3):
         self.cmb_bulk_category.setToolTip(
             "Kategorie für kompatible ausgewählte Zeilen setzen"
         )
-        self.cmb_bulk_category.addItem("Kategorie nicht ändern", "")
+        self.cmb_bulk_category.addItem(tr("bank_import.bulk_category_keep"), "")
         for typ in (TYP_EXPENSES, TYP_INCOME):
             for name in self.categories.list_names(typ):
                 self.cmb_bulk_category.addItem(
@@ -228,13 +230,13 @@ class BankImportDialog(_BankImportDialogV3):
         self.cmb_bulk_tag_action.setToolTip(
             "Gewählten Tag bei allen markierten Zeilen hinzufügen oder entfernen"
         )
-        self.cmb_bulk_tag_action.addItem("Tag hinzufügen", "add")
-        self.cmb_bulk_tag_action.addItem("Tag entfernen", "remove")
+        self.cmb_bulk_tag_action.addItem(tr("bank_import.bulk_tag_add"), "add")
+        self.cmb_bulk_tag_action.addItem(tr("bank_import.bulk_tag_remove"), "remove")
         bulk.addWidget(self.cmb_bulk_tag_action)
 
         self.cmb_bulk_tag = QComboBox()
-        self.cmb_bulk_tag.setToolTip("Optionalen Tag für die Mehrfachauswahl wählen")
-        self.cmb_bulk_tag.addItem("Tag nicht ändern", "")
+        self.cmb_bulk_tag.setToolTip(tr("bank_import.bulk_tag_tip"))
+        self.cmb_bulk_tag.addItem(tr("bank_import.bulk_tag_keep"), "")
         for name in self._tag_catalog:
             self.cmb_bulk_tag.addItem(name, name)
         self.cmb_bulk_tag.setMaxVisibleItems(24)
@@ -244,12 +246,12 @@ class BankImportDialog(_BankImportDialogV3):
         self.cmb_bulk_use.setToolTip(
             "Übernahme/KI-Markierung für alle ausgewählten Zeilen setzen"
         )
-        self.cmb_bulk_use.addItem("Auswahlstatus nicht ändern", "")
-        self.cmb_bulk_use.addItem("Übernehmen / KI markieren", "checked")
-        self.cmb_bulk_use.addItem("Nicht übernehmen", "unchecked")
+        self.cmb_bulk_use.addItem(tr("bank_import.bulk_use_keep"), "")
+        self.cmb_bulk_use.addItem(tr("bank_import.bulk_use_checked"), "checked")
+        self.cmb_bulk_use.addItem(tr("bank_import.bulk_use_unchecked"), "unchecked")
         bulk.addWidget(self.cmb_bulk_use)
 
-        self.btn_bulk_apply = QPushButton("Auf Auswahl anwenden")
+        self.btn_bulk_apply = QPushButton(tr("bank_import.bulk_apply"))
         self.btn_bulk_apply.setToolTip(
             "Wendet die Dropdown-Einstellungen auf die markierten Zeilen an"
         )
@@ -272,25 +274,25 @@ class BankImportDialog(_BankImportDialogV3):
                 tx_index = int(use_item.data(Qt.UserRole))
             except (TypeError, ValueError):
                 tx_index = -1
-            if 0 <= tx_index < len(self.transactions):
-                if is_twint_credit(self.transactions[tx_index]):
-                    combo = QComboBox()
-                    combo.addItem(TYP_TWINT_AI, TYP_TWINT_AI)
-                    combo.setToolTip(
-                        "Positive TWINT-Eingänge sind nur KI-/Erstattungssignale "
-                        "und werden nie als Einkommen oder Ausgabe gebucht."
-                    )
-                    combo.currentIndexChanged.connect(
-                        lambda _index, current_row=row: self._type_changed(current_row)
-                    )
-                    return combo
+            in_range = 0 <= tx_index < len(self.transactions)
+            if in_range and is_twint_credit(self.transactions[tx_index]):
+                combo = QComboBox()
+                combo.addItem(TYP_TWINT_AI, TYP_TWINT_AI)
+                combo.setToolTip(
+                    "Positive TWINT-Eingänge sind nur KI-/Erstattungssignale "
+                    "und werden nie als Einkommen oder Ausgabe gebucht."
+                )
+                combo.currentIndexChanged.connect(
+                    lambda _index, current_row=row: self._type_changed(current_row)
+                )
+                return combo
         return super()._type_combo(typ, row)
 
     def _populate(self) -> None:
         super()._populate()
         header = self.table.horizontalHeaderItem(self.COL_TAGS)
         if header is not None:
-            header.setText("Tags (Kategorie + optional)")
+            header.setText(tr("bank_import.col_tags_header"))
         for row in range(self.table.rowCount()):
             self._install_tag_combo(row)
         self._refresh_effective_view()
@@ -364,7 +366,7 @@ class BankImportDialog(_BankImportDialogV3):
     def _apply_bulk_changes(self) -> None:
         rows = self._selected_rows()
         if not rows:
-            QMessageBox.information(
+            show_info(
                 self,
                 "Mehrfachauswahl",
                 "Bitte zuerst Zeilen mit Strg+Mausklick, Umschalt+Mausklick "
@@ -378,7 +380,7 @@ class BankImportDialog(_BankImportDialogV3):
         tag_action = str(self.cmb_bulk_tag_action.currentData() or "add")
         wanted_use = str(self.cmb_bulk_use.currentData() or "")
         if not any((wanted_type, category_token, wanted_tag, wanted_use)):
-            QMessageBox.information(
+            show_info(
                 self,
                 "Massenbearbeitung",
                 "In den Dropdowns wurde keine Änderung ausgewählt.",
@@ -421,9 +423,7 @@ class BankImportDialog(_BankImportDialogV3):
 
                 if category:
                     current_type = self._row_type(row)
-                    compatible = (
-                        current_type == TYP_TWINT_AI or current_type == category_typ
-                    )
+                    compatible = current_type in (TYP_TWINT_AI, category_typ)
                     if not compatible:
                         skipped_category += 1
                     else:
@@ -446,11 +446,9 @@ class BankImportDialog(_BankImportDialogV3):
                         )
                         if changed:
                             changed_rows.add(row)
-                        elif (
-                            tag_action == "remove"
-                            and wanted_tag.casefold()
-                            in {name.casefold() for name in tag_combo.locked_tags()}
-                        ):
+                        elif tag_action == "remove" and wanted_tag.casefold() in {
+                            name.casefold() for name in tag_combo.locked_tags()
+                        }:
                             skipped_required_tag += 1
 
                 if wanted_use:

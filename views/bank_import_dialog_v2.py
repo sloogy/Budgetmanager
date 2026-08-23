@@ -4,6 +4,7 @@ Der Dialog unterstützt normale Bank-PDF/CSV-Dateien sowie das strukturierte
 Kreditkarten-CSV. Typ, Kategorie und Tags bleiben vor dem Import vollständig
 prüf- und korrigierbar.
 """
+
 from __future__ import annotations
 
 import sqlite3
@@ -48,7 +49,9 @@ from model.credit_card_statement_reader import (
 )
 from model.tags_model import TagsModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from utils.i18n import tr
 from utils.money import get_currency
+from utils.notifications import show_info, show_warning
 
 
 class BankImportDialog(QDialog):
@@ -78,7 +81,7 @@ class BankImportDialog(QDialog):
         self.source_format = ""
         self._updating_row = False
 
-        self.setWindowTitle("Bank PDF/CSV importieren")
+        self.setWindowTitle(tr("bank_import.window_title"))
         self.resize(1450, 740)
 
         root = QVBoxLayout(self)
@@ -91,8 +94,8 @@ class BankImportDialog(QDialog):
         root.addWidget(intro)
 
         tools = QHBoxLayout()
-        self.btn_open = QPushButton("PDF/CSV öffnen…")
-        self.lbl_file = QLabel("Keine Datei gewählt")
+        self.btn_open = QPushButton(tr("bank_import.open_file"))
+        self.lbl_file = QLabel(tr("bank_import.no_file"))
         self.chk_net_twint = QCheckBox(
             "Erkannte TWINT-Erstattungen als Eigenanteil verrechnen"
         )
@@ -118,9 +121,7 @@ class BankImportDialog(QDialog):
             ]
         )
         self.table.setAlternatingRowColors(True)
-        self.table.setSelectionBehavior(
-            QAbstractItemView.SelectionBehavior.SelectRows
-        )
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         for column, width in enumerate(
             (60, 100, 130, 105, 360, 220, 220, 135, 220, 110)
         ):
@@ -129,8 +130,8 @@ class BankImportDialog(QDialog):
 
         bottom = QHBoxLayout()
         self.lbl_summary = QLabel("")
-        self.btn_import = QPushButton("Bestätigte Zeilen importieren & lernen")
-        self.btn_close = QPushButton("Schließen")
+        self.btn_import = QPushButton(tr("bank_import.import_confirmed"))
+        self.btn_close = QPushButton(tr("bank_import.close"))
         bottom.addWidget(self.lbl_summary, 1)
         bottom.addWidget(self.btn_import)
         bottom.addWidget(self.btn_close)
@@ -173,7 +174,7 @@ class BankImportDialog(QDialog):
                 source_format = "Bank-CSV/PDF"
             digest = source_digest(path)
         except (BankStatementError, OSError, ValueError) as exc:
-            QMessageBox.warning(self, "Import nicht möglich", str(exc))
+            show_warning(self, "Import nicht möglich", str(exc))
             return
 
         self.document_digest = digest
@@ -221,7 +222,7 @@ class BankImportDialog(QDialog):
 
     def _category_combo(self, typ: str, predicted: str = "") -> QComboBox:
         combo = QComboBox()
-        combo.addItem("— bitte wählen —", "")
+        combo.addItem(tr("bank_import.choose_placeholder"), "")
         for name in self.categories.list_names(typ):
             combo.addItem(name, name)
         if predicted:
@@ -318,7 +319,7 @@ class BankImportDialog(QDialog):
                 self.table.setItem(row, self.COL_TEXT, QTableWidgetItem(tx.description))
 
                 tags_edit = QLineEdit()
-                tags_edit.setPlaceholderText("vorhandene Tags, mit Komma getrennt")
+                tags_edit.setPlaceholderText(tr("bank_import.tags_free_placeholder"))
                 tags_edit.textChanged.connect(
                     lambda _text: self._refresh_effective_view()
                 )
@@ -375,9 +376,7 @@ class BankImportDialog(QDialog):
             if not strict_tags:
                 known = {tag.name.casefold(): tag.name for tag in self.tags.list_all()}
                 tags = tuple(
-                    known[name.casefold()]
-                    for name in tags
-                    if name.casefold() in known
+                    known[name.casefold()] for name in tags if name.casefold() in known
                 )
             allocation, source_tag = self.ai.allocation_for_tags(tags)
         except ValueError:
@@ -444,7 +443,9 @@ class BankImportDialog(QDialog):
         tx = self.transactions[index]
         typ = self._row_type(row)
         combo = self.table.cellWidget(row, self.COL_CATEGORY)
-        category = str(combo.currentData() or "") if isinstance(combo, QComboBox) else ""
+        category = (
+            str(combo.currentData() or "") if isinstance(combo, QComboBox) else ""
+        )
         if not category:
             raise ValueError(f"Zeile {row + 1}: Bitte eine Kategorie wählen.")
 
@@ -495,7 +496,7 @@ class BankImportDialog(QDialog):
 
     def import_selected(self) -> None:
         if not self.transactions or not self.document_digest:
-            QMessageBox.information(
+            show_info(
                 self,
                 "Bankimport",
                 "Bitte zuerst eine PDF- oder CSV-Datei öffnen.",
@@ -509,11 +510,11 @@ class BankImportDialog(QDialog):
                 if item is not None:
                     plan.append(item)
         except ValueError as exc:
-            QMessageBox.warning(self, "Import prüfen", str(exc))
+            show_warning(self, "Import prüfen", str(exc))
             return
 
         if not plan:
-            QMessageBox.information(
+            show_info(
                 self,
                 "Bankimport",
                 "Keine neuen importierbaren Zeilen ausgewählt.",
@@ -542,7 +543,7 @@ class BankImportDialog(QDialog):
             )
             return
 
-        QMessageBox.information(
+        show_info(
             self,
             "Bankimport abgeschlossen",
             f"{result.imported} Buchungen importiert; "
