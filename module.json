@@ -2,7 +2,7 @@
   "schema": "lifeplanner.module.v2",
   "id": "budgetmanager",
   "name": "BudgetManager",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "Budget, Buchungen, Forecasts, Sparziele und Monatsabschluss.",
   "requires_host": ">=0.5.15,<1.0",
   "source_entry": "main.py",

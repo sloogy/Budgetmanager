@@ -65,7 +65,9 @@ jobs:
           python tools/i18n_audit.py
 
       - name: Ratchet
-        run: python tools/exception_audit.py
+        run: |
+          python tools/exception_audit.py
+          python tools/architecture_quality_gate.py
 
       - name: Statische Analyse
         run: |

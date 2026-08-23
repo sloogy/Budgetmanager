@@ -430,7 +430,7 @@ def test_startup_update_check_writes_lightweight_available_result(monkeypatch):
 
 def test_startup_update_check_is_registered_and_non_blocking():
     main_src = (ROOT / "main.py").read_text(encoding="utf-8")
-    mw_src = (ROOT / "views" / "main_window.py").read_text(encoding="utf-8")
+    mw_src = (ROOT / "views" / "main_window_update.py").read_text(encoding="utf-8")
     startup_src = (ROOT / "updater" / "startup_check.py").read_text(encoding="utf-8")
     common_src = (ROOT / "updater" / "common.py").read_text(encoding="utf-8")
 

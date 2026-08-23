@@ -41,7 +41,9 @@ def test_module_manifest_matches_budgetmanager_version():
 
 def test_central_updater_guard_is_present_in_both_update_entry_points():
     root = Path(__file__).resolve().parents[1]
-    main_window = (root / "views/main_window.py").read_text(encoding="utf-8")
+    # Der Update-Weg liegt seit 2.4.1 in main_window_update.py; die Regel
+    # gilt dem Einstiegspunkt, nicht der Datei, in der er zufaellig steht.
+    main_window = (root / "views/main_window_update.py").read_text(encoding="utf-8")
     about_dialog = (root / "views/main_window_dialogs.py").read_text(encoding="utf-8")
     assert main_window.count("LIFEPLANNER_CENTRAL_UPDATER") >= 2
     assert "LIFEPLANNER_CENTRAL_UPDATER" in about_dialog

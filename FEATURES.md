@@ -1,3 +1,7 @@
+## Neu in v2.4.1
+
+- Siehe VERSION_INFO.txt und CHANGELOG.md.
+
 ## Neu in v2.4.0
 
 - In Betragsfeldern lässt sich rechnen: `23,40 + 12,60` ergibt 36,00 — in den Dialogen wie in den Zellen der Budgettabelle.

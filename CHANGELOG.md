@@ -1,6 +1,10 @@
 # Changelog
 
-## Unveröffentlicht
+## 2.4.1 — 23. August 2026
+
+„Wie das System" greift jetzt sofort statt erst beim nächsten Start, und die
+Hostgrenze des Moduls hängt wieder am Manifest-Schema — mit der alten Grenze
+liess der LifePlanner den BudgetManager gar nicht mehr starten.
 
 ### Design
 
@@ -13,6 +17,37 @@
   Systemwechsel, der die feste Wahl überschreibt, wäre schlimmer als gar keine
   Reaktion. Auf Qt vor 6.5 gibt es das Signal nicht; der Fall wird abgefangen,
   statt beim Start abzustürzen.
+
+### Ordnung
+
+- **Das Architektur-Gate schlug erst beim Release an.** `views/main_window.py`
+  war auf 3515 Zeilen gewachsen, die Grenze liegt bei 3500 — im Push-Lauf lief
+  das Gate aber gar nicht mit, es hätte also erst hier angeschlagen. Genau das
+  Muster, das schon einmal behoben wurde: Ein Gate, das nicht läuft, ist kein
+  Gate. Es steht jetzt neben dem Ausnahmen-Ratchet im Push-Lauf.
+
+  Nicht die Grenze wurde angehoben, sondern der Update-Weg herausgelöst:
+  `views/main_window_update.py` trägt den Start-Update-Check und den
+  Update-Dialog. Beide entscheiden anhand derselben Umgebungsvariablen, ob der
+  LifePlanner die Updates führt — ein geschlossenes Thema, das nicht zum
+  Fensteraufbau gehört. Als Mixin, damit die Methoden weiterhin auf
+  `MainWindow` liegen.
+
+  Drei statische Tests lasen den Quelltext des Hauptfensters und mussten
+  mitziehen. Einer davon schnitt von einem `def` bis zum nächsten und band sich
+  damit an die Reihenfolge der Methoden; er liest den Block jetzt über den
+  Syntaxbaum.
+
+### LifePlanner-Integration
+
+- **Die Hostgrenze hing an der Nebenversion statt am Manifest-Schema.** Das
+  Modul verlangte `>=0.5.15,<0.6`; seit der LifePlanner auf 0.6 steht, war das
+  Modul installiert und aktuell, durfte aber nicht mehr starten — `requires_host`
+  wird vor jedem Modulstart geprüft.
+
+  Die Obergrenze gehört an das Manifest-Schema, nicht an die Nebenversion des
+  Hosts: Ein neuer Vertrag heisst v3, und bis dahin ändert sich für das Modul
+  nichts. Sie steht jetzt auf `>=0.5.15,<1.0`.
 
 ## 2.4.0 — 23. August 2026
 

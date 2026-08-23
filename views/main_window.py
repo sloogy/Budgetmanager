@@ -3,7 +3,6 @@ from __future__ import annotations
 import logging
 import os
 import sqlite3
-import sys
 from datetime import date
 from pathlib import Path
 
@@ -35,7 +34,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app_info import APP_NAME, APP_VERSION, app_version_label, app_window_title
+from app_info import APP_NAME, app_version_label, app_window_title
 from model.app_paths import (
     configured_backups_dir,
     configured_db_path,
@@ -47,7 +46,6 @@ from model.shortcuts_config import default_key, load_shortcuts
 from model.undo_redo_model import UndoRedoModel
 from settings import Settings
 from theme_manager import ThemeManager
-from updater.common import clear_startup_check_result, read_startup_check_result
 from utils.defensive_log import uebersprungen as _uebersprungen
 from utils.i18n import display_security_label, tr, trf
 from utils.icons import get_icon
@@ -67,6 +65,7 @@ from views.help_launcher import (
 from views.help_menu import build_help_menu
 from views.lifeplanner_import_dialog import LifePlannerImportDialog
 from views.main_window_dialogs import AboutDialog, LogViewerDialog
+from views.main_window_update import MainWindowUpdateMixin
 from views.quick_add_dialog import QuickAddDialog
 from views.savings_goals_dialog import SavingsGoalsDialog
 from views.shortcuts_dialog import ShortcutsDialog
@@ -77,12 +76,11 @@ from views.tabs.overview_savings_panel import OverviewSavingsPanel
 from views.tabs.overview_tab import OverviewTab
 from views.tabs.tracking_tab import TrackingTab
 from views.tags_manager_dialog import TagsManagerDialog
-from views.update_dialog import UpdateDialog
 
 logger = logging.getLogger(__name__)
 
 
-class MainWindow(QMainWindow):
+class MainWindow(MainWindowUpdateMixin, QMainWindow):
     def __init__(self, conn: sqlite3.Connection, *, active_user=None, user_model=None):
         super().__init__()
         self.conn = conn
@@ -3033,124 +3031,6 @@ class MainWindow(QMainWindow):
         except Exception:
             month = None
         self._check_budget_warnings(year=year, month=month)
-
-    def _startup_update_cmd(self) -> list[str]:
-        """Baut den leichten Start-Update-Check fuer DEV und PyInstaller."""
-        if getattr(sys, "frozen", False):
-            return [sys.executable, "--startup-update-check"]
-        return [sys.executable, "-m", "updater.startup_check"]
-
-    def schedule_startup_update_check(self, delay_ms: int = 4000) -> None:
-        """Prueft nach dem Start unaufdringlich auf Updates.
-
-        Die Pruefung laedt nur das Manifest. Download/Staging/Installation
-        passieren erst nach Klick im normalen Update-Dialog.
-        """
-        if os.environ.get("LIFEPLANNER_CENTRAL_UPDATER", "").strip().lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
-            return
-        if not bool(self.settings.get("check_updates_on_start", True)):
-            return
-        timer = QTimer(self)
-        timer.setSingleShot(True)
-
-        def _run() -> None:
-            try:
-                self._start_startup_update_check()
-            finally:
-                try:
-                    timer.deleteLater()
-                except Exception as fehler:
-                    _uebersprungen("schedule_startup_update_check", fehler)
-
-        timer.timeout.connect(_run)
-        self._startup_update_timer = timer
-        timer.start(max(0, int(delay_ms)))
-
-    def _start_startup_update_check(self) -> None:
-        if self._startup_update_proc is not None:
-            return
-        if getattr(self, "_is_closing", False):
-            return
-        try:
-            clear_startup_check_result()
-        except Exception as fehler:
-            _uebersprungen("_start_startup_update_check", fehler)
-
-        cmd = self._startup_update_cmd()
-        proc = QProcess(self)
-        self._startup_update_proc = proc
-        if not getattr(sys, "frozen", False):
-            proc.setWorkingDirectory(str(Path(__file__).resolve().parents[1]))
-        proc.setProcessChannelMode(QProcess.MergedChannels)
-        proc.readyReadStandardOutput.connect(self._on_startup_update_output)
-        proc.finished.connect(self._on_startup_update_finished)
-        proc.start(cmd[0], cmd[1:])
-
-    def _on_startup_update_output(self) -> None:
-        proc = self._startup_update_proc
-        if proc is None:
-            return
-        data = bytes(proc.readAllStandardOutput()).decode(errors="replace").strip()
-        if data:
-            logger.debug("Startup-Update-Check: %s", data)
-
-    def _on_startup_update_finished(self, _exit_code: int, _status) -> None:
-        self._startup_update_proc = None
-        if getattr(self, "_is_closing", False):
-            return
-        res = read_startup_check_result()
-        if not res.get("available"):
-            if res.get("error"):
-                logger.debug(
-                    "Startup-Update-Check ohne Hinweis beendet: %s", res.get("error")
-                )
-            return
-        if self._startup_update_prompt_shown:
-            return
-        self._startup_update_prompt_shown = True
-
-        remote = str(res.get("remote") or "")
-        current = str(res.get("current") or APP_VERSION)
-        self.statusBar().showMessage(
-            trf("update.startup_status_available", version=remote), 10000
-        )
-
-        msg = QMessageBox(self)
-        msg.setIcon(QMessageBox.Information)
-        msg.setWindowTitle(tr("update.startup_available_title"))
-        msg.setText(
-            trf("update.startup_available_text", current=current, remote=remote)
-        )
-        msg.setInformativeText(tr("update.startup_available_info"))
-        btn_update = msg.addButton(
-            tr("update.startup_btn_open"), QMessageBox.AcceptRole
-        )
-        msg.addButton(tr("update.startup_btn_later"), QMessageBox.RejectRole)
-        msg.exec()
-        if msg.clickedButton() is btn_update:
-            self._show_update_dialog()
-
-    def _show_update_dialog(self):
-        """Öffnet standalone den Modul-Updater, im Host den zentralen Updater."""
-        if os.environ.get("LIFEPLANNER_CENTRAL_UPDATER", "").strip().lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }:
-            show_info(
-                self,
-                tr("update.title"),
-                tr("lifeplanner_import.central_updater"),
-            )
-            return
-        dialog = UpdateDialog(self)
-        dialog.exec()
 
     def _schedule_refresh_all_tabs(
         self, *, reason: str = "", delay_ms: int = 0

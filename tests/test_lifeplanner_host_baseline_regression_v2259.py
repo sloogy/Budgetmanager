@@ -1,3 +1,4 @@
+import ast
 import json
 from pathlib import Path
 
@@ -20,17 +21,25 @@ def test_manifest_and_host_paths(monkeypatch, tmp_path):
     assert default_bridge_dir() == (tmp_path / "bridge").resolve()
 
 
+def _methodenquelle(pfad: Path, name: str) -> str:
+    """Gibt den Quelltext genau einer Methode zurueck.
+
+    Vorher wurde von einem ``def`` bis zum naechsten geschnitten - das band
+    den Test an die Reihenfolge der Methoden und brach, sobald eine dazwischen
+    kam oder umzog.
+    """
+    baum = ast.parse(pfad.read_text(encoding="utf-8"))
+    for knoten in ast.walk(baum):
+        if isinstance(knoten, ast.FunctionDef) and knoten.name == name:
+            return (
+                ast.get_source_segment(pfad.read_text(encoding="utf-8"), knoten) or ""
+            )
+    raise AssertionError(f"{name} nicht in {pfad.name} gefunden")
+
+
 def test_central_updater_suppresses_internal_startup_check():
-    source = (ROOT / "views" / "main_window.py").read_text(encoding="utf-8")
-    schedule = source[
-        source.index("def schedule_startup_update_check") : source.index(
-            "def _start_startup_update_check"
-        )
-    ]
-    manual = source[
-        source.index("def _show_update_dialog") : source.index(
-            "def _schedule_refresh_all_tabs"
-        )
-    ]
+    quelle = ROOT / "views" / "main_window_update.py"
+    schedule = _methodenquelle(quelle, "schedule_startup_update_check")
+    manual = _methodenquelle(quelle, "_show_update_dialog")
     assert "LIFEPLANNER_CENTRAL_UPDATER" in schedule
     assert "LIFEPLANNER_CENTRAL_UPDATER" in manual
