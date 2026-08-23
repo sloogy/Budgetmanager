@@ -1,7 +1,9 @@
 from datetime import date
 from decimal import Decimal
 
-from model.bank_statement_reader import load_csv
+import pypdf
+
+from model.bank_statement_reader import load_csv, load_pdf
 
 
 def test_zkb_csv_uses_chf_debit_credit_not_betrag_detail(tmp_path):
@@ -38,4 +40,29 @@ def test_csv_accepts_timestamp_and_short_date(tmp_path):
         encoding="utf-8",
     )
     rows = load_csv(path)
-    assert [row.booking_date for row in rows] == [date(2026, 8, 23), date(2026, 8, 24)]
+    assert [row.booking_date for row in rows] == [
+        date(2026, 8, 23),
+        date(2026, 8, 24),
+    ]
+
+
+def test_pdf_reader_uses_pypdf_text_and_parses_booking_line(tmp_path, monkeypatch):
+    path = tmp_path / "konto.pdf"
+    path.write_bytes(b"%PDF-1.4 test placeholder")
+
+    class FakePage:
+        def extract_text(self):
+            return "23.08.2026 COOP Einkauf -12,50 CHF\n"
+
+    class FakeReader:
+        def __init__(self, _path):
+            self.pages = [FakePage()]
+
+    monkeypatch.setattr(pypdf, "PdfReader", FakeReader)
+    rows = load_pdf(path)
+
+    assert len(rows) == 1
+    assert rows[0].booking_date == date(2026, 8, 23)
+    assert rows[0].amount == Decimal("-12.50")
+    assert rows[0].currency == "CHF"
+    assert rows[0].description == "COOP Einkauf"
