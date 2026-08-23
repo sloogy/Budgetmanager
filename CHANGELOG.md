@@ -1,5 +1,19 @@
 # Changelog
 
+## Unveröffentlicht
+
+### Design
+
+- **„Wie das System" greift jetzt sofort.** Loop 1 brachte die Einstellung in
+  alle vier Programme — die Verbindung zu dem Signal, das Qt beim Umschalten
+  des Betriebssystems sendet, hatten aber nur drei. Im BudgetManager griff die
+  Wahl erst beim nächsten Start, und genau dann hilft sie niemandem.
+
+  Wer Hell oder Dunkel fest gewählt hat, wird nicht umgestellt: Ein
+  Systemwechsel, der die feste Wahl überschreibt, wäre schlimmer als gar keine
+  Reaktion. Auf Qt vor 6.5 gibt es das Signal nicht; der Fall wird abgefangen,
+  statt beim Start abzustürzen.
+
 ## 2.4.0 — 23. August 2026
 
 In Betragsfeldern lässt sich rechnen, Sparzielwünsche aus FPM werden

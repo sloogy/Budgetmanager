@@ -11,6 +11,7 @@ from PySide6.QtCore import QPoint, QProcess, Qt, QTimer, QUrl
 from PySide6.QtGui import (
     QAction,
     QDesktopServices,
+    QGuiApplication,
     QIcon,
     QKeySequence,
 )
@@ -252,6 +253,7 @@ class MainWindow(QMainWindow):
         # Menü erstellen
         self._create_menu()
         self._create_unified_action_toolbar()
+        self._watch_system_color_scheme()
         self._reduce_duplicate_quick_actions()
         self._install_edit_context_menus()
 
@@ -1615,6 +1617,26 @@ class MainWindow(QMainWindow):
             self.action_dark.setChecked(theme == "dark")
 
         self.statusBar().showMessage(f"Theme: {theme}", 2000)
+
+    def _watch_system_color_scheme(self) -> None:
+        """Auf den Hell/Dunkel-Wechsel des Betriebssystems reagieren.
+
+        Ohne diese Verbindung greift die Einstellung "Wie das System" erst
+        beim naechsten Start - und genau das ist die Situation, in der sie
+        niemandem hilft. FPM, FreizeitManager und LifePlanner hatten die
+        Verbindung laengst; hier fehlte sie als einzigem.
+        """
+        signal = getattr(QGuiApplication.styleHints(), "colorSchemeChanged", None)
+        if signal is None:  # Qt aelter als 6.5
+            return
+        signal.connect(self._system_color_scheme_changed)
+
+    def _system_color_scheme_changed(self, _scheme) -> None:
+        """Nur handeln, wenn der Nutzer dem System auch folgen wollte."""
+        gewaehlt = str(self.settings.get("theme", "light") or "light").lower()
+        if gewaehlt not in ("system", "auto"):
+            return
+        self._apply_theme()
 
     def _apply_theme(self):
         """Wendet das aktuelle Theme an"""

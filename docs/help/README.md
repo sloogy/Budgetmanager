@@ -427,6 +427,8 @@ Bei Source- oder portablen Starts kann der Standardordner `data/` verwendet werd
 
 ## 17. Einstellungen und Design
 
+Unter **Wie das System** folgt die Anzeige der Hell/Dunkel-Einstellung Ihres Betriebssystems — und zwar sofort: Stellen Sie dort um, während BudgetManager läuft, wechselt er mit. Eine feste Wahl von Hell oder Dunkel bleibt davon unberührt.
+
 **Datei → Einstellungen** bzw. **Strg+,**.
 
 - Allgemein: Sprache, Währung, Zahlenformat, Onboarding, Startverhalten.
