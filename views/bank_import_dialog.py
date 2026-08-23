@@ -21,9 +21,21 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from model.bank_import_ai import BookingSignal, ReimbursementMatch, match_twint_reimbursement
-from model.bank_import_service import BankImportItem, BankImportService, source_digest
-from model.bank_statement_reader import BankStatementError, BankTransaction, load_transactions
+from model.bank_import_ai import (
+    BookingSignal,
+    ReimbursementMatch,
+    match_twint_reimbursement,
+)
+from model.bank_import_service import (
+    BankImportItem,
+    BankImportService,
+    source_digest,
+)
+from model.bank_statement_reader import (
+    BankStatementError,
+    BankTransaction,
+    load_transactions,
+)
 from model.category_model import CategoryModel
 from model.tags_model import TagsModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
@@ -54,7 +66,7 @@ class BankImportDialog(QDialog):
         self.matched_credit_indexes: set[int] = set()
         self.duplicate_indexes: set[int] = set()
         self.document_digest = ""
-        self.source_path = ""
+
         self.setWindowTitle("Bank PDF/CSV importieren")
         self.resize(1380, 720)
 
@@ -99,8 +111,7 @@ class BankImportDialog(QDialog):
             QAbstractItemView.SelectionBehavior.SelectRows
         )
         self.table.horizontalHeader().setStretchLastSection(False)
-        widths = (60, 100, 95, 100, 330, 200, 220, 120, 220, 110)
-        for column, width in enumerate(widths):
+        for column, width in enumerate((60, 100, 95, 100, 330, 200, 220, 120, 220, 110)):
             self.table.setColumnWidth(column, width)
         root.addWidget(self.table, 1)
 
@@ -133,7 +144,7 @@ class BankImportDialog(QDialog):
         except (BankStatementError, OSError, ValueError) as exc:
             QMessageBox.warning(self, "Import nicht möglich", str(exc))
             return
-        self.source_path = path
+
         self.document_digest = digest
         self.transactions = transactions
         self.duplicate_indexes = self.service.duplicate_indexes(transactions, digest)
@@ -155,14 +166,14 @@ class BankImportDialog(QDialog):
         self.matches.clear()
         self.matched_credit_indexes.clear()
         credits = [
-            self._signal(i, tx)
-            for i, tx in enumerate(self.transactions)
-            if tx.amount > 0 and i not in self.duplicate_indexes
+            self._signal(index, tx)
+            for index, tx in enumerate(self.transactions)
+            if tx.amount > 0 and index not in self.duplicate_indexes
         ]
-        for i, tx in enumerate(self.transactions):
-            if tx.amount >= 0 or i in self.duplicate_indexes:
+        for index, tx in enumerate(self.transactions):
+            if tx.amount >= 0 or index in self.duplicate_indexes:
                 continue
-            match = match_twint_reimbursement(self._signal(i, tx), credits)
+            match = match_twint_reimbursement(self._signal(index, tx), credits)
             if match is None:
                 continue
             try:
@@ -171,7 +182,7 @@ class BankImportDialog(QDialog):
                 continue
             if credit_index in self.matched_credit_indexes:
                 continue
-            self.matches[i] = match
+            self.matches[index] = match
             self.matched_credit_indexes.add(credit_index)
 
     def _category_combo(self, typ: str, predicted: str) -> QComboBox:
@@ -180,9 +191,9 @@ class BankImportDialog(QDialog):
         for name in self.categories.list_names(typ):
             combo.addItem(name, name)
         if predicted:
-            idx = combo.findData(predicted)
-            if idx >= 0:
-                combo.setCurrentIndex(idx)
+            index = combo.findData(predicted)
+            if index >= 0:
+                combo.setCurrentIndex(index)
         return combo
 
     def _populate(self) -> None:
@@ -192,7 +203,9 @@ class BankImportDialog(QDialog):
             self.table.insertRow(row)
             typ = TYP_INCOME if tx.amount > 0 else TYP_EXPENSES
             prediction = self.ai.predict(
-                typ=typ, description=tx.description, counterparty=tx.counterparty
+                typ=typ,
+                description=tx.description,
+                counterparty=tx.counterparty,
             )
 
             use_item = QTableWidgetItem()
@@ -216,12 +229,17 @@ class BankImportDialog(QDialog):
                 QTableWidgetItem(f"{abs(tx.amount):.2f} {tx.currency}"),
             )
             self.table.setItem(row, self.COL_TEXT, QTableWidgetItem(tx.description))
-            combo = self._category_combo(typ, prediction.category)
-            self.table.setCellWidget(row, self.COL_CATEGORY, combo)
+            self.table.setCellWidget(
+                row,
+                self.COL_CATEGORY,
+                self._category_combo(typ, prediction.category),
+            )
 
             tags_edit = QLineEdit(", ".join(prediction.tags))
             tags_edit.setPlaceholderText("vorhandene Tags, mit Komma getrennt")
-            tags_edit.textChanged.connect(lambda _text: self._refresh_effective_view())
+            tags_edit.textChanged.connect(
+                lambda _text: self._refresh_effective_view()
+            )
             self.table.setCellWidget(row, self.COL_TAGS, tags_edit)
             confidence = (
                 f"{prediction.method} {prediction.confidence * 100:.0f}%"
@@ -231,7 +249,9 @@ class BankImportDialog(QDialog):
             self.table.setItem(row, self.COL_AI, QTableWidgetItem(confidence))
             self.table.setItem(row, self.COL_TWINT, QTableWidgetItem(""))
             self.table.setItem(
-                row, self.COL_EFFECTIVE, QTableWidgetItem(f"{abs(tx.amount):.2f}")
+                row,
+                self.COL_EFFECTIVE,
+                QTableWidgetItem(f"{abs(tx.amount):.2f}"),
             )
         self._refresh_effective_view()
 
@@ -240,7 +260,11 @@ class BankImportDialog(QDialog):
         if not isinstance(edit, QLineEdit):
             return ()
         return tuple(
-            dict.fromkeys(part.strip() for part in edit.text().split(",") if part.strip())
+            dict.fromkeys(
+                part.strip()
+                for part in edit.text().split(",")
+                if part.strip()
+            )
         )
 
     def _tag_names(self, row: int) -> tuple[str, ...]:
@@ -252,7 +276,11 @@ class BankImportDialog(QDialog):
         return tuple(known[name.casefold()] for name in names)
 
     def _effective_amount(
-        self, index: int, row: int, *, strict_tags: bool = False
+        self,
+        index: int,
+        row: int,
+        *,
+        strict_tags: bool = False,
     ) -> tuple[float, str]:
         tx = self.transactions[index]
         base = abs(float(tx.amount))
@@ -265,10 +293,14 @@ class BankImportDialog(QDialog):
 
         try:
             tags = self._tag_names(row) if strict_tags else self._raw_tag_names(row)
-            known = {tag.name.casefold(): tag.name for tag in self.tags.list_all()}
             if not strict_tags:
+                known = {
+                    tag.name.casefold(): tag.name for tag in self.tags.list_all()
+                }
                 tags = tuple(
-                    known[name.casefold()] for name in tags if name.casefold() in known
+                    known[name.casefold()]
+                    for name in tags
+                    if name.casefold() in known
                 )
             allocation, source_tag = self.ai.allocation_for_tags(tags)
         except ValueError:
@@ -286,7 +318,6 @@ class BankImportDialog(QDialog):
             if use_item is None:
                 continue
             index = int(use_item.data(Qt.UserRole))
-            tx = self.transactions[index]
             status = ""
             if index in self.duplicate_indexes:
                 status = "bereits importiert"
@@ -306,92 +337,99 @@ class BankImportDialog(QDialog):
                         use_item.setCheckState(Qt.Checked)
             effective, source = self._effective_amount(index, row)
             if source and source != "twint":
-                status = (status + " · " if status else "") + f"Tag-Regel: {source}"
+                prefix = status + " · " if status else ""
+                status = prefix + f"Tag-Regel: {source}"
             self.table.item(row, self.COL_TWINT).setText(status)
             self.table.item(row, self.COL_EFFECTIVE).setText(f"{effective:.2f}")
         self._update_summary()
 
     def _update_summary(self) -> None:
-        selected = 0
-        for row in range(self.table.rowCount()):
-            item = self.table.item(row, self.COL_USE)
-            if item and item.checkState() == Qt.Checked:
-                selected += 1
+        selected = sum(
+            1
+            for row in range(self.table.rowCount())
+            if self.table.item(row, self.COL_USE)
+            and self.table.item(row, self.COL_USE).checkState() == Qt.Checked
+        )
         self.lbl_summary.setText(
             f"{len(self.transactions)} erkannt · {selected} ausgewählt · "
             f"{len(self.matches)} TWINT-Vorschläge · "
             f"{len(self.duplicate_indexes)} bereits importiert"
         )
 
+    def _build_item(self, row: int) -> BankImportItem | None:
+        use_item = self.table.item(row, self.COL_USE)
+        if use_item is None or use_item.checkState() != Qt.Checked:
+            return None
+        index = int(use_item.data(Qt.UserRole))
+        if index in self.duplicate_indexes:
+            return None
+
+        tx = self.transactions[index]
+        typ = TYP_INCOME if tx.amount > 0 else TYP_EXPENSES
+        combo = self.table.cellWidget(row, self.COL_CATEGORY)
+        category = (
+            str(combo.currentData() or "") if isinstance(combo, QComboBox) else ""
+        )
+        if not category:
+            raise ValueError(f"Zeile {row + 1}: Bitte eine Kategorie wählen.")
+        tag_names = self._tag_names(row)
+        amount, allocation_source = self._effective_amount(
+            index,
+            row,
+            strict_tags=True,
+        )
+        if amount <= 0:
+            return None
+
+        details = tx.description
+        if tx.counterparty and tx.counterparty.casefold() not in details.casefold():
+            details = f"{details} | {tx.counterparty}"
+        match = self.matches.get(index)
+        if match and self.chk_net_twint.isChecked():
+            details += (
+                f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "
+                f"TWINT-Erstattung {match.reimbursement_amount:.2f}; "
+                f"Eigenanteil {match.personal_share_percent:.2f}%"
+            )
+        elif allocation_source and allocation_source != "twint":
+            allocation, _ = self.ai.allocation_for_tags(tag_names)
+            details += (
+                f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "
+                f"Tag-Regel {allocation_source} {allocation:.2f}%"
+            )
+        return BankImportItem(
+            transaction=tx,
+            typ=typ,
+            category=category,
+            tags=tag_names,
+            amount=amount,
+            details=details,
+        )
+
     def import_selected(self) -> None:
         if not self.transactions or not self.document_digest:
             QMessageBox.information(
-                self, "Bankimport", "Bitte zuerst eine PDF- oder CSV-Datei öffnen."
+                self,
+                "Bankimport",
+                "Bitte zuerst eine PDF- oder CSV-Datei öffnen.",
             )
             return
 
         plan: list[BankImportItem] = []
-        for row in range(self.table.rowCount()):
-            use_item = self.table.item(row, self.COL_USE)
-            if use_item is None or use_item.checkState() != Qt.Checked:
-                continue
-            index = int(use_item.data(Qt.UserRole))
-            if index in self.duplicate_indexes:
-                continue
-            tx = self.transactions[index]
-            typ = TYP_INCOME if tx.amount > 0 else TYP_EXPENSES
-            combo = self.table.cellWidget(row, self.COL_CATEGORY)
-            category = (
-                str(combo.currentData() or "") if isinstance(combo, QComboBox) else ""
-            )
-            if not category:
-                QMessageBox.warning(
-                    self,
-                    "Kategorie fehlt",
-                    f"Zeile {row + 1}: Bitte eine Kategorie wählen.",
-                )
-                return
-            try:
-                tag_names = self._tag_names(row)
-                amount, allocation_source = self._effective_amount(
-                    index, row, strict_tags=True
-                )
-            except ValueError as exc:
-                QMessageBox.warning(self, "Tag unbekannt", f"Zeile {row + 1}: {exc}")
-                return
-            if amount <= 0:
-                continue
-
-            details = tx.description
-            if tx.counterparty and tx.counterparty.casefold() not in details.casefold():
-                details = f"{details} | {tx.counterparty}"
-            match = self.matches.get(index)
-            if match and self.chk_net_twint.isChecked():
-                details += (
-                    f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "
-                    f"TWINT-Erstattung {match.reimbursement_amount:.2f}; "
-                    f"Eigenanteil {match.personal_share_percent:.2f}%"
-                )
-            elif allocation_source and allocation_source != "twint":
-                allocation, _ = self.ai.allocation_for_tags(tag_names)
-                details += (
-                    f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "
-                    f"Tag-Regel {allocation_source} {allocation:.2f}%"
-                )
-            plan.append(
-                BankImportItem(
-                    transaction=tx,
-                    typ=typ,
-                    category=category,
-                    tags=tag_names,
-                    amount=amount,
-                    details=details,
-                )
-            )
+        try:
+            for row in range(self.table.rowCount()):
+                item = self._build_item(row)
+                if item is not None:
+                    plan.append(item)
+        except ValueError as exc:
+            QMessageBox.warning(self, "Import prüfen", str(exc))
+            return
 
         if not plan:
             QMessageBox.information(
-                self, "Bankimport", "Keine neuen importierbaren Zeilen ausgewählt."
+                self,
+                "Bankimport",
+                "Keine neuen importierbaren Zeilen ausgewählt.",
             )
             return
 
@@ -406,9 +444,10 @@ class BankImportDialog(QDialog):
 
         try:
             result = self.service.import_items(
-                plan, document_digest=self.document_digest
+                plan,
+                document_digest=self.document_digest,
             )
-        except Exception as exc:
+        except (sqlite3.Error, OSError, RuntimeError, TypeError, ValueError) as exc:
             QMessageBox.critical(
                 self,
                 "Bankimport fehlgeschlagen",
