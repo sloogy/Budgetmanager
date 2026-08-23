@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import sqlite3
-from decimal import Decimal
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -21,11 +21,11 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from model.bank_import_ai import BankImportAI, BookingSignal, ReimbursementMatch, match_twint_reimbursement
+from model.bank_import_ai import BookingSignal, ReimbursementMatch, match_twint_reimbursement
+from model.bank_import_service import BankImportItem, BankImportService, source_digest
 from model.bank_statement_reader import BankStatementError, BankTransaction, load_transactions
 from model.category_model import CategoryModel
 from model.tags_model import TagsModel
-from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 from utils.money import get_currency
 
@@ -45,20 +45,24 @@ class BankImportDialog(QDialog):
     def __init__(self, conn: sqlite3.Connection, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.tracking = TrackingModel(conn)
         self.categories = CategoryModel(conn)
         self.tags = TagsModel(conn)
-        self.ai = BankImportAI(conn)
+        self.service = BankImportService(conn)
+        self.ai = self.service.ai
         self.transactions: list[BankTransaction] = []
         self.matches: dict[int, ReimbursementMatch] = {}
         self.matched_credit_indexes: set[int] = set()
+        self.duplicate_indexes: set[int] = set()
+        self.document_digest = ""
+        self.source_path = ""
         self.setWindowTitle("Bank PDF/CSV importieren")
         self.resize(1380, 720)
 
         root = QVBoxLayout(self)
         intro = QLabel(
             "Lokaler Import: Nichts wird ohne Bestätigung gebucht. "
-            "Die KI lernt Kategorie und Tags erst aus bestätigten Zeilen."
+            "Die KI lernt Kategorie und Tags erst aus bestätigten Zeilen. "
+            "Bereits importierte Bankbuchungen werden markiert und übersprungen."
         )
         intro.setWordWrap(True)
         root.addWidget(intro)
@@ -66,7 +70,9 @@ class BankImportDialog(QDialog):
         tools = QHBoxLayout()
         self.btn_open = QPushButton("PDF/CSV öffnen…")
         self.lbl_file = QLabel("Keine Datei gewählt")
-        self.chk_net_twint = QCheckBox("Erkannte TWINT-Erstattungen als Eigenanteil verrechnen")
+        self.chk_net_twint = QCheckBox(
+            "Erkannte TWINT-Erstattungen als Eigenanteil verrechnen"
+        )
         self.chk_net_twint.setChecked(True)
         tools.addWidget(self.btn_open)
         tools.addWidget(self.lbl_file, 1)
@@ -75,21 +81,27 @@ class BankImportDialog(QDialog):
 
         self.table = QTableWidget(0, 10)
         self.table.setHorizontalHeaderLabels(
-            ["Import", "Datum", "Typ", "Betrag", "Buchungstext", "Kategorie", "Tags", "KI", "TWINT", "Eigenanteil"]
+            [
+                "Import",
+                "Datum",
+                "Typ",
+                "Betrag",
+                "Buchungstext",
+                "Kategorie",
+                "Tags",
+                "KI",
+                "TWINT / Status",
+                "Budgetbetrag",
+            ]
         )
         self.table.setAlternatingRowColors(True)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.table.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows
+        )
         self.table.horizontalHeader().setStretchLastSection(False)
-        self.table.setColumnWidth(self.COL_USE, 60)
-        self.table.setColumnWidth(self.COL_DATE, 100)
-        self.table.setColumnWidth(self.COL_TYPE, 95)
-        self.table.setColumnWidth(self.COL_AMOUNT, 100)
-        self.table.setColumnWidth(self.COL_TEXT, 330)
-        self.table.setColumnWidth(self.COL_CATEGORY, 200)
-        self.table.setColumnWidth(self.COL_TAGS, 220)
-        self.table.setColumnWidth(self.COL_AI, 120)
-        self.table.setColumnWidth(self.COL_TWINT, 180)
-        self.table.setColumnWidth(self.COL_EFFECTIVE, 110)
+        widths = (60, 100, 95, 100, 330, 200, 220, 120, 220, 110)
+        for column, width in enumerate(widths):
+            self.table.setColumnWidth(column, width)
         root.addWidget(self.table, 1)
 
         bottom = QHBoxLayout()
@@ -102,7 +114,7 @@ class BankImportDialog(QDialog):
         root.addLayout(bottom)
 
         self.btn_open.clicked.connect(self.open_file)
-        self.chk_net_twint.toggled.connect(self._refresh_twint_view)
+        self.chk_net_twint.toggled.connect(self._refresh_effective_view)
         self.btn_import.clicked.connect(self.import_selected)
         self.btn_close.clicked.connect(self.reject)
 
@@ -117,10 +129,14 @@ class BankImportDialog(QDialog):
             return
         try:
             transactions = load_transactions(path, get_currency().upper())
+            digest = source_digest(path)
         except (BankStatementError, OSError, ValueError) as exc:
             QMessageBox.warning(self, "Import nicht möglich", str(exc))
             return
+        self.source_path = path
+        self.document_digest = digest
         self.transactions = transactions
+        self.duplicate_indexes = self.service.duplicate_indexes(transactions, digest)
         self.lbl_file.setText(Path(path).name)
         self._build_matches()
         self._populate()
@@ -138,9 +154,13 @@ class BankImportDialog(QDialog):
     def _build_matches(self) -> None:
         self.matches.clear()
         self.matched_credit_indexes.clear()
-        credits = [self._signal(i, tx) for i, tx in enumerate(self.transactions) if tx.amount > 0]
+        credits = [
+            self._signal(i, tx)
+            for i, tx in enumerate(self.transactions)
+            if tx.amount > 0 and i not in self.duplicate_indexes
+        ]
         for i, tx in enumerate(self.transactions):
-            if tx.amount >= 0:
+            if tx.amount >= 0 or i in self.duplicate_indexes:
                 continue
             match = match_twint_reimbursement(self._signal(i, tx), credits)
             if match is None:
@@ -176,26 +196,90 @@ class BankImportDialog(QDialog):
             )
 
             use_item = QTableWidgetItem()
-            use_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
-            use_item.setCheckState(Qt.Checked)
             use_item.setData(Qt.UserRole, index)
+            if index in self.duplicate_indexes:
+                use_item.setFlags(Qt.ItemIsEnabled)
+                use_item.setCheckState(Qt.Unchecked)
+            else:
+                use_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
+                use_item.setCheckState(Qt.Checked)
             self.table.setItem(row, self.COL_USE, use_item)
-            self.table.setItem(row, self.COL_DATE, QTableWidgetItem(tx.booking_date.strftime("%d.%m.%Y")))
+            self.table.setItem(
+                row,
+                self.COL_DATE,
+                QTableWidgetItem(tx.booking_date.strftime("%d.%m.%Y")),
+            )
             self.table.setItem(row, self.COL_TYPE, QTableWidgetItem(typ))
-            self.table.setItem(row, self.COL_AMOUNT, QTableWidgetItem(f"{abs(tx.amount):.2f} {tx.currency}"))
+            self.table.setItem(
+                row,
+                self.COL_AMOUNT,
+                QTableWidgetItem(f"{abs(tx.amount):.2f} {tx.currency}"),
+            )
             self.table.setItem(row, self.COL_TEXT, QTableWidgetItem(tx.description))
-            self.table.setCellWidget(row, self.COL_CATEGORY, self._category_combo(typ, prediction.category))
+            combo = self._category_combo(typ, prediction.category)
+            self.table.setCellWidget(row, self.COL_CATEGORY, combo)
 
             tags_edit = QLineEdit(", ".join(prediction.tags))
             tags_edit.setPlaceholderText("vorhandene Tags, mit Komma getrennt")
+            tags_edit.textChanged.connect(lambda _text: self._refresh_effective_view())
             self.table.setCellWidget(row, self.COL_TAGS, tags_edit)
-            confidence = f"{prediction.method} {prediction.confidence * 100:.0f}%" if prediction.category else prediction.method
+            confidence = (
+                f"{prediction.method} {prediction.confidence * 100:.0f}%"
+                if prediction.category
+                else prediction.method
+            )
             self.table.setItem(row, self.COL_AI, QTableWidgetItem(confidence))
             self.table.setItem(row, self.COL_TWINT, QTableWidgetItem(""))
-            self.table.setItem(row, self.COL_EFFECTIVE, QTableWidgetItem(f"{abs(tx.amount):.2f}"))
-        self._refresh_twint_view()
+            self.table.setItem(
+                row, self.COL_EFFECTIVE, QTableWidgetItem(f"{abs(tx.amount):.2f}")
+            )
+        self._refresh_effective_view()
 
-    def _refresh_twint_view(self) -> None:
+    def _raw_tag_names(self, row: int) -> tuple[str, ...]:
+        edit = self.table.cellWidget(row, self.COL_TAGS)
+        if not isinstance(edit, QLineEdit):
+            return ()
+        return tuple(
+            dict.fromkeys(part.strip() for part in edit.text().split(",") if part.strip())
+        )
+
+    def _tag_names(self, row: int) -> tuple[str, ...]:
+        names = self._raw_tag_names(row)
+        known = {tag.name.casefold(): tag.name for tag in self.tags.list_all()}
+        invalid = [name for name in names if name.casefold() not in known]
+        if invalid:
+            raise ValueError("Unbekannte Tags: " + ", ".join(invalid))
+        return tuple(known[name.casefold()] for name in names)
+
+    def _effective_amount(
+        self, index: int, row: int, *, strict_tags: bool = False
+    ) -> tuple[float, str]:
+        tx = self.transactions[index]
+        base = abs(float(tx.amount))
+        if tx.amount >= 0:
+            return base, ""
+
+        match = self.matches.get(index)
+        if match and self.chk_net_twint.isChecked():
+            return max(0.0, base - match.reimbursement_amount), "twint"
+
+        try:
+            tags = self._tag_names(row) if strict_tags else self._raw_tag_names(row)
+            known = {tag.name.casefold(): tag.name for tag in self.tags.list_all()}
+            if not strict_tags:
+                tags = tuple(
+                    known[name.casefold()] for name in tags if name.casefold() in known
+                )
+            allocation, source_tag = self.ai.allocation_for_tags(tags)
+        except ValueError:
+            if strict_tags:
+                raise
+            allocation, source_tag = None, ""
+        if allocation is not None:
+            return base * allocation / 100.0, source_tag
+        return base, ""
+
+    def _refresh_effective_view(self) -> None:
         net = self.chk_net_twint.isChecked()
         for row in range(self.table.rowCount()):
             use_item = self.table.item(row, self.COL_USE)
@@ -203,24 +287,27 @@ class BankImportDialog(QDialog):
                 continue
             index = int(use_item.data(Qt.UserRole))
             tx = self.transactions[index]
-            twint_text = ""
-            effective = abs(tx.amount)
-            match = self.matches.get(index)
-            if match:
-                twint_text = (
-                    f"+{match.reimbursement_amount:.2f}; "
-                    f"{match.reimbursement_percent:.0f}% erstattet; "
-                    f"{match.confidence * 100:.0f}% sicher"
-                )
-                if net:
-                    effective = Decimal(str(max(0.0, abs(float(tx.amount)) - match.reimbursement_amount)))
-            if index in self.matched_credit_indexes and net:
-                use_item.setCheckState(Qt.Unchecked)
-                twint_text = "wird mit zugehöriger Ausgabe verrechnet"
-            elif index not in self.matched_credit_indexes:
-                # Nicht automatisch wieder anhaken: Nutzerentscheidung respektieren.
-                pass
-            self.table.item(row, self.COL_TWINT).setText(twint_text)
+            status = ""
+            if index in self.duplicate_indexes:
+                status = "bereits importiert"
+            else:
+                match = self.matches.get(index)
+                if match:
+                    status = (
+                        f"+{match.reimbursement_amount:.2f}; "
+                        f"{match.reimbursement_percent:.0f}% erstattet; "
+                        f"{match.confidence * 100:.0f}% sicher"
+                    )
+                if index in self.matched_credit_indexes:
+                    if net:
+                        use_item.setCheckState(Qt.Unchecked)
+                        status = "wird mit zugehöriger Ausgabe verrechnet"
+                    else:
+                        use_item.setCheckState(Qt.Checked)
+            effective, source = self._effective_amount(index, row)
+            if source and source != "twint":
+                status = (status + " · " if status else "") + f"Tag-Regel: {source}"
+            self.table.item(row, self.COL_TWINT).setText(status)
             self.table.item(row, self.COL_EFFECTIVE).setText(f"{effective:.2f}")
         self._update_summary()
 
@@ -231,101 +318,109 @@ class BankImportDialog(QDialog):
             if item and item.checkState() == Qt.Checked:
                 selected += 1
         self.lbl_summary.setText(
-            f"{len(self.transactions)} erkannt · {selected} zum Import ausgewählt · "
-            f"{len(self.matches)} mögliche TWINT-Erstattungen"
+            f"{len(self.transactions)} erkannt · {selected} ausgewählt · "
+            f"{len(self.matches)} TWINT-Vorschläge · "
+            f"{len(self.duplicate_indexes)} bereits importiert"
         )
 
-    def _tag_names(self, row: int) -> tuple[str, ...]:
-        edit = self.table.cellWidget(row, self.COL_TAGS)
-        if not isinstance(edit, QLineEdit):
-            return ()
-        names = tuple(dict.fromkeys(part.strip() for part in edit.text().split(",") if part.strip()))
-        known = {tag.name.casefold(): tag.name for tag in self.tags.list_all()}
-        invalid = [name for name in names if name.casefold() not in known]
-        if invalid:
-            raise ValueError("Unbekannte Tags: " + ", ".join(invalid))
-        return tuple(known[name.casefold()] for name in names)
-
     def import_selected(self) -> None:
-        if not self.transactions:
-            QMessageBox.information(self, "Bankimport", "Bitte zuerst eine PDF- oder CSV-Datei öffnen.")
+        if not self.transactions or not self.document_digest:
+            QMessageBox.information(
+                self, "Bankimport", "Bitte zuerst eine PDF- oder CSV-Datei öffnen."
+            )
             return
-        plan: list[tuple[int, BankTransaction, str, str, tuple[str, ...], float]] = []
+
+        plan: list[BankImportItem] = []
         for row in range(self.table.rowCount()):
             use_item = self.table.item(row, self.COL_USE)
             if use_item is None or use_item.checkState() != Qt.Checked:
                 continue
             index = int(use_item.data(Qt.UserRole))
+            if index in self.duplicate_indexes:
+                continue
             tx = self.transactions[index]
             typ = TYP_INCOME if tx.amount > 0 else TYP_EXPENSES
             combo = self.table.cellWidget(row, self.COL_CATEGORY)
-            category = str(combo.currentData() or "") if isinstance(combo, QComboBox) else ""
+            category = (
+                str(combo.currentData() or "") if isinstance(combo, QComboBox) else ""
+            )
             if not category:
-                QMessageBox.warning(self, "Kategorie fehlt", f"Zeile {row + 1}: Bitte eine Kategorie wählen.")
+                QMessageBox.warning(
+                    self,
+                    "Kategorie fehlt",
+                    f"Zeile {row + 1}: Bitte eine Kategorie wählen.",
+                )
                 return
             try:
-                tags = self._tag_names(row)
+                tag_names = self._tag_names(row)
+                amount, allocation_source = self._effective_amount(
+                    index, row, strict_tags=True
+                )
             except ValueError as exc:
                 QMessageBox.warning(self, "Tag unbekannt", f"Zeile {row + 1}: {exc}")
                 return
-            amount = abs(float(tx.amount))
-            match = self.matches.get(index)
-            if match and self.chk_net_twint.isChecked():
-                amount = max(0.0, amount - match.reimbursement_amount)
             if amount <= 0:
                 continue
-            plan.append((row, tx, typ, category, tags, amount))
+
+            details = tx.description
+            if tx.counterparty and tx.counterparty.casefold() not in details.casefold():
+                details = f"{details} | {tx.counterparty}"
+            match = self.matches.get(index)
+            if match and self.chk_net_twint.isChecked():
+                details += (
+                    f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "
+                    f"TWINT-Erstattung {match.reimbursement_amount:.2f}; "
+                    f"Eigenanteil {match.personal_share_percent:.2f}%"
+                )
+            elif allocation_source and allocation_source != "twint":
+                allocation, _ = self.ai.allocation_for_tags(tag_names)
+                details += (
+                    f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "
+                    f"Tag-Regel {allocation_source} {allocation:.2f}%"
+                )
+            plan.append(
+                BankImportItem(
+                    transaction=tx,
+                    typ=typ,
+                    category=category,
+                    tags=tag_names,
+                    amount=amount,
+                    details=details,
+                )
+            )
 
         if not plan:
-            QMessageBox.information(self, "Bankimport", "Keine importierbaren Zeilen ausgewählt.")
+            QMessageBox.information(
+                self, "Bankimport", "Keine neuen importierbaren Zeilen ausgewählt."
+            )
             return
 
         answer = QMessageBox.question(
             self,
             "Bankimport bestätigen",
-            f"{len(plan)} Buchungen importieren? Erst nach dieser Bestätigung lernt die lokale KI.",
+            f"{len(plan)} Buchungen atomar importieren? "
+            "Erst nach dieser Bestätigung lernt die lokale KI.",
         )
         if answer != QMessageBox.Yes:
             return
 
-        imported = 0
         try:
-            for row, tx, typ, category, tag_names, amount in plan:
-                details = tx.description
-                if tx.counterparty and tx.counterparty.casefold() not in details.casefold():
-                    details = f"{details} | {tx.counterparty}"
-                match = self.matches.get(int(self.table.item(row, self.COL_USE).data(Qt.UserRole)))
-                if match and self.chk_net_twint.isChecked():
-                    details += (
-                        f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "
-                        f"TWINT-Erstattung {match.reimbursement_amount:.2f}; "
-                        f"Eigenanteil {match.personal_share_percent:.2f}%"
-                    )
-                entry_id = self.tracking.add(
-                    tx.booking_date, typ, category, amount, details, source="bank_import"
-                )
-                if tag_names:
-                    by_name = {tag.name.casefold(): tag.id for tag in self.tags.list_all()}
-                    self.tags.set_entry_tags(entry_id, [by_name[name.casefold()] for name in tag_names])
-                self.ai.learn(
-                    typ=typ,
-                    category=category,
-                    description=tx.description,
-                    counterparty=tx.counterparty,
-                    tags=tag_names,
-                )
-                imported += 1
+            result = self.service.import_items(
+                plan, document_digest=self.document_digest
+            )
         except Exception as exc:
             QMessageBox.critical(
                 self,
                 "Bankimport fehlgeschlagen",
-                f"Import wurde nach {imported} Buchungen abgebrochen: {exc}",
+                "Es wurde nichts aus diesem Batch übernommen.\n\n" + str(exc),
             )
             return
 
         QMessageBox.information(
             self,
             "Bankimport abgeschlossen",
-            f"{imported} Buchungen importiert. Bestätigte Kategorien und Tags wurden lokal gelernt.",
+            f"{result.imported} Buchungen importiert; "
+            f"{result.skipped_duplicates} Duplikate übersprungen. "
+            "Bestätigte Kategorien und Tags wurden lokal gelernt.",
         )
         self.accept()
