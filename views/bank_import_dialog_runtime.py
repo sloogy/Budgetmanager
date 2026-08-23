@@ -57,9 +57,7 @@ class BankImportDialog(_BankImportDialog):
         controls.addWidget(self.btn_select_all_visible)
 
         self.btn_deselect_all_visible = QPushButton(tr("btn.deselect_all"))
-        self.btn_deselect_all_visible.setToolTip(
-            tr("bank_import.bulk_use_unchecked")
-        )
+        self.btn_deselect_all_visible.setToolTip(tr("bank_import.bulk_use_unchecked"))
         self.btn_deselect_all_visible.clicked.connect(
             lambda: self._set_visible_import_checked(False)
         )
@@ -136,9 +134,7 @@ class BankImportDialog(_BankImportDialog):
                     if isinstance(current, CheckableTagCombo)
                     else ()
                 )
-                fixed = self._category_tag_names(
-                    *self._selected_category_identity(row)
-                )
+                fixed = self._category_tag_names(*self._selected_category_identity(row))
                 combo = CheckableTagCombo(
                     self._tag_catalog,
                     selected=selected,
@@ -180,7 +176,7 @@ class BankImportDialog(_BankImportDialog):
                 item = self.table.item(row, self.COL_USE)
                 if item is None:
                     continue
-                if not item.flags() & Qt.ItemFlag.ItemIsUserCheckable:
+                if not (item.flags() & Qt.ItemFlag.ItemIsUserCheckable):
                     continue
                 item.setCheckState(state)
         finally:
@@ -189,7 +185,7 @@ class BankImportDialog(_BankImportDialog):
 
     def _drop_hidden_selection(self) -> None:
         """Entfernt gefilterte Zeilen aus Shift-/Strg-Auswahlen."""
-        if self._visible_selection_guard:
+        if getattr(self, "_visible_selection_guard", False):
             return
         self._visible_selection_guard = True
         try:
