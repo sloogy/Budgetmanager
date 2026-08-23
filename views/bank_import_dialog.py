@@ -2,15 +2,22 @@
 
 Ergänzt V2 um die Budgetregel, dass positive TWINT-Eingänge ausschließlich
 als Erstattungs-/Zuordnungssignal markiert werden. Sie erzeugen niemals eine
-Einkommensbuchung.
+Einkommensbuchung und eine bereits markierte Erstattung wird nicht erneut
+für eine andere Ausgabe verwendet.
 """
 from __future__ import annotations
 
 import sqlite3
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QComboBox, QLineEdit, QMessageBox, QTableWidgetItem
+from PySide6.QtWidgets import (
+    QComboBox,
+    QLineEdit,
+    QMessageBox,
+    QTableWidgetItem,
+)
 
+from model.bank_import_ai import match_twint_reimbursement
 from model.twint_import_policy import (
     BankImportMarkerStore,
     TwintAwareBankImportService,
@@ -29,7 +36,55 @@ class BankImportDialog(_BankImportDialogV2):
         self.marker_store = BankImportMarkerStore(conn)
         self.twint_credit_indexes: set[int] = set()
         self.marked_twint_indexes: set[int] = set()
-        self.table.setHorizontalHeaderItem(self.COL_USE, QTableWidgetItem("Übernehmen"))
+        self.table.setHorizontalHeaderItem(
+            self.COL_USE,
+            QTableWidgetItem("Übernehmen"),
+        )
+
+    def _refresh_twint_sets(self) -> None:
+        self.twint_credit_indexes = {
+            index
+            for index, tx in enumerate(self.transactions)
+            if is_twint_credit(tx)
+        }
+        self.marked_twint_indexes = (
+            self.marker_store.marked_indexes(
+                self.transactions,
+                self.document_digest,
+            )
+            if self.document_digest
+            else set()
+        )
+
+    def _build_matches(self) -> None:
+        """Matcht nur noch nicht verbrauchte TWINT-Eingänge."""
+        self._refresh_twint_sets()
+        self.matches.clear()
+        self.matched_credit_indexes.clear()
+        credits = [
+            self._signal(index, tx)
+            for index, tx in enumerate(self.transactions)
+            if tx.amount > 0
+            and index not in self.duplicate_indexes
+            and index not in self.marked_twint_indexes
+        ]
+        for index, tx in enumerate(self.transactions):
+            if tx.amount >= 0 or index in self.duplicate_indexes:
+                continue
+            match = match_twint_reimbursement(self._signal(index, tx), credits)
+            if match is None:
+                continue
+            try:
+                credit_index = int(match.credit_id.split(":", 1)[1])
+            except (ValueError, IndexError):
+                continue
+            if (
+                credit_index in self.matched_credit_indexes
+                or credit_index in self.marked_twint_indexes
+            ):
+                continue
+            self.matches[index] = match
+            self.matched_credit_indexes.add(credit_index)
 
     def _type_changed(self, row: int) -> None:
         if self._updating_row:
@@ -47,19 +102,7 @@ class BankImportDialog(_BankImportDialogV2):
         self._refresh_effective_view()
 
     def _populate(self) -> None:
-        self.twint_credit_indexes = {
-            index
-            for index, tx in enumerate(self.transactions)
-            if is_twint_credit(tx)
-        }
-        self.marked_twint_indexes = (
-            self.marker_store.marked_indexes(
-                self.transactions,
-                self.document_digest,
-            )
-            if self.document_digest
-            else set()
-        )
+        self._refresh_twint_sets()
         super()._populate()
         self._apply_twint_policy()
 
@@ -76,7 +119,10 @@ class BankImportDialog(_BankImportDialogV2):
         if isinstance(type_combo, QComboBox):
             type_combo.blockSignals(True)
             type_combo.clear()
-            type_combo.addItem("TWINT-Erstattung (nicht buchen)", "twint_marker")
+            type_combo.addItem(
+                "TWINT-Erstattung (nicht buchen)",
+                "twint_marker",
+            )
             type_combo.setEnabled(False)
             type_combo.blockSignals(False)
 
@@ -94,7 +140,11 @@ class BankImportDialog(_BankImportDialogV2):
 
         ai_item = self.table.item(row, self.COL_AI)
         if ai_item is None:
-            self.table.setItem(row, self.COL_AI, QTableWidgetItem("TWINT-Marker"))
+            self.table.setItem(
+                row,
+                self.COL_AI,
+                QTableWidgetItem("TWINT-Marker"),
+            )
         else:
             ai_item.setText("TWINT-Marker")
 
@@ -249,7 +299,8 @@ class BankImportDialog(_BankImportDialogV2):
                 self,
                 "TWINT-Markierung unvollständig",
                 f"{imported} Budgetbuchungen wurden übernommen, aber die "
-                f"TWINT-Markierung konnte nicht vollständig gespeichert werden: {exc}\n\n"
+                f"TWINT-Markierung konnte nicht vollständig gespeichert werden: "
+                f"{exc}\n\n"
                 "Es wurde trotzdem kein TWINT-Eingang als Einkommen gebucht.",
             )
             return
@@ -257,9 +308,11 @@ class BankImportDialog(_BankImportDialogV2):
         QMessageBox.information(
             self,
             "Bankimport abgeschlossen",
-            f"{imported} Budgetbuchungen importiert; {skipped} Duplikate übersprungen; "
+            f"{imported} Budgetbuchungen importiert; "
+            f"{skipped} Duplikate übersprungen; "
             f"{marked} TWINT-Eingänge nur markiert. "
-            "TWINT-Markierungen haben keine Budgetwirkung und werden nicht als Einkommen gebucht.",
+            "TWINT-Markierungen haben keine Budgetwirkung und werden nicht "
+            "als Einkommen gebucht.",
         )
         self.accept()
 
