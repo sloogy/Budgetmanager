@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Version setzen und Release-Metadaten synchronisieren
+      - name: Release-Anforderung auswerten
         shell: bash
         run: |
           set -euo pipefail
@@ -39,8 +39,32 @@ jobs:
             echo "Ungültiger Retry-Suffix: ${REQUEST}" >&2
             exit 1
           fi
+
+          IS_RETRY=false
+          if [[ "$REQUEST" != "$VERSION" ]]; then
+            IS_RETRY=true
+          fi
+
           echo "TAG=$TAG" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "IS_RETRY=$IS_RETRY" >> "$GITHUB_ENV"
+
+          if [[ "$IS_RETRY" == "true" ]]; then
+            git fetch origin --tags
+            if ! git rev-parse --verify "${TAG}^{commit}" >/dev/null 2>&1; then
+              echo "Retry angefordert, aber Tag ${TAG} existiert nicht." >&2
+              exit 1
+            fi
+            TARGET_SHA="$(git rev-parse "${TAG}^{commit}")"
+            echo "TARGET_SHA=$TARGET_SHA" >> "$GITHUB_ENV"
+            echo "Retry: bestehender unveränderlicher Tag ${TAG} auf ${TARGET_SHA} wird neu gebaut."
+          fi
+
+      - name: Version setzen und Release-Metadaten synchronisieren
+        if: env.IS_RETRY != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
           python - "$VERSION" <<'PY'
           import re, sys
           from pathlib import Path
@@ -57,12 +81,12 @@ jobs:
           if count != 1:
               raise SystemExit('APP_VERSION nicht eindeutig gefunden')
           app.write_text(text, encoding='utf-8')
-
           PY
           python tools/sync_version.py
           python tools/sync_version.py --check
 
       - name: Synchronisierten Release-Commit erzeugen
+        if: env.IS_RETRY != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -88,6 +112,7 @@ jobs:
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
       - name: Main fast-forwarden und Tag unveränderlich setzen
+        if: env.IS_RETRY != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -108,14 +133,15 @@ jobs:
             git tag "$TAG" HEAD
             git push origin "$TAG"
           fi
+          echo "TARGET_SHA=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
 
-      - name: Bestehenden Full-Release starten und Erfolg verlangen
+      - name: Bestehenden Full-Release starten
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          TARGET_SHA="$(git rev-parse HEAD)"
+          TARGET_SHA="${TARGET_SHA:-$(git rev-parse HEAD)}"
           gh workflow run build.yml --ref "$TAG"
           RUN_ID=""
           for _ in $(seq 1 45); do
@@ -125,18 +151,48 @@ jobs:
             [ -n "$RUN_ID" ] && break
             sleep 2
           done
-          test -n "$RUN_ID" || { echo "Release-Run nicht gefunden" >&2; exit 1; }
+
+          if [ -z "$RUN_ID" ]; then
+            echo "RUN_ID=not-found" >> "$GITHUB_ENV"
+            echo "RELEASE_RESULT=failure" >> "$GITHUB_ENV"
+            echo "Release-Run für ${TARGET_SHA} nicht gefunden." >&2
+            exit 0
+          fi
+
           echo "RUN_ID=$RUN_ID" >> "$GITHUB_ENV"
           echo "Release workflow run: $RUN_ID"
-          gh run watch "$RUN_ID" --exit-status
+          if gh run watch "$RUN_ID" --exit-status; then
+            echo "RELEASE_RESULT=success" >> "$GITHUB_ENV"
+          else
+            echo "RELEASE_RESULT=failure" >> "$GITHUB_ENV"
+          fi
 
-      - name: Grünen Full-Release auf dem Triggerbranch markieren
+      - name: Full-Release-Status auf dem Triggerbranch markieren
+        if: always() && env.RELEASE_RESULT != ''
         shell: bash
         run: |
           set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin "${GITHUB_REF_NAME}"
+          git checkout -B "${GITHUB_REF_NAME}" "origin/${GITHUB_REF_NAME}"
+
           mkdir -p .release-status
-          printf 'tag=%s\ncommit=%s\nworkflow_run=%s\nstatus=success\n' \
-            "$TAG" "$(git rev-parse HEAD)" "$RUN_ID" > ".release-status/${TAG}.ok"
-          git add ".release-status/${TAG}.ok"
-          git commit -m "[release-status] ${TAG} full release passed"
+          rm -f ".release-status/${TAG}.ok" ".release-status/${TAG}.failed"
+          SUFFIX=ok
+          if [[ "$RELEASE_RESULT" != "success" ]]; then
+            SUFFIX=failed
+          fi
+          printf 'tag=%s\ncommit=%s\nworkflow_run=%s\nstatus=%s\n' \
+            "$TAG" "$TARGET_SHA" "$RUN_ID" "$RELEASE_RESULT" \
+            > ".release-status/${TAG}.${SUFFIX}"
+          git add ".release-status/${TAG}.${SUFFIX}"
+          git commit -m "[release-status] ${TAG} full release ${RELEASE_RESULT}"
           git push origin "HEAD:${GITHUB_REF_NAME}"
+
+      - name: Fehlgeschlagenen Full-Release melden
+        if: env.RELEASE_RESULT != 'success'
+        shell: bash
+        run: |
+          echo "Full-Release ${TAG} fehlgeschlagen; Workflow-Run: ${RUN_ID}" >&2
+          exit 1
