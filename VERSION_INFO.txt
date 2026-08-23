@@ -1,7 +1,7 @@
-Budgetmanager Version 3.0.3
+Budgetmanager Version 3.0.4
 Datum: 23. August 2026
 
-ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.73 2.3.0 2.4.1 2.5.0 3.0.3
+ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.73 2.3.0 2.4.1 2.5.0 3.0.4
 -------------------------------------------------------------
 - Was an FPM geht, entscheidet der Nutzer Eintrag fuer Eintrag:
   "Extras -> Freigabe fuer FPM" zeigt Ausgabenkategorien, Sparkategorien und

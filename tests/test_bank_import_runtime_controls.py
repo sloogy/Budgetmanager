@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[1]
 RUNTIME = ROOT / "views/bank_import_dialog_runtime.py"
 HELP_MENU = ROOT / "views/help_menu.py"

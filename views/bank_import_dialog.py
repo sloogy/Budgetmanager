@@ -473,19 +473,40 @@ class BankImportDialog(_BankImportDialogV3):
 
         reverse = mode in {"date_desc", "amount_desc"}
         if mode == "original":
-            key_func = lambda record: self._original_order.get(record[2], 0)
+
+            def key_func(record):
+                return self._original_order.get(record[2], 0)
+
         elif mode in {"date_desc", "date_asc"}:
-            key_func = lambda record: record[0].booking_date
+
+            def key_func(record):
+                return record[0].booking_date
+
         elif mode in {"amount_desc", "amount_asc"}:
-            key_func = lambda record: abs(float(record[0].amount))
+
+            def key_func(record):
+                return abs(float(record[0].amount))
+
         elif mode == "text_asc":
-            key_func = lambda record: str(record[0].description or "").casefold()
+
+            def key_func(record):
+                return str(record[0].description or "").casefold()
+
         elif mode == "category_asc":
-            key_func = lambda record: state_text(record[2], "category")
+
+            def key_func(record):
+                return state_text(record[2], "category")
+
         elif mode == "tags_asc":
-            key_func = lambda record: state_text(record[2], "tags")
+
+            def key_func(record):
+                return state_text(record[2], "tags")
+
         elif mode == "source_asc":
-            key_func = lambda record: str(record[0].source_name or "").casefold()
+
+            def key_func(record):
+                return str(record[0].source_name or "").casefold()
+
         else:
             return
 

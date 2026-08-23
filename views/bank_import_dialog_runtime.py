@@ -26,6 +26,8 @@ from utils.i18n import tr, trf
 from utils.notifications import show_info, show_warning
 from views.bank_import_dialog import (
     BankImportDialog as _BankImportDialog,
+)
+from views.bank_import_dialog import (
     CheckableTagCombo,
 )
 
