@@ -48,7 +48,7 @@ from PySide6.QtWidgets import (
 from app_info import APP_VERSION
 from utils.i18n import tr, trf
 from utils.icons import get_icon
-from views.bank_import_dialog import BankImportDialog
+from views.bank_import_dialog_runtime import BankImportDialog
 from views.help_launcher import help_file_candidates
 
 logger = logging.getLogger(__name__)
