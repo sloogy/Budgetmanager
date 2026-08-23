@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DIALOG = ROOT / "views/bank_import_dialog.py"
+DIALOG = ROOT / "views/bank_import_dialog_v3.py"
 
 
 def _source() -> str:
@@ -14,7 +14,7 @@ def test_twint_is_ai_only_pseudo_type_in_type_dropdown():
     assert 'TYP_TWINT_AI = "TWINT (KI)"' not in src  # Konstante lebt im Modell.
     assert "combo.addItem(TYP_TWINT_AI, TYP_TWINT_AI)" in src
     assert "return TYP_TWINT_AI if is_twint_credit(tx)" in src
-    assert '"TWINT (KI) erzeugt niemals eine Budgetbuchung."' in src
+    assert '"TWINT (KI) erzeugt niemals eine Budgetbuchung.' in src
 
 
 def test_twint_ai_category_combo_contains_expense_and_income_categories():
@@ -53,7 +53,21 @@ def test_twint_ai_requires_real_category_before_learning():
 def test_already_marked_twint_is_not_reused_for_matching():
     src = _source()
     block = src.split("def _build_matches", 1)[1].split(
-        "def _category_token", 1
+        "def _ai_category_combo", 1
     )[0]
     assert "and index not in self.marked_twint_indexes" in block
     assert "or credit_index in self.marked_twint_indexes" in block
+
+
+def test_tags_are_read_only_and_derived_from_selected_category():
+    src = _source()
+    assert 'QTableWidgetItem("Tags aus Kategorie")' in src
+    assert "self.tags.get_tag_ids_for_category_name(category_typ, category)" in src
+    assert "self.tags.get_tags_by_ids(tag_ids)" in src
+    sync = src.split("def _sync_category_tags", 1)[1].split(
+        "def _category_changed", 1
+    )[0]
+    assert "edit.setReadOnly(True)" in sync
+    assert 'edit.setText(", ".join(names))' in sync
+    raw = src.split("def _raw_tag_names", 1)[1].split("def _tag_names", 1)[0]
+    assert "return self._tags_for_row(row)" in raw
