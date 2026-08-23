@@ -43,6 +43,12 @@ def test_bulk_edit_preserves_twint_credit_safety_policy():
     assert "skipped_policy += 1" in block
 
 
+def test_twint_netting_requires_explicit_review_opt_in():
+    src = _source()
+    assert "self.chk_net_twint.setChecked(False)" in src
+    assert "TWINT-Verrechnung ist bewusst Opt-in" in src
+
+
 def test_intro_matches_category_derived_read_only_tags():
     src = _source()
     assert "Tags werden automatisch aus der gewählten" in src
