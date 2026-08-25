@@ -242,6 +242,61 @@ def test_der_gebaute_stand_laeuft_im_utf8_modus() -> None:
     assert "runtime_options," in spec, "die Optionsliste erreicht EXE() nicht"
 
 
+def test_der_konsolen_logger_kodiert_utf8(monkeypatch) -> None:
+    """Sonst wird jede Logzeile mit Umlaut zu "--- Logging error ---".
+
+    Der StreamHandler erbt die Kodierung von sys.stderr - auf einer
+    Windows-Konsole cp850/cp1252. Der Datei-Handler daneben hat seit jeher
+    encoding="utf-8".
+    """
+    import io
+    import logging
+    import sys
+
+    class _Konsole(io.StringIO):
+        def __init__(self) -> None:
+            super().__init__()
+            self.kodierung: tuple[str, str] | None = None
+
+        def reconfigure(self, *, encoding: str, errors: str) -> None:  # type: ignore[override]
+            self.kodierung = (encoding, errors)
+
+    konsole = _Konsole()
+    monkeypatch.setattr(sys, "stderr", konsole)
+
+    wurzel = logging.getLogger()
+    alte = list(wurzel.handlers)
+    for h in alte:
+        wurzel.removeHandler(h)
+    try:
+        from model.logging_config import setup_logging
+
+        setup_logging()
+    finally:
+        for h in list(wurzel.handlers):
+            wurzel.removeHandler(h)
+        for h in alte:
+            wurzel.addHandler(h)
+
+    assert konsole.kodierung == ("utf-8", "replace")
+
+
+def test_es_gibt_nur_eine_fassung_der_konsolenumstellung() -> None:
+    """Der Updater darf im Startpfad des Logging nicht mitgezogen werden.
+
+    updater/common.py importiert requests und packaging auf Modulebene. Wuerde
+    setup_logging von dort importieren, haenge beides an jeder
+    Logging-Einrichtung.
+    """
+    logging_config = (ROOT / "model" / "logging_config.py").read_text(encoding="utf-8")
+    assert "from utils.console_encoding import enable_utf8_console" in logging_config
+    assert "from updater" not in logging_config
+    assert "import updater" not in logging_config
+
+    common = (ROOT / "updater" / "common.py").read_text(encoding="utf-8")
+    assert "from utils.console_encoding import enable_utf8_console" in common
+
+
 def test_die_app_reicht_utf8_an_ihre_kindprozesse_weiter() -> None:
     """Der Updater laeuft als eigener Prozess und gibt Emojis aus."""
     quelle = (ROOT / "main.py").read_text(encoding="utf-8")

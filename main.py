@@ -204,7 +204,7 @@ def _configure_utf8_runtime() -> None:
        erzwingt ihn ueber ``-X utf8=1`` in BudgetManager.spec; im Quellbetrieb
        ist die Umgebung des Aufrufers zustaendig.
     """
-    from updater.common import enable_utf8_console
+    from utils.console_encoding import enable_utf8_console
 
     enable_utf8_console()
     os.environ.setdefault("PYTHONUTF8", "1")

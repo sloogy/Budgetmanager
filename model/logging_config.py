@@ -25,6 +25,23 @@ def setup_logging(log_level: int = logging.INFO, log_file: str | None = None) ->
 
     # Konsole
     if not any(isinstance(h, logging.StreamHandler) for h in root.handlers):
+        # Der StreamHandler erbt die Kodierung von sys.stderr - auf einer
+        # Windows-Konsole cp850/cp1252. Die App loggt reichlich deutsche Texte,
+        # der Updater zusaetzlich ❌, ✓ und ⟲: Jede solche Zeile loeste dort
+        # einen UnicodeEncodeError im Handler aus, den das logging-Modul
+        # abfaengt und durch "--- Logging error ---" ersetzt. Verloren gingen
+        # damit genau die Diagnosezeilen, die man bei einem Windows-Problem
+        # braucht - waehrend der Datei-Handler daneben seit jeher
+        # encoding="utf-8" hat.
+        #
+        # Bewusst ueber utils/console_encoding.py und nicht ueber
+        # updater/common.py: Dieselbe Funktion liegt dort, aber das Modul zieht
+        # requests und packaging mit - eine Abhaengigkeit, die im Startpfad
+        # jeder Logging-Einrichtung nichts zu suchen hat.
+        from utils.console_encoding import enable_utf8_console
+
+        enable_utf8_console()
+
         console = logging.StreamHandler()
         console.setLevel(log_level)
         console.setFormatter(formatter)

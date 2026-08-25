@@ -51,20 +51,15 @@ def enable_utf8_console() -> None:
 
     Die Windows-Konsole nutzt standardmäßig cp1252 und kann Emojis/Sonderzeichen
     (z.B. ⬇️, ❌, ✓) nicht kodieren -> UnicodeEncodeError beim print().
-    Diese Funktion stellt die Streams auf UTF-8 um (mit errors='replace' als
-    Sicherheitsnetz) und ist robust gegen fehlende Streams, etwa in einem
-    windowed PyInstaller-Build ohne Konsole.
+
+    Die Umsetzung steht seit v3.0.7 in ``utils/console_encoding.py``. Der Name
+    bleibt hier erhalten, weil alle vier Updater-Einstiegspunkte ihn nutzen -
+    aber es gibt nur noch eine Fassung, und die ist von jeder Schicht aus
+    erreichbar, ohne requests und packaging mitzuziehen.
     """
-    for stream in (sys.stdout, sys.stderr):
-        if stream is None:
-            continue
-        reconfigure = getattr(stream, "reconfigure", None)
-        if reconfigure is None:
-            continue
-        try:
-            reconfigure(encoding="utf-8", errors="replace")
-        except (ValueError, OSError):
-            pass
+    from utils.console_encoding import enable_utf8_console as _enable
+
+    _enable()
 
 
 def _is_frozen() -> bool:
