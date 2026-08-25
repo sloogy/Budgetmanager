@@ -183,6 +183,43 @@ def _configure_qt_platform() -> None:
         )
 
 
+def _configure_utf8_runtime() -> None:
+    """Sorgt dafuer, dass die App und ihre Kindprozesse in UTF-8 arbeiten.
+
+    Auf Windows waehlt Python ohne UTF-8-Modus die ANSI-Codepage - auf einer
+    deutschen Installation cp1252 fuer Dateien und cp850 auf der Konsole.
+    ``PYTHONUTF8=1`` stand bisher ausschliesslich in den CI-Env-Bloecken und in
+    keiner Zeile Produktivcode; beim Nutzer galt es also nie.
+
+    Drei Vorkehrungen, analog zum Wayland-Workaround darueber - erst pruefen,
+    dann nur setzen, was noch nicht gesetzt ist:
+
+    1. stdout/stderr auf UTF-8 umstellen. Ohne das stirbt jede Ausgabe mit
+       Umlaut oder Emoji auf einer Windows-Konsole an UnicodeEncodeError.
+    2. ``PYTHONUTF8`` und ``PYTHONIOENCODING`` in die Umgebung schreiben. Das
+       aendert am laufenden Interpreter nichts mehr, wohl aber an jedem
+       Kindprozess: Der Updater laeuft als eigener Prozess und gibt ❌, ✓ und
+       ⟲ aus, und der Neustart nach einem Update startet die App erneut.
+    3. Fehlt der UTF-8-Modus, wird das protokolliert. Der gebaute Stand
+       erzwingt ihn ueber ``-X utf8=1`` in BudgetManager.spec; im Quellbetrieb
+       ist die Umgebung des Aufrufers zustaendig.
+    """
+    from updater.common import enable_utf8_console
+
+    enable_utf8_console()
+    os.environ.setdefault("PYTHONUTF8", "1")
+    os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
+    if not sys.flags.utf8_mode:
+        import locale
+
+        logging.getLogger(__name__).info(
+            "Python laeuft nicht im UTF-8-Modus (Vorgabe-Kodierung: %s). "
+            "Der gebaute Stand setzt -X utf8=1; im Quellbetrieb hilft PYTHONUTF8=1.",
+            locale.getpreferredencoding(False),
+        )
+
+
 def _setup_emoji_fonts(app) -> None:
     """Stellt auf Linux sicher dass Emojis (als Icons verwendet) korrekt gerendert werden.
 
@@ -338,6 +375,7 @@ def main() -> int:
     except Exception:
         log_file = None
     setup_logging(log_file=log_file)
+    _configure_utf8_runtime()
     logger.info("Budgetmanager gestartet")
     _install_crash_diagnostics()
 

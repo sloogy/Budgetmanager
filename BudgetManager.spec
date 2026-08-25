@@ -94,10 +94,21 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
+# Laufzeitoptionen des eingebetteten Interpreters (dritte Position von EXE).
+#
+# -X utf8=1 entspricht PYTHONUTF8=1. Ohne diese Zeile startet der gebaute
+# Stand im Legacy-Modus: Auf einer deutschen Windows-Installation ist
+# locale.getpreferredencoding() dann cp1252, nicht UTF-8. PYTHONUTF8 stand
+# bisher ausschliesslich in den CI-Env-Bloecken und in keiner Zeile
+# Produktivcode - beim Nutzer galt es also nie. Als Option im Build und nicht
+# als Umgebungsvariable, weil die drei Startwege (Doppelklick auf die EXE,
+# Startmenue-Verknuepfung, Neustart durch den Updater) keine Variablen setzen.
+runtime_options = [("X utf8=1", None, "OPTION")]
+
 exe = EXE(
     pyz,
     a.scripts,
-    [],
+    runtime_options,
     exclude_binaries=True,
     name="BudgetManager",
     icon="resources/icons/budgetmanager.ico",

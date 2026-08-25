@@ -287,7 +287,7 @@ class UpdateManager:
 
         if settings_file.exists():
             try:
-                with open(settings_file) as f:
+                with open(settings_file, encoding="utf-8") as f:
                     saved_settings = json.load(f)
                     default_settings.update(saved_settings)
             except Exception as e:
@@ -311,7 +311,7 @@ class UpdateManager:
         """Speichert Update-Einstellungen"""
         settings_file = self._update_settings_file()
         settings_file.parent.mkdir(parents=True, exist_ok=True)
-        with open(settings_file, "w") as f:
+        with open(settings_file, "w", encoding="utf-8") as f:
             json.dump(settings, f, indent=2)
 
     def should_check_for_updates(self) -> bool:

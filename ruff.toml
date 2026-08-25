@@ -10,7 +10,23 @@ target-version = "py311"
 # DTZ (Zeitzonen) - der BudgetManager rechnet in Kalendermonaten und
 # -jahren; eine UTC-Pflicht waere hier falsch. Der Host (LifePlanner)
 # hat DTZ dabei, weil er Zeitangaben schreibt, die andere Programme lesen.
-select = ["E4", "E7", "E9", "F", "I", "UP", "SIM", "RUF100"]
+#
+# PLW1514 (open/read_text/write_text ohne explizites encoding) ist neu dabei.
+# Der Bestand war bereits konform, die Regel kostet also keine Nacharbeit -
+# aber Konformitaet aus Disziplin ist kein Mechanismus. Auf Windows waehlt
+# Python ohne diese Angabe die ANSI-Codepage (cp1252), nicht UTF-8; eine
+# einzige neue Zeile ohne encoding= wuerde dort Umlaute in Settings, Marker
+# oder Exporten zerstoeren, und auf dem Fedora-Entwicklungsrechner faellt das
+# nie auf, weil dort UTF-8 die Locale-Vorgabe ist.
+#
+# Die Regel steht bei ruff in der Vorschau. preview aktiviert sie, und
+# explicit-preview-rules sorgt dafuer, dass ausschliesslich die hier
+# namentlich genannte Vorschauregel gilt - nicht die Vorschaufassungen von
+# E4/E7/E9/F/I/UP/SIM, die den Prueflauf sonst unangekuendigt aendern
+# koennten.
+preview = true
+explicit-preview-rules = true
+select = ["E4", "E7", "E9", "F", "I", "UP", "SIM", "RUF100", "PLW1514"]
 ignore = [
     "E402",    # Importe nach sys.path-Anpassung sind in Werkzeugen noetig
     # SIM105 raet zu contextlib.suppress statt try/except/pass. Das ist hier

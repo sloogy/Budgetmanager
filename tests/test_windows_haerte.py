@@ -164,6 +164,52 @@ def test_leere_oder_fehlende_variablen_werden_ignoriert() -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# H3: kein Gate gegen open() ohne encoding=, kein UTF-8 im gebauten Stand
+# ──────────────────────────────────────────────────────────────────────────
+def test_das_encoding_gate_ist_scharf() -> None:
+    """Der Bestand war konform - aber aus Disziplin, nicht durch Mechanismus.
+
+    Ohne explizites encoding= waehlt Python auf Windows die ANSI-Codepage.
+    Auf dem Fedora-Entwicklungsrechner faellt das nie auf, weil dort UTF-8
+    die Locale-Vorgabe ist.
+    """
+    ruff = (ROOT / "ruff.toml").read_text(encoding="utf-8")
+    assert '"PLW1514"' in ruff
+    # PLW1514 steht bei ruff in der Vorschau und gilt sonst nicht.
+    assert "preview = true" in ruff
+    # Ohne diese Zeile kaemen die Vorschaufassungen aller uebrigen
+    # Regelgruppen mit und koennten den Prueflauf unangekuendigt aendern.
+    assert "explicit-preview-rules = true" in ruff
+
+
+def test_der_gebaute_stand_laeuft_im_utf8_modus() -> None:
+    """PYTHONUTF8 stand nur in den CI-Env-Bloecken, nie beim Nutzer.
+
+    Die drei Startwege unter Windows (Doppelklick auf die EXE,
+    Startmenue-Verknuepfung, Neustart durch den Updater) setzen keine
+    Umgebungsvariablen. Deshalb als Interpreter-Option im Build.
+    """
+    spec = (ROOT / "BudgetManager.spec").read_text(encoding="utf-8")
+    assert '("X utf8=1", None, "OPTION")' in spec
+    assert "runtime_options," in spec, "die Optionsliste erreicht EXE() nicht"
+
+
+def test_die_app_reicht_utf8_an_ihre_kindprozesse_weiter() -> None:
+    """Der Updater laeuft als eigener Prozess und gibt Emojis aus."""
+    quelle = (ROOT / "main.py").read_text(encoding="utf-8")
+    beginn = quelle.index("def _configure_utf8_runtime")
+    ende = quelle.index("def _setup_emoji_fonts", beginn)
+    block = quelle[beginn:ende]
+    assert 'os.environ.setdefault("PYTHONUTF8", "1")' in block
+    assert 'os.environ.setdefault("PYTHONIOENCODING", "utf-8")' in block
+    assert "enable_utf8_console()" in block
+    # Sehr frueh: vor jedem Kindprozess und vor der ersten Ausgabe.
+    assert quelle.index("_configure_utf8_runtime()", ende) < quelle.index(
+        "_install_crash_diagnostics()", ende
+    )
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # H1: Windows und Linux updateten mit unterschiedlicher Semantik
 # ──────────────────────────────────────────────────────────────────────────
 def _portabler_helfer_batch() -> str:
