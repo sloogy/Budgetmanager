@@ -11,7 +11,7 @@
 ; - PyInstaller onedir-Build im dist\BudgetManager\ Ordner
 
 #define MyAppName "BudgetManager"
-#define MyAppVersion "3.0.5"
+#define MyAppVersion "3.0.6"
 #define MyAppPublisher "Christian"
 #define MyAppURL "https://github.com/sloogy/Budgetmanager"
 #define MyAppExeName "BudgetManager.exe"

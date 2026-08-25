@@ -1,6 +1,6 @@
-# BudgetManager 3.0.5 – Manuel utilisateur
+# BudgetManager 3.0.6 – Manuel utilisateur
 
-Ce manuel décrit les fonctions réellement disponibles dans la version 3.0.5. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
+Ce manuel décrit les fonctions réellement disponibles dans la version 3.0.6. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
 
 ## Premier démarrage en quatre étapes
 
@@ -151,22 +151,23 @@ la même boîte de dialogue.
 carte de crédit. La lecture se fait sur votre ordinateur ; aucune ligne n'est
 transmise à un service tiers.
 
-Chaque ligne reconnue est affichée avec sa date, son type, son montant, son
-texte, sa catégorie, ses étiquettes et une case à cocher. **Seules les lignes
-cochées sont enregistrées.** Les propositions de type et de catégorie
-proviennent de la mémoire locale, qui ne propose que des catégories et des
-étiquettes existantes.
+Le nouvel écran de vérification n'affiche plus que **case, date, opération,
+montant, catégorie, source et statut**. **La case est l'unique sélection** :
+elle pilote à la fois l'import et les actions groupées. **Maj+clic** étend les
+cases aux lignes visibles ; **Ctrl+A** coche toutes les lignes actuellement
+visibles.
 
-Sélectionnez plusieurs lignes avec **Ctrl+clic**, **Maj+clic** ou **Ctrl+A**.
-Les listes déroulantes au-dessus du tableau appliquent le type, la catégorie,
-les étiquettes et l'état de sélection à toutes les lignes marquées.
+Les filtres **À vérifier**, **Prêts**, **Déjà traité** et **TWINT** conduisent
+directement aux cas utiles. Le type d'écriture suit automatiquement la
+catégorie choisie. Les suggestions locales incertaines restent dans *À
+vérifier* ; sélectionner à nouveau la même suggestion la confirme. Les
+étiquettes de catégorie sont automatiques. Les étiquettes facultatives se
+gèrent via **Étiquettes…** pour toutes les lignes cochées.
 
-Les étiquettes obligatoires de la catégorie choisie sont posées et le restent ;
-d'autres étiquettes existantes peuvent être cochées dans la liste déroulante.
-
-Ouvrir deux fois le même fichier ne crée pas de doublons : chaque ligne porte
-un identifiant composé de la date, du montant et du texte. L'import se
-déroule d'un seul tenant — il aboutit entièrement ou pas du tout.
+Plusieurs fichiers peuvent être chargés dans une seule vérification. Un fichier
+chargé par erreur peut être retiré du menu des fichiers. Un fichier identique
+n'est pas accepté deux fois dans la même vérification. L'identité des doublons
+et l'import atomique restent séparés par fichier source.
 
 L'apprentissage a lieu **après** l'import et uniquement à partir de ce que vous
 avez confirmé. Une proposition modifiée ou décochée n'est pas apprise.

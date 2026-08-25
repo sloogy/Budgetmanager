@@ -353,8 +353,18 @@ DOMAINS = (
 
 
 def main() -> int:
-    csv_path = ROOT / (
-        "UI_USABILITY_ADHS_1000_LOOP_MATRIX_v" + APP_VERSION.replace(".", "_") + ".csv"
+    # v3.0.6: Releasebeweise gehoeren ins Archiv, nicht ins Wurzelverzeichnis
+    # (siehe test_project_root_holds_no_release_evidence).
+    csv_path = (
+        ROOT
+        / "docs"
+        / "archive"
+        / "release-evidence"
+        / (
+            "UI_USABILITY_ADHS_1000_LOOP_MATRIX_v"
+            + APP_VERSION.replace(".", "_")
+            + ".csv"
+        )
     )
     if "--csv" in sys.argv:
         csv_path = Path(sys.argv[sys.argv.index("--csv") + 1])

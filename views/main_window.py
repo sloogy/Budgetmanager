@@ -64,7 +64,14 @@ from views.help_launcher import (
 )
 from views.help_menu import build_help_menu
 from views.lifeplanner_import_dialog import LifePlannerImportDialog
-from views.main_window_dialogs import AboutDialog, LogViewerDialog
+from views.main_window_diagnostics import (
+    create_diagnostic_report,
+    open_diagnostics_folder,
+    show_app_log,
+    show_crash_log,
+    show_log_file,
+)
+from views.main_window_dialogs import AboutDialog
 from views.main_window_update import MainWindowUpdateMixin
 from views.quick_add_dialog import QuickAddDialog
 from views.savings_goals_dialog import SavingsGoalsDialog
@@ -624,6 +631,16 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
             action.triggered.connect(lambda _checked=False, cb=callback: cb())
             toolbar.addAction(action)
             return action
+
+        # Undo/Redo sind bewusst auch direkt in der Toolbar sichtbar. Dieselben
+        # QAction-Objekte hängen im Bearbeiten-Menü und tragen die globalen
+        # Shortcuts, damit Button, Menü und Ctrl+Z/Ctrl+Y garantiert denselben
+        # Codepfad verwenden.
+        self.undo_action.setIcon(get_icon("↩️"))
+        self.redo_action.setIcon(get_icon("↪️"))
+        toolbar.addAction(self.undo_action)
+        toolbar.addAction(self.redo_action)
+        toolbar.addSeparator()
 
         self.action_quick_add_unified = add_action(
             tr("menu.quick_add"), "➕", self._show_quick_add, tr("menu.quick_add_tip")
@@ -2163,20 +2180,54 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
             self.statusBar().showMessage(tr("msg.view_refreshed"), 2000)
 
     def _update_undo_redo_actions(self) -> None:
-        """Aktiviert/Deaktiviert Undo/Redo je nach Stack."""
+        """Hält Undo/Redo zuverlässig auslösbar.
+
+        Die Undo-Historie wird von mehreren Model-Instanzen geschrieben
+        (Tracking, Kategorien, Import, Sparziele, Budget). Ein deaktiviertes
+        QAction konnte deshalb veraltet bleiben, bis zufällig ein Tab-Wechsel
+        stattfand. Für globale History-Aktionen ist ein sicherer No-op deutlich
+        besser als ein fälschlich deaktivierter Button/Shortcut.
+        """
         if hasattr(self, "undo_action"):
-            self.undo_action.setEnabled(self.undo_redo.can_undo())
+            self.undo_action.setEnabled(True)
+            self.undo_action.setProperty("historyAvailable", self.undo_redo.can_undo())
         if hasattr(self, "redo_action"):
-            self.redo_action.setEnabled(self.undo_redo.can_redo())
+            self.redo_action.setEnabled(True)
+            self.redo_action.setProperty("historyAvailable", self.undo_redo.can_redo())
+
+    def _finish_active_editor_before_history(self) -> None:
+        """Schließt einen laufenden Zell-Editor, bevor Undo/Redo auf die DB zugreift.
+
+        Besonders unter Windows kann Ctrl+Z gedrückt werden, während Qt den
+        letzten Zellwert noch im Editor hält. Durch das saubere Committen wird
+        zuerst die gerade sichtbare Änderung in die History geschrieben und
+        anschließend genau diese Änderung rückgängig gemacht.
+        """
+        current = self.tabs.currentWidget() if hasattr(self, "tabs") else None
+        if current is getattr(self, "budget_tab", None):
+            close_editor = getattr(self.budget_tab, "_close_table_editor", None)
+            if callable(close_editor):
+                try:
+                    close_editor("Undo/Redo")
+                except (RuntimeError, ValueError, TypeError) as exc:
+                    logger.debug("Aktiver Budget-Editor vor Undo/Redo: %s", exc)
 
     def _undo_global(self) -> None:
+        self._finish_active_editor_before_history()
         if self.undo_redo.undo():
             self._schedule_refresh_all_tabs(reason="undo")
+            self.statusBar().showMessage(tr("history.undo_done"), 1800)
+        else:
+            self.statusBar().showMessage(tr("history.undo_empty"), 1800)
         self._update_undo_redo_actions()
 
     def _redo_global(self) -> None:
+        self._finish_active_editor_before_history()
         if self.undo_redo.redo():
             self._schedule_refresh_all_tabs(reason="redo")
+            self.statusBar().showMessage(tr("history.redo_done"), 1800)
+        else:
+            self.statusBar().showMessage(tr("history.redo_empty"), 1800)
         self._update_undo_redo_actions()
 
     def _set_current_year(self):
@@ -2277,77 +2328,24 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
             )
 
     def _show_log_file(self, *, path: Path, title_key: str) -> None:
-        """Öffnet eine Logdatei in einem eigenen Dialog statt im Systemeditor."""
-        try:
-            from model.diagnostics import read_text_tail
-
-            text = read_text_tail(path)
-            dlg = LogViewerDialog(self, title=tr(title_key), path=path, text=text)
-            dlg.exec()
-        except Exception as exc:
-            show_warning(
-                self,
-                tr("msg.error"),
-                trf("diagnostics.log_open_failed", error=str(exc)),
-            )
+        """Öffnet eine Logdatei in einem eigenen Dialog (siehe ``views/main_window_diagnostics``)."""
+        show_log_file(self, path=path, title_key=title_key)
 
     def _show_app_log(self) -> None:
-        from model.diagnostics import log_file_path
-
-        self._show_log_file(path=log_file_path(), title_key="diagnostics.app_log_title")
+        """Zeigt das Anwendungsprotokoll."""
+        show_app_log(self)
 
     def _show_crash_log(self) -> None:
-        from model.diagnostics import crash_log_file_path
-
-        self._show_log_file(
-            path=crash_log_file_path(), title_key="diagnostics.crash_log_title"
-        )
+        """Zeigt das Absturzprotokoll."""
+        show_crash_log(self)
 
     def _open_diagnostics_folder(self) -> None:
         """Öffnet den Diagnoseordner im Dateimanager."""
-        try:
-            from model.diagnostics import diagnostics_dir
-
-            folder = diagnostics_dir()
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(folder)))
-            if self.statusBar():
-                self.statusBar().showMessage(
-                    trf("diagnostics.folder_opened", folder=str(folder)), 3000
-                )
-        except Exception as exc:
-            show_warning(
-                self,
-                tr("msg.error"),
-                trf("diagnostics.folder_open_failed", error=str(exc)),
-            )
+        open_diagnostics_folder(self)
 
     def _create_diagnostic_report(self) -> None:
         """Erstellt lokal ein Diagnose-ZIP ohne Datenbank/Backups."""
-        try:
-            from model.diagnostics import (
-                create_diagnostic_report_zip,
-                remove_old_diagnostic_reports,
-            )
-
-            path = create_diagnostic_report_zip(connection=self.conn)
-            remove_old_diagnostic_reports()
-            box = QMessageBox(self)
-            box.setIcon(QMessageBox.Information)
-            box.setWindowTitle(tr("diagnostics.report_created_title"))
-            box.setText(trf("diagnostics.report_created_text", path=str(path)))
-            open_folder_button = box.addButton(
-                tr("diagnostics.open_folder"), QMessageBox.ActionRole
-            )
-            box.addButton(QMessageBox.Ok)
-            box.exec()
-            if box.clickedButton() is open_folder_button:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.parent)))
-        except Exception as exc:
-            show_warning(
-                self,
-                tr("msg.error"),
-                trf("diagnostics.report_create_failed", error=str(exc)),
-            )
+        create_diagnostic_report(self)
 
     def schedule_unclean_shutdown_prompt(
         self, previous_state: dict | None, *, delay_ms: int = 1200
@@ -3217,6 +3215,41 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
             self.settings.set("window_is_maximized", self.isMaximized())
         super().changeEvent(event)
 
+    def prepare_for_update_exit(self) -> bool:
+        """Prüft einen Update-Neustart, bevor der externe Updater startet.
+
+        Wichtig unter Windows: Der Updater darf nicht bereits als detached
+        Prozess laufen und *danach* erst auf einen abbrechbaren Speichern-
+        Dialog treffen. Sonst wartet der Helfer auf eine App, die der Nutzer
+        bewusst offen gelassen hat, und ältere Versionen versuchten nach dem
+        Timeout sogar trotzdem zu kopieren.
+
+        Auto-Save braucht keine Vorabfrage. Bei manuellem Speichern wird die
+        Entscheidung hier einmal eingeholt und für den unmittelbar folgenden
+        ``closeEvent`` vorgemerkt.
+        """
+        if hasattr(self, "settings") and self.settings.auto_save:
+            return True
+        if getattr(self, "_suppress_close_confirm", False):
+            self._update_exit_preapproved = True
+            return True
+
+        reply = QMessageBox.question(
+            self,
+            tr("msg.confirm_exit"),
+            tr("btn.moechten_sie_das_budget"),
+            QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+            QMessageBox.Save,
+        )
+        if reply == QMessageBox.Cancel:
+            return False
+        if reply == QMessageBox.Save:
+            self._save_widget_before_leave(
+                getattr(self, "budget_tab", None), reason=tr("btn.close")
+            )
+        self._update_exit_preapproved = True
+        return True
+
     def closeEvent(self, event):
         """Wird beim Schließen des Fensters aufgerufen"""
         # Speichere Fenster-State BEVOR wir fragen (nur wenn settings existiert)
@@ -3239,6 +3272,16 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
         # sieht. Der traege Zeitgeber kaeme hier nicht mehr zum Zug.
         self._bridge_sync_on_close = True
         self._sync_bridge_outboxes_safely()
+
+        # Der Update-Dialog hat die Save/Discard/Cancel-Entscheidung bereits
+        # VOR dem Start des detached Updaters eingeholt. Nicht ein zweites Mal
+        # fragen; damit kann "Abbrechen" nicht mehr nachträglich einen bereits
+        # laufenden Windows-Updater zurücklassen.
+        if getattr(self, "_update_exit_preapproved", False):
+            self._update_exit_preapproved = False
+            self._is_closing = True
+            event.accept()
+            return
 
         # Wenn Auto-Save aktiv: Einfach speichern und schließen
         if hasattr(self, "settings") and self.settings.auto_save:

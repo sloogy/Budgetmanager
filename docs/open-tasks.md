@@ -1,10 +1,10 @@
-# Offene Release-Aufgaben — BudgetManager v3.0.5
+# Offene Release-Aufgaben — BudgetManager v3.0.6
 
-Stand: 23. August 2026
+Stand: 25. August 2026
 
 ## Source-Code-Status
 
-Alle im lokalen Quellcode-Audit gefundenen technischen Findings wurden behoben. Versionsabgleich, Hash-Lockfiles, Syntax, Architektur, Übersetzungen, Handbuch, DAU-E2E, Funktionsregressionen und interne Release-Audits werden für v3.0.0 neu geprüft. Vor einer regulären Binärfreigabe müssen zusätzlich Signierung sowie die externen GitHub-Gates unter Fedora/Wayland und Windows grün sein.
+Alle im lokalen Quellcode-Audit gefundenen technischen Findings wurden behoben. Versionsabgleich, Hash-Lockfiles, Syntax, Architektur, Übersetzungen, Handbuch, DAU-E2E, Funktionsregressionen und interne Release-Audits werden für v3.0.6 neu geprüft. Vor einer regulären Binärfreigabe müssen zusätzlich Signierung sowie die externen GitHub-Gates unter Fedora/Wayland und Windows grün sein.
 
 ## Einmalige externe Vertrauensanker
 
@@ -19,7 +19,7 @@ Anleitung: `docs/release-signing.md`.
 
 ## Vor der finalen öffentlichen Freigabe
 
-- Tag `v3.0.0` erstellen und den einzigen GitHub-Actions-Releaseworkflow grün abschliessen lassen.
+- Tag `v3.0.6` erstellen und den einzigen GitHub-Actions-Releaseworkflow grün abschliessen lassen.
 - Online-`pip-audit` im Dependency-Workflow prüfen.
 - GitHub Build-Provenance/Attestation prüfen.
 - Authenticode-Signatur von `BudgetManager.exe` und Installer prüfen.

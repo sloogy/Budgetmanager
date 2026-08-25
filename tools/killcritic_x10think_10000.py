@@ -48,8 +48,16 @@ from app_info import APP_VERSION
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 
 LOOPS_PER_DOMAIN = 1000
-CSV_PATH = ROOT / (
-    "KILLCRITIC_X10THINK_10000_MATRIX_v" + APP_VERSION.replace(".", "_") + ".csv"
+# v3.0.6: Die Matrix gehoert zu den Releasebeweisen, nicht ins Wurzelverzeichnis.
+# Dort verletzte sie test_project_root_holds_no_release_evidence - ein voller
+# Batteriedurchlauf machte den eigenen Baum rot. final_release_audit_1000 schreibt
+# seit 2.2.60 bereits hierher; diese beiden Werkzeuge zogen nicht nach.
+CSV_PATH = (
+    ROOT
+    / "docs"
+    / "archive"
+    / "release-evidence"
+    / ("KILLCRITIC_X10THINK_10000_MATRIX_v" + APP_VERSION.replace(".", "_") + ".csv")
 )
 
 LANGS = ("de", "en", "fr")
@@ -730,6 +738,7 @@ def main() -> int:
                 f"Loop {loop_no:05d}: checks={totals['checks']}"
                 f" fail={totals['FAIL']} warn={totals['WARN']}"
             )
+    CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
     with CSV_PATH.open("w", newline="", encoding="utf-8") as fh:
         w = csv.writer(fh)
         w.writerow(["loop", "domain", "checks", "status", "detail"])

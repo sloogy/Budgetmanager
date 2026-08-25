@@ -157,17 +157,28 @@ class UndoRedoModel:
         )
         self.conn.commit()
 
-        # Pruning: Älteste Einträge entfernen wenn Stack > MAX_UNDO_ENTRIES
+        # Pruning: Älteste Gruppen entfernen wenn Stack > MAX_UNDO_ENTRIES.
+        #
+        # v3.0.6: Die frühere Fassung sortierte eine DISTINCT-Auswahl nach der
+        # nicht ausgewählten Spalte ``id``. SQLite verlangt laut Spezifikation,
+        # dass jeder ORDER-BY-Ausdruck einer DISTINCT-Abfrage eine Ergebnis-
+        # spalte ist; heutige Builds tolerieren das, garantiert ist es nicht.
+        # Ein Fehler wäre hier vom umschließenden except verschluckt worden —
+        # das Pruning hätte still ausgesetzt und der undo_stack wäre unbegrenzt
+        # gewachsen. MAX(id) je Gruppe ist Ergebnisspalte und damit zulässig.
         try:
             self.conn.execute(
                 "DELETE FROM undo_stack WHERE group_id NOT IN ("
-                "  SELECT DISTINCT group_id FROM undo_stack "
-                "  ORDER BY id DESC LIMIT ?"
+                "  SELECT group_id FROM ("
+                "    SELECT group_id, MAX(id) AS letzte_id FROM undo_stack"
+                "    GROUP BY group_id"
+                "    ORDER BY letzte_id DESC LIMIT ?"
+                "  )"
                 ")",
                 (self.MAX_UNDO_ENTRIES,),
             )
         except Exception as e:
-            logger.debug("undo_stack pruning: %s", e)
+            logger.warning("undo_stack pruning fehlgeschlagen: %s", e)
 
     def undo(self) -> bool:
         """Undoes the last group. Returns True if something changed."""

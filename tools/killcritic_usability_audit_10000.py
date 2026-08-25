@@ -236,7 +236,7 @@ class DialogPool:
         from views.help_dialog import HelpDialog
         from views.language_select_dialog import LanguageSelectDialog
         from views.login_dialog import CreateUserWizard, LoginDialog, RestoreKeyDialog
-        from views.main_window import AboutDialog, LogViewerDialog
+        from views.main_window_dialogs import AboutDialog, LogViewerDialog
         from views.month_close_dialog import MonthCloseDialog
         from views.quick_add_dialog import QuickAddDialog
         from views.recurring_bookings_dialog import RecurringBookingsDialog

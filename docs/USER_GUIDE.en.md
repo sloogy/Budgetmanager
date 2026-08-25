@@ -1,6 +1,6 @@
-# BudgetManager 3.0.5 – User guide
+# BudgetManager 3.0.6 – User guide
 
-This guide describes the functions actually available in version 3.0.5. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
+This guide describes the functions actually available in version 3.0.6. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
 
 ## First start in four steps
 
@@ -141,21 +141,21 @@ is visible there; you can withdraw it in the same dialog.
 **Import → Bank PDF/CSV…** reads a bank statement or credit card statement.
 Reading happens on your own machine; no line ever leaves it.
 
-Every recognised row is listed with date, type, amount, text, category, tags
-and a checkbox. **Only checked rows are booked.** Suggestions for type and
-category come from the local memory, which only ever proposes categories and
-tags that already exist.
+The new review shows only **checkbox, date, booking, amount, category, source
+and status**. **The checkbox is the only selection:** it controls both import
+and bulk actions. **Shift+click** extends the checkboxes across visible rows;
+**Ctrl+A** checks all currently visible rows.
 
-Select several rows with **Ctrl+click**, **Shift+click** or **Ctrl+A**. The
-drop-downs above the table apply type, category, tags and selection state to
-all marked rows at once.
+The filters **Review**, **Ready**, **Already done** and **TWINT** take you
+directly to relevant cases. The booking type follows the selected category
+automatically. Uncertain local-AI suggestions stay under *Review*; selecting
+the same suggestion again confirms it. Category tags are applied automatically.
+Optional tags are behind **Tags…** and can be added or removed for all checked
+rows together.
 
-The mandatory tags of the chosen category are set and stay set; further
-existing tags can be ticked in the tag drop-down.
-
-Opening the same file twice does not create duplicates: every row carries an
-identifier built from date, amount and text. The import runs as one
-transaction — it completes fully or not at all.
+Several files can be loaded into one review. Accidentally loaded files can be
+removed from the file menu. Identical files are not accepted twice in the same
+review. Duplicate identity and atomic import remain separated per source file.
 
 Learning happens **after** the import and only from what you confirmed. A
 suggestion you changed or unchecked is not learned.

@@ -26,12 +26,57 @@ from __future__ import annotations
 
 import logging
 import os
+import secrets
+import threading
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TextIO
 
 _log = logging.getLogger(__name__)
+
+
+def _temp_path(ziel: Path) -> Path:
+    """Erzeugt einen kollisionsfreien Temp-Namen auch innerhalb eines Prozesses.
+
+    Die PID allein trennt mehrere App-Instanzen, aber nicht zwei Threads oder
+    verschachtelte Saves derselben Instanz. Gerade unter Windows führt eine
+    solche Kollision schnell zu ``PermissionError``/``FileNotFoundError`` beim
+    anschliessenden ``os.replace``. Thread-ID + Zufallstoken verhindern das,
+    die PID bleibt für Diagnose und die bestehende Invariante sichtbar.
+    """
+    token = secrets.token_hex(4)
+    return ziel.with_name(
+        f"{ziel.name}.tmp-{os.getpid()}-{threading.get_ident()}-{token}"
+    )
+
+
+def _replace_atomically(source: Path, target: Path) -> None:
+    """``os.replace`` mit kurzem Retry für typische Windows-Dateisperren.
+
+    Virenscanner, Indexer und Sync-Clients können eine gerade geschlossene
+    Datei für wenige Millisekunden exklusiv halten. Ein sofortiger Abbruch
+    verliert dann z.B. eine Settings-Änderung, obwohl ein zweiter Versuch
+    erfolgreich wäre. Nur bekannte Sharing-/Access-Fehler werden wiederholt;
+    volle Datenträger, Rechtefehler ohne Windows-Lock usw. bleiben fail-fast.
+    """
+    attempts = 6 if os.name == "nt" else 1
+    retry_winerrors = {5, 32, 33}  # ACCESS_DENIED, SHARING/LOCK_VIOLATION
+    for attempt in range(attempts):
+        try:
+            os.replace(source, target)
+            return
+        except OSError as exc:
+            winerror = getattr(exc, "winerror", None)
+            should_retry = (
+                os.name == "nt"
+                and winerror in retry_winerrors
+                and attempt < attempts - 1
+            )
+            if not should_retry:
+                raise
+            time.sleep(0.025 * (2**attempt))
 
 
 def _fsync_verzeichnis(ordner: Path) -> None:
@@ -72,7 +117,7 @@ def atomar_schreiben(
     """
     ziel = Path(pfad)
     ziel.parent.mkdir(parents=True, exist_ok=True)
-    zwischen = ziel.with_name(f"{ziel.name}.tmp-{os.getpid()}")
+    zwischen = _temp_path(ziel)
     # finally statt except: Eine liegengebliebene .tmp-Datei mit halbem
     # Inhalt sieht beim naechsten Blick aus wie ein Datenrest - und zwar
     # auch dann, wenn der Abbruch ein Strg-C war und keine Ausnahme, die
@@ -85,7 +130,7 @@ def atomar_schreiben(
             os.fsync(datei.fileno())
         if nur_besitzer:
             _sichern(zwischen)
-        os.replace(zwischen, ziel)
+        _replace_atomically(zwischen, ziel)
         geschafft = True
     finally:
         if not geschafft:
@@ -129,7 +174,7 @@ def atomar_offen(
     """
     ziel = Path(pfad)
     ziel.parent.mkdir(parents=True, exist_ok=True)
-    zwischen = ziel.with_name(f"{ziel.name}.tmp-{os.getpid()}")
+    zwischen = _temp_path(ziel)
     geschafft = False
     try:
         with zwischen.open("w", encoding="utf-8", newline="\n") as datei:
@@ -138,7 +183,7 @@ def atomar_offen(
             os.fsync(datei.fileno())
         if nur_besitzer:
             _sichern(zwischen)
-        os.replace(zwischen, ziel)
+        _replace_atomically(zwischen, ziel)
         geschafft = True
     finally:
         if not geschafft:

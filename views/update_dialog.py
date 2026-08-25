@@ -216,6 +216,26 @@ class UpdateDialog(QDialog):
         ):
             return
 
+        # Windows-Stabilität/Data-Loss-Guard: Bei deaktiviertem Auto-Save muss
+        # Save/Discard/Cancel geklärt sein, BEVOR der detached Updater startet.
+        # Früher lief der Updater bereits, während MainWindow.close() noch mit
+        # "Abbrechen" verweigert werden konnte. Dann blieb BudgetManager offen,
+        # während der Update-Helfer auf dieselbe EXE wartete.
+        parent = self.parent()
+        if parent is not None and hasattr(parent, "prepare_for_update_exit"):
+            try:
+                if not bool(parent.prepare_for_update_exit()):
+                    self._append(tr("update.status_apply_cancelled"))
+                    return
+            except (RuntimeError, OSError) as e:
+                logger.exception("Update-Exit-Vorprüfung fehlgeschlagen")
+                QMessageBox.critical(
+                    self,
+                    tr("msg.error"),
+                    trf("update.apply_start_failed", error=str(e)),
+                )
+                return
+
         cmd = _entrypoint_cmd("updater.apply_update")
         self._append("$ " + " ".join(cmd))
         self._append(tr("update.status_applying"))
@@ -244,9 +264,15 @@ class UpdateDialog(QDialog):
         # Der naechste _check() setzt den Zustand ohnehin zurueck.
         self.lbl_status.setText(tr("update.status_applying"))
 
-        if self.parent() is not None:
+        if parent is not None:
             try:
-                self.parent().close()
+                closed = parent.close()
+                if closed is False:
+                    # Der detached Helfer ist zwar bereits gestartet, ersetzt
+                    # dank seines fail-safe Timeouts aber keine laufende EXE.
+                    # App offen lassen statt den Nutzerwunsch zu übergehen.
+                    self._append(tr("update.status_apply_cancelled"))
+                    return
             except Exception as e:
                 logger.debug("parent().close(): %s", e)
         self.accept()

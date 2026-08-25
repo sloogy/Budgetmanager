@@ -66,7 +66,14 @@ class BudgetModel:
             logger.warning("_cleanup_reserved_categories fehlgeschlagen: %s", e)
 
     def set_amount(
-        self, year: int, month: int, typ: str, category: str, amount: float
+        self,
+        year: int,
+        month: int,
+        typ: str,
+        category: str,
+        amount: float,
+        *,
+        group_id: str | None = None,
     ) -> None:
         # v2.2.32 (DAU-Härtung): Kein inf/nan in die Budget-Tabelle lassen –
         # ein solcher Wert würde jede Budget-/Restberechnung vergiften.
@@ -87,6 +94,17 @@ class BudgetModel:
             (int(year), int(month), typ, category),
         ).fetchone()
 
+        # Undo darf nur echte Änderungen enthalten. Vorher erzeugte jeder Save
+        # auch für unveränderte Zellen einen UPDATE-Eintrag. Dadurch machte
+        # "Rückgängig" häufig scheinbar gar nichts, weil zuerst ein No-op
+        # zurückgenommen wurde. Beträge werden auf Rappen/Cent-Ebene behandelt.
+        if old is not None:
+            try:
+                if round(float(old["amount"] or 0.0), 2) == round(float(amount), 2):
+                    return
+            except (KeyError, TypeError, ValueError, IndexError):
+                pass
+
         self.conn.execute(
             "INSERT INTO budget(year,month,typ,category,amount) VALUES(?,?,?,?,?) "
             "ON CONFLICT(year,month,typ,category) DO UPDATE SET amount=excluded.amount",
@@ -105,6 +123,7 @@ class BudgetModel:
             op,
             dict(old) if old else None,
             dict(new) if new else None,
+            group_id=group_id,
         )
 
     def get_amount(

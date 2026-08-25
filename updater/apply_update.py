@@ -327,7 +327,7 @@ set /a _tries=0
 tasklist /FI "IMAGENAME eq %EXENAME%" 2>nul | find /I "%EXENAME%" >nul 2>&1
 if errorlevel 1 goto copyphase
 set /a _tries+=1
-if %_tries% GEQ 150 goto copyphase
+if %_tries% GEQ 150 goto stillrunning
 ping -n 2 127.0.0.1 >nul 2>&1
 goto waitloop
 
@@ -364,6 +364,17 @@ echo   Details siehe: "%LOGFILE%"
 echo.
 pause
 exit /b 1
+
+:stillrunning
+echo [%DATE% %TIME%] ABBRUCH: %EXENAME% laeuft nach Wartezeit noch. >> "%LOGFILE%"
+echo.
+echo   Update abgebrochen: BudgetManager ist noch nicht vollstaendig beendet.
+echo   Es wurden KEINE Programmdateien ersetzt.
+echo   Bitte BudgetManager schliessen und das Update erneut starten.
+echo   Details siehe: "%LOGFILE%"
+echo.
+pause
+exit /b 13
 """
     return (
         template.replace("__LOG__", log)
@@ -439,7 +450,7 @@ set /a _tries=0
 tasklist /FI "IMAGENAME eq %EXENAME%" 2>nul | find /I "%EXENAME%" >nul 2>&1
 if errorlevel 1 goto installphase
 set /a _tries+=1
-if %_tries% GEQ 150 goto installphase
+if %_tries% GEQ 150 goto stillrunning
 ping -n 2 127.0.0.1 >nul 2>&1
 goto waitloop
 
@@ -467,6 +478,17 @@ echo   Details siehe: "%LOGFILE%"
 echo.
 pause
 exit /b %RC%
+
+:stillrunning
+echo [%DATE% %TIME%] ABBRUCH: %EXENAME% laeuft nach Wartezeit noch. >> "%LOGFILE%"
+echo.
+echo   Installer-Update abgebrochen: BudgetManager ist noch nicht beendet.
+echo   Das Setup wurde NICHT gestartet.
+echo   Bitte BudgetManager schliessen und das Update erneut starten.
+echo   Details siehe: "%LOGFILE%"
+echo.
+pause
+exit /b 13
 """
     launch_path = str(app_root / stable_exe_filename())
     return (

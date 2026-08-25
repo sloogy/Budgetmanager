@@ -1,3 +1,11 @@
+## Neu in v3.0.6
+
+- Diagnose-Workflow in ein eigenes Modul ausgelagert; das Hauptfenster bleibt unter dem Architektur-Limit.
+- Bankimport V4 ist jetzt vollständig tastaturnavigierbar (deterministische Tab-Kette).
+- 89 zuvor deutsche Beschriftungen in der englischen und französischen Oberfläche übersetzt.
+- Undo-Pruning nutzt eine spezifikationskonforme Abfrage; ein Fehlschlag wird sichtbar protokolliert.
+- Release-Nachweise der Reihen 2.1/2.2 zu einer Chronik zusammengefasst; Funktionsinventar fortschreibend statt je Version.
+
 ## Neu in v3.0.5
 
 - Siehe VERSION_INFO.txt und CHANGELOG.md.

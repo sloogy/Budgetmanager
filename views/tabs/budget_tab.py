@@ -1808,6 +1808,22 @@ class BudgetTab(QWidget):
         for m in range(1, 13):
             self._update_parent_chain(r, m + 3)
 
+        # Ein Edit der Jahressumme verändert zwölf Monatswerte. Bei Auto-Save
+        # muss das sofort als EINE Undo-Gruppe persistiert werden; sonst kann
+        # Ctrl+Z direkt nach dem Edit nur eine ältere DB-Aktion zurücknehmen.
+        if self.chk_autosave.isChecked():
+            year = int(self.year_spin.value())
+            undo_group = self.budget.undo.new_group_id()
+            for month in range(1, 13):
+                month_item = self.table.item(r, month + 3)
+                month_amount = parse_amount(month_item.text() if month_item else "")
+                if typ == TYP_EXPENSES and month_amount < 0:
+                    month_amount = abs(month_amount)
+                self.budget.set_amount(
+                    year, month, typ, cat, month_amount, group_id=undo_group
+                )
+            self.budget_data_changed.emit()
+
         if self._is_all_filter():
             self._update_total_row()
 
@@ -2094,6 +2110,7 @@ class BudgetTab(QWidget):
         year = int(self.year_spin.value())
         data_rows = self._row_count_data()
         _commit_autosave_suspended = self._suspend_encrypted_commit_autosave()
+        undo_group = self.budget.undo.new_group_id()
 
         try:
             for r in range(data_rows):
@@ -2118,7 +2135,7 @@ class BudgetTab(QWidget):
                     amt = parse_amount(it.text() if it else "")
                     if typ == TYP_EXPENSES and amt < 0:
                         amt = abs(amt)
-                    self.budget.set_amount(year, m, typ, cat, amt)
+                    self.budget.set_amount(year, m, typ, cat, amt, group_id=undo_group)
                 self._recalc_row_total(r)
         finally:
             self._resume_encrypted_commit_autosave(_commit_autosave_suspended)
@@ -2218,6 +2235,7 @@ class BudgetTab(QWidget):
                 req.year, req.typ, [req.category], amount=0.0
             )
 
+            undo_group = self.budget.undo.new_group_id()
             for m in months:
                 amt = (
                     abs(req.amount)
@@ -2231,7 +2249,9 @@ class BudgetTab(QWidget):
                     if abs(float(current)) > 1e-9:
                         continue
 
-                self.budget.set_amount(req.year, m, req.typ, req.category, amt)
+                self.budget.set_amount(
+                    req.year, m, req.typ, req.category, amt, group_id=undo_group
+                )
         finally:
             self._resume_encrypted_commit_autosave(_commit_autosave_suspended)
 
@@ -2945,9 +2965,12 @@ class BudgetTab(QWidget):
 
         year = int(self.year_spin.value())
 
+        undo_group = self.budget.undo.new_group_id()
         with suspend_after_commit_autosave(self.conn):
             for m in range(1, 13):
-                self.budget.set_amount(year, m, typ, cat, first_val)
+                self.budget.set_amount(
+                    year, m, typ, cat, first_val, group_id=undo_group
+                )
 
         self.load()
         show_info(

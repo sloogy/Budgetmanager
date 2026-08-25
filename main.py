@@ -908,12 +908,22 @@ def main() -> int:
                 "Icon-Cache-Clear beim Shutdown fehlgeschlagen: %s", e
             )
 
-        # MainWindow explizit zerstören vor QApplication
-        win.close()
+        # MainWindow explizit zerstören vor QApplication – aber den normalen
+        # closeEvent-Pfad hier NICHT noch einmal auslösen. Wenn app.exec() durch
+        # QApplication.quit() beendet wurde (z.B. nach Konto-Restore/Updater),
+        # kann ein nachträgliches win.close() sonst nochmals Settings/Bridge/
+        # Budget speichern und damit gerade wiederhergestellte Daten mit dem
+        # alten In-Memory-Stand überschreiben. Bei einem normalen Fenster-X ist
+        # closeEvent bereits vor dem Verlassen der Eventloop gelaufen.
+        try:
+            win.hide()
+            win.deleteLater()
+            app.processEvents()
+        except RuntimeError:
+            logger.debug("MainWindow war beim Shutdown bereits zerstört.")
         del win
 
         # QApplication sauber beenden
-        app.processEvents()
         del app
 
         import gc

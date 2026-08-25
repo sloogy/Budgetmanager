@@ -9,6 +9,7 @@ from pathlib import Path
 
 from PySide6.QtCore import QObject, Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import (
+    QApplication,
     QCheckBox,
     QDialog,
     QDoubleSpinBox,
@@ -1067,6 +1068,16 @@ class SetupAssistantDialog(QDialog):
         - Nicht automatisch als abgeschlossen markieren (setup_completed bleibt False),
           außer der User hat aktiv 'Fertig' geklickt.
         """
+        # QThread darf unter Qt niemals als Kind des Dialogs zerstört werden,
+        # solange er noch läuft ("QThread: Destroyed while thread is still
+        # running" kann den kompletten Prozess hart beenden). Ein XLSX-Import
+        # läuft bewusst im Hintergrund; ein Klick auf X wartet deshalb auf den
+        # normalen Abschluss statt den Thread mitten im Parser zu zerlegen.
+        thread = getattr(self, "_excel_thread", None)
+        if thread is not None and thread.isRunning():
+            event.ignore()
+            show_warning(self, tr("msg.info"), tr("setup.excel_import_running"))
+            return
         try:
             if (
                 hasattr(self, "cb_show_on_start_end")
@@ -1267,7 +1278,28 @@ class SetupAssistantDialog(QDialog):
         self._excel_progress = progress
         self._excel_thread = thread
         self._excel_worker = worker
+
+        # Auch ein globales QApplication.quit() (Restore/Updater/Windows-
+        # Session-Ende) kann den Dialog umgehen. Vor der Qt-Zerstörung warten
+        # wir dann kontrolliert auf den endlichen, grössenbegrenzten Excel-
+        # Parser. ``thread.quit()`` wird VOR ``wait()`` aufgerufen, damit der
+        # Thread nach Rückkehr aus worker.run() seine Eventloop beendet, ohne
+        # auf ein weiteres GUI-Event angewiesen zu sein.
+        app = QApplication.instance()
+        if app is not None and not getattr(self, "_excel_quit_hook_connected", False):
+            app.aboutToQuit.connect(self._wait_for_excel_worker_on_quit)
+            self._excel_quit_hook_connected = True
         thread.start()
+
+    @Slot()
+    def _wait_for_excel_worker_on_quit(self) -> None:
+        thread = getattr(self, "_excel_thread", None)
+        if thread is None or not thread.isRunning():
+            return
+        logger.info("App beendet sich während Excel-Import; warte auf Worker-Ende.")
+        thread.requestInterruption()
+        thread.quit()
+        thread.wait()
 
     @Slot(object)
     def _on_excel_parsed(self, parsed) -> None:

@@ -13,10 +13,10 @@ from __future__ import annotations
 APP_NAME = "Budgetmanager"
 
 # SemVer-Release-Version
-APP_VERSION = "3.0.5"
+APP_VERSION = "3.0.6"
 
 # Nur Anzeige (About-Dialog). Kannst du jederzeit anpassen.
-APP_RELEASE_DATE = "23. August 2026"
+APP_RELEASE_DATE = "25. August 2026"
 
 
 def app_window_title() -> str:
