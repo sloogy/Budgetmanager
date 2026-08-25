@@ -1741,6 +1741,13 @@
     "german": "1.234,56  (Germany/Austria)",
     "swiss": "1'234.56  (Switzerland)"
   },
+  "onedrive": {
+    "info": "Current data folder:\n{folder}\n\nThis folder is located below:\n{onedrive}\n\nOneDrive keeps locks on the database, uploads the three related files (.db, -wal, -shm) independently of each other and creates copies whenever it detects a conflict. This can lose entries or corrupt the database.\n\nRecommended folder outside OneDrive:\n{target}\n\nWhen moving, the existing data is transferred with a safety backup; the previous folder is kept unchanged.",
+    "keep": "Keep for now",
+    "move_now": "Move now",
+    "text": "The BudgetManager data folder is being synchronised by OneDrive.",
+    "title": "Data folder is inside OneDrive"
+  },
   "overview": {
     "amount": {
       "max_placeholder": "∞",

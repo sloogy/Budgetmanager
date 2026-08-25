@@ -885,6 +885,11 @@ def main() -> int:
         except Exception:
             logger.exception("Crash-/Diagnosehinweis konnte nicht geplant werden")
 
+        try:
+            win.schedule_onedrive_warning(delay_ms=2500)
+        except (OSError, RuntimeError, ValueError, TypeError):
+            logger.exception("OneDrive-Hinweis konnte nicht geplant werden")
+
         rc = app.exec()
 
         # ── Cleanup (Reihenfolge kritisch für PyInstaller!) ────

@@ -194,6 +194,97 @@ def data_dir() -> Path:
     return ensure_dir(base)
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# OneDrive-Erkennung
+# ──────────────────────────────────────────────────────────────────────────
+# Bis v3.0.6 schlug der Windows-Installer den Dokumente-Ordner als Datenordner
+# vor. Mit aktivierter OneDrive-Ordnersicherung - Standard bei jedem
+# Microsoft-Konto - liegt der in OneDrive. Dort teilt sich die SQLite-Datenbank
+# den Ordner mit einem Synchronisierer, der Sperren haelt, .db, -wal und -shm
+# unabhaengig voneinander hochlaedt, bei Konflikt Kopien anlegt und Dateien per
+# Files-On-Demand dehydrieren kann. Der neue Default behebt das nur fuer
+# Neuinstallationen; die bereits ausgelieferten muessen es erfahren.
+_ONEDRIVE_ENV_VARS = ("OneDrive", "OneDriveCommercial", "OneDriveConsumer")
+
+
+def _normalized_path_key(raw: str | Path) -> str:
+    """Vergleichsform fuer Windows-Pfade: / als Trenner, ohne Endtrenner, casefold.
+
+    Bewusst reine Zeichenkettenlogik statt ``Path``: Auf Linux zerlegt ``Path``
+    keinen Backslash, ein Windows-Pfad waere dort ein einziges Namensteil. So
+    bleibt die Erkennung auf jedem System pruefbar.
+    """
+    text = str(raw).strip().replace("\\", "/")
+    while text.endswith("/") and not text.endswith(":/"):
+        text = text[:-1]
+    return text.casefold()
+
+
+def onedrive_root_for(
+    path: str | Path,
+    *,
+    environ: dict[str, str] | None = None,
+    windows: bool | None = None,
+) -> str | None:
+    """OneDrive-Wurzel, unterhalb derer ``path`` liegt - sonst ``None``.
+
+    Ausgewertet werden ``%OneDrive%``, ``%OneDriveCommercial%`` und
+    ``%OneDriveConsumer%``; Windows setzt je nach Kontotyp eine oder mehrere
+    davon. Auf Nicht-Windows-Systemen gibt es kein OneDrive, dort ist das
+    Ergebnis immer ``None``.
+
+    ``environ`` und ``windows`` sind ausschliesslich fuer Tests da: Der
+    Entwicklungsrechner laeuft auf Fedora, ohne diese beiden Parameter waere
+    die Erkennung dort nicht pruefbar.
+    """
+    if windows is None:
+        windows = os.name == "nt"
+    if not windows:
+        return None
+    env = os.environ if environ is None else environ
+
+    target = _normalized_path_key(path)
+    if not target:
+        return None
+
+    for name in _ONEDRIVE_ENV_VARS:
+        raw = str(env.get(name) or "").strip()
+        if not raw:
+            continue
+        root = _normalized_path_key(raw)
+        if not root:
+            continue
+        if target == root or target.startswith(root + "/"):
+            return raw.rstrip("\\/")
+    return None
+
+
+def data_dir_onedrive_root() -> str | None:
+    """OneDrive-Wurzel des aktiven Datenordners - sonst ``None``."""
+    try:
+        return onedrive_root_for(data_dir())
+    except OSError as exc:  # pragma: no cover - Datenordner nicht anlegbar
+        import logging
+
+        logging.getLogger(__name__).debug(
+            "OneDrive-Pruefung uebersprungen, Datenordner nicht verfuegbar: %s", exc
+        )
+        return None
+
+
+def recommended_local_data_dir() -> Path | None:
+    """Empfohlener Ausweichordner ausserhalb von OneDrive (nur Windows).
+
+    ``%LOCALAPPDATA%`` wird von OneDrive nie erfasst und ist derselbe Ort, den
+    der Installer seit v3.0.7 vorschlaegt.
+    """
+    if os.name != "nt":
+        return None
+    raw = str(os.environ.get("LOCALAPPDATA") or "").strip()
+    base = Path(raw).expanduser() if raw else Path.home() / "AppData" / "Local"
+    return base / "BudgetManager"
+
+
 def backups_dir() -> Path:
     return ensure_dir(data_dir() / "backups")
 

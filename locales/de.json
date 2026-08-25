@@ -1741,6 +1741,13 @@
     "german": "1.234,56  (Deutschland/Österreich)",
     "swiss": "1'234.56  (Schweiz)"
   },
+  "onedrive": {
+    "info": "Aktueller Datenordner:\n{folder}\n\nDieser Ordner liegt unterhalb von:\n{onedrive}\n\nOneDrive hält Sperren auf der Datenbank, lädt die drei zusammengehörenden Dateien (.db, -wal, -shm) unabhängig voneinander hoch und legt bei einem Konflikt Kopien an. Dadurch können Buchungen verloren gehen oder die Datenbank beschädigt werden.\n\nEmpfohlener Ordner ausserhalb von OneDrive:\n{target}\n\nBeim Wechsel werden die vorhandenen Daten mit Sicherheits-Backup übernommen; der bisherige Ordner bleibt unverändert erhalten.",
+    "keep": "Vorerst behalten",
+    "move_now": "Jetzt verschieben",
+    "text": "Der Datenordner des BudgetManagers wird von OneDrive synchronisiert.",
+    "title": "Datenordner liegt in OneDrive"
+  },
   "overview": {
     "amount": {
       "max_placeholder": "∞",

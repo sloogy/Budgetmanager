@@ -1,0 +1,9 @@
+{
+  "status": "PASS",
+  "policy": "zero-medium-zero-high",
+  "current_total": 154,
+  "severity_counts": {
+    "LOW": 154
+  },
+  "blocking_findings": []
+}

@@ -148,6 +148,11 @@ class Settings:
             "warn_budget_overrun": False,
             "refresh_on_start": True,  # Beim Start automatisch aktualisieren
             "check_updates_on_start": True,  # Beim Start leichtgewichtig nach Updates suchen
+            # Einmaliger Hinweis, wenn der Datenordner in OneDrive liegt. Der
+            # Wert steht in der Settings-Datei im Datenordner selbst, gilt also
+            # je Datenordner - wer nach einem Wechsel wieder in OneDrive landet,
+            # wird dort erneut gewarnt.
+            "onedrive_warning_shown": False,
             # Tracking: Schnellfilter "nur letzte X Tage".
             # Erlaubte Werte: 14 oder 30
             "recent_days": 14,

@@ -2401,6 +2401,12 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
         elif box.clickedButton() is report_button:
             self._create_diagnostic_report()
 
+    def schedule_onedrive_warning(self, *, delay_ms: int = 2500) -> None:
+        """Warnt einmalig, wenn der Datenordner in OneDrive liegt."""
+        from views.main_window_onedrive import schedule_warning
+
+        schedule_warning(self, delay_ms=delay_ms)
+
     def _show_about(self):
         """Zeigt Über-Dialog"""
         dialog = AboutDialog(self)

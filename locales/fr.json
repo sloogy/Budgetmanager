@@ -1741,6 +1741,13 @@
     "german": "1.234,56  (Allemagne/Autriche)",
     "swiss": "1'234.56  (Suisse)"
   },
+  "onedrive": {
+    "info": "Dossier de données actuel :\n{folder}\n\nCe dossier se trouve sous :\n{onedrive}\n\nOneDrive maintient des verrous sur la base de données, téléverse les trois fichiers associés (.db, -wal, -shm) indépendamment les uns des autres et crée des copies en cas de conflit. Des écritures peuvent ainsi être perdues ou la base de données endommagée.\n\nDossier recommandé en dehors de OneDrive :\n{target}\n\nLors du changement, les données existantes sont transférées avec une sauvegarde de sécurité ; le dossier précédent reste inchangé.",
+    "keep": "Conserver pour l’instant",
+    "move_now": "Déplacer maintenant",
+    "text": "Le dossier de données de BudgetManager est synchronisé par OneDrive.",
+    "title": "Le dossier de données se trouve dans OneDrive"
+  },
   "overview": {
     "amount": {
       "max_placeholder": "∞",
