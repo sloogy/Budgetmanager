@@ -187,7 +187,23 @@ begin
   else if PreviousDataDir <> '' then
     Result := PreviousDataDir
   else
-    Result := ExpandConstant('{userdocs}\BudgetManager');
+    // Bewusst LocalAppData statt des Dokumente-Ordners. Mit aktiver
+    // OneDrive-Ordnersicherung - Standard bei jedem Microsoft-Konto - zeigt
+    // der Dokumente-Ordner nach C:\Users\X\OneDrive\Dokumente. Dorthin legt
+    // die App budgetmanager.db samt -wal und -shm, und model/database.py
+    // schaltet fuer jede Datei-DB WAL ein. OneDrive haelt Sperren auf allen
+    // drei Dateien, synchronisiert sie unabhaengig voneinander, legt bei
+    // Konflikt Kopien an und kann sie per Files-On-Demand dehydrieren. Die
+    // Folge ist "database is locked", "disk image is malformed" oder still
+    // ein alter -wal ueber einer neueren .db. LocalAppData wird von OneDrive
+    // nie erfasst.
+    //
+    // Nur der Vorschlag fuer eine Neuinstallation aendert sich: DATA_DIR aus
+    // der Kommandozeile und der Marker der bestehenden Installation stehen
+    // beide davor, ein Update behaelt seinen Ordner also unveraendert. Und
+    // der Nutzer kann den Vorschlag auf der Assistentenseite weiterhin
+    // ueberschreiben.
+    Result := ExpandConstant('{localappdata}\BudgetManager');
 end;
 
 procedure InitializeWizard;
