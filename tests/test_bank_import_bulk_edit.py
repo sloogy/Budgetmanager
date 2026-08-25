@@ -1,116 +1,197 @@
-import os
-from pathlib import Path
+"""Massenbearbeitung im aktiven Bankimport (V4).
 
-import pytest
+Bis v3.0.6 sicherte diese Datei den Quelltext von ``bank_import_dialog.py``
+zu - inklusive des ``CheckableTagCombo``, den es in V4 nicht mehr gibt. Von
+den elf Zusicherungen beschrieben vier eine fachliche Invariante; die uebrigen
+beschrieben Steuerelemente. Die vier Invarianten stehen jetzt als
+Verhaltenstests gegen die ausgefuehrte V4-Klasse, der Laufzeittest des
+geloeschten Kombinationsfeldes gilt jetzt dem ``TagSelectionDialog``.
+"""
 
-ROOT = Path(__file__).resolve().parents[1]
-DIALOG = ROOT / "views/bank_import_dialog.py"
+from datetime import date
 
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QDialog
 
-def _source() -> str:
-    return DIALOG.read_text(encoding="utf-8")
-
-
-def test_bank_import_supports_ctrl_shift_and_select_all_multi_selection():
-    src = _source()
-    assert "SelectionMode.ExtendedSelection" in src
-    assert "Strg+Mausklick" in src
-    assert "Umschalt+Mausklick" in src
-    assert "Strg+A" in src
-    assert "selectedRows()" in src
+from model.twint_import_policy import TYP_TWINT_AI
+from model.typ_constants import TYP_EXPENSES
+from tests.conftest import V4_KATEGORIE, V4_KATEGORIE_ZWEI
 
 
-def test_bulk_editor_uses_dropdowns_for_mass_editable_fields():
-    src = _source()
-    assert "self.cmb_bulk_type = QComboBox()" in src
-    assert "self.cmb_bulk_category = QComboBox()" in src
-    assert "self.cmb_bulk_tag = QComboBox()" in src
-    assert "self.cmb_bulk_tag_action = QComboBox()" in src
-    assert "self.cmb_bulk_use = QComboBox()" in src
-    assert 'QPushButton(tr("bank_import.bulk_apply"))' in src
-    assert "self._apply_bulk_changes" in src
+def _kategorie_tag(conn, typ: str, kategorie: str, tag_name: str) -> None:
+    """Haengt einen fixen Kategorie-Tag an typ/kategorie."""
+    from model.tags_model import TagsModel
 
-
-def test_tags_are_checkbox_dropdown_with_locked_category_tags():
-    src = _source()
-    assert "class CheckableTagCombo(QComboBox):" in src
-    assert "item.setCheckable(True)" in src
-    assert 'item.setText(f"🔒 {name}")' in src
-    assert 'item.setToolTip(tr("bank_import.tag_required_tip"))' in src
-    assert "weitere vorhandene Tags lassen sich im Tag-Dropdown per" in src
-    assert "Checkbox ergänzen" in src
-
-
-def test_bulk_tags_can_be_added_or_removed_but_required_tags_stay_locked():
-    src = _source()
-    block = src.split("def _apply_bulk_changes", 1)[1]
-    assert 'addItem(tr("bank_import.bulk_tag_add"), "add")' in src
-    assert 'addItem(tr("bank_import.bulk_tag_remove"), "remove")' in src
-    assert "tag_combo.set_tag_checked(" in block
-    assert "tag_combo.locked_tags()" in block
-    assert "skipped_required_tag += 1" in block
-
-
-def test_category_change_drops_old_required_tags_but_keeps_manual_tags():
-    src = _source()
-    block = src.split("def set_locked_tags", 1)[1].split("def set_tag_checked", 1)[0]
-    assert "previous_locked" in block
-    assert "selected_optional" in block
-    assert "if self._key(name) not in previous_locked" in block
-
-
-def test_checkable_tag_combo_runtime_preserves_only_optional_tags():
-    pytest.importorskip("PySide6")
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PySide6.QtWidgets import QApplication
-
-    from views.bank_import_dialog import CheckableTagCombo
-
-    app = QApplication.instance() or QApplication([])
-    combo = CheckableTagCombo(
-        ("Alt-Pflicht", "Neu-Pflicht", "Optional"),
-        selected=("Optional",),
-        locked=("Alt-Pflicht",),
+    tags = TagsModel(conn)
+    tags.create_tag(tag_name, action_text="")
+    tag_id = int(
+        conn.execute("SELECT id FROM tags WHERE name=?", (tag_name,)).fetchone()[0]
     )
-    try:
-        assert combo.selected_tags() == ("Alt-Pflicht", "Optional")
-        assert not combo.set_tag_checked("Alt-Pflicht", False)
-
-        combo.set_locked_tags(("Neu-Pflicht",))
-        assert combo.selected_tags() == ("Neu-Pflicht", "Optional")
-        assert combo.locked_tags() == ("Neu-Pflicht",)
-
-        assert combo.set_tag_checked("Optional", False)
-        assert combo.selected_tags() == ("Neu-Pflicht",)
-    finally:
-        combo.deleteLater()
-        app.processEvents()
+    category_id = int(
+        conn.execute(
+            "SELECT id FROM categories WHERE typ=? AND name=?", (typ, kategorie)
+        ).fetchone()[0]
+    )
+    tags.assign_to_category(category_id, tag_id)
 
 
-def test_positive_twint_credit_type_dropdown_is_ai_only():
-    src = _source()
-    block = src.split("def _type_combo", 1)[1].split("def _populate", 1)[0]
-    assert "is_twint_credit(self.transactions[tx_index])" in block
-    assert "combo.addItem(TYP_TWINT_AI, TYP_TWINT_AI)" in block
-    assert "return super()._type_combo(typ, row)" in block
+def _tagdialog_beantworten(monkeypatch, entscheidungen: dict[str, Qt.CheckState]):
+    """Faehrt den echten TagSelectionDialog und setzt die genannten Haken.
+
+    Der Dialog wird nicht ersetzt, nur sein ``exec`` - so laufen Aufbau,
+    Dreizustands-Vorbelegung und ``tag_states()`` wirklich durch.
+    """
+    import views.bank_import_dialog_v4 as v4
+
+    gesehen: dict[str, object] = {}
+
+    class _AutoDialog(v4.TagSelectionDialog):
+        def exec(self):  # type: ignore[override]
+            gesehen["dialog"] = self
+            gesehen["vorher"] = dict(self.tag_states())
+            for row in range(self.list.count()):
+                item = self.list.item(row)
+                name = str(item.data(Qt.ItemDataRole.UserRole) or "")
+                if name in entscheidungen:
+                    item.setCheckState(entscheidungen[name])
+            return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(v4, "TagSelectionDialog", _AutoDialog)
+    return gesehen
 
 
-def test_bulk_edit_preserves_twint_credit_safety_policy():
-    src = _source()
-    block = src.split("def _apply_bulk_changes", 1)[1]
-    assert "is_twint_credit(self.transactions[tx_index])" in block
-    assert "wanted_type != TYP_TWINT_AI" in block
-    assert "skipped_policy += 1" in block
+def test_pflicht_tags_der_kategorie_lassen_sich_nicht_wegklicken(
+    v4_conn, v4_dialog, v4_tx, v4_helfer, monkeypatch
+):
+    """Kategorie-Tags haengen an der Kategorie, nicht an der Zeile."""
+    _kategorie_tag(v4_conn, TYP_EXPENSES, V4_KATEGORIE, "Haushalt")
+
+    dialog = v4_dialog([v4_tx(0, description="Migros Zuerich", amount="-45.20")])
+    v4_helfer.haken_setzen(dialog, 0, True)
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+    assert dialog._all_tags(0) == ("Haushalt",)
+
+    _tagdialog_beantworten(monkeypatch, {"Haushalt": Qt.CheckState.Unchecked})
+    dialog._edit_tags_for_checked()
+
+    assert dialog.states[0].manual_tags == set()
+    assert dialog._all_tags(0) == ("Haushalt",)
+    item = dialog._build_item(0)
+    assert item is not None
+    assert item.tags == ("Haushalt",)
 
 
-def test_twint_netting_requires_explicit_review_opt_in():
-    src = _source()
-    assert "self.chk_net_twint.setChecked(False)" in src
-    assert "TWINT-Verrechnung ist bewusst Opt-in" in src
+def test_kategoriewechsel_verwirft_alte_pflicht_tags_und_haelt_manuelle(
+    v4_conn, v4_dialog, v4_tx, v4_helfer, monkeypatch
+):
+    _kategorie_tag(v4_conn, TYP_EXPENSES, V4_KATEGORIE, "Haushalt")
+    _kategorie_tag(v4_conn, TYP_EXPENSES, V4_KATEGORIE_ZWEI, "Freizeit")
+
+    dialog = v4_dialog([v4_tx(0, description="Migros Zuerich", amount="-45.20")])
+    v4_helfer.haken_setzen(dialog, 0, True)
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+
+    _tagdialog_beantworten(monkeypatch, {"Freizeit": Qt.CheckState.Checked})
+    dialog._edit_tags_for_checked()
+    assert dialog.states[0].manual_tags == {"Freizeit"}
+    assert dialog._all_tags(0) == ("Freizeit", "Haushalt")
+
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE_ZWEI)
+
+    # "Haushalt" hing nur an der alten Kategorie und faellt weg; das manuell
+    # gesetzte "Freizeit" bleibt - obwohl es jetzt zugleich Pflicht-Tag ist.
+    assert dialog.states[0].manual_tags == {"Freizeit"}
+    assert dialog._all_tags(0) == ("Freizeit",)
 
 
-def test_intro_explains_category_and_optional_tags():
-    src = _source()
-    assert "Kategorie-Tags werden automatisch übernommen" in src
-    assert "weitere vorhandene Tags lassen sich im Tag-Dropdown per" in src
-    assert "Checkbox ergänzen" in src
+def test_massenkategorie_bricht_die_twint_sicherheitsregel_nicht(
+    v4_dialog, v4_tx, v4_helfer
+):
+    """Auch die Massenaktion darf einen TWINT-Eingang nie zur Buchung machen."""
+    dialog = v4_dialog(
+        [
+            v4_tx(0, description="TWINT Gutschrift Anna", amount="25.00"),
+            v4_tx(1, description="Migros Zuerich", amount="-45.20"),
+        ]
+    )
+    v4_helfer.haken_setzen(dialog, 0, True)
+    v4_helfer.haken_setzen(dialog, 1, True)
+
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+
+    assert dialog.states[0].category == V4_KATEGORIE
+    assert dialog.states[0].typ == TYP_TWINT_AI
+    assert dialog._build_item(0) is None
+
+    assert dialog.states[1].category == V4_KATEGORIE
+    assert dialog.states[1].typ == TYP_EXPENSES
+    assert dialog._build_item(1) is not None
+
+
+def test_twint_verrechnung_ist_opt_in(v4_dialog, v4_tx, v4_helfer):
+    """Ohne bewusstes Einschalten bleibt der volle Ausgabebetrag stehen."""
+    dialog = v4_dialog(
+        [
+            v4_tx(
+                0,
+                description="Restaurant Bern",
+                amount="-80.00",
+                booking_date=date(2026, 3, 17),
+            ),
+            v4_tx(
+                1,
+                description="TWINT Gutschrift Anna",
+                amount="40.00",
+                booking_date=date(2026, 3, 18),
+            ),
+        ]
+    )
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+    assert 0 in dialog.matches
+
+    assert dialog.act_net_twint.isChecked() is False
+    assert dialog._effective_amount(0) == (80.0, "")
+    item = dialog._build_item(0)
+    assert item is not None
+    assert item.amount == 80.0
+    # Ein unverrechneter Treffer bleibt ein Pruefall, keine fertige Zeile.
+    assert dialog._state_kind(0) == "review"
+
+    dialog.act_net_twint.setChecked(True)
+    assert dialog._effective_amount(0) == (40.0, "twint")
+    verrechnet = dialog._build_item(0)
+    assert verrechnet is not None
+    assert verrechnet.amount == 40.0
+    assert "TWINT-Erstattung 40.00" in verrechnet.details
+
+
+def test_tagdialog_haelt_gemischte_zeilen_im_dritten_zustand(
+    v4_conn, v4_dialog, v4_tx, v4_helfer, monkeypatch
+):
+    """Ersetzt den Laufzeittest des geloeschten CheckableTagCombo."""
+    from model.tags_model import TagsModel
+
+    tags = TagsModel(v4_conn)
+    for name in ("Ferien", "Buero"):
+        tags.create_tag(name, action_text="")
+
+    dialog = v4_dialog(
+        [
+            v4_tx(0, description="Alpha", amount="-10.00"),
+            v4_tx(1, description="Beta", amount="-20.00"),
+        ]
+    )
+    dialog.states[0].manual_tags = {"Ferien"}
+    v4_helfer.haken_setzen(dialog, 0, True)
+    v4_helfer.haken_setzen(dialog, 1, True)
+
+    gesehen = _tagdialog_beantworten(monkeypatch, {"Buero": Qt.CheckState.Checked})
+    dialog._edit_tags_for_checked()
+
+    # "Ferien" gilt nur fuer eine der beiden Zeilen: teilweise gesetzt.
+    assert gesehen["vorher"]["Ferien"] == Qt.CheckState.PartiallyChecked
+    assert gesehen["vorher"]["Buero"] == Qt.CheckState.Unchecked
+
+    # Der dritte Zustand bleibt unangetastet, das gesetzte Tag greift ueberall.
+    assert dialog.states[0].manual_tags == {"Ferien", "Buero"}
+    assert dialog.states[1].manual_tags == {"Buero"}

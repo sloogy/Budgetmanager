@@ -1,10 +1,5 @@
-import os
-import sqlite3
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 V4 = ROOT / "views/bank_import_dialog_v4.py"
@@ -124,144 +119,54 @@ def test_v4_bulk_tag_dialog_uses_tristate_to_preserve_mixed_rows():
 
 # ---------------------------------------------------------------------------
 # Verhaltenstests gegen die echte V4-Klasse (Offscreen-Qt, echte SQLite-DB).
-# Die Zusicherungen oben pruefen Quelltext; B1 konnte genau deshalb unbemerkt
-# ausgeliefert werden. Alles ab hier fuehrt den Dialog wirklich aus.
+# Die Zusicherungen oben pruefen Quelltext; genau deshalb konnte der
+# twint_ai-Fehler unbemerkt ausgeliefert werden. Alles ab hier fuehrt den
+# Dialog wirklich aus. Das Geruest steht in tests/conftest.py.
 # ---------------------------------------------------------------------------
-
-DIGEST = "a" * 64
-KATEGORIE = "Testkategorie"
-
-
-@pytest.fixture(scope="module")
-def qapp():
-    pytest.importorskip("PySide6")
-    os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PySide6.QtWidgets import QApplication
-
-    yield QApplication.instance() or QApplication([])
-
-
-@pytest.fixture
-def conn():
-    from model.category_model import CategoryModel
-    from model.migrations import migrate_all
-    from model.typ_constants import TYP_EXPENSES, TYP_INCOME
-
-    connection = sqlite3.connect(":memory:")
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    migrate_all(connection)
-    categories = CategoryModel(connection)
-    categories.create(TYP_EXPENSES, KATEGORIE)
-    categories.create(TYP_INCOME, KATEGORIE)
-    yield connection
-    connection.close()
-
-
-def _tx(index: int, *, description: str, amount: str, tag: date | None = None):
-    from model.bank_statement_reader import BankTransaction
-
-    return BankTransaction(
-        source_kind="csv",
-        source_name="konto.csv",
-        source_index=index,
-        booking_date=tag or date(2026, 3, 17),
-        amount=Decimal(amount),
-        currency="CHF",
-        description=description,
-        counterparty="",
-        raw={},
-    )
-
-
-@pytest.fixture
-def make_dialog(qapp, conn):
-    from views.bank_import_dialog_v4 import BankImportDialog, LoadedSource
-
-    erzeugte = []
-
-    def _factory(transactions):
-        dialog = BankImportDialog(conn)
-        dialog.sources = [
-            LoadedSource("konto.csv", DIGEST, "Bank-CSV/PDF", list(transactions), set())
-        ]
-        dialog._rebuild_from_sources()
-        erzeugte.append(dialog)
-        return dialog
-
-    yield _factory
-    for dialog in erzeugte:
-        dialog.deleteLater()
-    qapp.processEvents()
-
-
-def _kategorie_setzen(dialog, typ: str, name: str) -> None:
-    token = dialog._category_token(typ, name)
-    position = dialog.cmb_bulk_category.findData(token)
-    assert position >= 0, f"Kategorie {typ}/{name} fehlt im Massen-Dropdown"
-    dialog.cmb_bulk_category.setCurrentIndex(position)
-    dialog._bulk_set_category()
-
-
-def _haken_setzen(dialog, row: int) -> None:
-    from PySide6.QtCore import Qt
-
-    item = dialog.table.item(row, dialog.COL_USE)
-    item.setCheckState(Qt.CheckState.Checked)
-
-
-def _import_bestaetigen(monkeypatch) -> None:
-    from PySide6.QtWidgets import QMessageBox
-
-    import views.bank_import_dialog_v4 as v4
-
-    monkeypatch.setattr(
-        QMessageBox,
-        "question",
-        staticmethod(lambda *args, **kwargs: QMessageBox.StandardButton.Yes),
-    )
-    monkeypatch.setattr(v4, "show_info", lambda *args, **kwargs: None)
-    monkeypatch.setattr(v4, "show_warning", lambda *args, **kwargs: None)
 
 
 def test_v4_erkennt_alten_twint_ai_marker_und_bietet_die_zeile_nicht_erneut_an(
-    conn, make_dialog
+    v4_conn, v4_dialog, v4_tx
 ):
     """B1: ``marker_kind='twint_ai'`` aus 3.0.3-3.0.6 muss sichtbar bleiben."""
     from PySide6.QtCore import Qt
 
     from model.twint_import_policy import BankImportMarkerStore
     from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_DIGEST, V4_KATEGORIE
     from utils.i18n import tr
 
-    tx = _tx(0, description="Migros Zuerich", amount="-45.20")
+    tx = v4_tx(0, description="Migros Zuerich", amount="-45.20")
 
-    ohne_marker = make_dialog([tx])
+    ohne_marker = v4_dialog([tx])
     assert ohne_marker._checked_indexes() == [0]
     assert ohne_marker.ai_marker_indexes == set()
 
-    BankImportMarkerStore(conn).mark_classifications(
-        [(tx, TYP_EXPENSES, KATEGORIE)], DIGEST, marker_kind="twint_ai"
+    BankImportMarkerStore(v4_conn).mark_classifications(
+        [(tx, TYP_EXPENSES, V4_KATEGORIE)], V4_DIGEST, marker_kind="twint_ai"
     )
 
-    mit_marker = make_dialog([tx])
+    mit_marker = v4_dialog([tx])
     assert mit_marker.ai_marker_indexes == {0}
     assert mit_marker._checked_indexes() == []
     assert mit_marker._status_text(0) == tr("bank_import_v4.status_learned")
-    assert mit_marker.states[0].category == KATEGORIE
+    assert mit_marker.states[0].category == V4_KATEGORIE
     haken = mit_marker.table.item(0, mit_marker.COL_USE)
     assert haken.checkState() == Qt.CheckState.Unchecked
     assert not (haken.flags() & Qt.ItemFlag.ItemIsUserCheckable)
 
 
-def test_v4_bulkaktion_setzt_zeile_auf_nur_lernen_und_wieder_zurueck(make_dialog):
+def test_v4_bulkaktion_setzt_zeile_auf_nur_lernen_und_wieder_zurueck(
+    v4_dialog, v4_tx, v4_helfer
+):
     """B2: manueller Weg zu ``TWINT (KI)`` ohne Typ-Dropdown je Zeile."""
     from model.twint_import_policy import TYP_TWINT_AI
     from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_KATEGORIE
     from utils.i18n import tr
 
-    dialog = make_dialog([_tx(0, description="Coop Bern", amount="-30.00")])
-    _kategorie_setzen(dialog, TYP_EXPENSES, KATEGORIE)
+    dialog = v4_dialog([v4_tx(0, description="Coop Bern", amount="-30.00")])
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
     assert dialog.states[0].typ == TYP_EXPENSES
     assert dialog.btn_learn_only.text() == tr("bank_import_v4.learn_only")
 
@@ -277,57 +182,61 @@ def test_v4_bulkaktion_setzt_zeile_auf_nur_lernen_und_wieder_zurueck(make_dialog
 
 
 def test_v4_import_lernt_manuelle_zeile_als_twint_ai_ohne_budgetbuchung(
-    monkeypatch, conn, make_dialog
+    v4_conn, v4_dialog, v4_tx, v4_helfer, v4_import_bestaetigen
 ):
     """B2: der Import muss den manuellen Fall als ``twint_ai`` speichern."""
     from model.twint_import_policy import BankImportMarkerStore
     from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_DIGEST, V4_KATEGORIE
 
-    tx = _tx(0, description="Coop Bern", amount="-30.00")
-    dialog = make_dialog([tx])
-    _kategorie_setzen(dialog, TYP_EXPENSES, KATEGORIE)
+    tx = v4_tx(0, description="Coop Bern", amount="-30.00")
+    dialog = v4_dialog([tx])
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
     dialog._toggle_learn_only()
 
-    _import_bestaetigen(monkeypatch)
+    v4_import_bestaetigen()
     dialog.import_selected()
 
-    store = BankImportMarkerStore(conn)
-    assert store.is_marked(tx, DIGEST, marker_kind="twint_ai")
-    assert not store.is_marked(tx, DIGEST, marker_kind="twint_credit")
-    assert conn.execute("SELECT COUNT(*) FROM tracking").fetchone()[0] == 0
-    assert conn.execute("SELECT COUNT(*) FROM ai_twint_memory").fetchone()[0] == 1
+    store = BankImportMarkerStore(v4_conn)
+    assert store.is_marked(tx, V4_DIGEST, marker_kind="twint_ai")
+    assert not store.is_marked(tx, V4_DIGEST, marker_kind="twint_credit")
+    assert v4_conn.execute("SELECT COUNT(*) FROM tracking").fetchone()[0] == 0
+    assert v4_conn.execute("SELECT COUNT(*) FROM ai_twint_memory").fetchone()[0] == 1
 
 
-def test_v4_echter_twint_eingang_bleibt_twint_credit(monkeypatch, conn, make_dialog):
+def test_v4_echter_twint_eingang_bleibt_twint_credit(
+    v4_conn, v4_dialog, v4_tx, v4_helfer, v4_import_bestaetigen
+):
     """Die Sicherheitsregel bleibt: echte TWINT-Eingaenge sind nie umschaltbar."""
     from model.twint_import_policy import TYP_TWINT_AI, BankImportMarkerStore
     from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_DIGEST, V4_KATEGORIE
 
-    tx = _tx(0, description="TWINT Gutschrift Anna", amount="25.00")
-    dialog = make_dialog([tx])
+    tx = v4_tx(0, description="TWINT Gutschrift Anna", amount="25.00")
+    dialog = v4_dialog([tx])
     assert dialog.states[0].typ == TYP_TWINT_AI
 
-    _haken_setzen(dialog, 0)
-    _kategorie_setzen(dialog, TYP_EXPENSES, KATEGORIE)
+    v4_helfer.haken_setzen(dialog, 0)
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
     dialog._toggle_learn_only()
     assert dialog.states[0].typ == TYP_TWINT_AI
 
-    _import_bestaetigen(monkeypatch)
+    v4_import_bestaetigen()
     dialog.import_selected()
 
-    store = BankImportMarkerStore(conn)
-    assert store.is_marked(tx, DIGEST, marker_kind="twint_credit")
-    assert not store.is_marked(tx, DIGEST, marker_kind="twint_ai")
-    assert conn.execute("SELECT COUNT(*) FROM tracking").fetchone()[0] == 0
+    store = BankImportMarkerStore(v4_conn)
+    assert store.is_marked(tx, V4_DIGEST, marker_kind="twint_credit")
+    assert not store.is_marked(tx, V4_DIGEST, marker_kind="twint_ai")
+    assert v4_conn.execute("SELECT COUNT(*) FROM tracking").fetchone()[0] == 0
 
 
-def test_v4_sortierung_kennt_betrag_aufsteigend_und_tags(make_dialog):
+def test_v4_sortierung_kennt_betrag_aufsteigend_und_tags(v4_dialog, v4_tx):
     from utils.i18n import tr
 
-    dialog = make_dialog(
+    dialog = v4_dialog(
         [
-            _tx(0, description="Alpha", amount="-90.00"),
-            _tx(1, description="Beta", amount="-10.00"),
+            v4_tx(0, description="Alpha", amount="-90.00"),
+            v4_tx(1, description="Beta", amount="-10.00"),
         ]
     )
 
@@ -350,11 +259,15 @@ def test_v4_sortierung_kennt_betrag_aufsteigend_und_tags(make_dialog):
     assert dialog._view_order == [1, 0]
 
 
-def test_v4_suche_findet_betrag_und_anzeigedatum(make_dialog):
-    dialog = make_dialog(
+def test_v4_suche_findet_betrag_und_anzeigedatum(v4_dialog, v4_tx):
+    dialog = v4_dialog(
         [
-            _tx(0, description="Alpha", amount="-90.00", tag=date(2026, 3, 17)),
-            _tx(1, description="Beta", amount="-10.00", tag=date(2026, 4, 2)),
+            v4_tx(
+                0, description="Alpha", amount="-90.00", booking_date=date(2026, 3, 17)
+            ),
+            v4_tx(
+                1, description="Beta", amount="-10.00", booking_date=date(2026, 4, 2)
+            ),
         ]
     )
 
@@ -365,3 +278,184 @@ def test_v4_suche_findet_betrag_und_anzeigedatum(make_dialog):
     dialog.search_input.setText("10.00 CHF")
     assert dialog.table.isRowHidden(0)
     assert not dialog.table.isRowHidden(1)
+
+
+# ── Aus tests/test_bank_import_search_sort_multifile.py portiert ─────────────
+# Dort waren es Quelltext-Zusicherungen gegen die geloeschte Kette A.
+
+
+def test_v4_haelt_die_duplikat_identitaet_je_quelldatei_getrennt(
+    v4_conn, v4_dialog, v4_tx, v4_helfer, v4_import_bestaetigen
+):
+    """Zwei Dateien in einem Review, aber getrennte Digests und Batches."""
+    from model.bank_import_service import external_id
+    from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_DIGEST, V4_DIGEST_ZWEI, V4_KATEGORIE
+
+    erste = v4_tx(0, description="Alpha", amount="-10.00", source_name="a.csv")
+    zweite = v4_tx(0, description="Beta", amount="-20.00", source_name="b.csv")
+    dialog = v4_dialog(
+        [],
+        quellen=[
+            (V4_DIGEST, "a.csv", [erste]),
+            (V4_DIGEST_ZWEI, "b.csv", [zweite]),
+        ],
+    )
+    assert dialog._digest_for_index(0) == V4_DIGEST
+    assert dialog._digest_for_index(1) == V4_DIGEST_ZWEI
+
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+    v4_import_bestaetigen()
+    dialog.import_selected()
+
+    gespeichert = {
+        str(row[0])
+        for row in v4_conn.execute(
+            "SELECT external_id FROM bank_import_state"
+        ).fetchall()
+    }
+    assert external_id(erste, V4_DIGEST) in gespeichert
+    assert external_id(zweite, V4_DIGEST_ZWEI) in gespeichert
+    assert external_id(zweite, V4_DIGEST) not in gespeichert
+
+
+def test_v4_suche_aendert_die_auswahl_nicht(v4_dialog, v4_tx):
+    """Die Suche blendet nur aus; angehakte Zeilen bleiben angehakt."""
+    dialog = v4_dialog(
+        [
+            v4_tx(0, description="Alpha", amount="-10.00"),
+            v4_tx(1, description="Beta", amount="-20.00"),
+        ]
+    )
+    vorher = dialog._checked_indexes()
+    assert vorher == [0, 1]
+
+    dialog.search_input.setText("Alpha")
+    assert dialog.table.isRowHidden(1)
+    assert dialog._checked_indexes() == vorher
+
+    dialog.search_input.setText("")
+    assert not dialog.table.isRowHidden(1)
+    assert dialog._checked_indexes() == vorher
+
+
+def test_v4_sortierung_erhaelt_den_manuellen_pruefstand(v4_dialog, v4_tx, v4_helfer):
+    """Sortiert wird nur die Ansicht, nie der Zustand der Zeilen."""
+    from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_KATEGORIE
+
+    dialog = v4_dialog(
+        [
+            v4_tx(0, description="Alpha", amount="-90.00"),
+            v4_tx(1, description="Beta", amount="-10.00"),
+        ]
+    )
+    v4_helfer.haken_setzen(dialog, 1, False)
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+    dialog.states[0].manual_tags = {"Ferien"}
+
+    dialog._sort_view("amount_asc")
+
+    assert dialog._view_order == [1, 0]
+    assert dialog.states[0].category == V4_KATEGORIE
+    assert dialog.states[0].manual_tags == {"Ferien"}
+    assert dialog.states[0].use is True
+    assert dialog.states[1].use is False
+    assert dialog._checked_indexes() == [0]
+
+
+def test_v4_tag_dialog_ist_alphabetisch_und_durchsuchbar(v4_app, v4_conn):
+    """Ersetzt den Laufzeittest des geloeschten CheckableTagCombo."""
+    from model.tags_model import TagsModel
+    from views.bank_import_dialog_v4 import TagSelectionDialog
+
+    tags = TagsModel(v4_conn)
+    for name in ("zebra", "Anker", "mitte"):
+        tags.create_tag(name, action_text="")
+
+    dialog = TagSelectionDialog(tags, selected_all=set(), selected_any=set())
+    try:
+        sichtbar = [dialog.list.item(row).text() for row in range(dialog.list.count())]
+        assert sichtbar == sorted(sichtbar, key=str.casefold)
+
+        dialog.search.setText("ank")
+        versteckt = {
+            dialog.list.item(row).text(): dialog.list.item(row).isHidden()
+            for row in range(dialog.list.count())
+        }
+        assert versteckt["Anker"] is False
+        assert versteckt["zebra"] is True
+    finally:
+        dialog.deleteLater()
+        v4_app.processEvents()
+
+
+# ── Aus tests/test_bank_import_dialog_type_category.py portiert ─────────────
+# Die drei Typ-Combo-Zusicherungen von dort pruefen ein Steuerelement, das V4
+# bewusst nicht hat (die Kategorie bestimmt den Typ). Sie sind ersatzlos
+# entfallen; die Leseradapter-Invariante steht hier als Verhaltenstest.
+
+
+def _kreditkarten_csv(pfad) -> None:
+    pfad.write_text(
+        "TransactionId;CardId;Date;ValutaDate;Amount;Currency;;OriginalAmount;"
+        "OriginalCurrency;MerchantName;MerchantPlace;MerchantCountry;StateType;"
+        "Details;Type;Exchange Rate\n"
+        "TX-123;CARD-1;21.08.2026;22.08.2026;-19.85;CHF;;21.30;EUR;"
+        "COOP;Winterthur;CH;BOOKED;Mittagessen;PURCHASE;0.9319\n",
+        encoding="utf-8",
+    )
+
+
+def _bank_csv(pfad) -> None:
+    pfad.write_text(
+        "Datum;Buchungstext;Whg;Betrag Detail;ZKB-Referenz;Referenznummer;"
+        "Belastung CHF;Gutschrift CHF;Valuta;Saldo CHF;Zahlungszweck;Details\n"
+        "23.08.2026;Kartenzahlung;CHF;10,00;ZKB-1;REF-1;10,00;;24.08.2026;"
+        "1'000,00;Migros Einkauf;Filiale Winterthur\n",
+        encoding="utf-8",
+    )
+
+
+def test_v4_waehlt_den_kreditkarten_adapter_vor_dem_allgemeinen_leser(
+    v4_dialog, tmp_path
+):
+    """Eine Kreditkarten-CSV darf nicht im generischen CSV-Leser landen."""
+    pfad = tmp_path / "kreditkarte.csv"
+    _kreditkarten_csv(pfad)
+
+    dialog = v4_dialog([], quellen=[])
+    dialog._add_paths([str(pfad)])
+
+    assert len(dialog.sources) == 1
+    quelle = dialog.sources[0]
+    assert quelle.source_format == "Kreditkarten-CSV"
+    assert len(dialog.transactions) == 1
+    tx = dialog.transactions[0]
+    assert tx.source_kind == "credit_card_csv"
+    assert tx.raw["TransactionId"] == "TX-123"
+    assert "COOP" in tx.description
+
+
+def test_v4_laedt_mehrere_kontoauszuege_in_ein_review(v4_dialog, tmp_path):
+    """Bank- und Kreditkartendatei stehen gemeinsam in einer Pruefliste."""
+    bank = tmp_path / "bank.csv"
+    karte = tmp_path / "karte.csv"
+    _bank_csv(bank)
+    _kreditkarten_csv(karte)
+
+    dialog = v4_dialog([], quellen=[])
+    dialog._add_paths([str(bank), str(karte)])
+
+    assert [quelle.source_format for quelle in dialog.sources] == [
+        "Bank-CSV/PDF",
+        "Kreditkarten-CSV",
+    ]
+    assert len(dialog.transactions) == 2
+    assert dialog.table.rowCount() == 2
+    erste, zweite = dialog._digest_for_index(0), dialog._digest_for_index(1)
+    assert erste != zweite
+
+    # Dieselbe Datei ein zweites Mal aendert nichts.
+    dialog._add_paths([str(bank)])
+    assert len(dialog.sources) == 2

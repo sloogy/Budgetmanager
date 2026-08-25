@@ -1,80 +1,179 @@
-import re
-from pathlib import Path
+"""Fachliche TWINT-Invarianten des aktiven Bankimports (V4).
 
-ROOT = Path(__file__).resolve().parents[1]
-DIALOG = ROOT / "views/bank_import_dialog_v3.py"
+Bis v3.0.6 pruefte diese Datei den Quelltext von ``bank_import_dialog_v3.py``
+per ``read_text()``-Zusicherung. Genau deshalb blieb unbemerkt, dass V4 die
+Lernmarker der Vorgaengerversion nicht las: der Quelltext von V3 stimmte
+weiterhin, nur lief er nicht mehr. Alle sechs Invarianten stehen jetzt als
+Verhaltenstests gegen die ausgefuehrte V4-Klasse. Das Geruest (``v4_*``-
+Fixtures) liegt in ``tests/conftest.py``.
+"""
 
+from datetime import date
 
-def _source() -> str:
-    return DIALOG.read_text(encoding="utf-8")
-
-
-def _kompakt() -> str:
-    """Quelltext ohne Zeilenumbrueche und Mehrfach-Leerzeichen.
-
-    Die Zusicherungen unten beschreiben eine fachliche Invariante, kein
-    Zeilenlayout. Ohne diese Normalisierung bricht der Test, sobald black
-    denselben Ausdruck anders umbricht - was er bei laengeren Namen tut.
-    """
-
-    return re.sub(r"\s+", " ", _source())
+from model.twint_import_policy import TYP_TWINT_AI, BankImportMarkerStore
+from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from tests.conftest import V4_DIGEST, V4_KATEGORIE, V4_KATEGORIE_ZWEI
 
 
-def test_twint_is_ai_only_pseudo_type_in_type_dropdown():
-    src = _source()
-    assert 'TYP_TWINT_AI = "TWINT (KI)"' not in src  # Konstante lebt im Modell.
-    assert "combo.addItem(TYP_TWINT_AI, TYP_TWINT_AI)" in src
-    assert "return ( TYP_TWINT_AI if is_twint_credit(tx)" in _kompakt()
-    assert '"TWINT (KI) erzeugt niemals eine Budgetbuchung.' in src
+def _kategorie_id(conn, typ: str, name: str) -> int:
+    row = conn.execute(
+        "SELECT id FROM categories WHERE typ=? AND name=?", (typ, name)
+    ).fetchone()
+    assert row is not None, f"Kategorie {typ}/{name} fehlt"
+    return int(row[0])
 
 
-def test_twint_ai_category_combo_contains_expense_and_income_categories():
-    src = _source()
-    block = src.split("def _ai_category_combo", 1)[1].split(
-        "def _selected_ai_category", 1
-    )[0]
-    assert "for typ in (TYP_EXPENSES, TYP_INCOME):" in block
-    assert "self.categories.list_names(typ)" in block
-    assert 'f"{typ} · {name}"' in block
+def _pflicht_tag(conn, typ: str, kategorie: str, tag_name: str) -> None:
+    """Haengt einen fixen Kategorie-Tag an typ/kategorie."""
+    from model.tags_model import TagsModel
+
+    tags = TagsModel(conn)
+    tag_id = tags.create_tag(tag_name, action_text="")
+    if not isinstance(tag_id, int):
+        tag_id = int(
+            conn.execute("SELECT id FROM tags WHERE name=?", (tag_name,)).fetchone()[0]
+        )
+    tags.assign_to_category(_kategorie_id(conn, typ, kategorie), int(tag_id))
 
 
-def test_twint_ai_has_zero_budget_effect_and_never_builds_budget_item():
-    src = _source()
-    amount_block = src.split("def _effective_amount", 1)[1].split(
-        "def _apply_ai_policy", 1
-    )[0]
-    assert "if self._row_type(row) == TYP_TWINT_AI:" in amount_block
-    assert 'return 0.0, "twint_ai"' in amount_block
+def test_twint_eingang_ist_ein_reiner_ki_pseudotyp(v4_dialog, v4_tx, v4_helfer):
+    """Ein positiver TWINT-Eingang ist immer ``TWINT (KI)`` und bleibt es."""
+    dialog = v4_dialog(
+        [
+            v4_tx(0, description="TWINT Gutschrift Anna", amount="25.00"),
+            v4_tx(1, description="Lohn Maerz", amount="4200.00"),
+        ]
+    )
 
-    build_block = src.split("def _build_item", 1)[1].split("def import_selected", 1)[0]
-    assert "if self._row_type(row) == TYP_TWINT_AI:" in build_block
-    assert "return None" in build_block
+    assert dialog.states[0].typ == TYP_TWINT_AI
+    assert dialog.states[1].typ == TYP_INCOME
+    assert dialog.twint_credit_indexes == {0}
+
+    # V4 hat kein Typ-Steuerelement je Zeile; die einzige Umschaltung ist die
+    # Massenaktion "nur lernen". Die TWINT-Zeile ist davon ausgenommen.
+    v4_helfer.haken_setzen(dialog, 0, True)
+    v4_helfer.haken_setzen(dialog, 1, True)
+    assert dialog._learn_only_candidates() == [1]
+
+    dialog._toggle_learn_only()
+    assert dialog.states[0].typ == TYP_TWINT_AI
+    assert dialog.states[1].typ == TYP_TWINT_AI
+
+    dialog._toggle_learn_only()
+    assert dialog.states[0].typ == TYP_TWINT_AI
+    assert dialog.states[1].typ == TYP_INCOME
 
 
-def test_twint_ai_requires_real_category_before_learning():
-    src = _source()
-    block = src.split("def import_selected", 1)[1]
-    assert "category_typ, category = self._selected_ai_category(row)" in block
-    assert "Kategorie aus Einkommen oder Ausgaben wählen" in block
-    assert "mark_classifications" in block
+def test_twint_zeile_kann_ausgaben_und_einkommenskategorien_waehlen(v4_dialog, v4_tx):
+    """Das Lernsignal darf jede echte Kategorie treffen, nicht nur Einkommen."""
+    dialog = v4_dialog([v4_tx(0, description="TWINT Gutschrift Anna", amount="25.00")])
+
+    combo = dialog.table.cellWidget(0, dialog.COL_CATEGORY)
+    assert combo is not None
+    ausgaben = combo.findData(dialog._category_token(TYP_EXPENSES, V4_KATEGORIE))
+    einkommen = combo.findData(dialog._category_token(TYP_INCOME, V4_KATEGORIE))
+    assert ausgaben >= 0
+    assert einkommen >= 0
+    assert f"{TYP_EXPENSES} · {V4_KATEGORIE}" == combo.itemText(ausgaben)
+
+    combo.setCurrentIndex(ausgaben)
+    assert dialog.states[0].category_typ == TYP_EXPENSES
+    assert dialog.states[0].category == V4_KATEGORIE
+    # Die Kategorie darf den Pseudotyp nicht kippen.
+    assert dialog.states[0].typ == TYP_TWINT_AI
 
 
-def test_already_marked_twint_is_not_reused_for_matching():
-    src = _source()
-    block = src.split("def _build_matches", 1)[1].split("def _ai_category_combo", 1)[0]
-    assert "and index not in self.marked_twint_indexes" in block
-    assert "or credit_index in self.marked_twint_indexes" in block
+def test_twint_ki_hat_null_budgetwirkung_und_erzeugt_nie_eine_buchung(
+    v4_dialog, v4_tx, v4_helfer
+):
+    dialog = v4_dialog([v4_tx(0, description="TWINT Gutschrift Anna", amount="25.00")])
+    v4_helfer.haken_setzen(dialog, 0, True)
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+
+    assert dialog._effective_amount(0) == (0.0, "twint_ai")
+    assert dialog._build_item(0) is None
 
 
-def test_tags_are_read_only_and_derived_from_selected_category():
-    src = _source()
-    assert 'QTableWidgetItem("Tags aus Kategorie")' in src
-    assert "self.tags.get_tag_ids_for_category_name(category_typ, category)" in src
-    assert "self.tags.get_tags_by_ids(tag_ids)" in src
-    sync = src.split("def _sync_category_tags", 1)[1].split("def _category_changed", 1)[
-        0
-    ]
-    assert "edit.setReadOnly(True)" in sync
-    assert 'edit.setText(", ".join(names))' in sync
-    raw = src.split("def _raw_tag_names", 1)[1].split("def _tag_names", 1)[0]
-    assert "return self._tags_for_row(row)" in raw
+def test_twint_lernen_verlangt_eine_echte_kategorie(
+    v4_conn, v4_dialog, v4_tx, v4_helfer, monkeypatch
+):
+    """Ohne Kategorie darf der Import weder buchen noch lernen."""
+    import views.bank_import_dialog_v4 as v4
+
+    warnungen: list[str] = []
+    monkeypatch.setattr(
+        v4, "show_warning", lambda _parent, _title, text: warnungen.append(str(text))
+    )
+    monkeypatch.setattr(v4, "show_info", lambda *args, **kwargs: None)
+
+    def _keine_rueckfrage(*args, **kwargs):  # pragma: no cover - darf nie laufen
+        raise AssertionError("Import haette vor der Rueckfrage abbrechen muessen")
+
+    monkeypatch.setattr(v4.QMessageBox, "question", staticmethod(_keine_rueckfrage))
+
+    tx = v4_tx(0, description="TWINT Gutschrift Anna", amount="25.00")
+    dialog = v4_dialog([tx])
+    v4_helfer.haken_setzen(dialog, 0, True)
+    assert not dialog.states[0].category
+
+    dialog.import_selected()
+
+    assert warnungen, "Fehlende Kategorie muss gemeldet werden"
+    store = BankImportMarkerStore(v4_conn)
+    assert not store.is_marked(tx, V4_DIGEST, marker_kind="twint_credit")
+    assert not store.is_marked(tx, V4_DIGEST, marker_kind="twint_ai")
+    assert v4_conn.execute("SELECT COUNT(*) FROM tracking").fetchone()[0] == 0
+
+
+def test_bereits_markierter_twint_eingang_wird_nicht_erneut_verrechnet(
+    v4_conn, v4_dialog, v4_tx
+):
+    """Ein gelernter TWINT-Eingang darf keine zweite Ausgabe mehr kuerzen."""
+    ausgabe = v4_tx(
+        0,
+        description="Restaurant Bern",
+        amount="-80.00",
+        booking_date=date(2026, 3, 17),
+    )
+    eingang = v4_tx(
+        1,
+        description="TWINT Gutschrift Anna",
+        amount="40.00",
+        booking_date=date(2026, 3, 18),
+    )
+
+    ohne_marker = v4_dialog([ausgabe, eingang])
+    assert 0 in ohne_marker.matches
+    assert ohne_marker.matched_credit_indexes == {1}
+
+    BankImportMarkerStore(v4_conn).mark_classifications(
+        [(eingang, TYP_EXPENSES, V4_KATEGORIE)], V4_DIGEST, marker_kind="twint_credit"
+    )
+
+    mit_marker = v4_dialog([ausgabe, eingang])
+    assert mit_marker.marked_twint_indexes == {1}
+    assert mit_marker.matches == {}
+    assert mit_marker.matched_credit_indexes == set()
+
+
+def test_tags_stammen_aus_der_kategorie_und_landen_in_der_buchung(
+    v4_conn, v4_dialog, v4_tx, v4_helfer
+):
+    """Kategorie-Tags werden abgeleitet, nicht in der Zeile gepflegt."""
+    _pflicht_tag(v4_conn, TYP_EXPENSES, V4_KATEGORIE, "Haushalt")
+    _pflicht_tag(v4_conn, TYP_EXPENSES, V4_KATEGORIE_ZWEI, "Freizeit")
+
+    dialog = v4_dialog([v4_tx(0, description="Migros Zuerich", amount="-45.20")])
+    assert dialog._category_tags(0) == set()
+
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+    assert dialog._category_tags(0) == {"Haushalt"}
+    assert dialog._all_tags(0) == ("Haushalt",)
+    assert dialog.states[0].manual_tags == set()
+
+    item = dialog._build_item(0)
+    assert item is not None
+    assert item.tags == ("Haushalt",)
+
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE_ZWEI)
+    assert dialog._all_tags(0) == ("Freizeit",)
