@@ -164,6 +164,53 @@ def test_leere_oder_fehlende_variablen_werden_ignoriert() -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# H1: Windows und Linux updateten mit unterschiedlicher Semantik
+# ──────────────────────────────────────────────────────────────────────────
+def _portabler_helfer_batch() -> str:
+    """Der erzeugte Batch-Text - reine Zeichenkette, kein Windows noetig."""
+    from updater.apply_update import _build_windows_helper_batch
+
+    return _build_windows_helper_batch(
+        src_root=Path(r"C:/staging/BudgetManager"),
+        dst_dir=Path(r"C:/Programme/BudgetManager"),
+        wait_exe="BudgetManager.exe",
+        launch_exe="BudgetManager.exe",
+        log_path=Path(r"C:/Programme/BudgetManager/updates/update_apply.log"),
+    )
+
+
+def test_das_update_raeumt_alte_dateien_weg() -> None:
+    """Ohne /PURGE blieb alter Inhalt in _internal\\ liegen.
+
+    Nach zwei, drei Updates stand dort ein Mischbestand aus alten und neuen
+    Qt-DLLs - Startabbruch ohne verwertbare Meldung. Der Linux-Pfad derselben
+    Datei ersetzt den Baum dagegen sauber per os.replace mit Rollback.
+    """
+    zeile = next(
+        z for z in _portabler_helfer_batch().splitlines() if z.startswith("robocopy ")
+    )
+    assert "/PURGE" in zeile
+
+
+def test_der_loeschlauf_verschont_daten_und_installer_marker() -> None:
+    """Ein falsch gesetztes /PURGE loescht Nutzerdaten.
+
+    /XD und /XF gelten auch fuer den Loeschlauf. data und updates waren schon
+    ausgeschlossen; installation.json - der Marker, ueber den die App ihren
+    Datenordner findet - liegt im Programmordner und ist in keinem
+    Portable-Staging enthalten, wuerde also ohne /XF geloescht.
+    """
+    zeile = next(
+        z for z in _portabler_helfer_batch().splitlines() if z.startswith("robocopy ")
+    )
+    ausschluss = zeile.split("/PURGE", 1)[1]
+    for name in ("data", "updates", "installation.json"):
+        assert name in ausschluss, name
+    assert "/XD" in ausschluss
+    assert "/XF" in ausschluss
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # K2: Backup und Datenuebernahme ignorierten die WAL-Datei
 # ──────────────────────────────────────────────────────────────────────────
 def _db_mit_ungeschriebenem_wal(pfad: Path):

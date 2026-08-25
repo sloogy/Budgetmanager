@@ -336,9 +336,26 @@ if /I NOT "%EXENAME%"=="%LAUNCHEXE%" (
   if exist "%DST%\%EXENAME%" del /f /q "%DST%\%EXENAME%" >> "%LOGFILE%" 2>&1
 )
 echo [%DATE% %TIME%] Kopiere neue Dateien... >> "%LOGFILE%"
-rem robocopy: /E inkl. Unterordner, data+updates ausschliessen,
-rem /R Retries + /W Wartezeit ueberbruecken kurzzeitige Sperren.
-robocopy "%SRC%" "%DST%" /E /XD data updates .git __pycache__ /R:30 /W:1 /NP /NJH /NJS >> "%LOGFILE%" 2>&1
+rem robocopy: /E inkl. Unterordner, /R Retries + /W Wartezeit ueberbruecken
+rem kurzzeitige Sperren.
+rem
+rem /PURGE entfernt im Ziel, was die neue Version nicht mehr mitbringt. Ohne
+rem /PURGE blieb bei einem onedir-Build alter Inhalt in _internal\ liegen;
+rem nach zwei, drei Updates stand dort ein Mischbestand aus alten und neuen
+rem Qt-DLLs, und die App startete ohne verwertbare Meldung nicht mehr. Der
+rem Linux-Pfad derselben Datei ersetzt den Baum seit jeher sauber per
+rem os.replace mit Rollback - erst /PURGE bringt beide Plattformen auf
+rem dieselbe Semantik.
+rem
+rem WICHTIG: /XD und /XF gelten auch fuer den Loeschlauf, die genannten
+rem Namen sind also vom Kopieren UND vom Aufraeumen ausgenommen. Deshalb
+rem bleiben data (DB, Settings, Backups) und updates (Cache, Rollback-ZIP,
+rem dieses Skript) unangetastet. installation.json steht neu dabei: Das ist
+rem der Installer-Marker, ueber den die App ihren Datenordner findet. Sie
+rem liegt im Programmordner und ist in keinem Portable-Staging enthalten -
+rem ein /PURGE ohne diesen Ausschluss haette sie geloescht, und die
+rem Installation haette danach auf den portablen Datenordner zurueckgezeigt.
+robocopy "%SRC%" "%DST%" /E /PURGE /XD data updates .git __pycache__ /XF installation.json /R:30 /W:1 /NP /NJH /NJS >> "%LOGFILE%" 2>&1
 set "RC=%ERRORLEVEL%"
 echo [%DATE% %TIME%] robocopy Rueckgabecode=%RC% >> "%LOGFILE%"
 
