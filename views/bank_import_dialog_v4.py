@@ -276,6 +276,7 @@ class BankImportDialog(QDialog):
         self.duplicate_indexes: set[int] = set()
         self.twint_credit_indexes: set[int] = set()
         self.marked_twint_indexes: set[int] = set()
+        self.ai_marker_indexes: set[int] = set()
         self.matches: dict[int, ReimbursementMatch] = {}
         self.matched_credit_indexes: set[int] = set()
         self.states: dict[int, ReviewState] = {}
@@ -355,8 +356,10 @@ class BankImportDialog(QDialog):
             ("sort_date_desc", "date_desc"),
             ("sort_date_asc", "date_asc"),
             ("sort_amount_desc", "amount_desc"),
+            ("sort_amount_asc", "amount_asc"),
             ("sort_text_asc", "text_asc"),
             ("sort_category_asc", "category_asc"),
+            ("sort_tags_asc", "tags_asc"),
             ("sort_source_asc", "source_asc"),
         ):
             action = QAction(tr(f"bank_import_v4.{label_key}"), sort_menu)
@@ -408,6 +411,10 @@ class BankImportDialog(QDialog):
         self.btn_tags = QPushButton(tr("bank_import_v4.tags_button"))
         self.btn_tags.clicked.connect(self._edit_tags_for_checked)
         self.bulk_bar.addWidget(self.btn_tags)
+        self.btn_learn_only = QPushButton(tr("bank_import_v4.learn_only"))
+        self.btn_learn_only.setToolTip(tr("bank_import_v4.learn_only_tip"))
+        self.btn_learn_only.clicked.connect(self._toggle_learn_only)
+        self.bulk_bar.addWidget(self.btn_learn_only)
         self.btn_skip = QPushButton(tr("bank_import_v4.skip_selected"))
         self.btn_skip.clicked.connect(lambda: self._set_checked_rows(False))
         self.bulk_bar.addWidget(self.btn_skip)
@@ -604,6 +611,7 @@ class BankImportDialog(QDialog):
             index for index, tx in enumerate(self.transactions) if is_twint_credit(tx)
         }
         self.marked_twint_indexes = set()
+        self.ai_marker_indexes = set()
         groups: dict[str, list[int]] = defaultdict(list)
         for index, digest in enumerate(self._transaction_digests):
             groups[digest].append(index)
@@ -613,6 +621,20 @@ class BankImportDialog(QDialog):
                 local, digest, marker_kind="twint_credit"
             )
             self.marked_twint_indexes.update(indexes[pos] for pos in marked)
+            # ``bank_import_marker_state.external_id`` ist Primaerschluessel:
+            # je Buchungszeile existiert genau ein Marker, die Art steht in
+            # ``marker_kind``. Zeilen, die in 3.0.3-3.0.6 auf "nur lernen,
+            # nicht buchen" gesetzt wurden, tragen ``twint_ai``. Ohne diese
+            # zweite Abfrage hielt V4 sie fuer unmarkiert und bot sie erneut
+            # zum Import an.
+            ai_marked = self.marker_store.marked_indexes(
+                local, digest, marker_kind="twint_ai"
+            )
+            self.ai_marker_indexes.update(indexes[pos] for pos in ai_marked)
+
+    def _is_learned(self, index: int) -> bool:
+        """True, wenn die Zeile bereits als reines Lernsignal markiert ist."""
+        return index in self.marked_twint_indexes or index in self.ai_marker_indexes
 
     def _build_matches(self) -> None:
         self.matches.clear()
@@ -666,7 +688,25 @@ class BankImportDialog(QDialog):
                 if not all(preferred):
                     preferred = self.marker_store.suggest_category(tx)
                 state = ReviewState(
-                    use=index not in self.marked_twint_indexes and all(preferred),
+                    use=not self._is_learned(index) and all(preferred),
+                    typ=TYP_TWINT_AI,
+                    category_typ=preferred[0] if all(preferred) else "",
+                    category=preferred[1] if all(preferred) else "",
+                    confidence=0.95 if all(preferred) else 0.0,
+                    prediction_method="twint_memory" if all(preferred) else "",
+                )
+            elif index in self.ai_marker_indexes:
+                # Zeile wurde frueher bewusst auf "nur lernen, nicht buchen"
+                # gesetzt. Sie bleibt ein Lernsignal und wird nicht erneut zum
+                # Import angeboten.
+                digest = self._digest_for_index(index)
+                preferred = self.marker_store.classification(
+                    tx, digest, marker_kind="twint_ai"
+                )
+                if not all(preferred):
+                    preferred = self.marker_store.suggest_category(tx)
+                state = ReviewState(
+                    use=False,
                     typ=TYP_TWINT_AI,
                     category_typ=preferred[0] if all(preferred) else "",
                     category=preferred[1] if all(preferred) else "",
@@ -724,7 +764,7 @@ class BankImportDialog(QDialog):
             credit_state.category = expense_state.category
             credit_state.confidence = max(0.90, expense_state.confidence)
             credit_state.prediction_method = "twint_match"
-            credit_state.use = credit_index not in self.marked_twint_indexes
+            credit_state.use = not self._is_learned(credit_index)
 
     def _populate_table(self) -> None:
         self._updating = True
@@ -744,10 +784,7 @@ class BankImportDialog(QDialog):
                 use_item.setCheckState(
                     Qt.CheckState.Checked if state.use else Qt.CheckState.Unchecked
                 )
-                if (
-                    index in self.duplicate_indexes
-                    or index in self.marked_twint_indexes
-                ):
+                if index in self.duplicate_indexes or self._is_learned(index):
                     use_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
                     use_item.setCheckState(Qt.CheckState.Unchecked)
                 self.table.setItem(row, self.COL_USE, use_item)
@@ -781,10 +818,7 @@ class BankImportDialog(QDialog):
                 self.table.setItem(row, self.COL_AMOUNT, amount_item)
 
                 category_combo = self._category_combo(index)
-                if (
-                    index in self.duplicate_indexes
-                    or index in self.marked_twint_indexes
-                ):
+                if index in self.duplicate_indexes or self._is_learned(index):
                     category_combo.setEnabled(False)
                 self.table.setCellWidget(row, self.COL_CATEGORY, category_combo)
                 self.table.setItem(
@@ -904,7 +938,7 @@ class BankImportDialog(QDialog):
 
     def _state_kind(self, index: int) -> str:
         state = self.states[index]
-        if index in self.duplicate_indexes or index in self.marked_twint_indexes:
+        if index in self.duplicate_indexes or self._is_learned(index):
             return "duplicates"
         if state.typ == TYP_TWINT_AI:
             return "twint" if state.category else "review"
@@ -921,7 +955,7 @@ class BankImportDialog(QDialog):
         kind = self._state_kind(index)
         if index in self.duplicate_indexes:
             return tr("bank_import_v4.status_duplicate")
-        if index in self.marked_twint_indexes:
+        if self._is_learned(index):
             return tr("bank_import_v4.status_learned")
         if state.typ == TYP_TWINT_AI:
             return (
@@ -989,6 +1023,8 @@ class BankImportDialog(QDialog):
             haystack = " ".join(
                 (
                     tx.booking_date.isoformat(),
+                    tx.booking_date.strftime("%d.%m.%Y"),
+                    f"{abs(float(tx.amount)):.2f} {tx.currency}",
                     tx.description,
                     tx.counterparty,
                     tx.source_name,
@@ -1026,7 +1062,7 @@ class BankImportDialog(QDialog):
             for index, state in self.states.items()
             if state.use
             and index not in self.duplicate_indexes
-            and index not in self.marked_twint_indexes
+            and not self._is_learned(index)
         ]
 
     def _set_checked_rows(self, checked: bool) -> None:
@@ -1082,6 +1118,48 @@ class BankImportDialog(QDialog):
         self._refresh_ui()
         self._apply_filters()
 
+    def _learn_only_candidates(self) -> list[int]:
+        """Angehakte Zeilen, deren Typ manuell umschaltbar ist.
+
+        Echte TWINT-Eingaenge bleiben ausgenommen: sie sind per Fachregel immer
+        ``TWINT (KI)`` und duerfen nie zu einer Budgetbuchung werden.
+        """
+        return [
+            index
+            for index in self._checked_indexes()
+            if index not in self.twint_credit_indexes
+        ]
+
+    def _toggle_learn_only(self) -> None:
+        """Schaltet angehakte Zeilen zwischen "buchen" und "nur lernen" um.
+
+        V4 hat bewusst kein Typ-Steuerelement je Zeile. Ohne diese Massenaktion
+        bliebe nur das Abwaehlen der Zeile - dabei geht die Kategorie fuer
+        ``ai_twint_memory`` verloren.
+        """
+        candidates = self._learn_only_candidates()
+        if not candidates:
+            return
+        back_to_booking = all(
+            self.states[index].typ == TYP_TWINT_AI for index in candidates
+        )
+        for index in candidates:
+            state = self.states[index]
+            if back_to_booking:
+                fallback = (
+                    TYP_INCOME
+                    if float(self.transactions[index].amount) > 0
+                    else TYP_EXPENSES
+                )
+                state.typ = state.category_typ or fallback
+            else:
+                state.typ = TYP_TWINT_AI
+            row = self._row_for_index(index)
+            if row >= 0:
+                self._update_row(row, index)
+        self._refresh_ui()
+        self._apply_filters()
+
     def _edit_tags_for_checked(self) -> None:
         checked = self._checked_indexes()
         if not checked:
@@ -1128,12 +1206,14 @@ class BankImportDialog(QDialog):
             state = self.states[index]
             if mode in {"date_desc", "date_asc"}:
                 return tx.booking_date
-            if mode == "amount_desc":
+            if mode in {"amount_desc", "amount_asc"}:
                 return abs(float(tx.amount))
             if mode == "text_asc":
                 return str(tx.description or tx.counterparty or "").casefold()
             if mode == "category_asc":
                 return str(state.category or "").casefold()
+            if mode == "tags_asc":
+                return ", ".join(self._all_tags(index)).casefold()
             if mode == "source_asc":
                 return str(tx.source_name or "").casefold()
             return index
@@ -1177,6 +1257,7 @@ class BankImportDialog(QDialog):
             self.duplicate_indexes.clear()
             self.twint_credit_indexes.clear()
             self.marked_twint_indexes.clear()
+            self.ai_marker_indexes.clear()
             self.matches.clear()
             self.states.clear()
             self._view_order = []
@@ -1221,6 +1302,16 @@ class BankImportDialog(QDialog):
         )
         unresolved = sum(1 for index in checked if not self.states[index].category)
         self._set_bulk_visible(bool(checked))
+        candidates = self._learn_only_candidates()
+        learn_only_active = bool(candidates) and all(
+            self.states[index].typ == TYP_TWINT_AI for index in candidates
+        )
+        self.btn_learn_only.setEnabled(bool(candidates))
+        self.btn_learn_only.setText(
+            tr("bank_import_v4.book_again")
+            if learn_only_active
+            else tr("bank_import_v4.learn_only")
+        )
         self.lbl_bulk.setText(
             tr("bank_import_v4.selected_count").format(count=len(checked))
         )
@@ -1318,6 +1409,7 @@ class BankImportDialog(QDialog):
         twint_groups: dict[str, list[tuple[BankTransaction, str, str]]] = defaultdict(
             list
         )
+        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]] = defaultdict(list)
         try:
             for index in checked:
                 state = self.states[index]
@@ -1329,9 +1421,25 @@ class BankImportDialog(QDialog):
                                 row=index + 1
                             )
                         )
-                    twint_groups[digest].append(
-                        (self.transactions[index], state.category_typ, state.category)
-                    )
+                    # Echte TWINT-Eingaenge tragen ``twint_credit``; manuell auf
+                    # "nur lernen" gesetzte Zeilen tragen ``twint_ai``. Der
+                    # Primaerschluessel laesst genau einen Marker je Zeile zu.
+                    if index in self.twint_credit_indexes:
+                        twint_groups[digest].append(
+                            (
+                                self.transactions[index],
+                                state.category_typ,
+                                state.category,
+                            )
+                        )
+                    else:
+                        ai_groups[digest].append(
+                            (
+                                self.transactions[index],
+                                state.category_typ,
+                                state.category,
+                            )
+                        )
                     continue
                 item = self._build_item(index)
                 if item is not None:
@@ -1341,7 +1449,9 @@ class BankImportDialog(QDialog):
             return
 
         budget_count = sum(len(group) for group in plan_groups.values())
-        twint_count = sum(len(group) for group in twint_groups.values())
+        twint_count = sum(len(group) for group in twint_groups.values()) + sum(
+            len(group) for group in ai_groups.values()
+        )
         answer = QMessageBox.question(
             self,
             tr("bank_import_v4.confirm_title"),
@@ -1376,6 +1486,10 @@ class BankImportDialog(QDialog):
             for digest, classifications in twint_groups.items():
                 learned += self.marker_store.mark_classifications(
                     classifications, digest, marker_kind="twint_credit"
+                )
+            for digest, classifications in ai_groups.items():
+                learned += self.marker_store.mark_classifications(
+                    classifications, digest, marker_kind="twint_ai"
                 )
         except (sqlite3.Error, ValueError) as exc:
             show_warning(
