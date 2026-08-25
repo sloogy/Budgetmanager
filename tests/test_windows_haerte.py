@@ -258,19 +258,50 @@ def test_die_app_reicht_utf8_an_ihre_kindprozesse_weiter() -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────
-# H1: Windows und Linux updateten mit unterschiedlicher Semantik
+# H1 + M1: Update-Semantik und Quoting im portablen Batch-Helfer
 # ──────────────────────────────────────────────────────────────────────────
-def _portabler_helfer_batch() -> str:
+def _portabler_helfer_batch(
+    dst: str = r"C:/Programme/BudgetManager",
+) -> str:
     """Der erzeugte Batch-Text - reine Zeichenkette, kein Windows noetig."""
     from updater.apply_update import _build_windows_helper_batch
 
     return _build_windows_helper_batch(
         src_root=Path(r"C:/staging/BudgetManager"),
-        dst_dir=Path(r"C:/Programme/BudgetManager"),
+        dst_dir=Path(dst),
         wait_exe="BudgetManager.exe",
         launch_exe="BudgetManager.exe",
-        log_path=Path(r"C:/Programme/BudgetManager/updates/update_apply.log"),
+        log_path=Path(dst) / "updates" / "update_apply.log",
     )
+
+
+def test_prozentzeichen_im_pfad_wird_maskiert() -> None:
+    """cmd.exe las C:\\Tools\\100%Backup als Variablenreferenz.
+
+    %SRC% zeigte danach ins Leere - und das del /f /q im Kopierschritt haette
+    ein falsches Ziel treffen koennen.
+    """
+    batch = _portabler_helfer_batch(r"C:/Tools/100%Backup/BudgetManager")
+    zeile = next(z for z in batch.splitlines() if z.startswith('set "DST='))
+    assert "100%%Backup" in zeile
+    assert "100%Backup" not in zeile.replace("100%%Backup", "")
+
+
+def test_sonderzeichen_im_pfad_werden_maskiert() -> None:
+    """Die Installer-Variante quotet seit jeher, der portable Helfer nicht."""
+    batch = _portabler_helfer_batch(r"C:/A&B/Budget<Manager>")
+    zeile = next(z for z in batch.splitlines() if z.startswith('set "DST='))
+    assert "^&" in zeile and "^<" in zeile and "^>" in zeile
+
+
+def test_alle_vier_werte_laufen_durch_dasselbe_escaping() -> None:
+    """Vorher standen Log-, Quell-, Ziel- und EXE-Pfad roh im Template."""
+    quelle = (ROOT / "updater" / "apply_update.py").read_text(encoding="utf-8")
+    beginn = quelle.index("def _build_windows_helper_batch")
+    ende = quelle.index("    template = r", beginn)
+    block = quelle[beginn:ende]
+    for name in ("src", "dst", "exe", "launch", "launch_path", "log"):
+        assert f"{name} = _windows_cmd_quote(" in block, name
 
 
 def test_das_update_raeumt_alte_dateien_weg() -> None:

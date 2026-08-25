@@ -295,12 +295,17 @@ def _build_windows_helper_batch(
       3. Startet die App neu.
       4. Löscht sich selbst.
     """
-    src = str(src_root)
-    dst = str(dst_dir)
-    exe = wait_exe
-    launch = launch_exe
-    launch_path = str(dst_dir / launch_exe)
-    log = str(log_path)
+    # Jeder Wert durch dasselbe Escaping wie in der Installer-Variante. Vorher
+    # standen Log-, Quell-, Ziel- und EXE-Pfad hier roh im Template: Ein
+    # kaufmaennisches Und, eine Pipe oder ein Prozentzeichen im Pfad haette
+    # cmd.exe die Zeile anders lesen lassen als gemeint - und ein falsch
+    # aufgeloestes %DST% trifft im naechsten Schritt ein del /f /q.
+    src = _windows_cmd_quote(str(src_root))
+    dst = _windows_cmd_quote(str(dst_dir))
+    exe = _windows_cmd_quote(wait_exe)
+    launch = _windows_cmd_quote(launch_exe)
+    launch_path = _windows_cmd_quote(str(dst_dir / launch_exe))
+    log = _windows_cmd_quote(str(log_path))
 
     # WICHTIG: keine geschweiften Klammern im Batch (Format-Konflikte vermeiden).
     # Pfade immer in Anführungszeichen (Leerzeichen/Umlaute).
@@ -419,9 +424,18 @@ def _read_installation_marker() -> dict:
 
 
 def _windows_cmd_quote(value: str) -> str:
-    """Escaping fuer Werte, die in set "NAME=..." landen."""
+    """Escaping fuer Werte, die in set "NAME=..." landen.
+
+    %% ist in einer Batch-Datei das Zeichen fuer ein literales Prozentzeichen.
+    Ohne diese Ersetzung liest cmd.exe einen Pfad wie C:\\Tools\\100%Backup als
+    Variablenreferenz: %Backup...% wird durch nichts ersetzt, und die daraus
+    gebaute Variable zeigt danach ins Leere oder - schlimmer - auf einen
+    anderen Ort. Im portablen Helfer haette das ein del /f /q auf ein falsches
+    Ziel treffen lassen koennen.
+    """
     return (
         value.replace("^", "^^")
+        .replace("%", "%%")
         .replace("&", "^&")
         .replace("|", "^|")
         .replace("<", "^<")
