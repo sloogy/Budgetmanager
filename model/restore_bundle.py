@@ -320,6 +320,51 @@ def merge_user_snapshot_bytes(
     return result
 
 
+def _wal_consistent_snapshot(source_db: Path) -> Path | None:
+    """Konsistente Kopie der DB inklusive noch nicht ausgecheckpointetem WAL.
+
+    Warum die SQLite-Backup-API und nicht ``PRAGMA wal_checkpoint``: Der
+    Checkpoint schreibt in die produktive .db-Datei und braucht dafuer kurz
+    exklusiven Zugriff. Haelt irgendein Leser die Datei gerade, meldet er nur
+    "busy" zurueck - das Bundle waere dann wieder veraltet, ohne dass es
+    auffaellt. ``Connection.backup()`` liest stattdessen einen konsistenten
+    Stand heraus, ohne das Original anzufassen. Denselben Weg geht
+    ``views/backup_restore_dialog.py`` bereits fuer die Gegenrichtung.
+
+    Rueckgabe: Pfad der Momentaufnahme (der Aufrufer loescht sie) oder
+    ``None``, wenn die Datei keine lesbare SQLite-DB ist - dann bleibt es beim
+    bisherigen Verhalten und die rohe Datei wandert ins Bundle.
+    """
+    import sqlite3
+
+    snapshot = source_db.with_name(source_db.name + ".snapshot_tmp")
+    snapshot.unlink(missing_ok=True)
+    src: sqlite3.Connection | None = None
+    dst: sqlite3.Connection | None = None
+    try:
+        src = sqlite3.connect(str(source_db), timeout=10.0)
+        dst = sqlite3.connect(str(snapshot))
+        src.backup(dst)
+        dst.commit()
+    except sqlite3.Error as exc:
+        logger.warning(
+            "WAL-konsistente Momentaufnahme nicht moeglich (%s) - es wird die "
+            "Datei selbst gesichert: %s",
+            exc,
+            source_db.name,
+        )
+        snapshot.unlink(missing_ok=True)
+        return None
+    finally:
+        for conn in (dst, src):
+            if conn is not None:
+                conn.close()
+    # Die Momentaufnahme enthaelt dieselben Daten wie das Original und darf
+    # deshalb genauso wenig world-readable sein.
+    _secure_bundle_file(snapshot)
+    return snapshot
+
+
 def create_bundle(
     *,
     source_db: Path,
@@ -374,57 +419,74 @@ def create_bundle(
     )
     has_users = users_bytes is not None
 
-    sha = _sha256_file(source_db)
-    manifest = BundleManifest(
-        created_at=datetime.now().isoformat(timespec="seconds"),
-        app=app,
-        app_version=app_version,
-        db_file=db_file,
-        encryption=enc,
-        sha256=sha,
-        source_db_name=source_db.name,
-        note=note or "",
-        has_settings=has_settings,
-        has_users=has_users,
-        settings_sha256=(
-            _sha256_bytes(settings_bytes) if settings_bytes is not None else ""
-        ),
-        users_sha256=_sha256_bytes(users_bytes) if users_bytes is not None else "",
-    )
-
-    tmp = out_path.with_suffix(out_path.suffix + ".tmp")
-    if tmp.exists():
-        tmp.unlink(missing_ok=True)
+    # WAL-konsistente Momentaufnahme statt der rohen Datei. Die App haelt
+    # ihre Connection waehrend des Backups offen und aktiv, und
+    # model/database.py schaltet fuer jede Datei-DB WAL ein: Die zuletzt
+    # committeten Transaktionen stehen dann noch in budgetmanager.db-wal und
+    # nicht in budgetmanager.db. Ohne diesen Schritt landete ein veralteter
+    # Stand im Bundle - und weil die Pruefsumme im Manifest genau zu dieser
+    # veralteten Datei passt, faellt es weder beim Erstellen noch beim
+    # spaeteren verify_bundle auf.
+    snapshot = _wal_consistent_snapshot(source_db) if enc == "db" else None
+    payload = snapshot if snapshot is not None else source_db
 
     try:
-        with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
-            zf.writestr(
-                "manifest.json",
-                json.dumps(manifest.__dict__, indent=2, ensure_ascii=False),
-            )
-            zf.write(source_db, arcname=db_file)
-            if settings_bytes is not None:
-                zf.writestr("settings.json", settings_bytes)
-                logger.debug("Settings in Backup aufgenommen: %s", settings_file)
-            if users_bytes is not None:
-                zf.writestr("users.json", users_bytes)
-                logger.debug(
-                    "Passender Konto-Eintrag aus users.json in Backup aufgenommen: %s",
-                    users_file,
-                )
+        sha = _sha256_file(payload)
+        manifest = BundleManifest(
+            created_at=datetime.now().isoformat(timespec="seconds"),
+            app=app,
+            app_version=app_version,
+            db_file=db_file,
+            encryption=enc,
+            sha256=sha,
+            source_db_name=source_db.name,
+            note=note or "",
+            has_settings=has_settings,
+            has_users=has_users,
+            settings_sha256=(
+                _sha256_bytes(settings_bytes) if settings_bytes is not None else ""
+            ),
+            users_sha256=(
+                _sha256_bytes(users_bytes) if users_bytes is not None else ""
+            ),
+        )
 
-        # Das gerade erzeugte Bundle vor der Installation selbst verifizieren.
-        # So kann weder ein Teilarchiv noch ein fehlerhaftes Manifest als Backup
-        # erscheinen, falls Schreiben/Komprimieren unerwartet schiefging.
-        verify_bundle(tmp)
-
-        # SICHERHEIT (v2.2.11): Ein Bundle enthaelt die DB und ggf. users.json
-        # (mit db_key bei Quick-Konten). Nicht world-readable ablegen.
-        _secure_bundle_file(tmp)
-        os.replace(str(tmp), str(out_path))
-        _secure_bundle_file(out_path)
-    finally:
+        tmp = out_path.with_suffix(out_path.suffix + ".tmp")
         tmp.unlink(missing_ok=True)
+
+        try:
+            with zipfile.ZipFile(tmp, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+                zf.writestr(
+                    "manifest.json",
+                    json.dumps(manifest.__dict__, indent=2, ensure_ascii=False),
+                )
+                zf.write(payload, arcname=db_file)
+                if settings_bytes is not None:
+                    zf.writestr("settings.json", settings_bytes)
+                    logger.debug("Settings in Backup aufgenommen: %s", settings_file)
+                if users_bytes is not None:
+                    zf.writestr("users.json", users_bytes)
+                    logger.debug(
+                        "Passender Konto-Eintrag aus users.json in Backup aufgenommen: %s",
+                        users_file,
+                    )
+
+            # Das gerade erzeugte Bundle vor der Installation selbst verifizieren.
+            # So kann weder ein Teilarchiv noch ein fehlerhaftes Manifest als Backup
+            # erscheinen, falls Schreiben/Komprimieren unerwartet schiefging.
+            verify_bundle(tmp)
+
+            # SICHERHEIT (v2.2.11): Ein Bundle enthaelt die DB und ggf. users.json
+            # (mit db_key bei Quick-Konten). Nicht world-readable ablegen.
+            _secure_bundle_file(tmp)
+            os.replace(str(tmp), str(out_path))
+            _secure_bundle_file(out_path)
+        finally:
+            tmp.unlink(missing_ok=True)
+    finally:
+        if snapshot is not None:
+            snapshot.unlink(missing_ok=True)
+
     logger.info(
         "Backup erstellt: %s (DB: %s, Settings: %s, Users: %s)",
         out_path.name,

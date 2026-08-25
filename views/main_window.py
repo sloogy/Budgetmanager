@@ -1563,6 +1563,23 @@ class MainWindow(MainWindowUpdateMixin, QMainWindow):
                     logger.debug(
                         "Session-Flush vor Datenübernahme fehlgeschlagen: %s", _e
                     )
+                # WAL zurueckschreiben, BEVOR kopiert wird. Die Datenuebernahme
+                # kopiert Dateien, und model/database.py faehrt jede Datei-DB
+                # im WAL-Modus: Die zuletzt committeten Transaktionen stehen
+                # dann noch in budgetmanager.db-wal, das die Allowlist in
+                # model/data_location.py bewusst nicht mitnimmt. Ohne diesen
+                # Schritt landet im neuen Ordner ein aelterer Stand - und weil
+                # der alte Ordner unangetastet bleibt, faellt der Verlust erst
+                # Tage spaeter auf.
+                from model.database import checkpoint_wal
+
+                conn = getattr(self, "conn", None)
+                if conn is not None and not checkpoint_wal(conn):
+                    logger.warning(
+                        "WAL konnte vor der Datenuebernahme nicht vollstaendig "
+                        "zurueckgeschrieben werden - der neue Ordner koennte "
+                        "einen aelteren Stand enthalten."
+                    )
                 try:
                     result = migrate_data_dir(old_eff, new_eff, make_backup=True)
                     _persist()

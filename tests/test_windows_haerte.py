@@ -163,6 +163,134 @@ def test_leere_oder_fehlende_variablen_werden_ignoriert() -> None:
         )
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# K2: Backup und Datenuebernahme ignorierten die WAL-Datei
+# ──────────────────────────────────────────────────────────────────────────
+def _db_mit_ungeschriebenem_wal(pfad: Path):
+    """Legt eine WAL-DB an, deren letzte Buchung nur im -wal steht.
+
+    Genau diese Lage hat die App waehrend eines Backups: Connection offen,
+    Transaktion committet, WAL noch nicht ausgecheckpointet.
+    """
+    from model.database import open_db
+
+    conn = open_db(str(pfad))
+    conn.execute("CREATE TABLE buchung (id INTEGER PRIMARY KEY, text TEXT)")
+    conn.execute("INSERT INTO buchung (text) VALUES ('alt')")
+    conn.commit()
+    from model.database import checkpoint_wal
+
+    checkpoint_wal(conn)
+    conn.execute("INSERT INTO buchung (text) VALUES ('zuletzt gebucht')")
+    conn.commit()
+    return conn
+
+
+def test_die_letzte_buchung_steht_wirklich_nur_im_wal(tmp_path: Path) -> None:
+    """Vorbedingung des naechsten Tests - sonst wuerde der nichts beweisen."""
+    import sqlite3
+
+    db = tmp_path / "budgetmanager.db"
+    conn = _db_mit_ungeschriebenem_wal(db)
+    try:
+        assert (tmp_path / "budgetmanager.db-wal").exists()
+        roh = sqlite3.connect(f"file:{db}?immutable=1", uri=True)
+        try:
+            texte = {z[0] for z in roh.execute("SELECT text FROM buchung")}
+        finally:
+            roh.close()
+        assert "zuletzt gebucht" not in texte
+    finally:
+        conn.close()
+
+
+def test_das_backup_enthaelt_die_letzte_buchung(tmp_path: Path) -> None:
+    """Vorher landete ein veralteter Stand im Bundle - mit passender Pruefsumme.
+
+    Der SHA-256 im Manifest wird ueber genau die Datei gebildet, die auch
+    eingepackt wird. War die veraltet, war das Manifest dazu konsistent: weder
+    das Erstellen noch verify_bundle konnte etwas bemerken.
+    """
+    import sqlite3
+    import zipfile
+
+    from model.restore_bundle import create_bundle
+
+    db = tmp_path / "budgetmanager.db"
+    conn = _db_mit_ungeschriebenem_wal(db)
+    try:
+        bundle = create_bundle(
+            source_db=db,
+            out_path=tmp_path / "sicherung.bmr",
+            app="BudgetManager",
+            app_version="0.0.0-test",
+        )
+    finally:
+        conn.close()
+
+    entpackt = tmp_path / "aus_bundle.db"
+    with zipfile.ZipFile(bundle) as zf:
+        entpackt.write_bytes(zf.read("database.db"))
+
+    geprueft = sqlite3.connect(str(entpackt))
+    try:
+        texte = {z[0] for z in geprueft.execute("SELECT text FROM buchung")}
+    finally:
+        geprueft.close()
+    assert "zuletzt gebucht" in texte
+
+
+def test_die_momentaufnahme_bleibt_nicht_liegen(tmp_path: Path) -> None:
+    """Sie enthaelt dieselben Daten wie die DB und darf nicht ueberdauern."""
+    from model.restore_bundle import create_bundle
+
+    db = tmp_path / "budgetmanager.db"
+    conn = _db_mit_ungeschriebenem_wal(db)
+    try:
+        create_bundle(
+            source_db=db,
+            out_path=tmp_path / "sicherung.bmr",
+            app="BudgetManager",
+            app_version="0.0.0-test",
+        )
+    finally:
+        conn.close()
+
+    assert not list(tmp_path.glob("*.snapshot_tmp"))
+
+
+def test_checkpoint_schreibt_das_wal_in_die_datei(tmp_path: Path) -> None:
+    """Der Weg fuer die Datenuebernahme: die kopiert Dateien, kein Bundle."""
+    import sqlite3
+
+    from model.database import checkpoint_wal
+
+    db = tmp_path / "budgetmanager.db"
+    conn = _db_mit_ungeschriebenem_wal(db)
+    try:
+        assert checkpoint_wal(conn) is True
+        roh = sqlite3.connect(f"file:{db}?immutable=1", uri=True)
+        try:
+            texte = {z[0] for z in roh.execute("SELECT text FROM buchung")}
+        finally:
+            roh.close()
+        assert "zuletzt gebucht" in texte
+    finally:
+        conn.close()
+
+
+def test_die_datenuebernahme_checkpointet_vorher() -> None:
+    """Die Allowlist in data_location nimmt -wal bewusst nicht mit.
+
+    Ohne Checkpoint kaeme im neuen Ordner ein aelterer Stand an - und weil der
+    alte Ordner unangetastet bleibt, faellt das erst Tage spaeter auf.
+    """
+    quelle = (ROOT / "views" / "main_window.py").read_text(encoding="utf-8")
+    beginn = quelle.index("def _handle_data_directory_change")
+    ende = quelle.index("migrate_data_dir(old_eff, new_eff", beginn)
+    assert "checkpoint_wal(conn)" in quelle[beginn:ende]
+
+
 class _FakeSettings:
     def __init__(self, **werte: object) -> None:
         self.werte = dict(werte)

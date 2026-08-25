@@ -42,6 +42,35 @@ def open_db_raw(path: str) -> sqlite3.Connection:
     return conn
 
 
+def checkpoint_wal(conn: sqlite3.Connection) -> bool:
+    """Schreibt das WAL in die .db-Datei zurueck und leert es.
+
+    Warum das noetig ist: ``_configure_connection`` schaltet fuer jede Datei-DB
+    WAL ein. Committete Transaktionen stehen danach zunaechst nur in
+    ``budgetmanager.db-wal``, nicht in ``budgetmanager.db``. Jeder Vorgang, der
+    die .db-Datei als Datei anfasst - Backup-Bundle, Datenuebernahme in einen
+    anderen Ordner - wuerde ohne Checkpoint einen veralteten Stand mitnehmen,
+    und zwar unbemerkt: Die Pruefsumme im Manifest passt ja zu dem, was
+    kopiert wurde.
+
+    Rueckgabe: ``True``, wenn das WAL vollstaendig zurueckgeschrieben wurde.
+    ``False`` heisst, dass ein anderer Leser/Schreiber die Datei gerade
+    blockiert - dann bleibt die .db-Datei hinter dem WAL zurueck und der
+    Aufrufer muss einen anderen Weg gehen.
+    """
+    try:
+        row = conn.execute("PRAGMA wal_checkpoint(TRUNCATE);").fetchone()
+    except sqlite3.Error as exc:
+        logger.debug("wal_checkpoint fehlgeschlagen: %s", exc)
+        return False
+    if row is None:
+        # :memory: und journal_mode=DELETE liefern keine Zeile - dort gibt es
+        # kein WAL, also ist auch nichts nachzuholen.
+        return True
+    busy = row[0]
+    return not busy
+
+
 @contextmanager
 def db_transaction(conn: sqlite3.Connection):
     """Context Manager für atomare Datenbank-Transaktionen.
