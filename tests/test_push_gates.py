@@ -62,6 +62,47 @@ def test_er_laeuft_die_tests(inhalt: str) -> None:
     assert "pytest" in inhalt or "validate_release.py" in inhalt
 
 
+def test_er_faehrt_auch_windows(inhalt: str) -> None:
+    """Entwickelt wird auf Fedora, benutzt wird auf Windows.
+
+    Bis v3.0.6 stand Windows ausschliesslich in build.yml, und der Job dort
+    haengt an ``refs/tags/v``. Zwischen zwei Releases lief also kein einziger
+    Windows-Test; ein Windows-Bruch fiel erst im Release-Build auf, wenn
+    Version, Notizen und Tag bereits standen.
+    """
+    matrix = re.search(r"matrix:\s*\n\s*os:\s*\[([^\]]*)\]", inhalt)
+    assert matrix, "der Prueflauf nennt keine Betriebssystem-Matrix"
+    systeme = {eintrag.strip().strip("'\"") for eintrag in matrix.group(1).split(",")}
+    assert "windows-latest" in systeme, systeme
+    assert "ubuntu-latest" in systeme, systeme
+    assert "runs-on: ${{ matrix.os }}" in inhalt
+
+
+def test_der_windows_zweig_faehrt_nur_die_tests(inhalt: str) -> None:
+    """Sonst waere der Lauf nicht mehr in zwei bis drei Minuten durch.
+
+    Die Lint-Kette prueft Quelltext und ist plattformunabhaengig; nur der
+    Testschritt kann sich auf Windows anders verhalten. Jeder Schritt ausser
+    Checkout, Python-Setup, Abhaengigkeiten und Tests muss deshalb an
+    ``runner.os == 'Linux'`` haengen.
+    """
+    ueberall = {
+        "Checkout",
+        "Python 3.12 einrichten",
+        "Abhaengigkeiten mit Hash-Pruefung installieren",
+        "Tests",
+    }
+    schritte = re.split(r"\n      - name: ", inhalt)[1:]
+    assert schritte, "der Prueflauf hat keine Schritte"
+    for schritt in schritte:
+        name = schritt.splitlines()[0].strip()
+        linux_only = "if: runner.os == 'Linux'" in schritt
+        if name in ueberall:
+            assert not linux_only, f"{name} muss auch auf Windows laufen"
+        else:
+            assert linux_only, f"{name} laeuft doppelt - fehlt runner.os == 'Linux'"
+
+
 def test_release_commits_werden_uebersprungen(inhalt: str) -> None:
     """Die gehen ohnehin durch den vollen Lauf."""
     assert "[release]" in inhalt

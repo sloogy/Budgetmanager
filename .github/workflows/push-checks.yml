@@ -7,12 +7,21 @@ name: Push-Gates
 #
 # Dieser Lauf schliesst die Luecke, ohne das Doppellauf-Problem
 # zurueckzubringen, das den Push-Trigger dort ausschloss: Er reagiert nie auf
-# Tags und macht nur die guenstigen Pruefungen - Linux, ein Python, keine
-# Builds. Zwei bis drei Minuten.
+# Tags und macht nur die guenstigen Pruefungen - ein Python, keine Builds.
+# Zwei bis drei Minuten.
 #
 # Seit dem Bankimport-Zweig laeuft er zusaetzlich auf feature/**. Dessen
 # Gate-Bruch (ruff, black, mypy, Ausnahmen-Ratchet, i18n) fiel sonst erst
 # beim Merge nach main auf, also genau einen Schritt zu spaet.
+#
+# Seit v3.0.7 faehrt die Matrix zusaetzlich windows-latest. Entwickelt wird auf
+# Fedora, genutzt wird auf Windows - und Windows lief bisher ausschliesslich in
+# build.yml, also nur am Tag. Zwischen zwei Releases war kein einziger
+# Windows-Testlauf dazwischen; jeder Windows-Bruch fiel erst im Release-Build
+# auf, wenn Version, Notizen und Tag schon standen. Der Windows-Zweig faehrt
+# bewusst NUR pytest: Bauen und Paketieren bleiben im Release-Lauf, und die
+# Lint-Kette (ruff, black, mypy, Ratchets, i18n) ist plattformunabhaengig -
+# ein zweiter Lauf davon kostet nur Laufzeit.
 #
 # Wortgleich aufgebaut in FPM, BudgetManager, FreizeitManager und LifePlanner.
 on:
@@ -29,10 +38,16 @@ concurrency:
 
 jobs:
   gates:
-    name: Gates
+    name: Gates (${{ matrix.os }})
     # Release-Commits gehen ohnehin durch den vollen Lauf.
     if: "!startsWith(github.event.head_commit.message, '[release]')"
-    runs-on: ubuntu-latest
+    strategy:
+      # Ein roter Windows-Lauf darf den Linux-Bericht nicht abschneiden und
+      # umgekehrt - sonst sieht man nur den ersten von zwei Fehlern.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     env:
       QT_QPA_PLATFORM: offscreen
       PYTHONUTF8: "1"
@@ -44,6 +59,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Qt-Systembibliotheken installieren
+        # apt gibt es nur auf dem Linux-Runner; Windows bringt die noetigen
+        # Qt-Abhaengigkeiten im PySide6-Wheel mit.
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
@@ -56,24 +74,34 @@ jobs:
           python-version: '3.12'
 
       - name: Abhaengigkeiten mit Hash-Pruefung installieren
+        # shell: bash auch auf Windows - unter pwsh bricht eine fehlgeschlagene
+        # native Zeile den Block nicht ab, ein defektes pip-Install liefe also
+        # stillschweigend in die Tests. build.yml macht es an dieser Stelle
+        # genauso.
+        shell: bash
         run: |
           python -m pip install --upgrade pip
           python tools/verify_hashed_lock.py
           python -m pip install --require-hashes -r requirements-build.lock
           python -m pip install --require-hashes -r requirements-dev.lock
 
+      # Alles ab hier bis zu den Tests prueft Quelltext, nicht Plattform.
+      # Ein zweiter Durchlauf auf Windows braechte keine neue Aussage.
       - name: Version und Uebersetzung
+        if: runner.os == 'Linux'
         run: |
           python tools/sync_version.py --check
           python -m compileall -q .
           python tools/i18n_audit.py
 
       - name: Ratchet
+        if: runner.os == 'Linux'
         run: |
           python tools/exception_audit.py
           python tools/architecture_quality_gate.py
 
       - name: Statische Analyse
+        if: runner.os == 'Linux'
         run: |
           # Ohne --select: die Auswahl steht in ruff.toml, begruendet und
           # fuer lokale Laeufe und CI dieselbe. Vorher galt hier nur die
@@ -89,10 +117,16 @@ jobs:
       - name: Generierte Artefakte entfernen
         # ruff und mypy legen ihre Caches im Baum ab; lint_procedure_check
         # beanstandet sie zu Recht. build.yml raeumt an derselben Stelle auf.
+        if: runner.os == 'Linux'
         run: python tools/clean_release_tree.py
 
       - name: Lint- und Release-Verfahren
+        if: runner.os == 'Linux'
         run: python tools/lint_procedure_check.py
 
+      # Der einzige Schritt, der auf beiden Betriebssystemen laeuft: nur hier
+      # kann sich Windows anders verhalten als Linux (Pfadtrennzeichen,
+      # reservierte Dateinamen, Kodierung, Datei-Sperren).
       - name: Tests
+        shell: bash
         run: python -m pytest tests/ -q
