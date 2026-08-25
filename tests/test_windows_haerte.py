@@ -164,6 +164,55 @@ def test_leere_oder_fehlende_variablen_werden_ignoriert() -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# M5: DPI-Einstellungen duerfen nicht an der Startdatei haengen
+# ──────────────────────────────────────────────────────────────────────────
+# tools/build_release_assets.py setzt die drei Variablen in start-windows.cmd.
+# Drei Startwege gehen daran vorbei: Doppelklick auf die EXE (die erzeugte
+# README nennt ihn ausdruecklich als gleichwertig), die Startmenue-Verknuepfung
+# der Installer-Installation und der Neustart durch den Updater. Nur weil der
+# Code sie selbst setzt, sind alle vier Wege gleich - diese Tests halten das
+# fest.
+DPI_VARIABLEN = {
+    "QT_ENABLE_HIGHDPI_SCALING": "1",
+    "QT_AUTO_SCREEN_SCALE_FACTOR": "1",
+    "QT_SCALE_FACTOR_ROUNDING_POLICY": "PassThrough",
+}
+
+
+def test_die_dpi_variablen_werden_im_code_gesetzt(monkeypatch) -> None:
+    import os
+
+    from utils.ui_scaling import configure_qt_scaling_environment
+
+    for name in DPI_VARIABLEN:
+        monkeypatch.delenv(name, raising=False)
+
+    configure_qt_scaling_environment()
+
+    for name, wert in DPI_VARIABLEN.items():
+        assert os.environ.get(name) == wert, name
+
+
+def test_eine_vorgabe_des_nutzers_bleibt_stehen(monkeypatch) -> None:
+    """setdefault, nicht ueberschreiben - wie beim Wayland-Workaround."""
+    import os
+
+    from utils.ui_scaling import configure_qt_scaling_environment
+
+    monkeypatch.setenv("QT_SCALE_FACTOR_ROUNDING_POLICY", "Round")
+    configure_qt_scaling_environment()
+    assert os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] == "Round"
+
+
+def test_die_dpi_vorbereitung_laeuft_vor_der_qapplication() -> None:
+    """Danach gesetzt haetten die Variablen keine Wirkung mehr."""
+    quelle = (ROOT / "main.py").read_text(encoding="utf-8")
+    vorbereitung = quelle.index("configure_qt_scaling_environment()")
+    erzeugung = quelle.index("app = QApplication(sys.argv)")
+    assert vorbereitung < erzeugung
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # M3 + M4: reservierte Windows-Geraetenamen in Dateinamen
 # ──────────────────────────────────────────────────────────────────────────
 # Auf Linux sind con, nul, aux und prn gewoehnliche Dateien. Ein Test, der die
