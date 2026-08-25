@@ -82,27 +82,25 @@ jobs:
               raise SystemExit('APP_VERSION nicht eindeutig gefunden')
           app.write_text(text, encoding='utf-8')
           PY
-          python tools/normalize_bank_import_sort_i18n.py
-          python tools/normalize_bank_import_sort_i18n.py --check
           python tools/gepinnte_werkzeuge.py ruff check --fix --unsafe-fixes \
             tests/test_bank_import_runtime_controls.py \
-            tests/test_bank_import_search_sort_multifile.py \
-            views/bank_import_dialog.py \
+            tests/test_bank_import_v4_ux.py \
+            views/bank_import_dialog_v4.py \
             views/bank_import_dialog_runtime.py
           python tools/gepinnte_werkzeuge.py black \
             tests/test_bank_import_runtime_controls.py \
-            tests/test_bank_import_search_sort_multifile.py \
-            views/bank_import_dialog.py \
+            tests/test_bank_import_v4_ux.py \
+            views/bank_import_dialog_v4.py \
             views/bank_import_dialog_runtime.py
           python tools/gepinnte_werkzeuge.py ruff check \
             tests/test_bank_import_runtime_controls.py \
-            tests/test_bank_import_search_sort_multifile.py \
-            views/bank_import_dialog.py \
+            tests/test_bank_import_v4_ux.py \
+            views/bank_import_dialog_v4.py \
             views/bank_import_dialog_runtime.py
           python tools/gepinnte_werkzeuge.py black --check \
             tests/test_bank_import_runtime_controls.py \
-            tests/test_bank_import_search_sort_multifile.py \
-            views/bank_import_dialog.py \
+            tests/test_bank_import_v4_ux.py \
+            views/bank_import_dialog_v4.py \
             views/bank_import_dialog_runtime.py
           python tools/sync_version.py
           python tools/sync_version.py --check
