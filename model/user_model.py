@@ -157,7 +157,13 @@ def _make_slug(name: str) -> str:
     # Nur alphanumerisch + Unterstrich
     clean = re.sub(r"[^a-zA-Z0-9]", "_", ascii_str.strip().lower())
     clean = re.sub(r"_+", "_", clean).strip("_")
-    return clean[:40] or "user"
+
+    # Ein Konto namens "Con" ergaebe con.enc - fuer Windows kein Dateiname,
+    # sondern das Konsolengeraet. Die Kollisionsschleife in add_user() faengt
+    # danach den Fall ab, dass "con_" schon vergeben ist.
+    from utils.safe_filenames import entschaerfe_geraetenamen
+
+    return entschaerfe_geraetenamen(clean[:40] or "user")
 
 
 PIN_MIN_LENGTH = 6  # v2.2.15 (M5): vorher 4 – zu wenig fuer eine Finanz-DB

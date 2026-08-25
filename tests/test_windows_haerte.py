@@ -164,6 +164,54 @@ def test_leere_oder_fehlende_variablen_werden_ignoriert() -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────
+# M3 + M4: reservierte Windows-Geraetenamen in Dateinamen
+# ──────────────────────────────────────────────────────────────────────────
+# Auf Linux sind con, nul, aux und prn gewoehnliche Dateien. Ein Test, der die
+# Datei wirklich anlegt, waere hier deshalb immer gruen - geprueft wird die
+# Namensbildung.
+GERAETENAMEN = ["con", "prn", "aux", "nul", "com1", "com9", "lpt1", "lpt9"]
+
+
+def test_kontodateien_treffen_keinen_geraetenamen() -> None:
+    """Ein Konto namens Con ergab con.enc - fuer Windows das Konsolengeraet, keine Datei."""
+    from model.user_model import _make_slug
+
+    for name in GERAETENAMEN:
+        for schreibweise in (name, name.upper(), name.capitalize()):
+            slug = _make_slug(schreibweise)
+            assert slug == name + "_", (schreibweise, slug)
+
+
+def test_themedateien_treffen_keinen_geraetenamen() -> None:
+    """Ein Theme namens Nul ergab nul.json - Schreiben meldet Erfolg, gespeichert wird nichts."""
+    from theme_manager import _slugify
+
+    for name in GERAETENAMEN:
+        for schreibweise in (name, name.upper(), name.capitalize()):
+            slug = _slugify(schreibweise)
+            assert slug == name + "_", (schreibweise, slug)
+
+
+def test_harmlose_namen_bleiben_unveraendert() -> None:
+    """Die Entschaerfung darf nur die abgeschlossene Liste treffen."""
+    from model.user_model import _make_slug
+    from theme_manager import _slugify
+
+    for name in ("anna", "console", "com", "com10", "lpt0", "nulll", "auxiliar"):
+        assert _make_slug(name) == name, name
+        assert _slugify(name) == name, name
+
+
+def test_der_helfer_haengt_genau_einen_unterstrich_an() -> None:
+    from utils.safe_filenames import RESERVIERTE_GERAETENAMEN, entschaerfe_geraetenamen
+
+    assert len(RESERVIERTE_GERAETENAMEN) == 22
+    assert entschaerfe_geraetenamen("CON") == "CON_"
+    assert entschaerfe_geraetenamen("con_") == "con_"
+    assert entschaerfe_geraetenamen("") == ""
+
+
+# ──────────────────────────────────────────────────────────────────────────
 # H3: kein Gate gegen open() ohne encoding=, kein UTF-8 im gebauten Stand
 # ──────────────────────────────────────────────────────────────────────────
 def test_das_encoding_gate_ist_scharf() -> None:

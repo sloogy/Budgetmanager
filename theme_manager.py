@@ -52,7 +52,13 @@ def _slugify(name: str) -> str:
     s = re.sub(r"[^a-z0-9_\-]", "", s)
     s = s.replace("-", "_")
     s = re.sub(r"_+", "_", s).strip("_")
-    return s or "profile"
+
+    # Ein Theme namens "Nul" ergaebe nul.json - fuer Windows kein Dateiname,
+    # sondern das Nullgeraet: Das Schreiben meldet Erfolg, gespeichert wird
+    # nichts.
+    from utils.safe_filenames import entschaerfe_geraetenamen
+
+    return entschaerfe_geraetenamen(s or "profile")
 
 
 def _is_hex_color(v: str) -> bool:
