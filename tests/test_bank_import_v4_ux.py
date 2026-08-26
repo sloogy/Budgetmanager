@@ -1,128 +1,249 @@
 from datetime import date
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-V4 = ROOT / "views/bank_import_dialog_v4.py"
-
-
-def _source() -> str:
-    return V4.read_text(encoding="utf-8")
-
-
-def test_v4_main_table_is_reduced_to_seven_columns():
-    src = _source()
-    assert "self.table = QTableWidget(0, 7)" in src
-    for name in (
-        "COL_USE",
-        "COL_DATE",
-        "COL_TEXT",
-        "COL_AMOUNT",
-        "COL_CATEGORY",
-        "COL_SOURCE",
-        "COL_STATUS",
-    ):
-        assert name in src
-    assert "COL_TYPE" not in src
-    assert "COL_AI" not in src
-    assert "COL_EFFECTIVE" not in src
-
-
-def test_v4_type_follows_category_instead_of_needing_a_type_dropdown():
-    src = _source()
-    block = src.split("def _category_changed", 1)[1].split("def _item_clicked", 1)[0]
-    assert "state.category_typ = typ" in block
-    assert "state.typ = typ" in block
-    assert "SearchableCategoryCombo" in src
-
-
-def test_v4_review_filters_make_open_cases_the_primary_workflow():
-    src = _source()
-    assert 'for key in ("all", "review", "ready", "duplicates", "twint")' in src
-    assert "if not state.category:" in src
-    assert 'return "review"' in src
-    assert "status_twint_review" in src
-    assert "review_hint" in src
-
-
-def test_v4_multifile_source_menu_can_remove_an_accidentally_loaded_file():
-    src = _source()
-    assert "QFileDialog.getOpenFileNames(" in src
-    assert "self.sources: list[LoadedSource]" in src
-    assert "def _rebuild_sources_menu" in src
-    assert "def _remove_source" in src
-    assert (
-        "self.sources = [source for source in self.sources if source.path != path]"
-        in src
-    )
-
-
-def test_v4_keeps_per_file_digest_for_duplicate_safety_and_atomic_import():
-    src = _source()
-    assert "self._transaction_digests" in src
-    assert "duplicates = self.service.duplicate_indexes(transactions, digest)" in src
-    block = src.split("def import_selected", 1)[1]
-    assert "plan_groups[digest].append(item)" in block
-    assert "self.service.import_items(items, document_digest=digest)" in block
-    assert "twint_groups[digest].append" in block
-
-
-def test_v4_twint_is_still_ai_only_and_netting_is_opt_in():
-    src = _source()
-    assert "self.act_net_twint.setChecked(False)" in src
-    assert "state.typ == TYP_TWINT_AI" in src
-    build = src.split("def _build_item", 1)[1].split("def import_selected", 1)[0]
-    assert "state.typ == TYP_TWINT_AI" in build
-    assert "return None" in build
-    assert "marker_store.mark_classifications" in src
-
-
-def test_v4_sorting_preserves_review_state_by_sorting_only_view_order():
-    src = _source()
-    block = src.split("def _sort_view", 1)[1].split("def _rebuild_sources_menu", 1)[0]
-    # Ohne Leerraum vergleichen: die Zusicherung gilt der Sortierung ueber
-    # _view_order, nicht dem Zeilenumbruch, den black in den Aufruf setzt.
-    compact = "".join(block.split())
-    assert "self._view_order=sorted(range(len(self.transactions))" in compact
-    assert "self.states[index]" in block
-    assert "self._populate_table()" in block
-
-
-def test_v4_rejects_same_file_digest_inside_one_review():
-    src = _source()
-    block = src.split("def _add_paths", 1)[1].split("def _rebuild_from_sources", 1)[0]
-    assert "known_digests" in block
-    assert "if digest in known_digests:" in block
-    assert "same_file_already_loaded" in block
-
-
-def test_v4_twint_match_can_reuse_expense_category_without_blocking_main_import():
-    src = _source()
-    init = src.split("def _initialize_states", 1)[1].split("def _populate_table", 1)[0]
-    assert 'prediction_method = "twint_match"' in init
-    assert "credit_state.category = expense_state.category" in init
-    assert "credit_state.use = not self._is_learned(credit_index)" in init
-    assert "use=not self._is_learned(index) and all(preferred)" in init
-
-
-def test_v4_bulk_tag_dialog_uses_tristate_to_preserve_mixed_rows():
-    src = _source()
-    assert "ItemIsUserTristate" in src
-    assert "Qt.CheckState.PartiallyChecked" in src
-    block = src.split("def _edit_tags_for_checked", 1)[1].split(
-        "def _twint_option_changed", 1
-    )[0]
-    assert "selected_any" in block
-    assert "selected_all" in block
-    assert "decision == Qt.CheckState.Checked" in block
-    assert "decision == Qt.CheckState.Unchecked" in block
-
-
 # ---------------------------------------------------------------------------
 # Verhaltenstests gegen die echte V4-Klasse (Offscreen-Qt, echte SQLite-DB).
-# Die Zusicherungen oben pruefen Quelltext; genau deshalb konnte der
-# twint_ai-Fehler unbemerkt ausgeliefert werden. Alles ab hier fuehrt den
-# Dialog wirklich aus. Das Geruest steht in tests/conftest.py.
+# Bis v3.0.6 standen hier zehn Zusicherungen der Bauart
+# ``DATEI.read_text()`` + ``assert "..." in src``; genau deshalb konnte der
+# twint_ai-Fehler unbemerkt ausgeliefert werden - der Quelltext enthielt die
+# gesuchten Zeichenketten, der Dialog tat trotzdem etwas anderes. Jeder Test
+# hier fuehrt den Dialog wirklich aus. Das Geruest steht in tests/conftest.py.
 # ---------------------------------------------------------------------------
+
+
+def test_v4_hauptansicht_hat_sieben_spalten_ohne_typ_und_ki_spalte(v4_dialog, v4_tx):
+    """Die Reduktion auf sieben Spalten ist der Kern der V4-Ansicht."""
+    from utils.i18n import tr
+
+    dialog = v4_dialog([v4_tx(0, description="Migros", amount="-12.00")])
+
+    assert dialog.table.columnCount() == 7
+    beschriftungen = [
+        dialog.table.horizontalHeaderItem(spalte).text()
+        for spalte in range(dialog.table.columnCount())
+    ]
+    assert beschriftungen == [
+        "✓",
+        tr("header.date"),
+        tr("bank_import_v4.booking"),
+        tr("header.amount"),
+        tr("header.category"),
+        tr("header.source"),
+        tr("bank_import_v4.status"),
+    ]
+    # Die frueheren Spalten Typ, KI und "effektiv" duerfen nicht zurueckkommen.
+    assert not any(
+        name.startswith("COL_")
+        and name
+        not in {
+            "COL_USE",
+            "COL_DATE",
+            "COL_TEXT",
+            "COL_AMOUNT",
+            "COL_CATEGORY",
+            "COL_SOURCE",
+            "COL_STATUS",
+        }
+        for name in vars(type(dialog))
+    )
+    assert dialog.table.rowCount() == 1
+
+
+def test_v4_kategorie_bestimmt_den_typ_ohne_eigenes_typ_dropdown(v4_dialog, v4_tx):
+    """Statt eines Typ-Dropdowns je Zeile zieht der Typ der Kategorie nach."""
+    from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+    from tests.conftest import V4_KATEGORIE
+
+    dialog = v4_dialog([v4_tx(0, description="Rueckzahlung", amount="-40.00")])
+    assert dialog.states[0].typ == TYP_EXPENSES
+
+    combo = dialog.table.cellWidget(0, dialog.COL_CATEGORY)
+    position = combo.findData(dialog._category_token(TYP_INCOME, V4_KATEGORIE))
+    assert position >= 0, "Einnahme-Kategorie fehlt im Zeilen-Dropdown"
+    combo.setCurrentIndex(position)
+
+    assert dialog.states[0].category == V4_KATEGORIE
+    assert dialog.states[0].category_typ == TYP_INCOME
+    assert dialog.states[0].typ == TYP_INCOME
+
+
+def test_v4_pruefungsfilter_trennt_offene_von_fertigen_zeilen(
+    v4_dialog, v4_tx, v4_helfer
+):
+    """Die Filterleiste macht offene Faelle zum Hauptweg."""
+    from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_KATEGORIE
+
+    dialog = v4_dialog(
+        [
+            v4_tx(0, description="Alpha", amount="-90.00"),
+            v4_tx(1, description="Beta", amount="-10.00"),
+        ]
+    )
+    assert list(dialog.filter_buttons) == [
+        "all",
+        "review",
+        "ready",
+        "duplicates",
+        "twint",
+    ]
+    # TWINT-Verrechnung ist eine Entscheidung, keine Vorgabe.
+    assert dialog.act_net_twint.isChecked() is False
+
+    v4_helfer.haken_setzen(dialog, 1, False)
+    v4_helfer.kategorie_setzen(dialog, TYP_EXPENSES, V4_KATEGORIE)
+    assert dialog._state_kind(0) == "ready"
+    assert dialog._state_kind(1) == "review"
+
+    dialog._set_filter("review")
+    assert dialog.table.isRowHidden(0)
+    assert not dialog.table.isRowHidden(1)
+
+    dialog._set_filter("ready")
+    assert not dialog.table.isRowHidden(0)
+    assert dialog.table.isRowHidden(1)
+
+    dialog._set_filter("all")
+    assert not dialog.table.isRowHidden(0)
+    assert not dialog.table.isRowHidden(1)
+
+
+def test_v4_versehentlich_geladene_datei_laesst_sich_wieder_entfernen(
+    v4_dialog, tmp_path
+):
+    """Das Quellenmenue nimmt eine falsch gewaehlte Datei wieder heraus."""
+    bank = tmp_path / "bank.csv"
+    karte = tmp_path / "karte.csv"
+    _bank_csv(bank)
+    _kreditkarten_csv(karte)
+
+    dialog = v4_dialog([], quellen=[])
+    dialog._add_paths([str(bank), str(karte)])
+    assert len(dialog.sources) == 2
+    assert dialog.table.rowCount() == 2
+
+    eintraege = dialog.btn_sources.menu().actions()
+    entfernen = [
+        aktion
+        for aktion in eintraege
+        if aktion.text().startswith("✕") and not aktion.isSeparator()
+    ]
+    assert len(entfernen) == 2
+    entfernen[1].trigger()
+
+    assert [Path(quelle.path).name for quelle in dialog.sources] == ["bank.csv"]
+    assert len(dialog.transactions) == 1
+    assert dialog.table.rowCount() == 1
+
+    verbleibend = [
+        aktion
+        for aktion in dialog.btn_sources.menu().actions()
+        if aktion.text().startswith("✕")
+    ]
+    assert len(verbleibend) == 1
+    verbleibend[0].trigger()
+
+    assert dialog.sources == []
+    assert dialog.transactions == []
+    assert dialog.table.rowCount() == 0
+    assert dialog.btn_sources.isVisible() is False
+
+
+def test_v4_twint_treffer_uebernimmt_die_kategorie_der_ausgabe(
+    v4_conn, v4_dialog, v4_tx, v4_helfer, v4_import_bestaetigen
+):
+    """Eine erkannte TWINT-Erstattung wird kein zweiter Pflichtschritt."""
+    from model.typ_constants import TYP_EXPENSES
+    from tests.conftest import V4_DIGEST, V4_DIGEST_ZWEI, V4_KATEGORIE
+
+    # Erst lernt die KI den Haendler aus einem regulaeren Import.
+    lernlauf = v4_dialog([v4_tx(0, description="Restaurant Sonne", amount="-80.00")])
+    v4_helfer.kategorie_setzen(lernlauf, TYP_EXPENSES, V4_KATEGORIE)
+    v4_import_bestaetigen()
+    lernlauf.import_selected()
+
+    ausgabe = v4_tx(
+        0,
+        description="Restaurant Sonne",
+        amount="-60.00",
+        booking_date=date(2026, 5, 4),
+        source_name="mai.csv",
+    )
+    erstattung = v4_tx(
+        1,
+        description="TWINT Gutschrift Anna",
+        amount="30.00",
+        booking_date=date(2026, 5, 5),
+        source_name="mai.csv",
+    )
+    dialog = v4_dialog([], quellen=[(V4_DIGEST_ZWEI, "mai.csv", [ausgabe, erstattung])])
+
+    assert V4_DIGEST != V4_DIGEST_ZWEI
+    assert dialog.states[0].category == V4_KATEGORIE
+    assert 0 in dialog.matches, "TWINT-Erstattung wurde nicht erkannt"
+
+    gutschrift = dialog.states[1]
+    assert gutschrift.category == V4_KATEGORIE
+    assert gutschrift.category_typ == dialog.states[0].category_typ
+    assert gutschrift.prediction_method == "twint_match"
+    assert gutschrift.use is True
+
+
+def test_v4_tag_dialog_haelt_gemischte_zeilen_im_dritten_zustand(
+    v4_conn, v4_dialog, v4_tx, monkeypatch
+):
+    """Ein teilweise gesetztes Haekchen heisst "gemischt lassen", nicht "weg"."""
+    from PySide6.QtCore import Qt
+    from PySide6.QtWidgets import QDialog
+
+    import views.bank_import_dialog_v4 as v4
+    from model.tags_model import TagsModel
+
+    TagsModel(v4_conn).create_tag("Ferien", action_text="")
+
+    dialog = v4_dialog(
+        [
+            v4_tx(0, description="Alpha", amount="-10.00"),
+            v4_tx(1, description="Beta", amount="-20.00"),
+        ]
+    )
+    dialog.states[0].manual_tags = {"Ferien"}
+    dialog.states[1].manual_tags = set()
+    assert dialog._checked_indexes() == [0, 1]
+
+    geoeffnet: list[object] = []
+    entscheidung: dict[str, object] = {"wert": None}
+
+    class _Sonde(v4.TagSelectionDialog):
+        """Bedient den echten Dialog, statt ihn zu ersetzen."""
+
+        def exec(self):
+            geoeffnet.append(self)
+            if entscheidung["wert"] is not None:
+                for row in range(self.list.count()):
+                    self.list.item(row).setCheckState(entscheidung["wert"])
+            return QDialog.DialogCode.Accepted
+
+    monkeypatch.setattr(v4, "TagSelectionDialog", _Sonde)
+
+    # 1. Unveraendert bestaetigen: Der gemischte Zustand bleibt gemischt.
+    dialog._edit_tags_for_checked()
+    assert geoeffnet[0].tag_states()["Ferien"] == Qt.CheckState.PartiallyChecked
+    assert dialog.states[0].manual_tags == {"Ferien"}
+    assert dialog.states[1].manual_tags == set()
+
+    # 2. Auf gesetzt schalten: Der Tag gilt danach fuer beide Zeilen.
+    entscheidung["wert"] = Qt.CheckState.Checked
+    dialog._edit_tags_for_checked()
+    assert geoeffnet[1].tag_states()["Ferien"] == Qt.CheckState.Checked
+    assert dialog.states[0].manual_tags == {"Ferien"}
+    assert dialog.states[1].manual_tags == {"Ferien"}
+
+    # 3. Auf leer schalten: Der Tag verschwindet aus beiden Zeilen.
+    entscheidung["wert"] = Qt.CheckState.Unchecked
+    dialog._edit_tags_for_checked()
+    assert dialog.states[0].manual_tags == set()
+    assert dialog.states[1].manual_tags == set()
 
 
 def test_v4_erkennt_alten_twint_ai_marker_und_bietet_die_zeile_nicht_erneut_an(
