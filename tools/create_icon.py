@@ -1,7 +1,18 @@
 """
 tools/create_icon.py
 --------------------
-Erstellt icon.ico im Projektroot fuer BudgetManager.
+Leitet saemtliche App-Icons des BudgetManagers aus dem Marken-Quellbild ab.
+
+Quelle : resources/icons/budgetmanager-source.png (quadratisch, transparent)
+Ziele  : resources/icons/budgetmanager-{16,32,48,64,128,256,512}.png
+         resources/icons/budgetmanager.png   (1024 px, Linux/Qt)
+         resources/icons/budgetmanager.ico   (Mehrfachaufloesung, Windows)
+
+Frueher zeichnete dieses Skript ein Platzhalter-Icon selbst. Seit die Suite
+ein echtes Markenbild hat, waere ein gezeichneter Ersatz falsch: die Icons
+muessen aus genau dem Bild entstehen, das auch im Logo-Banner steckt. Das
+Quellbild liegt deshalb unskaliert im Repo — damit bleibt jede Groesse
+reproduzierbar erzeugbar, ohne externe Datei.
 
 Benoetigt: pip install Pillow
 
@@ -15,87 +26,97 @@ import sys
 from pathlib import Path
 
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image
 except ImportError:
     print("Fehler: Pillow ist nicht installiert.")
     print("Installiere mit: pip install Pillow")
     sys.exit(1)
 
 
-# Icon-Groessen fuer multi-size .ico (Windows benoetigt alle)
-ICO_SIZES = [256, 128, 64, 48, 32, 16]
-
-# Ausgabepfad: immer relativ zum Projektroot (Elternverzeichnis von tools/)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OUTPUT_PATH = PROJECT_ROOT / "icon.ico"
+ICON_DIR = PROJECT_ROOT / "resources" / "icons"
+SOURCE_PATH = ICON_DIR / "budgetmanager-source.png"
+
+# Einzel-PNGs, die Qt/Linux-Desktops und der Installer ausliefern.
+PNG_SIZES = (16, 32, 48, 64, 128, 256, 512)
+
+# Groesse der generischen budgetmanager.png (App-Icon fuer Qt/Linux).
+MAIN_PNG_SIZE = 1024
+
+# Mehrfachaufloesung im .ico. Windows waehlt je nach Kontext eine davon.
+ICO_SIZES = (16, 24, 32, 48, 64, 128, 256)
 
 
-def draw_icon(size: int) -> Image.Image:
-    """
-    Erstellt ein einzelnes quadratisches Icon in der gewuenschten Groesse.
-
-    Design:
-    - Hintergrund: Blau (#2563EB, identisch mit BudgetManager-Akzentfarbe)
-    - Symbol:      Weisses Euro-Zeichen '€' zentriert
-    - Kanten:      Leicht abgerundet (durch Maske)
-    """
-    img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    # Abgerundetes Rechteck als Hintergrund
-    radius = max(4, size // 8)
-    bg_color = (37, 99, 235, 255)  # #2563EB
-    draw.rounded_rectangle([(0, 0), (size - 1, size - 1)], radius=radius, fill=bg_color)
-
-    # Symbol-Schriftgroesse: ca. 60 % der Icon-Groesse
-    symbol = "€"
-    font_size = max(8, int(size * 0.60))
-
-    font: ImageFont.ImageFont | ImageFont.FreeTypeFont
-    try:
-        # Versuche eine serifenlose Systemschrift zu laden (Linux/Windows)
-        font = ImageFont.truetype("DejaVuSans-Bold.ttf", font_size)
-    except OSError:
-        try:
-            font = ImageFont.truetype("arial.ttf", font_size)
-        except OSError:
-            # Fallback: eingebaute Bitmap-Schrift (kein TrueType noetig)
-            font = ImageFont.load_default()
-
-    # Textgroesse ermitteln und Symbol zentrieren
-    bbox = draw.textbbox((0, 0), symbol, font=font)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-    x = (size - text_w) // 2 - bbox[0]
-    y = (size - text_h) // 2 - bbox[1]
-
-    draw.text((x, y), symbol, fill=(255, 255, 255, 255), font=font)
-
-    return img
+def load_source() -> Image.Image:
+    """Laedt das Quellbild und stellt RGBA sowie quadratische Kanten sicher."""
+    if not SOURCE_PATH.is_file():
+        raise FileNotFoundError(
+            f"Quellbild fehlt: {SOURCE_PATH}\n"
+            "Ohne das Markenbild koennen die Icons nicht erzeugt werden."
+        )
+    source = Image.open(SOURCE_PATH)
+    source = source.convert("RGBA")
+    if source.width != source.height:
+        # Nicht zuschneiden: auf ein transparentes Quadrat zentrieren, damit
+        # kein Bildteil verloren geht und nichts verzerrt wird.
+        edge = max(source.width, source.height)
+        canvas = Image.new("RGBA", (edge, edge), (0, 0, 0, 0))
+        canvas.paste(
+            source, ((edge - source.width) // 2, (edge - source.height) // 2), source
+        )
+        source = canvas
+    return source
 
 
-def create_ico() -> None:
-    """Erzeugt alle Groessen und speichert als multi-size .ico."""
-    print(f"Erstelle icon.ico ({', '.join(str(s) for s in ICO_SIZES)} px) ...")
+def scaled(source: Image.Image, size: int) -> Image.Image:
+    """Skaliert das Quellbild transparenzerhaltend auf ``size`` x ``size``."""
+    return source.resize((size, size), Image.LANCZOS)
 
-    frames: list[Image.Image] = []
-    for size in ICO_SIZES:
-        frame = draw_icon(size)
-        # ICO benoetigt RGB(A)-Bilder; RGBA ist korrekt fuer Transparenz
-        frames.append(frame)
 
-    # Erstes Frame speichern, alle anderen als append_images
-    frames[0].save(
-        OUTPUT_PATH,
-        format="ICO",
-        sizes=[(s, s) for s in ICO_SIZES],
-        append_images=frames[1:],
+def write_pngs(source: Image.Image) -> list[Path]:
+    written: list[Path] = []
+    for size in PNG_SIZES:
+        target = ICON_DIR / f"budgetmanager-{size}.png"
+        scaled(source, size).save(target, format="PNG")
+        written.append(target)
+
+    main_png = ICON_DIR / "budgetmanager.png"
+    scaled(source, MAIN_PNG_SIZE).save(main_png, format="PNG")
+    written.append(main_png)
+    return written
+
+
+def write_ico(source: Image.Image) -> Path:
+    """Schreibt eine .ico mit allen Groessen aus :data:`ICO_SIZES`."""
+    target = ICON_DIR / "budgetmanager.ico"
+    largest = scaled(source, max(ICO_SIZES))
+    largest.save(target, format="ICO", sizes=[(s, s) for s in ICO_SIZES])
+    return target
+
+
+def create_icons() -> int:
+    source = load_source()
+    print(f"Quellbild: {SOURCE_PATH.name} ({source.width}x{source.height})")
+
+    for path in write_pngs(source):
+        print(f"  geschrieben: {path.relative_to(PROJECT_ROOT)}")
+
+    ico = write_ico(source)
+    print(
+        f"  geschrieben: {ico.relative_to(PROJECT_ROOT)} "
+        f"({', '.join(str(s) for s in ICO_SIZES)} px)"
     )
+    print("Fertig.")
+    return 0
 
-    print(f"Gespeichert: {OUTPUT_PATH}")
-    print("Fertig. Fuege icon.ico jetzt in build_windows.py und")
-    print("installer/budgetmanager_setup.iss ein (siehe docs/create_icon.md).")
+
+def main() -> int:
+    try:
+        return create_icons()
+    except (FileNotFoundError, OSError, ValueError) as exc:
+        print(f"Fehler: {exc}")
+        return 1
 
 
 if __name__ == "__main__":
-    create_ico()
+    raise SystemExit(main())
