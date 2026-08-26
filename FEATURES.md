@@ -1,3 +1,16 @@
+## Neu in v3.0.7
+
+- Bankimport: Buchungen, die auf „nur lernen, nicht buchen" gesetzt waren, werden nicht mehr erneut zum Import angeboten.
+- Bankimport: Massenaktion „nur lernen, nicht buchen" ist wieder da; Sortierung nach Betrag und Tags, Suche über Betrag und Anzeigedatum.
+- Windows-Neuinstallation schlägt `%LOCALAPPDATA%` statt „Dokumente" vor; bestehende Installationen in OneDrive bekommen beim Start eine einmalige Warnung mit Wechselangebot.
+- Backup und Datenübernahme sichern einen konsistenten Stand inklusive noch nicht geschriebener WAL-Daten.
+- Windows-Update räumt Dateien der Vorversion ab; Datenordner und Installationsmarker bleiben ausgenommen.
+- Reservierte Windows-Gerätenamen („Con", „Nul") in Konto- und Theme-Dateinamen entschärft.
+- CSV-Export wahlweise mit Semikolon für deutsches, schweizerisches und französisches Excel.
+- Anwendung und Updater laufen auf der Windows-Konsole durchgängig in UTF-8.
+- Bankimport auf eine einzige Oberfläche konsolidiert; die tote V2/V3-Kette und 22 verwaiste Übersetzungsschlüssel sind entfernt.
+- Push-Gates fahren zusätzlich `windows-latest`; der UI-/Barrierefreiheits-Nachweis bricht ohne Qt ab statt WARN-Zeilen zu schreiben.
+
 ## Neu in v3.0.6
 
 - Diagnose-Workflow in ein eigenes Modul ausgelagert; das Hauptfenster bleibt unter dem Architektur-Limit.

@@ -295,21 +295,23 @@ Fortschritt dort sichtbar ist; zurücknehmen können Sie es im selben Dialog.
 Kreditkartenabrechnung ein. Gelesen wird auf Ihrem Rechner; es geht keine
 Zeile an einen fremden Dienst.
 
-Nach dem Öffnen zeigt der Dialog jede erkannte Zeile mit Datum, Typ, Betrag,
-Text, Kategorie, Tags und einem Haken. **Nur angehakte Zeilen werden
-gebucht.** Vorschläge für Typ und Kategorie stammen aus dem lokalen
-Gedächtnis; es schlägt nur Kategorien und Tags vor, die es schon gibt.
+Der neue Review zeigt nur noch **Haken, Datum, Buchung, Betrag, Kategorie,
+Quelle und Status**. **Der Haken ist die einzige Auswahl:** Er entscheidet über
+den Import und zugleich über Massenaktionen. Mit **Umschalt+Klick** erweitern
+Sie die Häkchen über sichtbare Zeilen; **Strg+A** hakt alle aktuell sichtbaren
+Zeilen an.
 
-Mehrere Zeilen wählen Sie mit **Strg+Mausklick**, **Umschalt+Mausklick** oder
-**Strg+A**. Die Dropdowns über der Tabelle setzen Typ, Kategorie, Tags und
-Auswahlstatus für alle markierten Zeilen auf einmal.
+Die Filter **Zu prüfen**, **Bereit**, **Bereits erledigt** und **TWINT** lenken
+direkt zu den relevanten Fällen. Der Typ folgt automatisch der gewählten
+Kategorie. Unsichere lokale KI-Vorschläge stehen unter *Zu prüfen*; denselben
+Vorschlag noch einmal auszuwählen bestätigt ihn. Kategorie-Tags werden
+automatisch übernommen. Optionale Tags liegen hinter **Tags…** und können für
+alle angehakten Zeilen gemeinsam ergänzt oder entfernt werden.
 
-Die Pflicht-Tags der gewählten Kategorie werden gesetzt und bleiben gesetzt;
-weitere vorhandene Tags können Sie im Tag-Dropdown ankreuzen.
-
-Dieselbe Datei zweimal zu öffnen erzeugt keine doppelten Buchungen: Jede Zeile
-trägt eine Kennung aus Datum, Betrag und Text. Der Import läuft in einem
-Zug — er geht ganz durch oder gar nicht.
+Mehrere Dateien können in einen Review geladen werden. Über die Dateianzeige
+lassen sich versehentlich geladene Dateien wieder entfernen. Identische Dateien
+werden im selben Review nicht doppelt geladen. Duplikat-Identität und Import
+bleiben pro Quelldatei getrennt und atomar.
 
 Gelernt wird erst **nach** dem Import und nur aus dem, was Sie bestätigt
 haben. Ein Vorschlag, den Sie geändert oder abgewählt haben, wird nicht
@@ -467,6 +469,8 @@ Der Restore-Key kann eine verschlüsselte Datenbank wieder zugänglich machen. S
 Pfad: Reiter **Konto** oder **Datei → Einstellungen → Konto & Daten**.
 
 Du siehst den wirksamen Speicherort, kannst ihn öffnen oder einen neuen Ordner wählen. Bei einem leeren Ziel bietet BudgetManager eine kontrollierte Übernahme mit Sicherheits-Backup an. Der neue Speicherort wird nach Neustart vollständig wirksam.
+
+**Der Datenordner gehört nicht in einen Cloud-Ordner.** Datenbank, `-wal` und `-shm` gehören zusammen; ein Synchronisierungsdienst hält Sperren darauf, gleicht sie unabhängig voneinander ab und kann sie auslagern. Sichtbar wird das als „database is locked", „disk image is malformed" oder still als veralteter Datenstand. Der Windows-Installer schlägt deshalb `%LOCALAPPDATA%\BudgetManager` vor — diesen Pfad erfasst OneDrive nie. Liegt dein Datenordner in OneDrive (bei aktiver Ordnersicherung betrifft das auch „Dokumente"), meldet sich BudgetManager beim Start einmalig und bietet den Wechsel an. Der Wechsel läuft über dieselbe kontrollierte Übernahme wie oben: Rückfrage, Sicherheits-Backup, Kopieren statt Verschieben. Der alte Ordner bleibt unangetastet stehen. Wer ablehnt, wird nicht erneut gefragt.
 
 ### 16.2 Backup und Restore
 

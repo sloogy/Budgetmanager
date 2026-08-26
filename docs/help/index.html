@@ -263,18 +263,21 @@ Fortschritt dort sichtbar ist; zurücknehmen können Sie es im selben Dialog.</p
 <p><strong>Import → Bank PDF/CSV…</strong> liest einen Kontoauszug oder eine
 Kreditkartenabrechnung ein. Gelesen wird auf Ihrem Rechner; es geht keine
 Zeile an einen fremden Dienst.</p>
-<p>Nach dem Öffnen zeigt der Dialog jede erkannte Zeile mit Datum, Typ, Betrag,
-Text, Kategorie, Tags und einem Haken. <strong>Nur angehakte Zeilen werden
-gebucht.</strong> Vorschläge für Typ und Kategorie stammen aus dem lokalen
-Gedächtnis; es schlägt nur Kategorien und Tags vor, die es schon gibt.</p>
-<p>Mehrere Zeilen wählen Sie mit <strong>Strg+Mausklick</strong>, <strong>Umschalt+Mausklick</strong> oder
-<strong>Strg+A</strong>. Die Dropdowns über der Tabelle setzen Typ, Kategorie, Tags und
-Auswahlstatus für alle markierten Zeilen auf einmal.</p>
-<p>Die Pflicht-Tags der gewählten Kategorie werden gesetzt und bleiben gesetzt;
-weitere vorhandene Tags können Sie im Tag-Dropdown ankreuzen.</p>
-<p>Dieselbe Datei zweimal zu öffnen erzeugt keine doppelten Buchungen: Jede Zeile
-trägt eine Kennung aus Datum, Betrag und Text. Der Import läuft in einem
-Zug — er geht ganz durch oder gar nicht.</p>
+<p>Der neue Review zeigt nur noch <strong>Haken, Datum, Buchung, Betrag, Kategorie,
+Quelle und Status</strong>. <strong>Der Haken ist die einzige Auswahl:</strong> Er entscheidet über
+den Import und zugleich über Massenaktionen. Mit <strong>Umschalt+Klick</strong> erweitern
+Sie die Häkchen über sichtbare Zeilen; <strong>Strg+A</strong> hakt alle aktuell sichtbaren
+Zeilen an.</p>
+<p>Die Filter <strong>Zu prüfen</strong>, <strong>Bereit</strong>, <strong>Bereits erledigt</strong> und <strong>TWINT</strong> lenken
+direkt zu den relevanten Fällen. Der Typ folgt automatisch der gewählten
+Kategorie. Unsichere lokale KI-Vorschläge stehen unter <em>Zu prüfen</em>; denselben
+Vorschlag noch einmal auszuwählen bestätigt ihn. Kategorie-Tags werden
+automatisch übernommen. Optionale Tags liegen hinter <strong>Tags…</strong> und können für
+alle angehakten Zeilen gemeinsam ergänzt oder entfernt werden.</p>
+<p>Mehrere Dateien können in einen Review geladen werden. Über die Dateianzeige
+lassen sich versehentlich geladene Dateien wieder entfernen. Identische Dateien
+werden im selben Review nicht doppelt geladen. Duplikat-Identität und Import
+bleiben pro Quelldatei getrennt und atomar.</p>
 <p>Gelernt wird erst <strong>nach</strong> dem Import und nur aus dem, was Sie bestätigt
 haben. Ein Vorschlag, den Sie geändert oder abgewählt haben, wird nicht
 gelernt.</p>
@@ -384,6 +387,7 @@ sie weiterhin schickt.</p>
 <h3>16.1 Datenordner</h3>
 <p>Pfad: Reiter <strong>Konto</strong> oder <strong>Datei → Einstellungen → Konto &amp; Daten</strong>.</p>
 <p>Du siehst den wirksamen Speicherort, kannst ihn öffnen oder einen neuen Ordner wählen. Bei einem leeren Ziel bietet BudgetManager eine kontrollierte Übernahme mit Sicherheits-Backup an. Der neue Speicherort wird nach Neustart vollständig wirksam.</p>
+<p><strong>Der Datenordner gehört nicht in einen Cloud-Ordner.</strong> Datenbank, <code>-wal</code> und <code>-shm</code> gehören zusammen; ein Synchronisierungsdienst hält Sperren darauf, gleicht sie unabhängig voneinander ab und kann sie auslagern. Sichtbar wird das als „database is locked&quot;, „disk image is malformed&quot; oder still als veralteter Datenstand. Der Windows-Installer schlägt deshalb <code>%LOCALAPPDATA%\BudgetManager</code> vor — diesen Pfad erfasst OneDrive nie. Liegt dein Datenordner in OneDrive (bei aktiver Ordnersicherung betrifft das auch „Dokumente&quot;), meldet sich BudgetManager beim Start einmalig und bietet den Wechsel an. Der Wechsel läuft über dieselbe kontrollierte Übernahme wie oben: Rückfrage, Sicherheits-Backup, Kopieren statt Verschieben. Der alte Ordner bleibt unangetastet stehen. Wer ablehnt, wird nicht erneut gefragt.</p>
 <h3>16.2 Backup und Restore</h3>
 <p>Backups sind geprüfte <code>.bmr</code>-Pakete. Sie können Datenbank, Einstellungen und das zur Datenbank gehörende Benutzerkonto enthalten. Bei mehreren lokalen Konten wird nur der passende Kontoeintrag mitgesichert. Auto-Backup bietet Intervall, Anzahl aufzubewahrender Sicherungen und optionale Bereinigung.</p>
 <p>Seit v2.2.48 werden Datenbank, Einstellungen und Konto-Metadaten jeweils mit eigener SHA-256-Prüfsumme kontrolliert. Beschädigte oder nachträglich veränderte Inhalte werden abgewiesen; alte Backups können nach ausdrücklicher Bestätigung in eine vollständig geprüfte Kopie umgewandelt werden. Die Prüfsummen beweisen jedoch nicht, von wem ein Backup stammt. Vollständige Konto-Backups deshalb nur aus vertrauenswürdiger Quelle importieren. Bei einem Quick-Konto kann das Paket den lokalen Datenbankschlüssel enthalten; behandle die <code>.bmr</code>-Datei deshalb wie ein Passwort und lege sie nicht ungeschützt in öffentliche Cloud-Ordner.</p>

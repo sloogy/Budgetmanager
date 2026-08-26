@@ -83,3 +83,6 @@ audit_artifacts/KILLCRITIC_USABILITY_10000.csv
 audit_artifacts/KILLCRITIC_USABILITY_10000.json
 audit_artifacts/coverage_full.json
 audit_artifacts/coverage_gate_summary.json
+
+# Lokaler Kontrolllauf des UI-/ADHS-Audits (docs/release-checklist.md).
+audit_artifacts/UI_USABILITY_ADHS_1000_LOOP_MATRIX.csv

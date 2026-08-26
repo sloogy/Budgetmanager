@@ -451,6 +451,8 @@ Pfad: Reiter **Konto** oder **Datei → Einstellungen → Konto & Daten**.
 
 Du siehst den wirksamen Speicherort, kannst ihn öffnen oder einen neuen Ordner wählen. Bei einem leeren Ziel bietet BudgetManager eine kontrollierte Übernahme mit Sicherheits-Backup an. Der neue Speicherort wird nach Neustart vollständig wirksam.
 
+**Der Datenordner gehört nicht in einen Cloud-Ordner.** Datenbank, `-wal` und `-shm` gehören zusammen; ein Synchronisierungsdienst hält Sperren darauf, gleicht sie unabhängig voneinander ab und kann sie auslagern. Sichtbar wird das als „database is locked", „disk image is malformed" oder still als veralteter Datenstand. Der Windows-Installer schlägt deshalb `%LOCALAPPDATA%\BudgetManager` vor — diesen Pfad erfasst OneDrive nie. Liegt dein Datenordner in OneDrive (bei aktiver Ordnersicherung betrifft das auch „Dokumente"), meldet sich BudgetManager beim Start einmalig und bietet den Wechsel an. Der Wechsel läuft über dieselbe kontrollierte Übernahme wie oben: Rückfrage, Sicherheits-Backup, Kopieren statt Verschieben. Der alte Ordner bleibt unangetastet stehen. Wer ablehnt, wird nicht erneut gefragt.
+
 ### 16.2 Backup und Restore
 
 Backups sind geprüfte `.bmr`-Pakete. Sie können Datenbank, Einstellungen und das zur Datenbank gehörende Benutzerkonto enthalten. Bei mehreren lokalen Konten wird nur der passende Kontoeintrag mitgesichert. Auto-Backup bietet Intervall, Anzahl aufzubewahrender Sicherungen und optionale Bereinigung.

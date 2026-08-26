@@ -327,6 +327,8 @@ BM_DISABLE_COCKPIT_CHARTS=1 ./run.sh
 
 ### Kürzlich davor
 
+- **v3.0.7:** Bankimport bot Buchungen, die auf „nur lernen, nicht buchen" gesetzt waren, erneut zum Import an — behoben, und der manuelle Weg dorthin ist wieder da. Der vorgeschlagene Datenordner liegt auf Windows jetzt in `%LOCALAPPDATA%` statt in „Dokumente" (dort meist OneDrive); bestehende Installationen bekommen beim Start eine einmalige Warnung mit Wechselangebot. Dazu neun weitere Windows-Härtungen (konsistentes Backup trotz WAL, aufräumendes Update, reservierte Gerätenamen, UTF-8-Konsole, CSV-Semikolon). Bankimport auf eine Oberfläche konsolidiert; Push-Gates fahren zusätzlich `windows-latest`.
+
 - **v3.0.6:** Vier Fehler der 3.0.5 behoben — Hauptfenster wieder unter dem Architektur-Limit (Diagnose-Workflow ausgelagert), Bankimport V4 tastaturnavigierbar, 89 deutsche Restbeschriftungen in der englischen und französischen Oberfläche übersetzt, Undo-Pruning spezifikationskonform. 49 Release-Berichte der Reihen 2.1/2.2 zu einer Chronik zusammengefasst.
 
 - **v2.2.70:** Ordner und Dateien der Brücke zu FPM bekommen `0700`/`0600`; Update-Archive werden auch auf die Zahl der Einträge geprüft; unlesbare Einstellungsdateien werden als `.kaputt-<zeitstempel>` beiseitegelegt statt überschrieben; Radien und Innenabstände wachsen mit der eingestellten Schrift.
