@@ -71,3 +71,15 @@ data/*.txt
 resources/update_signing_public_key.b64
 # Das Schluesselpaar selbst gehoert nie ins Repository.
 update-signing-key/
+
+# Bei jedem Gate-Lauf neu erzeugt - versehentlich mit v3.0.7 eingecheckt.
+# Die versionierten Nachweise unter audit_artifacts/ tragen eine Version im
+# Namen; diese hier nicht, sie beschreiben immer nur den letzten Lauf.
+.coverage
+audit_artifacts/BANDIT_CURRENT.json
+audit_artifacts/BANDIT_RELEASE_GATE.json
+audit_artifacts/ENTERPRISE_RELEASE_AUDIT_10000.json
+audit_artifacts/KILLCRITIC_USABILITY_10000.csv
+audit_artifacts/KILLCRITIC_USABILITY_10000.json
+audit_artifacts/coverage_full.json
+audit_artifacts/coverage_gate_summary.json
