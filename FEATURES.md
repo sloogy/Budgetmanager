@@ -1,9 +1,5 @@
 ## Neu in v3.0.8
 
-- Siehe VERSION_INFO.txt und CHANGELOG.md.
-
-## Neu in v3.0.7
-
 - Bankimport: Buchungen, die auf „nur lernen, nicht buchen" gesetzt waren, werden nicht mehr erneut zum Import angeboten.
 - Bankimport: Massenaktion „nur lernen, nicht buchen" ist wieder da; Sortierung nach Betrag und Tags, Suche über Betrag und Anzeigedatum.
 - Windows-Neuinstallation schlägt `%LOCALAPPDATA%` statt „Dokumente" vor; bestehende Installationen in OneDrive bekommen beim Start eine einmalige Warnung mit Wechselangebot.
@@ -14,6 +10,10 @@
 - Anwendung und Updater laufen auf der Windows-Konsole durchgängig in UTF-8.
 - Bankimport auf eine einzige Oberfläche konsolidiert; die tote V2/V3-Kette und 22 verwaiste Übersetzungsschlüssel sind entfernt.
 - Push-Gates fahren zusätzlich `windows-latest`; der UI-/Barrierefreiheits-Nachweis bricht ohne Qt ab statt WARN-Zeilen zu schreiben.
+- WAL-Momentaufnahme und Backup-URI auf Windows korrigiert; der neue Windows-Testlauf fand beides beim ersten scharfen Durchgang.
+- Eigenes App-Icon in allen Groessen statt gezeichnetem Euro-Zeichen.
+- Startbildschirm mit Logo-Banner ueberbrueckt die Zeit bis zum Hauptfenster und weicht jedem Dialog aus.
+- Logo-Banner in Ueber-Dialog, Anmeldung, Erststart- und Setup-Assistent.
 
 ## Neu in v3.0.6
 
