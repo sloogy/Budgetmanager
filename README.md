@@ -385,24 +385,36 @@ python -m pip install --require-hashes -r requirements-dev.lock
 
 ### Tests und Checks
 
-Dieselben Gates laufen bei jedem Push auf `main` (`.github/workflows/push-checks.yml`):
+Dieselben Gates laufen bei jedem Push auf `main` und auf `feature/**`
+(`.github/workflows/push-checks.yml`) — in dieser Reihenfolge:
 
 ```bash
 python tools/sync_version.py --check
-python -m compileall -q . -x '(^|/)(\.git|\.venv|__pycache__|build|dist)(/|$)'
+python -m compileall -q .
+python tools/i18n_audit.py
 python tools/exception_audit.py
-python -m ruff check . --select E9,F63,F7,F82
-python -m mypy model/
-python -m black --check model/
+python tools/architecture_quality_gate.py
+python -m ruff check .
+python -m black --check model/ views/ utils/ updater/ tools/ tests/ main.py app_info.py settings.py settings_dialog.py theme_manager.py
+python -m mypy model/ updater/
 python tools/clean_release_tree.py
 python tools/lint_procedure_check.py
 python -m pytest tests/ -q
 ```
 
+`ruff` bekommt bewusst kein `--select`: Die Auswahl steht in `ruff.toml` und
+gilt lokal wie in der CI. `black` und `mypy` sollten über
+`python tools/gepinnte_werkzeuge.py <werkzeug> …` laufen — beide urteilen von
+Nebenversion zu Nebenversion unterschiedlich, und die CI nimmt die Version aus
+`requirements-dev.txt`.
+
+Der Workflow fährt eine Matrix aus `ubuntu-latest` und `windows-latest`. Nur
+`pytest` läuft auf beiden; alles davor prüft Quelltext, nicht Plattform, und
+liefe unter Windows ohne neue Aussage ein zweites Mal.
+
 Ergänzend:
 
 ```bash
-python tools/i18n_audit.py          # Übersetzungsschlüssel
 python tools/verify_qt_translations.py
 python tools/design_sync.py check   # Designkatalog und Kontraste
 ```

@@ -18,6 +18,7 @@ python tools/coverage_gate.py --json audit_artifacts/coverage_full.json --summar
 python tools/architecture_quality_gate.py
 python tools/enterprise_release_audit_10000.py --loops 10000 --seed 20260718 --json-out audit_artifacts/ENTERPRISE_RELEASE_AUDIT_10000.json
 python tools/run_killcritic_usability_10000.py --loops 10000 --seed 20260718 --json audit_artifacts/KILLCRITIC_USABILITY_10000.json --csv audit_artifacts/KILLCRITIC_USABILITY_10000.csv
+QT_QPA_PLATFORM=offscreen python tools/enterprise_ui_adhs_audit_1000.py --csv audit_artifacts/UI_USABILITY_ADHS_1000_LOOP_MATRIX.csv
 python tools/clean_release_tree.py
 python tools/lint_procedure_check.py
 ```
@@ -27,17 +28,39 @@ python tools/lint_procedure_check.py
 > `python -m black` nimmt die des Rechners - und macht damit das Gate rot,
 > ohne dass am Code etwas falsch waere.
 
+> **Der UI-/ADHS-Lauf schreibt hier bewusst nach `audit_artifacts/`.** Ohne
+> `--csv` legt er die versionsbenannte Matrix unter
+> `docs/archive/release-evidence/` ab - und die ist archivierter Nachweis eines
+> vergangenen Laufs, kein Arbeitsstand. Erzeugt wird sie beim Release von
+> `release-prepare.yml`, mit echtem Offscreen-Qt. Ohne PySide6 bricht das
+> Werkzeug ab, statt auf eine Textsuche im Quelltext auszuweichen: Bis v3.0.6
+> tat es genau das, und 200 der 4300 Checks des v3.0.6-Nachweises sind deshalb
+> nie gelaufen.
 
 
-## Die beiden Workflows
 
-Im Repository existieren genau zwei Workflows; `tools/lint_procedure_check.py`
-prüft diese Liste und meldet jeden weiteren.
+## Die drei Workflows
+
+Im Repository existieren genau drei Workflows; `ERLAUBTE_WORKFLOWS` in
+`tools/lint_procedure_check.py` führt dieselbe Liste und meldet jeden weiteren.
 
 - `.github/workflows/push-checks.yml` — der schnelle Lauf bei jedem Push auf
-  `main`: Linux, ein Python, keine Builds, zwei bis drei Minuten. Er reagiert nie
-  auf Tags und überspringt `[release]`-Commits, weil die ohnehin durch den vollen
-  Lauf gehen.
+  `main` und auf `feature/**`: ein Python, keine Builds, zwei bis drei Minuten.
+  Er reagiert nie auf Tags und überspringt `[release]`-Commits, weil die ohnehin
+  durch den vollen Lauf gehen. Er fährt eine Matrix aus `ubuntu-latest` und
+  `windows-latest`, aber nicht beide Zweige gleich: Version, Übersetzung,
+  Ratchets, ruff/black/mypy und `lint_procedure_check` prüfen Quelltext und
+  laufen deshalb nur unter Linux; `pytest` läuft auf beiden. Nur dort kann sich
+  Windows anders verhalten — Pfadtrennzeichen, reservierte Dateinamen,
+  Kodierung, Dateisperren. `fail-fast` steht auf `false`, damit ein roter
+  Windows-Lauf den Linux-Bericht nicht abschneidet.
+- `.github/workflows/release-prepare.yml` — der Versions- und Tag-Vorlauf. Ihn
+  startet ein Push auf `release-trigger/v*`. Er setzt `APP_VERSION`,
+  synchronisiert die Release-Metadaten, erzeugt die an die Version gebundenen
+  Nachweismatrizen (`final_release_audit_1000` und, mit echtem Offscreen-Qt,
+  `enterprise_ui_adhs_audit_1000`), schreibt den `[release]`-Commit,
+  fast-forwardet `main`, setzt den unveränderlichen Tag und startet damit
+  `build.yml`. Veröffentlichen darf er nichts; `lint_procedure_check` prüft das.
 - `.github/workflows/build.yml` — der Release-Weg. Ihn startet ausschliesslich
   ein Tag `v*`; ein Push auf `release/**` synchronisiert nur die
   Release-Metadaten. Der frühere zweite Auslöser, ein `[release]`-Commit auf
