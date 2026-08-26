@@ -20,13 +20,45 @@ Anleitung: `docs/release-signing.md`.
 ## Vor der finalen öffentlichen Freigabe
 
 - Tag `v3.0.6` erstellen und den einzigen GitHub-Actions-Releaseworkflow grün abschliessen lassen.
-- Online-`pip-audit` im Dependency-Workflow prüfen.
 - GitHub Build-Provenance/Attestation prüfen.
 - Authenticode-Signatur von `BudgetManager.exe` und Installer prüfen.
 - Windows-Installer installieren, starten, Update-Modus testen und deinstallieren.
 - Portable Windows- und Linux-Pakete auf einem sauberen System starten.
 - `latest.json` und `latest.json.sig` gemeinsam prüfen.
 - SHA-256-Summen und CycloneDX-SBOM archivieren.
+
+## Abhängigkeitsprüfung
+
+`pip-audit` läuft in keinem Workflow und soll das auch nicht: `ERLAUBTE_WORKFLOWS`
+in `tools/lint_procedure_check.py` lässt genau drei Workflows zu, ein vierter
+wäre sofort rot. Gefahren wird die Prüfung von Hand, vor jedem Release:
+
+```bash
+uvx --python 3.12 pip-audit@2.10.1 -r requirements-build.lock --progress-spinner off
+uvx --python 3.12 pip-audit@2.10.1 -r requirements-dev.lock --progress-spinner off
+```
+
+`--python 3.12` ist Pflicht. Ohne die Angabe zieht `uv` cp314-Wheels, und
+`pip-audit` bricht mit einem Hash-Mismatch ab, der wie ein defektes Lockfile
+aussieht, aber nur ein Artefakt der Python-Version ist.
+
+**Stand 26. August 2026**
+
+- `requirements-build.lock` — das, was ausgeliefert wird — ist sauber.
+- `requirements-dev.lock` meldet drei Einträge, alle für `black 25.1.0`
+  (PYSEC-2026-2120, PYSEC-2026-2121; behoben ab 26.3.0 beziehungsweise 26.3.1).
+  `pip` ist am 26. August 2026 von 26.1.2 auf 26.2.1 gehoben worden
+  (PYSEC-2026-3721) und damit erledigt.
+
+**black bleibt bewusst auf 25.1.0.** Ein Testlauf mit `black 26.3.1` gegen die
+CI-Pfadliste formatiert **49 Dateien** um. black ist an vier Stellen gepinnt
+(`requirements-dev.txt`, `requirements-dev.lock`, `push-checks.yml`,
+`build.yml`, dazu `release-prepare.yml` über `tools/gepinnte_werkzeuge.py`); ein
+Versionswechsel zieht also einen projektweiten Reformat-Commit nach sich. Dem
+steht kein Nutzerrisiko gegenüber: black ist ein Formatierer, läuft nie beim
+Anwender und verarbeitet ausschliesslich Quelltext aus diesem Repository. Die
+Stabilität der Pins wiegt hier schwerer. Neu bewerten, sobald ohnehin ein
+black-Sprung ansteht oder ein Fund den ausgelieferten Lock trifft.
 
 ## Lokale Vollprüfung
 
