@@ -365,6 +365,23 @@ def _apply_application_icon(app) -> None:
         )
 
 
+def _close_startup_splash() -> None:
+    """Schliesst einen noch offenen Startbildschirm.
+
+    Wird aus allen Abbruch- und Fehlerpfaden aufgerufen. Bewusst ohne
+    Referenz auf ein Splash-Objekt: so funktioniert es auch dort, wo der
+    Start abbricht, bevor die lokale Variable ueberhaupt gebunden wurde.
+    """
+    try:
+        from views.startup_splash import StartupSplash
+
+        StartupSplash.close_active()
+    except (ImportError, RuntimeError) as exc:
+        logging.getLogger(__name__).debug(
+            "Startbildschirm konnte nicht geschlossen werden: %s", exc
+        )
+
+
 def main() -> int:
     # Logging initialisieren (vor allem anderen Code)
     from model.app_paths import data_dir
@@ -449,6 +466,8 @@ def main() -> int:
         def _finish_startup_return(
             code: int, reason: str, *, clean: bool = True
         ) -> int:
+            # Kein Startbildschirm ueber einem Abbruch stehen lassen.
+            _close_startup_splash()
             try:
                 mark_app_exited(clean=clean, reason=reason, version=APP_VERSION)
             except Exception:
@@ -465,6 +484,14 @@ def main() -> int:
         app = QApplication(sys.argv)
         _setup_emoji_fonts(app)
         _apply_application_icon(app)
+
+        # Startbildschirm: ueberbrueckt Einstellungen, Anmeldung, Migration und
+        # den Aufbau des Hauptfensters. Er blendet sich selbst aus, sobald ein
+        # modaler Dialog erscheint, und wird unten per finish()/close_active()
+        # in jedem Fall wieder geschlossen.
+        from views.startup_splash import StartupSplash
+
+        splash = StartupSplash.start(app)
         # v2.2.21: zentrale Accessibility- und Fokus-Härtung für alle Views.
         from utils.ui_usability import install_ui_usability
 
@@ -851,6 +878,9 @@ def main() -> int:
         else:
             win.show()
 
+        # Das Hauptfenster steht – der Startbildschirm hat seine Aufgabe erfuellt.
+        splash.finish(win)
+
         # Setup-Assistent
         # WICHTIG: db_existed_before wurde VOR open_db() ermittelt — nach open_db()
         # existiert die Datei immer, wodurch der Setup-Assistent beim Erststart
@@ -986,6 +1016,8 @@ def main() -> int:
         return rc
 
     except Exception as exc:
+        # Zuerst den Startbildschirm weg – sonst liegt er ueber dem Fehlerdialog.
+        _close_startup_splash()
         try:
             if "mark_app_exited" in locals():
                 mark_app_exited(clean=False, reason=f"startup_error: {exc}")
