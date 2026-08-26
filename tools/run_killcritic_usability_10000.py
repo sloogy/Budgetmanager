@@ -150,29 +150,6 @@ def _save_state(path: Path, state: dict[str, object]) -> None:
     tmp.replace(path)
 
 
-def _resume_command(args: argparse.Namespace, state_dir: Path) -> list[str]:
-    command = [
-        sys.executable,
-        str(Path(__file__).resolve()),
-        "--loops",
-        str(args.loops),
-        "--seed",
-        str(args.seed),
-        "--batch-size",
-        str(args.batch_size),
-        "--worker-timeout",
-        str(args.worker_timeout),
-        "--state-dir",
-        str(state_dir),
-        "--resume",
-    ]
-    if args.json:
-        command.extend(["--json", str(Path(args.json).resolve())])
-    if args.csv:
-        command.extend(["--csv", str(Path(args.csv).resolve())])
-    return command
-
-
 def run(args: argparse.Namespace) -> int:
     loops = max(1, int(args.loops))
     batch_size = max(10, int(args.batch_size))
@@ -209,11 +186,11 @@ def run(args: argparse.Namespace) -> int:
             "next_progress": 1000,
         }
 
-    attempts_this_generation = 0
+    attempts_since_checkpoint = 0
     while state["pending"]:
         current_offset, chunk, retry = state["pending"].pop(0)
         state["worker_attempts"] += 1
-        attempts_this_generation += 1
+        attempts_since_checkpoint += 1
         token = (
             f"{current_offset:05d}-{chunk:04d}-{retry}-"
             f"{state['worker_attempts']:04d}"
@@ -270,18 +247,24 @@ def run(args: argparse.Namespace) -> int:
                 )
                 state["next_progress"] += 1000
 
-        # In der Ausführungsumgebung können native Qt-Ressourcen nach mehreren
-        # Child-Prozessen am Elternprozess hängen bleiben. Ein kontrolliertes
-        # exec nach sechs Workern setzt den Controller vollständig zurück, ohne
-        # einen Loop oder Befund zu verlieren.
-        if attempts_this_generation >= 6 and state["pending"]:
+        # Checkpoint alle sechs Worker: Der Stand liegt auf Platte, ein
+        # abgebrochener Lauf setzt mit --resume dort wieder auf.
+        #
+        # Hier stand bis v3.0.6 zusätzlich ein Neustart des Controllers, weil
+        # "native Qt-Ressourcen am Elternprozess hängen bleiben" könnten. Der
+        # Controller lädt aber kein Qt - er startet nur Prozesse, liest deren
+        # Dateien und schließt seine Handles im with-Block; die Worker laufen
+        # mit start_new_session in eigenen Prozessgruppen und werden abgeholt.
+        # Es gibt also nichts zurückzusetzen.
+        if attempts_since_checkpoint >= 6 and state["pending"]:
+            attempts_since_checkpoint = 0
             _save_state(state_path, state)
             print(
                 f"Controller-Checkpoint: verified={state['verified']} "
-                f"pending={len(state['pending'])}",
+                f"pending={len(state['pending'])} "
+                f"(Fortsetzen: --resume --state-dir {state_dir})",
                 flush=True,
             )
-            return subprocess.call(_resume_command(args, state_dir), cwd=ROOT)
 
     normalized: list[dict[str, object]] = []
     for row in state["rows"]:
