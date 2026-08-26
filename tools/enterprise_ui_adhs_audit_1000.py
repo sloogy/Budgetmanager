@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 """Enterprise UI-/Usability-/ADHS-Audit – 10 × 100 Loops.
 
-Der Audit trennt Blocker (FAIL) von bewusst sichtbaren UX-Schulden (WARN).
-Ein grüner Exit-Code bedeutet: keine automatisierbaren Release-Blocker.
-WARN bleibt im Bericht, bis reale Tastatur-/Screenreader- und Meldungsfluss-
-Tests durchgeführt beziehungsweise die betreffenden Bereiche überarbeitet sind.
+Der Audit trennt Blocker (FAIL) von sichtbaren UX-Schulden (WARN). Beide
+Ergebnisse setzen den Exit-Code: Die geschriebene Matrix ist Release-Nachweis,
+und ein Nachweis mit offenen Punkten darf nicht wie ein erbrachter aussehen.
+
+PySide6 ist Pflicht. Bis v3.0.6 wichen die Qt-Prüfungen d3 und d4 ohne PySide6
+auf eine Textsuche im Quelltext aus und schrieben das Ergebnis als WARN in die
+Matrix – 200 der 4300 Checks des v3.0.6-Nachweises sind so nie gelaufen, ohne
+dass der Exit-Code oder ein Gate das anzeigte. Fehlt Qt, bricht der Lauf jetzt
+ab, bevor eine Zeile geschrieben wird.
 """
 from __future__ import annotations
 
@@ -111,27 +116,9 @@ def _qt_app():
 
 
 def d3_form_accessibility(i: int) -> tuple[int, str, str]:
-    try:
-        from PySide6.QtWidgets import QDialog, QFormLayout, QLineEdit
+    from PySide6.QtWidgets import QDialog, QFormLayout, QLineEdit
 
-        from utils.ui_usability import enhance_widget_tree
-    except ImportError:
-        # v2.2.24 (Merge-Korrektur M2): Qt-freier Kern – die Label-Ableitung
-        # existiert, wertet QFormLayout UND Buddy-Verknüpfungen aus und ist
-        # in die Namens-Kandidaten eingehängt.
-        src = (ROOT / "utils" / "ui_usability.py").read_text(encoding="utf-8")
-        ok = (
-            "def _associated_form_label" in src
-            and "labelForField" in src
-            and ".buddy() is widget" in src
-            and "_associated_form_label(widget)" in src
-        )
-        detail = (
-            "Qt-freie Kernprüfung: Formularlabel-Ableitung vorhanden"
-            if ok
-            else "Formularlabel-Ableitung fehlt/entkoppelt"
-        )
-        return 1, "WARN" if ok else "FAIL", detail
+    from utils.ui_usability import enhance_widget_tree
 
     _qt_app()
     dlg = QDialog()
@@ -146,36 +133,9 @@ def d3_form_accessibility(i: int) -> tuple[int, str, str]:
 
 
 def d4_destructive_metadata(i: int) -> tuple[int, str, str]:
-    try:
-        from PySide6.QtWidgets import QDialog, QPushButton, QVBoxLayout
+    from PySide6.QtWidgets import QDialog, QPushButton, QVBoxLayout
 
-        from utils.ui_usability import enhance_widget_tree
-    except ImportError:
-        # v2.2.24 (Merge-Korrektur M2): Ohne PySide6 (Audit-Container) die
-        # Kernzusicherung Qt-frei prüfen – (a) die Erkennung feuert auf
-        # Tooltip-Texten wie bei Icon-only-Buttons, (b) die Qt-Schicht
-        # wertet nachweislich die Metadaten-Kette aus.
-        from utils.ui_text_rules import is_destructive_text
-
-        tooltip = "Eintrag löschen" if i % 2 == 0 else "Delete entry"
-        ok = is_destructive_text(tooltip) and not is_destructive_text("Eintrag buchen")
-        src = (ROOT / "utils" / "ui_usability.py").read_text(encoding="utf-8")
-        chain = all(
-            m in src
-            for m in (
-                "button.text()",
-                "button.toolTip()",
-                "button.accessibleName()",
-                "button.whatsThis()",
-            )
-        )
-        ok = ok and chain
-        detail = (
-            "Qt-freie Kernprüfung: destruktive Metadatenkette vorhanden"
-            if ok
-            else "Icon-only-Erkennung (Qt-freier Kern) verletzt"
-        )
-        return 2, "WARN" if ok else "FAIL", detail
+    from utils.ui_usability import enhance_widget_tree
 
     _qt_app()
     dlg = QDialog()
@@ -352,7 +312,37 @@ DOMAINS = (
 )
 
 
+def _require_qt() -> str | None:
+    """Meldet den Grund, warum dieser Lauf keinen Nachweis erbringen kann."""
+    try:
+        import PySide6  # noqa: F401
+        from PySide6.QtWidgets import QApplication  # noqa: F401
+    except ImportError as exc:
+        return f"PySide6 ist nicht importierbar ({exc})"
+    try:
+        _qt_app()
+    except Exception as exc:  # Qt-Plattform fehlt/defekt - kein Nachweis moeglich.
+        return f"Qt startet nicht ({type(exc).__name__}: {exc})"
+    return None
+
+
 def main() -> int:
+    # d3 und d4 sind die einzigen echten Qt-Pruefungen des Audits. Ohne Qt
+    # bleibt nur Textsuche im Quelltext - das ist kein Nachweis, sondern eine
+    # Behauptung ueber den Quelltext, und genau so ist der v3.0.6-Nachweis
+    # entstanden. Lieber gar keine Matrix als eine, die 200 nie gelaufene
+    # Checks als erbracht ausweist.
+    grund = _require_qt()
+    if grund is not None:
+        print(f"ENTERPRISE UI/ADHS AUDIT NICHT ERBRACHT: {grund}", file=sys.stderr)
+        print(
+            "Dieses Werkzeug schreibt Release-Nachweise und braucht deshalb ein "
+            "echtes Qt. Abhilfe: 'pip install --require-hashes -r "
+            "requirements-build.lock' und QT_QPA_PLATFORM=offscreen setzen.",
+            file=sys.stderr,
+        )
+        return 2
+
     # v3.0.6: Releasebeweise gehoeren ins Archiv, nicht ins Wurzelverzeichnis
     # (siehe test_project_root_holds_no_release_evidence).
     csv_path = (
@@ -403,7 +393,10 @@ def main() -> int:
     )
     for domain, (severity, detail) in UNIQUE.items():
         print(f"  {severity} {domain}: {detail}")
-    return 1 if fails else 0
+    # WARN zaehlt wie FAIL. Vorher gab das Werkzeug auch bei 200 WARN-Zeilen 0
+    # zurueck - der Lauf sah gruen aus, der Nachweis war lueckenhaft, und kein
+    # Aufrufer konnte den Unterschied sehen.
+    return 1 if fails or warns else 0
 
 
 if __name__ == "__main__":

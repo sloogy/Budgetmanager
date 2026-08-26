@@ -27,6 +27,24 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Qt-Systembibliotheken installieren
+        # Der UI-/ADHS-Nachweis ist der einzige Schritt hier, der echtes Qt
+        # braucht - und er bricht ohne ab, statt still auf eine Textsuche im
+        # Quelltext auszuweichen. Dieselbe Liste wie in build.yml und
+        # push-checks.yml.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 \
+            libdbus-1-3 libfontconfig1
+
+      - name: Abhaengigkeiten mit Hash-Pruefung installieren
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python tools/verify_hashed_lock.py
+          python -m pip install --require-hashes -r requirements-build.lock
+
       - name: Release-Anforderung auswerten
         shell: bash
         run: |
@@ -112,6 +130,11 @@ jobs:
           # den Nachweis erneut entwertete. v3.0.1 bis v3.0.4 sind genau
           # daran gestorben, ohne dass je ein Release entstand.
           QT_QPA_PLATFORM=offscreen python tools/final_release_audit_1000.py
+          # Dasselbe Muster fuer den UI-/ADHS-Nachweis: Er hing bisher an
+          # einem Lauf von Hand und entstand fuer v3.0.6 nachweislich ohne
+          # PySide6 - 200 der 4300 Checks waren nie gelaufen. Hier laeuft er
+          # mit echtem Qt oder gar nicht.
+          QT_QPA_PLATFORM=offscreen python tools/enterprise_ui_adhs_audit_1000.py
           python tools/release_evidence_index.py
           python tools/release_evidence_index.py --check
 
