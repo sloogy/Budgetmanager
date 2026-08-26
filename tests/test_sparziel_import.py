@@ -26,13 +26,14 @@ from model.savings_goal_import import (
     uebernehmen,
 )
 from model.typ_constants import TYP_SAVINGS
+from tests.conftest import verbindung_merken
 
 
 def _db(tmp_path):
     pfad = str(tmp_path / "test.db")
     conn = open_db(pfad)
     migrate_all(conn, db_path=pfad, backup_dir=str(tmp_path / "bk"))
-    return conn
+    return verbindung_merken(conn)
 
 
 def _wunsch(**felder) -> dict:

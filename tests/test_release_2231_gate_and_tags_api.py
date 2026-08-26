@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
 
 from model.migrations import migrate_all
 from model.tags_model import Tag, TagsModel
+from tests.conftest import verbindung_merken
 
 GATE = ROOT / "tools" / "lint_procedure_check.py"
 
@@ -172,7 +173,7 @@ def _db() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_all_read_methods_return_tag_objects():

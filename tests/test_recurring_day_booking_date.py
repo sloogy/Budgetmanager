@@ -30,6 +30,7 @@ from model.database import open_db
 from model.migrations import migrate_all
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
+from tests.conftest import verbindung_merken
 
 
 def _booking_day(year: int, month: int, recurring_day: int) -> int:
@@ -52,7 +53,7 @@ def _fresh():
         db_path=p,
         backup_dir=os.path.join(os.path.dirname(p), "migration_backups"),
     )
-    return conn, p
+    return verbindung_merken(conn), p
 
 
 # ── Reine Logik: Clamping des Soll-Tags ──────────────────────────

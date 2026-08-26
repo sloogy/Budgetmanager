@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.conftest import verbindung_merken
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -197,7 +199,7 @@ def test_pruning_sortiert_nicht_ueber_eine_nicht_ausgewaehlte_spalte():
 
 
 def test_pruning_behaelt_genau_die_juengsten_gruppen():
-    conn = sqlite3.connect(":memory:")
+    conn = verbindung_merken(sqlite3.connect(":memory:"))
     conn.execute("CREATE TABLE undo_stack(id INTEGER PRIMARY KEY, group_id TEXT)")
     for gruppe in range(6):
         for _ in range(3):
@@ -209,7 +211,7 @@ def test_pruning_behaelt_genau_die_juengsten_gruppen():
 
 
 def test_pruning_ist_bei_wenigen_gruppen_und_leerem_stack_stabil():
-    conn = sqlite3.connect(":memory:")
+    conn = verbindung_merken(sqlite3.connect(":memory:"))
     conn.execute("CREATE TABLE undo_stack(id INTEGER PRIMARY KEY, group_id TEXT)")
     conn.execute(_pruning_sql(), (100,))
     assert conn.execute("SELECT COUNT(*) FROM undo_stack").fetchone()[0] == 0

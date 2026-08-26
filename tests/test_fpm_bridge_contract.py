@@ -28,6 +28,7 @@ from model.lifeplanner_import_service import (
     load_import_records,
 )
 from model.migrations import migrate_all
+from tests.conftest import verbindung_merken
 from utils.money import set_currency
 
 # Aus FPM/logic/budget_export_service.py, SAVINGS_GOAL_SCHEMAS. FPM nimmt beide
@@ -45,7 +46,7 @@ def _conn() -> sqlite3.Connection:
     migrate_all(conn)
     CategoryModel(conn).create("Ausgaben", "Füller")
     set_currency("CHF")
-    return conn
+    return verbindung_merken(conn)
 
 
 # ── FPM schreibt, BudgetManager liest ───────────────────────────────────────

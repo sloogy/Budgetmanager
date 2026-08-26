@@ -42,6 +42,43 @@ def _bruecken_register_isolieren(tmp_path_factory, monkeypatch):
     yield
 
 
+# ── Testverbindungen gehoeren dem Testlauf, nicht dem Garbage Collector ──────
+# Rund zwei Dutzend Testdateien haben eine Hilfsfunktion der Bauart
+#
+#     def _conn():
+#         conn = sqlite3.connect(":memory:")
+#         ...
+#         return conn
+#
+# und rufen sie in jedem Test auf, ohne die Verbindung je zu schliessen. Der
+# Interpreter raeumte sie irgendwann weg; unter Windows blockiert ein offenes
+# Dateihandle auf einer SQLite-Datei aber das Aufraeumen von tmp_path, und
+# push-checks.yml faehrt seit v3.0.7 auch windows-latest. Ab Python 3.13 meldet
+# sqlite3 solche Verbindungen ausserdem als ResourceWarning "unclosed database" -
+# unter dem CI-Pin 3.12 gibt es diese Warnung nicht, weshalb sie nie jemandem
+# auffiel.
+#
+# Statt ~110 Aufrufstellen umzubauen, uebergibt die Hilfsfunktion ihre
+# Verbindung an diesen Teardown. Wer eine Verbindung selbst schliesst, merkt
+# sie gar nicht erst vor - close() ist idempotent, doppeltes Schliessen waere
+# aber trotzdem irrefuehrend.
+_OFFENE_TESTVERBINDUNGEN: list = []
+
+
+def verbindung_merken(verbindung):
+    """Uebergibt eine Testverbindung dem Teardown und reicht sie durch."""
+    _OFFENE_TESTVERBINDUNGEN.append(verbindung)
+    return verbindung
+
+
+@pytest.fixture(autouse=True)
+def _testverbindungen_schliessen():
+    """Schliesst am Testende jede ueber ``verbindung_merken`` gemeldete DB."""
+    yield
+    while _OFFENE_TESTVERBINDUNGEN:
+        _OFFENE_TESTVERBINDUNGEN.pop().close()
+
+
 # ── Bankimport-V4-Testgeruest ────────────────────────────────────────────────
 # Mehrere Testdateien fahren den aktiven V4-Dialog offscreen gegen eine echte,
 # temporaere SQLite-DB. Bis v3.0.6 waren 58 von 59 Bankimport-Dialogtests reine

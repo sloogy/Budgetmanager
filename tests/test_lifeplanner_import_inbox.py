@@ -15,6 +15,7 @@ from model.lifeplanner_import_service import (
     reject_import,
 )
 from model.migrations import migrate_all
+from tests.conftest import verbindung_merken
 from utils.money import set_currency
 
 
@@ -25,7 +26,7 @@ def _conn() -> sqlite3.Connection:
     migrate_all(conn)
     CategoryModel(conn).create("Ausgaben", "Füller")
     set_currency("CHF")
-    return conn
+    return verbindung_merken(conn)
 
 
 def _payload(amount: float = 123.45, currency: str = "CHF") -> dict:

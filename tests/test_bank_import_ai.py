@@ -9,6 +9,7 @@ from model.bank_import_ai import (
     match_twint_reimbursement,
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from tests.conftest import verbindung_merken
 
 
 def _conn() -> sqlite3.Connection:
@@ -32,7 +33,7 @@ def _conn() -> sqlite3.Connection:
         [("Lebensmittel",), ("Mittagessen",), ("Geteilte Kosten",)],
     )
     conn.commit()
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_ai_learns_category_and_tags_from_confirmed_booking():

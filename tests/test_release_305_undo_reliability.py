@@ -6,6 +6,7 @@ from pathlib import Path
 from model.budget_model import BudgetModel
 from model.migrations import migrate_all
 from model.undo_redo_model import UndoRedoModel
+from tests.conftest import verbindung_merken
 
 
 def _conn() -> sqlite3.Connection:
@@ -13,7 +14,7 @@ def _conn() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_budget_noop_save_does_not_pollute_undo_stack() -> None:

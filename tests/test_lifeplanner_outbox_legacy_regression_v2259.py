@@ -12,13 +12,14 @@ from model.lifeplanner_import_service import (
 from model.migrations import migrate_all
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
+from tests.conftest import verbindung_merken
 
 
 def _db() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_bidirectional_outboxes_remain_available(tmp_path: Path) -> None:

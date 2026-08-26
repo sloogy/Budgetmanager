@@ -10,6 +10,7 @@ from model.pot_reserve_model import PotReserveModel
 from model.tags_model import TagsModel
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
+from tests.conftest import verbindung_merken
 
 _OPEN_CONNECTIONS: list[sqlite3.Connection] = []
 
@@ -26,7 +27,7 @@ def _conn():
     conn.row_factory = sqlite3.Row
     migrate_all(conn)
     _OPEN_CONNECTIONS.append(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def _add_pot_category(conn, name="Franchise"):

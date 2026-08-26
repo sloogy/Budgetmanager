@@ -39,7 +39,8 @@ def conn() -> sqlite3.Connection:
     modell.create("Ausgaben", "Tinte")
     modell.create("Einkommen", "Lohn")
     set_currency("CHF")
-    return verbindung
+    yield verbindung
+    verbindung.close()
 
 
 def test_der_picker_filtert_und_liefert_den_echten_namen(qapp, conn):

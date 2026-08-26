@@ -35,6 +35,7 @@ from model.savings_goals_model import (
     validate_savings_goal_bounds,
 )
 from model.tracking_model import TrackingModel
+from tests.conftest import verbindung_merken
 from utils import money
 from utils.money import parse_money, require_finite_amount
 
@@ -55,7 +56,7 @@ def _db() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def _german():

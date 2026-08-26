@@ -8,6 +8,7 @@ from model.migrations import CURRENT_VERSION, _get_db_version, migrate_all
 from model.tags_model import TagsModel
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
+from tests.conftest import verbindung_merken
 
 
 def _conn():
@@ -15,7 +16,7 @@ def _conn():
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_v16_migration_adds_tag_action_text_column():

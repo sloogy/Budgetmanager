@@ -10,6 +10,7 @@ from model.migrations import migrate_all
 from model.tags_model import TagsModel
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
+from tests.conftest import verbindung_merken
 
 _OPEN_CONNECTIONS: list[sqlite3.Connection] = []
 
@@ -27,7 +28,7 @@ def _conn() -> sqlite3.Connection:
     conn.execute("PRAGMA foreign_keys=ON")
     migrate_all(conn)
     _OPEN_CONNECTIONS.append(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def _tag_ids(tags: TagsModel, entry_id: int) -> set[int]:

@@ -16,6 +16,7 @@ from model.savings_goals_model import (
 )
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_SAVINGS
+from tests.conftest import verbindung_merken
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,7 +25,7 @@ def _conn() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_schema_v18_classifies_savings_bookings_and_adds_flow_columns() -> None:

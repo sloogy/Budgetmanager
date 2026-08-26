@@ -13,6 +13,7 @@ from model.twint_import_policy import (
     is_twint_credit,
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+from tests.conftest import verbindung_merken
 
 
 def _conn() -> sqlite3.Connection:
@@ -61,7 +62,7 @@ def _conn() -> sqlite3.Connection:
         ),
     )
     conn.commit()
-    return conn
+    return verbindung_merken(conn)
 
 
 def _twint_credit(

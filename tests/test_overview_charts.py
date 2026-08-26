@@ -25,6 +25,7 @@ from model.database import open_db
 from model.migrations import migrate_all
 from model.overview_aggregation import aggregate_top_bookings
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, normalize_typ
+from tests.conftest import verbindung_merken
 
 EPS = 1e-6
 
@@ -54,7 +55,7 @@ def _fresh():
         db_path=p,
         backup_dir=os.path.join(os.path.dirname(p), "migration_backups"),
     )
-    return conn, p
+    return verbindung_merken(conn), p
 
 
 def _sum_for(sums: dict, typ: str) -> float:

@@ -7,13 +7,14 @@ from datetime import date
 from model.migrations import migrate_all
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
+from tests.conftest import verbindung_merken
 
 
 def _conn() -> sqlite3.Connection:
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_performance_indexes_created_by_current_migration():

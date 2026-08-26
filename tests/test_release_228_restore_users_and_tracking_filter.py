@@ -10,6 +10,7 @@ from model.migrations import migrate_all
 from model.restore_bundle import bundle_user_security_modes, create_bundle
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES
+from tests.conftest import verbindung_merken
 
 
 def _conn() -> sqlite3.Connection:
@@ -17,7 +18,7 @@ def _conn() -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     migrate_all(conn)
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_parent_tracking_filter_can_expand_to_children() -> None:

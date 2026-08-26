@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from tests.conftest import verbindung_merken
+
 ROOT = Path(__file__).resolve().parents[1]
 ISS = ROOT / "installer" / "budgetmanager_setup.iss"
 
@@ -459,7 +461,10 @@ def _db_mit_ungeschriebenem_wal(pfad: Path):
     checkpoint_wal(conn)
     conn.execute("INSERT INTO buchung (text) VALUES ('zuletzt gebucht')")
     conn.commit()
-    return conn
+    # Die Verbindung bleibt absichtlich offen - genau das ist die nachgestellte
+    # Lage. Geschlossen wird sie am Testende, sonst haelt sie unter Windows das
+    # Aufraeumen von tmp_path auf.
+    return verbindung_merken(conn)
 
 
 def test_die_letzte_buchung_steht_wirklich_nur_im_wal(tmp_path: Path) -> None:

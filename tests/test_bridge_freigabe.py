@@ -33,7 +33,8 @@ def conn(tmp_path: Path) -> sqlite3.Connection:
     verbindung = sqlite3.connect(pfad)
     verbindung.row_factory = sqlite3.Row
     migrate_all(verbindung, str(pfad))
-    return verbindung
+    yield verbindung
+    verbindung.close()
 
 
 def _namen(pfad: Path) -> set[str]:

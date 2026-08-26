@@ -22,6 +22,7 @@ from model.lifeplanner_notices import (
     kennung,
     schreibe_meldungen,
 )
+from tests.conftest import verbindung_merken
 
 
 def _meldung(nr: int = 1, dringlichkeit: str = "info") -> Meldung:
@@ -135,7 +136,7 @@ def _db_mit_sparziel(tmp_path, faellig_in_tagen: int, anteil: float):
         current_amount=1000.0 * anteil,
         deadline=frist,
     )
-    return conn
+    return verbindung_merken(conn)
 
 
 def test_sparziel_kurz_vor_dem_termin_meldet_sich(tmp_path) -> None:

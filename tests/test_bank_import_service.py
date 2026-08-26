@@ -7,6 +7,7 @@ import pytest
 from model.bank_import_service import BankImportItem, BankImportService
 from model.bank_statement_reader import BankTransaction
 from model.typ_constants import TYP_EXPENSES
+from tests.conftest import verbindung_merken
 
 
 def _conn() -> sqlite3.Connection:
@@ -52,7 +53,7 @@ def _conn() -> sqlite3.Connection:
     )
     conn.execute("INSERT INTO tags(name) VALUES('Lebensmittel')")
     conn.commit()
-    return conn
+    return verbindung_merken(conn)
 
 
 def _tx(index: int = 1, reference: str = "ZKB-ABC") -> BankTransaction:

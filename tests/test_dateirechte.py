@@ -10,6 +10,7 @@ Alle vier Programme der Suite fuehren diesen Test jetzt unter demselben Namen.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import stat
 
@@ -92,11 +93,11 @@ def test_die_sparziel_datei_gehoert_nur_dem_eigentuemer(tmp_path):
     from model.lifeplanner_import_service import export_savings_goals
     from model.migrations import migrate_all
 
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    migrate_all(conn)
+    with contextlib.closing(sqlite3.connect(":memory:")) as conn:
+        conn.row_factory = sqlite3.Row
+        migrate_all(conn)
 
-    ergebnis = export_savings_goals(conn, tmp_path / "sparziele.jsonl")
+        ergebnis = export_savings_goals(conn, tmp_path / "sparziele.jsonl")
 
     assert stat.S_IMODE(ergebnis.path.stat().st_mode) == OWNER_ONLY_FILE
     assert not is_world_accessible(ergebnis.path)

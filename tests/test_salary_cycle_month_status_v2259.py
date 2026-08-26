@@ -6,6 +6,7 @@ from pathlib import Path
 
 from model.salary_cycle import previous_salary_cycle, resolve_salary_cycle
 from model.typ_constants import TYP_INCOME
+from tests.conftest import verbindung_merken
 
 
 def _conn() -> sqlite3.Connection:
@@ -42,7 +43,7 @@ def _conn() -> sqlite3.Connection:
         )
         """
     )
-    return conn
+    return verbindung_merken(conn)
 
 
 def _salary(

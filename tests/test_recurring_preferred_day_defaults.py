@@ -17,6 +17,7 @@ from model.database import open_db
 from model.migrations import migrate_all
 from model.typ_constants import TYP_EXPENSES
 from settings import Settings
+from tests.conftest import verbindung_merken
 
 
 def _fresh(tmp_path: Path, monkeypatch, preferred_day: int = 25):
@@ -33,7 +34,7 @@ def _fresh(tmp_path: Path, monkeypatch, preferred_day: int = 25):
         db_path=p,
         backup_dir=os.path.join(os.path.dirname(p), "migration_backups"),
     )
-    return conn, p
+    return verbindung_merken(conn), p
 
 
 def test_create_recurring_category_uses_preferred_day(tmp_path, monkeypatch):
