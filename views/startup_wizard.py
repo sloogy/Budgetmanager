@@ -37,6 +37,7 @@ from model.user_model import (
     UserModel,
 )
 from utils.accessibility import configure_dialog_tab_order
+from utils.branding import make_logo_label
 from utils.i18n import tr, trf
 from utils.notifications import show_info, show_warning
 from views.ui_colors import ui_colors
@@ -79,7 +80,12 @@ class StartupWizard(QDialog):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
-        # ── Title ──
+        # ── Marke + Title ──
+        logo = make_logo_label(self, 260)
+        if logo is not None:
+            logo.setContentsMargins(24, 16, 24, 0)
+            root.addWidget(logo)
+
         title = QLabel(tr("startup.welcome_title"))
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet(

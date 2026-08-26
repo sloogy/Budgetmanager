@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_info import APP_NAME, APP_VERSION, app_version_label
+from utils.branding import make_logo_label
 from utils.i18n import tr, trf
 from utils.notifications import show_warning
 from views.update_dialog import UpdateDialog
@@ -29,6 +30,12 @@ class AboutDialog(QDialog):
         )
 
         layout = QVBoxLayout()
+
+        # Marken-Flaeche: das Logo traegt den Programmnamen bereits als Bild,
+        # der Versionstext darunter bleibt unveraendert.
+        logo = make_logo_label(self, 380)
+        if logo is not None:
+            layout.addWidget(logo)
 
         html = trf(
             "about.html",

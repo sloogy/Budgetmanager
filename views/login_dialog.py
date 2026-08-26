@@ -45,6 +45,7 @@ from model.user_model import (
     UserModel,
 )
 from utils.accessibility import configure_dialog_tab_order
+from utils.branding import make_logo_label
 from utils.i18n import display_security_label, tr, trf
 from utils.icons import get_icon
 from utils.notifications import show_info, show_warning
@@ -449,14 +450,19 @@ class LoginDialog(QDialog):
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(30, 20, 30, 20)
 
-        # Header
-        header = QLabel(tr("auto.views_login_dialog.390_budgetmanager_b7a0d9a3"))
-        header.setAlignment(Qt.AlignCenter)
-        hf = QFont()
-        hf.setPointSize(18)
-        hf.setBold(True)
-        header.setFont(hf)
-        main_layout.addWidget(header)
+        # Header: bevorzugt das Logo-Banner – es traegt den Programmnamen
+        # bereits als Bild. Fehlt die Bilddatei, bleibt die Textzeile.
+        logo = make_logo_label(self, 340)
+        if logo is not None:
+            main_layout.addWidget(logo)
+        else:
+            header = QLabel(tr("auto.views_login_dialog.390_budgetmanager_b7a0d9a3"))
+            header.setAlignment(Qt.AlignCenter)
+            hf = QFont()
+            hf.setPointSize(18)
+            hf.setBold(True)
+            header.setFont(hf)
+            main_layout.addWidget(header)
 
         sub = QLabel(
             tr("auto.views_login_dialog.396_deine_finanzen_deine_kontrolle_46d15e4b")

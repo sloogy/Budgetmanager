@@ -38,6 +38,7 @@ from model.crypto import suspend_after_commit_autosave
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from utils.accessibility import configure_dialog_tab_order
+from utils.branding import make_logo_label
 from utils.i18n import tr, trf
 from utils.icons import get_icon
 from utils.money import (
@@ -194,7 +195,15 @@ class SetupAssistantDialog(QDialog):
         right.addWidget(self.lbl_next_hint)
         right.addLayout(nav)
 
-        root.addWidget(self.step_list)
+        # Die Sidebar hat oben ohnehin freie Flaeche – dorthin passt das Logo
+        # in voller Breite, ohne der Schrittliste Hoehe wegzunehmen.
+        left = QVBoxLayout()
+        sidebar_logo = make_logo_label(self, 170)
+        if sidebar_logo is not None:
+            left.addWidget(sidebar_logo)
+        left.addWidget(self.step_list, 1)
+
+        root.addLayout(left)
         root.addLayout(right, 1)
 
         # Steps
