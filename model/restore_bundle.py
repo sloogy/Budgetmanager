@@ -342,23 +342,40 @@ def _wal_consistent_snapshot(source_db: Path) -> Path | None:
     src: sqlite3.Connection | None = None
     dst: sqlite3.Connection | None = None
     try:
-        src = sqlite3.connect(str(source_db), timeout=10.0)
-        dst = sqlite3.connect(str(snapshot))
-        src.backup(dst)
-        dst.commit()
-    except sqlite3.Error as exc:
+        # Die Handles muessen VOR dem Aufraeumen zu sein, nicht erst danach:
+        # Windows verweigert das Loeschen einer Datei, auf der noch ein
+        # offenes Handle liegt (WinError 32). Deshalb schliesst das innere
+        # finally, und erst das aeussere except loescht.
+        try:
+            src = sqlite3.connect(str(source_db), timeout=10.0)
+            dst = sqlite3.connect(str(snapshot))
+            src.backup(dst)
+            dst.commit()
+        finally:
+            for conn in (dst, src):
+                if conn is not None:
+                    conn.close()
+    except (sqlite3.Error, OSError) as exc:
+        # sqlite3.DatabaseError trifft jede Quelle, die gar keine SQLite-Datei
+        # ist (verschluesselte oder fremde Altbestaende). Das ist kein Fehler,
+        # sondern der vorgesehene Rueckfall auf die reine Dateikopie.
         logger.warning(
             "WAL-konsistente Momentaufnahme nicht moeglich (%s) - es wird die "
             "Datei selbst gesichert: %s",
             exc,
             source_db.name,
         )
-        snapshot.unlink(missing_ok=True)
+        try:
+            snapshot.unlink(missing_ok=True)
+        except OSError as aufraeum_exc:
+            # Das Bundle entsteht trotzdem - aus der Quelldatei selbst. Eine
+            # liegengebliebene Zwischendatei ist ein Aufraeumproblem, kein
+            # Grund, die Sicherung scheitern zu lassen.
+            logger.warning(
+                "Zwischendatei der Momentaufnahme liess sich nicht entfernen: %s",
+                aufraeum_exc,
+            )
         return None
-    finally:
-        for conn in (dst, src):
-            if conn is not None:
-                conn.close()
     # Die Momentaufnahme enthaelt dieselben Daten wie das Original und darf
     # deshalb genauso wenig world-readable sein.
     _secure_bundle_file(snapshot)

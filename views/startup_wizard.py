@@ -790,8 +790,12 @@ class StartupWizard(QDialog):
         from model.crypto import encrypt_db_to_file
 
         try:
-            ro_uri = f"file:{src_db.as_posix()}?mode=ro"
-            src_conn = sqlite3.connect(ro_uri, uri=True)
+            # Dieselbe Falle wie im Backup-Dialog: #, ? und % im Dateinamen
+            # aendern die Bedeutung der URI, und unter Windows braucht der
+            # Laufwerksbuchstabe die Form file:///C:/...
+            from utils.sqlite_uri import read_only_uri
+
+            src_conn = sqlite3.connect(read_only_uri(src_db), uri=True)
         except Exception:
             src_conn = sqlite3.connect(str(src_db))
 

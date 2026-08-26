@@ -540,6 +540,67 @@ def test_die_momentaufnahme_bleibt_nicht_liegen(tmp_path: Path) -> None:
     assert not list(tmp_path.glob("*.snapshot_tmp"))
 
 
+def _verbindung_ist_offen(conn) -> bool:
+    import sqlite3
+
+    try:
+        conn.execute("SELECT 1")
+    except sqlite3.ProgrammingError:
+        return False  # "Cannot operate on a closed database"
+    except sqlite3.Error:
+        return True  # offen, aber die Datei ist keine Datenbank
+    return True
+
+
+def test_eine_quelle_ohne_datenbank_faellt_auf_die_dateikopie_zurueck(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Nicht jede .db ist eine SQLite-Datei - und Windows sperrt offene Dateien.
+
+    Zwei Zusicherungen in einem Durchlauf, weil beide an derselben Stelle
+    haengen: Eine Quelle, die ``Connection.backup()`` nicht lesen kann, darf
+    nicht durchschlagen, sondern muss auf die rohe Dateikopie zurueckfallen
+    (``None``). Und die Zwischendatei darf erst geloescht werden, wenn beide
+    Verbindungen zu sind - unter Windows scheitert das Loeschen sonst mit
+    WinError 32. Auf Linux faellt die Reihenfolge nie auf, dort verschwindet
+    der Verzeichniseintrag auch bei offenem Handle. Geprueft wird deshalb die
+    Reihenfolge selbst.
+    """
+    import sqlite3
+
+    from model import restore_bundle
+
+    erzeugte: list[sqlite3.Connection] = []
+    echtes_connect = sqlite3.connect
+
+    def merkendes_connect(*args, **kwargs):
+        conn = echtes_connect(*args, **kwargs)
+        erzeugte.append(conn)
+        return conn
+
+    offen_beim_loeschen: list[int] = []
+    echtes_unlink = Path.unlink
+
+    def pruefendes_unlink(self: Path, *args, **kwargs):
+        if self.name.endswith(".snapshot_tmp"):
+            offen_beim_loeschen.append(
+                sum(1 for conn in erzeugte if _verbindung_ist_offen(conn))
+            )
+        return echtes_unlink(self, *args, **kwargs)
+
+    monkeypatch.setattr(sqlite3, "connect", merkendes_connect)
+    monkeypatch.setattr(Path, "unlink", pruefendes_unlink)
+
+    keine_datenbank = tmp_path / "altbestand.db"
+    keine_datenbank.write_bytes(b"\0" * 4096)
+
+    assert restore_bundle._wal_consistent_snapshot(keine_datenbank) is None
+    assert offen_beim_loeschen, "die Zwischendatei wurde nie aufgeraeumt"
+    assert all(anzahl == 0 for anzahl in offen_beim_loeschen)
+    assert not list(tmp_path.glob("*.snapshot_tmp"))
+    assert keine_datenbank.read_bytes() == b"\0" * 4096
+
+
 def test_checkpoint_schreibt_das_wal_in_die_datei(tmp_path: Path) -> None:
     """Der Weg fuer die Datenuebernahme: die kopiert Dateien, kein Bundle."""
     import sqlite3
@@ -592,20 +653,51 @@ def test_backups_werden_unabhaengig_von_der_schreibweise_gefunden(
 
 
 def test_sonderzeichen_im_backup_pfad_brechen_die_uri_nicht(tmp_path: Path) -> None:
-    """#, ? und % aendern die Bedeutung einer URI, wenn sie roh hineingehen."""
+    """#, ? und % aendern die Bedeutung einer URI, wenn sie roh hineingehen.
+
+    Geprueft wird das Verhalten, nicht die verwendete Funktion: Die URI muss
+    prozentkodiert sein, den Laufwerksbuchstaben in der Form ``file:///C:/``
+    tragen und schreibgeschuetzt oeffnen. Womit sie gebaut wird, ist Sache der
+    Umsetzung.
+    """
+    import os
     import sqlite3
-    from urllib.request import pathname2url
+    from pathlib import PureWindowsPath
 
-    quelle = (ROOT / "views" / "backup_restore_dialog.py").read_text(encoding="utf-8")
-    assert "pathname2url" in quelle
-    assert 'f"file:{src.as_posix()}?mode=ro"' not in quelle
+    from utils.sqlite_uri import read_only_uri
 
-    for name in ("a#b.db", "c?d.db", "100%e.db"):
+    # Der rohe Zusammenbau aus as_posix() darf nirgends zurueckkehren: Er
+    # laesst #, ? und % ungeschuetzt und verliert unter Windows das ///.
+    for modul in ("backup_restore_dialog", "startup_wizard"):
+        quelle = (ROOT / "views" / f"{modul}.py").read_text(encoding="utf-8")
+        assert "read_only_uri(" in quelle
+        assert "as_posix()}?mode=ro" not in quelle
+
+    # Windows-Teil, auf jeder Plattform pruefbar: PureWindowsPath macht
+    # dieselbe Umsetzung, die Path dort machen wuerde.
+    assert (
+        PureWindowsPath(r"C:\Sicherungen\Stand#1 100%.db").as_uri()
+        == "file:///C:/Sicherungen/Stand%231%20100%25.db"
+    )
+    # ... und die Option haengt hinter der fertigen URI, nicht mittendrin.
+    einfach = tmp_path / "einfach.db"
+    assert read_only_uri(einfach) == einfach.as_uri() + "?mode=ro"
+
+    # ? ist unter Windows kein zulaessiges Zeichen in einem Dateinamen; dort
+    # laesst sich der Fall gar nicht herstellen.
+    namen = ["a#b.db", "100%e.db"] + ([] if os.name == "nt" else ["c?d.db"])
+    for name in namen:
         pfad = tmp_path / name
         sqlite3.connect(str(pfad)).close()
-        conn = sqlite3.connect(f"file:{pathname2url(str(pfad))}?mode=ro", uri=True)
+        conn = sqlite3.connect(read_only_uri(pfad), uri=True)
         try:
             assert conn.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+            try:
+                conn.execute("CREATE TABLE probe (x)")
+            except sqlite3.OperationalError:
+                pass
+            else:  # pragma: no cover - mode=ro haette gegriffen
+                raise AssertionError(f"mode=ro nicht wirksam fuer {name}")
         finally:
             conn.close()
 
