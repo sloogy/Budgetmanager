@@ -1276,6 +1276,7 @@
     "unknown_category": "La catégorie « {name} » n’existe pas pour ce type. Veuillez choisir une catégorie existante dans la liste.",
     "unter_welcher_kategorie_soll": "Sous quelle catégorie la nouvelle doit-elle être créée ?",
     "users_included": "Compte utilisateur correspondant inclus",
+    "semikolon_fuer_excel": "Point-virgule comme séparateur (pour Excel DE/FR)",
     "utf8_bom_fuer_excel": "UTF-8 BOM (pour Excel)",
     "verfuegbare_backups": "Sauvegardes disponibles :",
     "warnen_wenn_das_budget": "Avertir lorsque le budget est dépassé",

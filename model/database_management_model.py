@@ -100,7 +100,11 @@ class DatabaseManagementModel:
 
         backups = []
         for filename in os.listdir(self.backup_dir):
-            if filename.endswith(".bmr"):
+            # Windows-Dateisysteme sind bei der Schreibweise gleichgueltig, der
+            # Vergleich war es nicht: Ein von Hand umbenanntes Backup.BMR wurde
+            # nicht angezeigt, obwohl es gueltig ist. Alle uebrigen
+            # Endungsvergleiche im Repo nutzen bereits .suffix.lower().
+            if filename.lower().endswith(".bmr"):
                 filepath = os.path.join(self.backup_dir, filename)
                 stat = os.stat(filepath)
                 backups.append(

@@ -856,7 +856,14 @@ class BackupRestoreDialog(QDialog):
             import sqlite3 as _sqlite3
 
             try:
-                ro_uri = f"file:{src.as_posix()}?mode=ro"
+                # Der Pfad muss prozentkodiert werden, bevor er in eine URI
+                # geht: Ein #, ? oder % im Namen aendert sonst die Bedeutung -
+                # alles ab # gilt als Fragment, alles ab ? als Abfrage, und
+                # ein % leitet eine Escape-Sequenz ein. pathname2url erledigt
+                # zugleich die Windows-Umsetzung von C:\... nach ///C:/...
+                from urllib.request import pathname2url
+
+                ro_uri = f"file:{pathname2url(str(src))}?mode=ro"
                 src_conn = _sqlite3.connect(ro_uri, uri=True)
             except Exception:
                 src_conn = _sqlite3.connect(str(src))
@@ -927,9 +934,12 @@ class BackupRestoreDialog(QDialog):
 
             from model.crypto import encrypt_db_to_file
 
-            # Quelle öffnen (read-only, wenn möglich)
+            # Quelle öffnen (read-only, wenn möglich). Pfad prozentkodieren:
+            # ein #, ? oder % im Namen aendert sonst die Bedeutung der URI.
             try:
-                ro_uri = f"file:{src.as_posix()}?mode=ro"
+                from urllib.request import pathname2url
+
+                ro_uri = f"file:{pathname2url(str(src))}?mode=ro"
                 src_conn = sqlite3.connect(ro_uri, uri=True)
             except Exception:
                 src_conn = sqlite3.connect(str(src))

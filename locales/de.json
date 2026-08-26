@@ -1276,6 +1276,7 @@
     "unknown_category": "Die Kategorie „{name}“ existiert für diesen Typ nicht. Bitte eine vorhandene Kategorie aus der Liste auswählen.",
     "unter_welcher_kategorie_soll": "Unter welcher Kategorie soll die neue erstellt werden?",
     "users_included": "Zugehöriges Benutzerkonto enthalten",
+    "semikolon_fuer_excel": "Semikolon als Trennzeichen (für Excel DE/FR)",
     "utf8_bom_fuer_excel": "UTF-8 BOM (für Excel)",
     "verfuegbare_backups": "Verfügbare Backups:",
     "warnen_wenn_das_budget": "Warnen, wenn das Budget überschritten wird",

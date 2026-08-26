@@ -1276,6 +1276,7 @@
     "unknown_category": "The category “{name}” does not exist for this type. Please select an existing category from the list.",
     "unter_welcher_kategorie_soll": "Under which category should the new one be created?",
     "users_included": "Matching user account included",
+    "semikolon_fuer_excel": "Semicolon as separator (for German/French Excel)",
     "utf8_bom_fuer_excel": "UTF-8 BOM (for Excel)",
     "verfuegbare_backups": "Available backups:",
     "warnen_wenn_das_budget": "Warn when the budget is exceeded",

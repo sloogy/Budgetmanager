@@ -542,9 +542,13 @@ def _apply_via_windows_installer(src_root: Path, marker: dict) -> int:
     if not is_windows():
         print("❌ Installer-Updates sind nur unter Windows erlaubt.")
         return 10
+    # Nur der erwartete Name. Der frueher hier stehende Rueckfall auf die
+    # alphabetisch erste beliebige *.exe war praktisch unerreichbar -
+    # validate_staged_payload verlangt vorher genau eine Setup-EXE -, aber
+    # scharf: Wer immer ihn ausgeloest haette, haette eine fremde EXE mit
+    # /SILENT /SUPPRESSMSGBOXES gestartet, also ohne jede Rueckfrage und ohne
+    # sichtbares Fenster.
     candidates = sorted(src_root.rglob("BudgetManager_Setup*.exe"))
-    if not candidates:
-        candidates = sorted(src_root.rglob("*.exe"))
     if not candidates:
         print("❌ Keine Setup-EXE im Staging gefunden.")
         return 11

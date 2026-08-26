@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 from model.budget_model import BudgetModel
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
-from utils.i18n import display_typ, tr, trf
+from utils.i18n import display_typ, get_language, tr, trf
 from utils.icons import get_icon
 from utils.notifications import show_info, show_warning
 
@@ -129,6 +129,22 @@ class ExportDialog(QDialog):
         self.chk_utf8_bom = QCheckBox(tr("dlg.utf8_bom_fuer_excel"))
         self.chk_utf8_bom.setChecked(True)
         options_layout.addWidget(self.chk_utf8_bom)
+
+        # Excel richtet sich nach dem Listentrennzeichen der Windows-Region.
+        # Auf einer deutschen oder franzoesischen Installation ist das ein
+        # Semikolon: Eine mit Komma getrennte Datei landet dort vollstaendig in
+        # Spalte A, und der Nutzer sieht einen kaputten Export.
+        #
+        # Als Ankreuzfeld neben der BOM-Option und nicht als starrer Default
+        # nach Sprache: Das Dialogkonzept stellt genau solche Excel-Eigenheiten
+        # schon als Option dar, und die Sprache der Oberflaeche sagt nichts
+        # ueber die Region des Zielrechners - wer auf Deutsch arbeitet und die
+        # Datei an ein englischsprachiges Werkzeug weiterreicht, braucht das
+        # Komma. Die Vorbelegung folgt der Sprache, die Entscheidung bleibt
+        # beim Nutzer.
+        self.chk_semicolon = QCheckBox(tr("dlg.semikolon_fuer_excel"))
+        self.chk_semicolon.setChecked(get_language() in ("de", "fr"))
+        options_layout.addWidget(self.chk_semicolon)
 
         options_group.setLayout(options_layout)
         layout.addWidget(options_group)
@@ -346,7 +362,8 @@ class ExportDialog(QDialog):
             )
             return
 
-        delimiter = "," if self.radio_csv.isChecked() else "\t"
+        csv_trenner = ";" if self.chk_semicolon.isChecked() else ","
+        delimiter = csv_trenner if self.radio_csv.isChecked() else "\t"
         encoding = "utf-8-sig" if self.chk_utf8_bom.isChecked() else "utf-8"
         out = Path(file_path)
         out.parent.mkdir(parents=True, exist_ok=True)

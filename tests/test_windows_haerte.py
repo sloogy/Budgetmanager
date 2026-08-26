@@ -567,6 +567,96 @@ def test_die_datenuebernahme_checkpointet_vorher() -> None:
     assert "checkpoint_wal(conn)" in quelle[beginn:ende]
 
 
+# ──────────────────────────────────────────────────────────────────────────
+# N2 bis N6: Kleinigkeiten mit Windows-Bezug
+# ──────────────────────────────────────────────────────────────────────────
+def test_backups_werden_unabhaengig_von_der_schreibweise_gefunden(
+    tmp_path: Path,
+) -> None:
+    """Windows-Dateisysteme unterscheiden keine Schreibweise, der Filter tat es."""
+    from model.database_management_model import DatabaseManagementModel
+
+    backups = tmp_path / "backups"
+    backups.mkdir()
+    for name in ("klein.bmr", "GROSS.BMR", "Gemischt.Bmr", "kein_backup.txt"):
+        (backups / name).write_bytes(b"x")
+
+    modell = DatabaseManagementModel(str(tmp_path / "budgetmanager.db"))
+    gefunden = {eintrag["filename"] for eintrag in modell.get_available_backups()}
+    assert gefunden == {"klein.bmr", "GROSS.BMR", "Gemischt.Bmr"}
+
+
+def test_sonderzeichen_im_backup_pfad_brechen_die_uri_nicht(tmp_path: Path) -> None:
+    """#, ? und % aendern die Bedeutung einer URI, wenn sie roh hineingehen."""
+    import sqlite3
+    from urllib.request import pathname2url
+
+    quelle = (ROOT / "views" / "backup_restore_dialog.py").read_text(encoding="utf-8")
+    assert "pathname2url" in quelle
+    assert 'f"file:{src.as_posix()}?mode=ro"' not in quelle
+
+    for name in ("a#b.db", "c?d.db", "100%e.db"):
+        pfad = tmp_path / name
+        sqlite3.connect(str(pfad)).close()
+        conn = sqlite3.connect(f"file:{pathname2url(str(pfad))}?mode=ro", uri=True)
+        try:
+            assert conn.execute("PRAGMA quick_check").fetchone()[0] == "ok"
+        finally:
+            conn.close()
+
+
+def test_das_installer_update_startet_keine_fremde_exe() -> None:
+    """Der Rueckfall war unerreichbar, aber scharf.
+
+    Fand sich kein BudgetManager_Setup*.exe, wurde die alphabetisch erste
+    beliebige .exe mit /SILENT /SUPPRESSMSGBOXES gestartet - ohne Rueckfrage
+    und ohne sichtbares Fenster.
+    """
+    quelle = (ROOT / "updater" / "apply_update.py").read_text(encoding="utf-8")
+    beginn = quelle.index("def _apply_via_windows_installer")
+    ende = quelle.index("\ndef ", beginn + 1)
+    block = quelle[beginn:ende]
+    assert 'rglob("*.exe")' not in block
+    assert 'rglob("BudgetManager_Setup*.exe")' in block
+
+
+def test_csv_export_trennt_fuer_deutsches_excel_mit_semikolon(
+    v4_app, v4_conn, tmp_path, monkeypatch
+) -> None:
+    """Mit Komma landet die Datei in deutschem Excel vollstaendig in Spalte A."""
+    import views.export_dialog as export_dialog
+    from views.export_dialog import ExportDialog
+
+    monkeypatch.setattr(export_dialog, "get_language", lambda: "de")
+    dialog = ExportDialog(v4_conn)
+    try:
+        assert dialog.chk_semicolon.isChecked() is True
+
+        ziel = tmp_path / "export.csv"
+        dialog._export_to_file(str(ziel))
+        assert ";" in ziel.read_text(encoding="utf-8-sig")
+
+        # Die Entscheidung bleibt beim Nutzer: Wer die Datei an ein
+        # englischsprachiges Werkzeug weiterreicht, braucht das Komma.
+        dialog.chk_semicolon.setChecked(False)
+        dialog._export_to_file(str(ziel))
+        assert ";" not in ziel.read_text(encoding="utf-8-sig")
+    finally:
+        dialog.deleteLater()
+
+
+def test_csv_export_bleibt_englisch_beim_komma(v4_app, v4_conn, monkeypatch) -> None:
+    import views.export_dialog as export_dialog
+    from views.export_dialog import ExportDialog
+
+    monkeypatch.setattr(export_dialog, "get_language", lambda: "en")
+    dialog = ExportDialog(v4_conn)
+    try:
+        assert dialog.chk_semicolon.isChecked() is False
+    finally:
+        dialog.deleteLater()
+
+
 class _FakeSettings:
     def __init__(self, **werte: object) -> None:
         self.werte = dict(werte)
