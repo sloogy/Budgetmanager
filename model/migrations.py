@@ -917,7 +917,7 @@ def _migrate_v18_to_v19(conn: sqlite3.Connection) -> None:
         if "bridge_share" in _cols(conn, tabelle):
             continue
         conn.execute(
-            f"ALTER TABLE {tabelle} ADD COLUMN bridge_share INTEGER NOT NULL DEFAULT 0;"  # nosec B608 -- Tabellenname aus fester Liste
+            f"ALTER TABLE {tabelle} ADD COLUMN bridge_share INTEGER NOT NULL DEFAULT 0;"
         )
         conn.execute(f"UPDATE {tabelle} SET bridge_share = 1;")  # nosec B608 -- dito
     conn.commit()
