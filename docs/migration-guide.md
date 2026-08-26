@@ -1,4 +1,4 @@
-# Migration Guide — BudgetManager v3.0.6
+# Migration Guide — BudgetManager v3.0.7
 
 ## Grundsatz
 

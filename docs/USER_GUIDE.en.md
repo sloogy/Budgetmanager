@@ -1,6 +1,6 @@
-# BudgetManager 3.0.6 – User guide
+# BudgetManager 3.0.7 – User guide
 
-This guide describes the functions actually available in version 3.0.6. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
+This guide describes the functions actually available in version 3.0.7. BudgetManager stores data locally, never books without confirmation, and separates **budget (plan)** from **tracking (real transactions)**.
 
 ## First start in four steps
 
