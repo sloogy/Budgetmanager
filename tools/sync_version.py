@@ -192,11 +192,34 @@ EXTRA_PATTERNS: tuple[tuple[str, str, str], ...] = (
 
 _VERSION_IN_SERIES = r"(?<![\d.]){series}\.\d+(?!\.?\d)"
 
+#: Irgendeine dreistellige Version, mit denselben Randbedingungen wie oben.
+#: Der Blick nach vorn und zurueck wehrt laengere Zahlenketten ab, damit aus
+#: ``1.0.5.8`` nichts wird und ``python-version: "3.12"`` unberuehrt bleibt.
+_ANY_VERSION = re.compile(r"(?<![\d.])\d+\.\d+\.\d+(?!\.?\d)")
+
 
 def _head_version(lines: list[str], series: str) -> str | None:
+    r"""Die Version im Kopf einer Datei - egal aus welcher Reihe.
+
+    Gesucht wurde hier bis v3.1.0 nur nach Versionen der *aktuellen* Reihe.
+    Solange die dritte Stelle stieg, ging das gut. Beim Sprung von 3.0.9 auf
+    3.1.0 wechselt die Reihe: Das Muster ``3\.1\.\d+`` fand in einem Kopf mit
+    "3.0.9" nichts, es wurde nichts ersetzt - und ``--check`` meldete
+    "synchron", weil es mit demselben blinden Muster prueft, mit dem es
+    schreibt. Aufgefallen ist es erst im Releasebau, an sieben Tests in
+    tests/test_release_integrity.py, mit bereits gesetztem Tag.
+
+    Die Reihe hat trotzdem Vorrang: Steht im Kopf schon eine Version der
+    aktuellen Reihe, ist sie gemeint. Erst wenn dort keine steht, zaehlt die
+    erste dreistellige Version ueberhaupt.
+    """
     pattern = re.compile(_VERSION_IN_SERIES.format(series=re.escape(series)))
     for line in lines:
         found = pattern.search(line)
+        if found:
+            return found.group(0)
+    for line in lines:
+        found = _ANY_VERSION.search(line)
         if found:
             return found.group(0)
     return None
