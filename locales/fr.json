@@ -81,6 +81,31 @@
     "reset_desc": "Réinitialiser la base de données (totalement ou partiellement), statistiques et nettoyage.",
     "unknown_user": "—"
   },
+  "ai_settings": {
+    "group": "IA d'import locale",
+    "group_privacy": "Confidentialité",
+    "group_state": "État de l'apprentissage",
+    "group_switches": "Utilisation",
+    "learn_from_corrections": "Apprendre de mes corrections",
+    "learn_from_corrections_tip": "Les catégories confirmées sont enregistrées comme modèles. Si l'apprentissage est désactivé, l'import fonctionne toujours, mais rien de nouveau n'est appris.",
+    "learned_patterns": "Modèles appris : {count}",
+    "privacy_note": "Tout reste sur cet ordinateur. L'IA d'import calcule localement ; aucun libellé d'écriture, nom de commerçant ou montant n'est envoyé à un service en ligne.",
+    "reset_button": "Réinitialiser les données d'apprentissage …",
+    "reset_confirm_text": "{count} modèles appris seront supprimés. Les écritures, budgets, catégories, étiquettes et objectifs d'épargne restent inchangés. Cette action est irréversible.",
+    "reset_confirm_title": "Réinitialiser les données d'apprentissage ?",
+    "reset_done_text": "{count} modèles et {examples} exemples d'apprentissage ont été supprimés. L'IA d'import repart sans connaissance préalable.",
+    "reset_done_title": "Données d'apprentissage réinitialisées",
+    "reset_failed_text": "Les données d'apprentissage n'ont pas pu être supprimées. Rien n'a été modifié.",
+    "reset_failed_title": "Réinitialisation impossible",
+    "reset_lives_in_settings": "Réinitialisation : Paramètres › IA d'import locale",
+    "reset_tip": "Supprime tous les modèles appris. Les écritures, budgets, catégories, étiquettes et objectifs d'épargne restent inchangés.",
+    "security_encrypted": "Les données d'apprentissage se trouvent dans la base de données utilisateur chiffrée.",
+    "security_plain": "Les données d'apprentissage se trouvent dans la base de données utilisateur. Cette base n'est pas chiffrée.",
+    "security_quick": "Les données d'apprentissage se trouvent dans la base de données utilisateur chiffrée. En accès rapide sans mot de passe, la clé est toutefois lisible sur cet ordinateur - cela ne protège pas contre un accès physique à l'appareil.",
+    "security_secret": "Les données d'apprentissage se trouvent dans la base de données utilisateur chiffrée. La clé est protégée par votre mot de passe ou votre code PIN.",
+    "use_ai": "Utiliser la catégorisation par IA",
+    "use_ai_tip": "L'IA locale propose des catégories lors d'un import bancaire. Si elle est désactivée, les catégories restent vides ; ce qui a déjà été appris est conservé."
+  },
   "auto": {
     "main": {
       "337_value_0_value_1_value_2_08554ed9": "{value_0} — {value_1} {value_2}",

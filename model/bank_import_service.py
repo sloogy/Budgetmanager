@@ -364,8 +364,14 @@ class BankImportService:
         items: list[BankImportItem],
         *,
         document_digest: str,
+        learn: bool = True,
     ) -> BankImportResult:
-        """Importiert bestätigte Zeilen atomar und lernt im selben Commit."""
+        """Importiert bestätigte Zeilen atomar und lernt im selben Commit.
+
+        ``learn=False`` bucht wie sonst, legt aber kein neues KI-Wissen an.
+        Bereits Gelerntes bleibt dabei unangetastet - das Lernen wird
+        ausgesetzt, nicht rückgängig gemacht.
+        """
         validated: list[tuple[BankImportItem, float, list[int], str]] = []
         skipped = 0
         for item in items:
@@ -395,14 +401,15 @@ class BankImportService:
                     tx=item.transaction,
                     document_digest=document_digest,
                 )
-                self.ai.learn(
-                    typ=item.typ,
-                    category=item.category,
-                    description=item.transaction.description,
-                    counterparty=item.transaction.counterparty,
-                    tags=item.tags,
-                    commit=False,
-                )
+                if learn:
+                    self.ai.learn(
+                        typ=item.typ,
+                        category=item.category,
+                        description=item.transaction.description,
+                        counterparty=item.transaction.counterparty,
+                        tags=item.tags,
+                        commit=False,
+                    )
                 tracking_ids.append(tracking_id)
 
         self._record_undo_group(tracking_ids)

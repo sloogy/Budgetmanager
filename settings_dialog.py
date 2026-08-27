@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sqlite3
 from pathlib import Path
 
 from PySide6.QtCore import QSignalBlocker, Qt, QTimer
@@ -42,6 +43,7 @@ from model.shortcuts_config import (
     shortcut_display_name,
 )
 from theme_manager import ThemeManager
+from utils.accessibility import configure_dialog_tab_order
 
 # i18n
 from utils.i18n import available_languages, tr, trf
@@ -68,9 +70,21 @@ class SettingsDialog(QDialog):
         app_version: str | None = None,
         encrypted_mode: bool = False,
         encrypted_session=None,
+        conn=None,
+        security_mode: str = "",
     ):
         super().__init__(parent)
         self.settings = settings
+        # Die Seite "Lokale Import-KI" liest den Lernbestand und setzt ihn auf
+        # Wunsch zurueck; beides braucht die geoeffnete Benutzer-Datenbank.
+        # Wird keine uebergeben, holt sie sich der Dialog vom Hauptfenster -
+        # so bleiben die bestehenden Aufrufer unveraendert gueltig.
+        self.conn = conn if conn is not None else getattr(parent, "conn", None)
+        # Sicherheitsstufe des angemeldeten Kontos (quick|pin|password). Sie
+        # wird nur angezeigt, nie geaendert - und ehrlich: Der Quick-Modus
+        # bekommt keinen Schutzversprechen-Text, das er nicht einloest
+        # (Architekturregel 1.6).
+        self.security_mode = str(security_mode or "").strip().lower()
         if app_version:
             self.app_version = app_version
         else:
@@ -113,6 +127,7 @@ class SettingsDialog(QDialog):
             [
                 tr("settings.general"),
                 tr("settings.behavior"),
+                tr("ai_settings.group"),
                 tr("settings.appearance"),
                 tr("dlg.shortcuts"),
                 tr("settings.account_data"),
@@ -128,6 +143,7 @@ class SettingsDialog(QDialog):
         # Seiten erstellen
         self.page_general = self._build_page_general()
         self.page_behavior = self._build_page_behavior()
+        self.page_ai = self._build_page_ai()
         self.page_appearance = self._build_page_appearance()
         self.page_shortcuts = self._build_page_shortcuts()
         self.page_database = self._build_page_database()
@@ -136,6 +152,7 @@ class SettingsDialog(QDialog):
         for p in [
             self.page_general,
             self.page_behavior,
+            self.page_ai,
             self.page_appearance,
             self.page_shortcuts,
             self.page_database,
@@ -177,6 +194,12 @@ class SettingsDialog(QDialog):
 
         # Hell/Dunkel = Filter für Profil-Dropdown
         self.cmb_theme.currentTextChanged.connect(self._on_mode_changed)
+
+        # Mit dem Reset-Knopf der KI-Seite gilt dieser Dialog als komplex
+        # (fuenf oder mehr Schaltflaechen). Ohne diese Zeile haette er als
+        # einziger keine deterministische Tastaturreihenfolge - die
+        # Usability-Gates pruefen das seit v3.0.6.
+        configure_dialog_tab_order(self)
 
     # ---------------------------------------------------------------------
     # Seitenbau
@@ -500,6 +523,130 @@ class SettingsDialog(QDialog):
         except Exception as exc:
             logger.exception("Soft-0-Budget-Hilfe konnte nicht geöffnet werden")
             show_warning(self, tr("msg.error"), str(exc))
+
+    # ── Lokale Import-KI ──────────────────────────────────────────────────
+    def _build_page_ai(self) -> QWidget:
+        """Ein Ort fuer alles, was die lokale Import-KI betrifft.
+
+        Bis hierher waren die KI-Schalter ueber den Importdialog verstreut und
+        das Zuruecksetzen gab es gar nicht. Der Bereich beantwortet vier
+        Fragen an einer Stelle: Raet sie? Lernt sie? Wie viel weiss sie? Und
+        wo liegt dieses Wissen?
+        """
+        w = QWidget()
+        lay = QVBoxLayout(w)
+        lay.addWidget(self._title(tr("ai_settings.group")))
+
+        gb_switches = QGroupBox(tr("ai_settings.group_switches"))
+        vb = QVBoxLayout(gb_switches)
+        self.cb_bank_import_ai = QCheckBox(tr("ai_settings.use_ai"))
+        self.cb_bank_import_ai.setToolTip(tr("ai_settings.use_ai_tip"))
+        self.cb_bank_import_ai_learning = QCheckBox(
+            tr("ai_settings.learn_from_corrections")
+        )
+        self.cb_bank_import_ai_learning.setToolTip(
+            tr("ai_settings.learn_from_corrections_tip")
+        )
+        vb.addWidget(self.cb_bank_import_ai)
+        vb.addWidget(self.cb_bank_import_ai_learning)
+        lay.addWidget(gb_switches)
+
+        gb_state = QGroupBox(tr("ai_settings.group_state"))
+        vs = QVBoxLayout(gb_state)
+        self.lbl_ai_patterns = QLabel("")
+        self.lbl_ai_security = QLabel("")
+        self.lbl_ai_security.setWordWrap(True)
+        for label in (self.lbl_ai_patterns, self.lbl_ai_security):
+            vs.addWidget(label)
+        reset_row = QHBoxLayout()
+        self.btn_ai_reset = QPushButton(tr("ai_settings.reset_button"))
+        self.btn_ai_reset.setToolTip(tr("ai_settings.reset_tip"))
+        self.btn_ai_reset.clicked.connect(self._reset_ai_learning_data)
+        reset_row.addWidget(self.btn_ai_reset)
+        reset_row.addStretch(1)
+        vs.addLayout(reset_row)
+        lay.addWidget(gb_state)
+
+        gb_privacy = QGroupBox(tr("ai_settings.group_privacy"))
+        vp = QVBoxLayout(gb_privacy)
+        self.lbl_ai_privacy = QLabel(tr("ai_settings.privacy_note"))
+        self.lbl_ai_privacy.setWordWrap(True)
+        vp.addWidget(self.lbl_ai_privacy)
+        lay.addWidget(gb_privacy)
+
+        lay.addStretch(1)
+        return w
+
+    def _ai_learning_stats(self):
+        """Bestand des KI-Lernspeichers; ohne Datenbank ein leerer Bestand."""
+        from model.ai_learning_store import AILearningStats, learning_stats
+
+        if self.conn is None:
+            return AILearningStats()
+        return learning_stats(self.conn)
+
+    def _refresh_ai_status(self) -> None:
+        """Schreibt Musterzahl, Sicherheitslage und Knopfzustand neu."""
+        stats = self._ai_learning_stats()
+        self.lbl_ai_patterns.setText(
+            trf("ai_settings.learned_patterns", count=stats.learned_patterns)
+        )
+        self.lbl_ai_security.setText(self._ai_security_text())
+        # Nichts gelernt = nichts zurueckzusetzen. Ein Knopf, der nur eine
+        # Rueckfrage oeffnet und dann null Zeilen loescht, macht ratlos.
+        self.btn_ai_reset.setEnabled(self.conn is not None and not stats.is_empty)
+
+    def _ai_security_text(self) -> str:
+        """Sagt, wo die KI-Daten liegen - und was das wirklich schuetzt.
+
+        Der Quick-Modus verschluesselt die Datenbank zwar, legt den Schluessel
+        aber im Klartext daneben. "Maximal geschuetzt" waere hier eine
+        Unwahrheit (Architekturregel 1.6), deshalb steht sie nicht da.
+        """
+        if not self.encrypted_mode:
+            return tr("ai_settings.security_plain")
+        if self.security_mode == "quick":
+            return tr("ai_settings.security_quick")
+        if self.security_mode in ("pin", "password"):
+            return tr("ai_settings.security_secret")
+        return tr("ai_settings.security_encrypted")
+
+    def _reset_ai_learning_data(self) -> None:
+        """Loescht den Lernstand der KI - und ausschliesslich diesen."""
+        from model.ai_learning_store import reset_learning_data
+
+        if self.conn is None:
+            return
+        stats = self._ai_learning_stats()
+        answer = QMessageBox.question(
+            self,
+            tr("ai_settings.reset_confirm_title"),
+            trf("ai_settings.reset_confirm_text", count=stats.learned_patterns),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+        if answer != QMessageBox.Yes:
+            return
+        try:
+            geloescht = reset_learning_data(self.conn)
+        except sqlite3.Error as fehler:
+            logger.error("KI-Lerndaten konnten nicht geloescht werden: %s", fehler)
+            show_warning(
+                self,
+                tr("ai_settings.reset_failed_title"),
+                tr("ai_settings.reset_failed_text"),
+            )
+            return
+        self._refresh_ai_status()
+        show_info(
+            self,
+            tr("ai_settings.reset_done_title"),
+            trf(
+                "ai_settings.reset_done_text",
+                count=geloescht.learned_patterns,
+                examples=geloescht.feedback_examples,
+            ),
+        )
 
     def _build_page_appearance(self) -> QWidget:
         w = QWidget()
@@ -853,6 +1000,15 @@ class SettingsDialog(QDialog):
             saved_year = _date.today().year
         self.sb_carryover_start_year.setValue(saved_year)
 
+        # Lokale Import-KI
+        self.cb_bank_import_ai.setChecked(
+            bool(self.settings.get("bank_import_ai_enabled", True))
+        )
+        self.cb_bank_import_ai_learning.setChecked(
+            bool(self.settings.get("bank_import_ai_learning_enabled", True))
+        )
+        self._refresh_ai_status()
+
         # Zusätzliche Warnungen (neue Keys)
         self.cb_warn_delete.setChecked(bool(self.settings.get("warn_delete", True)))
         self.cb_warn_budget_overrun.setChecked(
@@ -970,6 +1126,12 @@ class SettingsDialog(QDialog):
             or self.cmb_language.currentText(),
             "currency": self.cmb_currency.currentData() or "CHF",
             "number_format": self.cmb_number_format.currentData() or "swiss",
+            # Lokale Import-KI. Der Reset steht bewusst nicht hier: Er wirkt
+            # sofort auf die Datenbank und nicht erst beim Speichern.
+            "bank_import_ai_enabled": self.cb_bank_import_ai.isChecked(),
+            "bank_import_ai_learning_enabled": (
+                self.cb_bank_import_ai_learning.isChecked()
+            ),
             "warn_delete": self.cb_warn_delete.isChecked(),
             "warn_budget_overrun": self.cb_warn_budget_overrun.isChecked(),
             "table_density": {

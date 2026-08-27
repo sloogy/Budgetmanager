@@ -81,6 +81,31 @@
     "reset_desc": "Reset the database (fully or partially), statistics and cleanup.",
     "unknown_user": "—"
   },
+  "ai_settings": {
+    "group": "Local import AI",
+    "group_privacy": "Privacy",
+    "group_state": "Learning state",
+    "group_switches": "Usage",
+    "learn_from_corrections": "Learn from my corrections",
+    "learn_from_corrections_tip": "Confirmed categories are stored as patterns. With learning off, importing still works, but nothing new is learned.",
+    "learned_patterns": "Learned patterns: {count}",
+    "privacy_note": "Everything stays on this computer. The import AI runs locally; no booking texts, merchant names or amounts are sent to an online service.",
+    "reset_button": "Reset AI learning data …",
+    "reset_confirm_text": "{count} learned patterns will be deleted. Bookings, budgets, categories, tags and savings goals stay untouched. This cannot be undone.",
+    "reset_confirm_title": "Reset AI learning data?",
+    "reset_done_text": "{count} patterns and {examples} learning examples were deleted. The import AI starts over without prior knowledge.",
+    "reset_done_title": "AI learning data reset",
+    "reset_failed_text": "The AI learning data could not be deleted. Nothing was changed.",
+    "reset_failed_title": "Reset not possible",
+    "reset_lives_in_settings": "Reset: Settings › Local import AI",
+    "reset_tip": "Deletes every learned pattern. Bookings, budgets, categories, tags and savings goals stay untouched.",
+    "security_encrypted": "The learning data lives in the encrypted user database.",
+    "security_plain": "The learning data lives in the user database. That database is not encrypted.",
+    "security_quick": "The learning data lives in the encrypted user database. In quick access without a password the key is stored readable on this computer - that is no protection against someone using the device.",
+    "security_secret": "The learning data lives in the encrypted user database. The key is protected by your password or PIN.",
+    "use_ai": "Use AI categorisation",
+    "use_ai_tip": "The local AI suggests categories during a bank import. With it off the categories stay empty; what was already learned is kept."
+  },
   "auto": {
     "main": {
       "337_value_0_value_1_value_2_08554ed9": "{value_0} — {value_1} {value_2}",

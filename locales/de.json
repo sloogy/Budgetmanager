@@ -81,6 +81,31 @@
     "reset_desc": "Datenbank zurücksetzen (ganz oder teilweise), Statistik und Bereinigung.",
     "unknown_user": "—"
   },
+  "ai_settings": {
+    "group": "Lokale Import-KI",
+    "group_privacy": "Datenschutz",
+    "group_state": "Lernstand",
+    "group_switches": "Verwendung",
+    "learn_from_corrections": "Aus meinen Korrekturen lernen",
+    "learn_from_corrections_tip": "Bestätigte Kategorien werden als Muster gespeichert. Ist das Lernen aus, wird weiterhin importiert, aber nichts Neues gelernt.",
+    "learned_patterns": "Anzahl gelernter Muster: {count}",
+    "privacy_note": "Alles bleibt auf diesem Rechner. Die Import-KI rechnet lokal; es werden keine Buchungstexte, Händlernamen oder Beträge an einen Online-Dienst gesendet.",
+    "reset_button": "KI-Lerndaten zurücksetzen …",
+    "reset_confirm_text": "{count} gelernte Muster werden gelöscht. Buchungen, Budgets, Kategorien, Tags und Sparziele bleiben unverändert. Das lässt sich nicht rückgängig machen.",
+    "reset_confirm_title": "KI-Lerndaten zurücksetzen?",
+    "reset_done_text": "{count} Muster und {examples} Lernbeispiele wurden gelöscht. Die Import-KI beginnt wieder ohne Vorwissen.",
+    "reset_done_title": "KI-Lerndaten zurückgesetzt",
+    "reset_failed_text": "Die KI-Lerndaten konnten nicht gelöscht werden. Es wurde nichts verändert.",
+    "reset_failed_title": "Zurücksetzen nicht möglich",
+    "reset_lives_in_settings": "Zurücksetzen: Einstellungen › Lokale Import-KI",
+    "reset_tip": "Löscht alle gelernten Muster. Buchungen, Budgets, Kategorien, Tags und Sparziele bleiben unverändert.",
+    "security_encrypted": "Die Lerndaten liegen in der verschlüsselten Benutzer-Datenbank.",
+    "security_plain": "Die Lerndaten liegen in der Benutzer-Datenbank. Diese Datenbank ist nicht verschlüsselt.",
+    "security_quick": "Die Lerndaten liegen in der verschlüsselten Benutzer-Datenbank. Im Schnellzugang ohne Passwort liegt der Schlüssel allerdings lesbar auf diesem Rechner - gegen fremden Zugriff auf das Gerät schützt das nicht.",
+    "security_secret": "Die Lerndaten liegen in der verschlüsselten Benutzer-Datenbank. Der Schlüssel ist durch dein Passwort bzw. deine PIN geschützt.",
+    "use_ai": "KI-Kategorisierung verwenden",
+    "use_ai_tip": "Die lokale KI schlägt beim Bankimport Kategorien vor. Ist sie aus, bleiben die Kategorien leer; bereits Gelerntes bleibt erhalten."
+  },
   "auto": {
     "main": {
       "337_value_0_value_1_value_2_08554ed9": "{value_0} — {value_1} {value_2}",

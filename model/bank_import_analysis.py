@@ -310,6 +310,10 @@ class AnalysisRequest:
     new_paths: tuple[str, ...] = ()
     currency: str = "CHF"
     previous_states: Mapping[StateKey, ReviewState] = field(default_factory=dict)
+    #: Darf die lokale KI raten? Ist der Schalter aus, bleiben die
+    #: Kategoriespalten leer und jede Zeile ist ein offener Fall. Der
+    #: gelernte Bestand wird dabei nicht angeruehrt - nur nicht befragt.
+    ai_enabled: bool = True
     #: Meldung fuer eine inhaltsgleich schon geladene Datei. Sie wird vom
     #: Aufrufer uebersetzt hereingereicht - dieses Modul kennt keine Sprache
     #: und darf ``utils.i18n`` nicht aus einem Worker-Thread anfassen.
@@ -589,8 +593,13 @@ def _initial_state(
             ),
         )
     if is_twint_credit(tx):
+        # ``classification`` ist keine Vorhersage: Der Marker haengt an genau
+        # dieser Buchung (external_id) und haelt fest, was der Benutzer fuer
+        # sie entschieden hat. Er bleibt darum auch bei abgeschalteter KI
+        # gueltig - anders als ``suggest_category``, das ueber einen
+        # Fingerprint auf fremde Zeilen verallgemeinert.
         preferred = snapshot.classification(tx, digest, marker_kind="twint_credit")
-        if not all(preferred):
+        if not all(preferred) and request.ai_enabled:
             preferred = snapshot.suggest_category(tx)
         return ReviewState(
             use=not learned and all(preferred),
@@ -604,7 +613,7 @@ def _initial_state(
         # Zeile wurde frueher bewusst auf "nur lernen, nicht buchen" gesetzt.
         # Sie bleibt ein Lernsignal und wird nicht erneut zum Import angeboten.
         preferred = snapshot.classification(tx, digest, marker_kind="twint_ai")
-        if not all(preferred):
+        if not all(preferred) and request.ai_enabled:
             preferred = snapshot.suggest_category(tx)
         return ReviewState(
             use=False,
@@ -615,6 +624,10 @@ def _initial_state(
             prediction_method="twint_memory" if all(preferred) else "",
         )
     typ = TYP_INCOME if tx.amount > 0 else TYP_EXPENSES
+    if not request.ai_enabled:
+        # KI aus: keine Vorhersage, keine erfundene Zuversicht. Die Zeile
+        # bleibt ein offener Fall und wartet auf eine Kategorie von Hand.
+        return ReviewState(use=True, typ=typ)
     prediction = snapshot.predict(
         typ=typ, description=tx.description, counterparty=tx.counterparty
     )
@@ -653,6 +666,12 @@ def _states(
             state.typ = previous.typ
             state.category_typ = previous.category_typ
             state.category = previous.category
+            # Herkunft und Zuversicht gehoeren zur uebernommenen Entscheidung.
+            # Ohne sie sah eine von Hand gesetzte Kategorie nach jedem
+            # Neuaufbau wie ein Rateergebnis aus - und der KI-Schalter haette
+            # sie beim naechsten Umlegen als solches weggeworfen.
+            state.confidence = previous.confidence
+            state.prediction_method = previous.prediction_method
         states[index] = state
         sink.items(index + 1, total)
 

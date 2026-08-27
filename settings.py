@@ -198,6 +198,20 @@ class Settings:
             "tracking_budget_learning_auto_end": False,
             # Vorschläge benutzerfreundlich runden.
             "tracking_budget_learning_round_to": 10,
+            # Lokale Import-KI. Sie rechnet ausschliesslich auf diesem Rechner
+            # und in der bereits verschluesselten Benutzer-Datenbank; die
+            # Schalter entscheiden nur, ob lokal geraten und gelernt wird.
+            # Vorgabe an: die KI ist der Grund, warum ein Bankimport nicht
+            # Zeile fuer Zeile von Hand kategorisiert werden muss.
+            "bank_import_ai_enabled": True,
+            # Getrennt schaltbar: Wer die Vorschlaege nutzen, aber nichts
+            # Neues anlernen will, schaltet nur das Lernen ab. Bereits
+            # gelerntes Wissen bleibt dabei erhalten.
+            "bank_import_ai_learning_enabled": True,
+            # Finanz-Insights (Phase 3/4). Der Schluessel entsteht hier, damit
+            # die Engine spaeter nicht ohne Schalter ausgeliefert wird; bis
+            # zur FinanceInsightEngine hat er noch keinen Abnehmer.
+            "finance_insights_enabled": True,
             # Budgetwarnungen: automatisch aus Budget generieren wenn keine gespeicherten Regeln.
             # True = Nutzer sieht Warnungen ohne explizite Konfiguration (empfohlen).
             # False = Nur explizit angelegte Warnungen werden angezeigt.
@@ -412,6 +426,34 @@ class Settings:
     def recent_days(self, value: int):
         v = 30 if int(value) == 30 else 14
         self.set("recent_days", v)
+
+    # ── Lokale Import-KI ────────────────────────────────────────────────
+    @property
+    def bank_import_ai_enabled(self) -> bool:
+        """Darf die Import-KI Kategorien vorschlagen?"""
+        return bool(self.get("bank_import_ai_enabled", True))
+
+    @bank_import_ai_enabled.setter
+    def bank_import_ai_enabled(self, value: bool):
+        self.set("bank_import_ai_enabled", bool(value))
+
+    @property
+    def bank_import_ai_learning_enabled(self) -> bool:
+        """Darf die Import-KI aus bestaetigten Korrekturen dazulernen?"""
+        return bool(self.get("bank_import_ai_learning_enabled", True))
+
+    @bank_import_ai_learning_enabled.setter
+    def bank_import_ai_learning_enabled(self, value: bool):
+        self.set("bank_import_ai_learning_enabled", bool(value))
+
+    @property
+    def finance_insights_enabled(self) -> bool:
+        """Darf der Finanz-Coach aus den eigenen Daten Hinweise ableiten?"""
+        return bool(self.get("finance_insights_enabled", True))
+
+    @finance_insights_enabled.setter
+    def finance_insights_enabled(self, value: bool):
+        self.set("finance_insights_enabled", bool(value))
 
     @property
     def data_directory(self) -> str:

@@ -191,8 +191,15 @@ class BankImportMarkerStore:
         document_digest: str,
         *,
         marker_kind: str = "twint_credit",
+        learn: bool = True,
     ) -> int:
-        """Markiert Zeilen und lernt die gewählte echte Kategorie ohne Tracking."""
+        """Markiert Zeilen und lernt die gewählte echte Kategorie ohne Tracking.
+
+        ``learn=False`` schreibt den Marker weiterhin - er gehört zum
+        Importzustand und verhindert, dass dieselbe Zeile beim nächsten Lauf
+        erneut angeboten wird - füllt aber ``ai_twint_memory`` nicht auf.
+        Verallgemeinert wird also nichts mehr, festgehalten schon.
+        """
         normalized: list[tuple[BankTransaction, str, str]] = []
         for tx, category_typ, category in classifications:
             typ, name = self._validate_category(category_typ, category)
@@ -236,7 +243,7 @@ class BankImportMarkerStore:
                         now,
                     ),
                 )
-                fingerprint = _ai_fingerprint(tx)
+                fingerprint = _ai_fingerprint(tx) if learn else ""
                 if fingerprint:
                     memory = self.conn.execute(
                         "SELECT category_typ, category, confirmations "

@@ -260,7 +260,7 @@ def _fortschritt_mitschreiben(dialog) -> list[tuple]:
 
     echt_import = dialog.service.import_items
 
-    def beobachtet(items, *, document_digest):
+    def beobachtet(items, *, document_digest, **rest):
         bereich = dialog.progress_area
         protokoll.append(
             (
@@ -271,7 +271,7 @@ def _fortschritt_mitschreiben(dialog) -> list[tuple]:
                 bereich.btn_cancel.isVisible() and bereich.btn_cancel.isEnabled(),
             )
         )
-        return echt_import(items, document_digest=document_digest)
+        return echt_import(items, document_digest=document_digest, **rest)
 
     dialog.service.import_items = beobachtet
     return protokoll
@@ -339,9 +339,9 @@ def test_waehrend_des_imports_ist_die_pruefliste_gesperrt(zwei_dateien):
     beobachtet: list[tuple[bool, bool]] = []
     echt = dialog.service.import_items
 
-    def merken(items, *, document_digest):
+    def merken(items, *, document_digest, **rest):
         beobachtet.append((dialog.table.isEnabled(), dialog.btn_import.isEnabled()))
-        return echt(items, document_digest=document_digest)
+        return echt(items, document_digest=document_digest, **rest)
 
     dialog.service.import_items = merken
     dialog.import_selected()
@@ -366,11 +366,11 @@ def test_abbruch_mitten_im_block_laesst_den_block_zu_ende_laufen(zwei_dateien, v
     echt = dialog.service.import_items
     gelaufen: list[str] = []
 
-    def mit_klick(items, *, document_digest):
+    def mit_klick(items, *, document_digest, **rest):
         gelaufen.append(document_digest)
         # Der echte Knopf, der echte Signalweg - kein direkt gesetztes Flag.
         dialog.progress_area.btn_cancel.click()
-        return echt(items, document_digest=document_digest)
+        return echt(items, document_digest=document_digest, **rest)
 
     dialog.service.import_items = mit_klick
     dialog.import_selected()
@@ -387,9 +387,9 @@ def test_nach_einem_abbruch_holt_der_naechste_lauf_den_rest_nach(zwei_dateien, v
     dialog = zwei_dateien()
     echt = dialog.service.import_items
 
-    def mit_klick(items, *, document_digest):
+    def mit_klick(items, *, document_digest, **rest):
         dialog.progress_area.btn_cancel.click()
-        return echt(items, document_digest=document_digest)
+        return echt(items, document_digest=document_digest, **rest)
 
     dialog.service.import_items = mit_klick
     dialog.import_selected()
@@ -413,10 +413,10 @@ def test_das_fensterkreuz_reisst_keinen_laufenden_block_auf(zwei_dateien, v4_con
     echt = dialog.service.import_items
     gelaufen: list[str] = []
 
-    def mit_schliessen(items, *, document_digest):
+    def mit_schliessen(items, *, document_digest, **rest):
         gelaufen.append(document_digest)
         dialog.reject()  # laeuft ueber done()
-        return echt(items, document_digest=document_digest)
+        return echt(items, document_digest=document_digest, **rest)
 
     dialog.service.import_items = mit_schliessen
     dialog.import_selected()
@@ -432,9 +432,9 @@ def test_ein_zweiter_importklick_waehrend_des_laufs_prallt_ab(zwei_dateien, v4_c
     dialog = zwei_dateien()
     echt = dialog.service.import_items
 
-    def mit_zweitklick(items, *, document_digest):
+    def mit_zweitklick(items, *, document_digest, **rest):
         dialog.import_selected()
-        return echt(items, document_digest=document_digest)
+        return echt(items, document_digest=document_digest, **rest)
 
     dialog.service.import_items = mit_zweitklick
     dialog.import_selected()

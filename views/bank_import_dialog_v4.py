@@ -88,6 +88,52 @@ _ANALYSIS_STOP_WAIT_MS = 8000
 # nach dem Schliessen, wenn niemand mehr hinsieht.
 _PARKED_THREADS: set[QThread] = set()
 
+# Vermerke in ``ReviewState.prediction_method``, die von einer Person stammen
+# und nicht von der KI. Sie ueberleben deshalb das Umlegen des KI-Schalters -
+# alles andere waere weggeworfene Handarbeit.
+_HANDARBEIT = frozenset({"manual", "manual_bulk"})
+
+
+class _KISchalterOhneDatei:
+    """Notbehelf, wenn kein Einstellungsobjekt erreichbar ist.
+
+    Der Dialog holt seine Schalter normalerweise vom Hauptfenster. In
+    Testaufbauten und in den Audit-Werkzeugen wird er aber ohne Elternfenster
+    erzeugt. Ein ``Settings()`` an dieser Stelle wuerde in die echte
+    Einstellungsdatei des Benutzers schreiben - ein Testlauf duerfte niemals
+    die Schalter des Anwenders umlegen. Dieser Stand-in verhaelt sich wie die
+    Vorgabe (KI an, Lernen an) und vergisst alles beim Schliessen.
+    """
+
+    def __init__(self) -> None:
+        self._werte: dict[str, object] = {}
+
+    def get(self, key: str, default: object = None) -> object:
+        return self._werte.get(key, default)
+
+    def set(self, key: str, value: object) -> None:
+        self._werte[key] = value
+
+
+def _einstellungen_finden(widget: object) -> object:
+    """Sucht das Einstellungsobjekt in der Elternkette des Dialogs.
+
+    Dasselbe Muster wie ``views/import_progress_area.py::_theme_anchor``: In
+    einem Dialog ist ``window()`` der Dialog selbst, das Hauptfenster steht
+    erst weiter oben. Wer nur eine Ebene hoch schaut, findet nichts und
+    bekaeme stillschweigend die Vorgabewerte.
+    """
+    knoten = widget
+    tiefe = 0
+    while knoten is not None and tiefe < 12:
+        einstellungen = getattr(knoten, "settings", None)
+        if einstellungen is not None and hasattr(einstellungen, "get"):
+            return einstellungen
+        eltern = getattr(knoten, "parent", None)
+        knoten = eltern() if callable(eltern) else eltern
+        tiefe += 1
+    return _KISchalterOhneDatei()
+
 
 def _park_until_finished(thread: QThread) -> None:
     """Haelt einen noch laufenden Thread am Leben, bis er wirklich endet."""
@@ -314,9 +360,15 @@ class BankImportDialog(QDialog):
     COL_SOURCE = 5
     COL_STATUS = 6
 
-    def __init__(self, conn: sqlite3.Connection, parent=None):
+    def __init__(self, conn: sqlite3.Connection, parent=None, settings=None):
         super().__init__(parent)
         self.conn = conn
+        # Die beiden KI-Schalter gehoeren den Einstellungen, nicht diesem
+        # Dialog. Hier steht nur der Schnellzugriff darauf; das Zuruecksetzen
+        # der Lerndaten bleibt bewusst den Einstellungen vorbehalten.
+        self.settings = (
+            settings if settings is not None else _einstellungen_finden(self)
+        )
         # Kategorien liest die Analyse nur noch aus dem Snapshot; ``tags``
         # bleibt fuer den Tag-Auswahldialog, der auf dem GUI-Thread laeuft.
         self.tags = TagsModel(conn)
@@ -363,6 +415,42 @@ class BankImportDialog(QDialog):
         self.setMinimumSize(980, 620)
         self._build_ui()
         self._refresh_ui()
+
+    # ── Lokale Import-KI ──────────────────────────────────────────
+    def ai_enabled(self) -> bool:
+        """Darf die KI in diesem Lauf Kategorien vorschlagen?"""
+        return bool(self.settings.get("bank_import_ai_enabled", True))
+
+    def ai_learning_enabled(self) -> bool:
+        """Darf dieser Import neues Wissen anlegen?"""
+        return bool(self.settings.get("bank_import_ai_learning_enabled", True))
+
+    def _forget_ai_predictions(self) -> None:
+        """Wirft geratene Zuordnungen weg, von Hand gesetzte bleiben.
+
+        Ohne das haette der Schalter beim Umlegen keine Wirkung: Ein
+        Neuaufbau der Pruefliste uebernimmt die bisherigen Entscheidungen,
+        und die geratene Kategorie stuende nach dem Ausschalten unveraendert
+        da - bloss ohne Aussicht, je aktualisiert zu werden. Umgekehrt haette
+        eine wieder eingeschaltete KI keine Gelegenheit, die leeren Zeilen zu
+        fuellen.
+        """
+        for index in list(self.states):
+            if self.states[index].prediction_method not in _HANDARBEIT:
+                del self.states[index]
+
+    def _ai_enabled_changed(self, checked: bool) -> None:
+        self.settings.set("bank_import_ai_enabled", bool(checked))
+        self._forget_ai_predictions()
+        if self.sources:
+            self._rebuild_from_sources()
+        else:
+            self._refresh_ui()
+
+    def _ai_learning_changed(self, checked: bool) -> None:
+        # Lernen wirkt erst beim Schreiben - die Pruefliste bleibt, wie sie
+        # ist. Ein Neuaufbau waere hier reine Unruhe.
+        self.settings.set("bank_import_ai_learning_enabled", bool(checked))
 
     def _capture_snapshot(self) -> BankImportAnalysisSnapshot:
         """Friert die Analysedaten auf dem besitzenden Thread ein."""
@@ -412,6 +500,28 @@ class BankImportDialog(QDialog):
         self.btn_options.setText("⋯")
         self.btn_options.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
         options = QMenu(self.btn_options)
+        # Schnellzugriff auf die beiden KI-Schalter. Bewusst nur diese zwei:
+        # Das Zuruecksetzen der Lerndaten ist unwiderruflich und gehoert
+        # deshalb an eine Stelle, an der man es sucht, nicht an eine, an der
+        # man mitten im Import darueber stolpert.
+        self.act_ai_enabled = QAction(tr("ai_settings.use_ai"), options)
+        self.act_ai_enabled.setCheckable(True)
+        self.act_ai_enabled.setChecked(self.ai_enabled())
+        self.act_ai_enabled.toggled.connect(self._ai_enabled_changed)
+        options.addAction(self.act_ai_enabled)
+        self.act_ai_learning = QAction(
+            tr("ai_settings.learn_from_corrections"), options
+        )
+        self.act_ai_learning.setCheckable(True)
+        self.act_ai_learning.setChecked(self.ai_learning_enabled())
+        self.act_ai_learning.toggled.connect(self._ai_learning_changed)
+        options.addAction(self.act_ai_learning)
+        self.act_ai_reset_hint = QAction(
+            tr("ai_settings.reset_lives_in_settings"), options
+        )
+        self.act_ai_reset_hint.setEnabled(False)
+        options.addAction(self.act_ai_reset_hint)
+        options.addSeparator()
         self.act_net_twint = QAction(tr("bank_import_v4.net_twint"), options)
         self.act_net_twint.setCheckable(True)
         self.act_net_twint.setChecked(False)
@@ -650,6 +760,7 @@ class BankImportDialog(QDialog):
             currency=get_currency().upper(),
             previous_states=self._previous_states(),
             same_file_message=tr("bank_import_v4.same_file_already_loaded"),
+            ai_enabled=self.ai_enabled(),
         )
 
     def _start_analysis(self, *, new_paths: tuple[str, ...] = ()) -> None:
@@ -1727,9 +1838,10 @@ class BankImportDialog(QDialog):
         outcome: _ImportOutcome,
     ) -> None:
         """Genau eine Transaktion - hier wird nichts aufgeteilt."""
+        learn = self.ai_learning_enabled()
         if batch.kind == _BATCH_PLAN:
             result = self.service.import_items(
-                plan_groups[batch.digest], document_digest=batch.digest
+                plan_groups[batch.digest], document_digest=batch.digest, learn=learn
             )
             outcome.imported += result.imported
             outcome.skipped += result.skipped_duplicates
@@ -1739,6 +1851,7 @@ class BankImportDialog(QDialog):
             gruppe[batch.digest],
             batch.digest,
             marker_kind=batch.kind,
+            learn=learn,
         )
 
     def _show_batch_running(self, batch: _ImportBatch) -> None:

@@ -30,6 +30,8 @@ def show_settings(self) -> None:
         app_version=app_version_label(),
         encrypted_mode=is_encrypted,
         encrypted_session=getattr(self, "_encrypted_session", None),
+        conn=getattr(self, "conn", None),
+        security_mode=getattr(getattr(self, "_active_user", None), "security", ""),
     )
 
     if dialog.exec() == QDialog.Accepted:
@@ -191,6 +193,17 @@ def show_settings(self) -> None:
                 self._retranslate_ui()
         except ImportError as e:
             logger.debug("Einstellungs-Module konnten nicht aktualisiert werden: %s", e)
+
+        # Lokale Import-KI. Beide Schalter gelten ab dem naechsten Import;
+        # ein bereits offener Importdialog liest sie bei jedem Lauf neu.
+        self.settings.set(
+            "bank_import_ai_enabled",
+            bool(new_settings.get("bank_import_ai_enabled", True)),
+        )
+        self.settings.set(
+            "bank_import_ai_learning_enabled",
+            bool(new_settings.get("bank_import_ai_learning_enabled", True)),
+        )
 
         self.settings.set("warn_delete", new_settings.get("warn_delete", True))
         self.settings.set(
