@@ -1374,6 +1374,11 @@
     "error_refresh": "L'affichage n'a pas pu être chargé complètement : {error}",
     "error_save_location": "L'emplacement de stockage n'a pas pu être enregistré : {error}"
   },
+  "import_progress": {
+    "cancel_tip": "Interrompre l'étape en cours",
+    "status_items": "{activity} · {current} / {total} · {percent} %",
+    "status_percent": "{activity} · {percent} %"
+  },
   "income13": {
     "amount": "Montant :",
     "apply": "Appliquer le 13e salaire",

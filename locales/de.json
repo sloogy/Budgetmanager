@@ -1374,6 +1374,11 @@
     "error_refresh": "Anzeige konnte nicht vollständig geladen werden: {error}",
     "error_save_location": "Speicherort konnte nicht gespeichert werden: {error}"
   },
+  "import_progress": {
+    "cancel_tip": "Laufenden Schritt abbrechen",
+    "status_items": "{activity} · {current} / {total} · {percent} %",
+    "status_percent": "{activity} · {percent} %"
+  },
   "income13": {
     "amount": "Betrag:",
     "apply": "13. Lohn eintragen",

@@ -1374,6 +1374,11 @@
     "error_refresh": "View could not be fully loaded: {error}",
     "error_save_location": "Storage location could not be saved: {error}"
   },
+  "import_progress": {
+    "cancel_tip": "Stop the running step",
+    "status_items": "{activity} · {current} / {total} · {percent} %",
+    "status_percent": "{activity} · {percent} %"
+  },
   "income13": {
     "amount": "Amount:",
     "apply": "Apply 13th salary",

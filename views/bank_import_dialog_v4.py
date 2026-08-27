@@ -72,6 +72,7 @@ from utils.accessibility import configure_dialog_tab_order
 from utils.i18n import tr
 from utils.money import get_currency
 from utils.notifications import show_info, show_warning
+from views.import_progress_area import ImportProgressArea
 
 _CATEGORY_SEPARATOR = "\x1f"
 _READY_CONFIDENCE = 0.80
@@ -457,6 +458,12 @@ class BankImportDialog(QDialog):
         self.table.itemClicked.connect(self._item_clicked)
         self.table.itemChanged.connect(self._item_changed)
         root.addWidget(self.table, 1)
+
+        # Der Fortschrittsbereich sitzt zwischen Tabelle und Aktionsleiste:
+        # unten im Fenster, mittig, und solange nichts laeuft vollstaendig
+        # ausgeblendet. Bedient wird er ab P1.3 vom Analyse-Worker.
+        self.progress_area = ImportProgressArea(self)
+        root.addWidget(self.progress_area)
 
         bottom = QHBoxLayout()
         self.lbl_summary = QLabel("")
