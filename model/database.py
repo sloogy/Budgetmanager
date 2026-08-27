@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import atexit
-import itertools
 import logging
 import sqlite3
 from contextlib import contextmanager
@@ -72,9 +71,6 @@ def checkpoint_wal(conn: sqlite3.Connection) -> bool:
     return not busy
 
 
-_savepoint_counter = itertools.count()
-
-
 @contextmanager
 def db_transaction(conn: sqlite3.Connection):
     """Context Manager für atomare Datenbank-Transaktionen.
@@ -96,8 +92,17 @@ def db_transaction(conn: sqlite3.Connection):
     die äußere Klammer vorzeitig zu schließen.
     """
     if conn.in_transaction:
-        name = f"db_tx_{next(_savepoint_counter)}"
-        conn.execute(f"SAVEPOINT {name}")
+        # Fester Name, kein Zaehler und kein f-String.
+        #
+        # SQLite fuehrt Savepoints als Stapel: Kommt derselbe Name mehrfach
+        # vor, wirken ROLLBACK TO und RELEASE auf den *juengsten* Eintrag.
+        # Genau das ist die Semantik, die verschachtelte Kontextmanager
+        # ohnehin haben - sie geben immer in umgekehrter Reihenfolge frei.
+        # Ein Zaehler brachte hier also keine Sicherheit, kostete aber drei
+        # zusammengesetzte SQL-Zeichenketten. Der Release-Audit
+        # (d1_sql_surface) beanstandet solche zu Recht: SQL, das aus einem
+        # Namen entsteht, ist von aussen nicht als harmlos zu erkennen.
+        conn.execute("SAVEPOINT db_tx")
         # try/finally statt except: Der Block soll auch bei GeneratorExit oder
         # KeyboardInterrupt zurueckgerollt werden, und der Ausnahmen-Ratchet
         # bekommt keinen weiteren breiten Handler.
@@ -107,8 +112,8 @@ def db_transaction(conn: sqlite3.Connection):
             erfolgreich = True
         finally:
             if not erfolgreich:
-                conn.execute(f"ROLLBACK TO {name}")
-            conn.execute(f"RELEASE {name}")
+                conn.execute("ROLLBACK TO db_tx")
+            conn.execute("RELEASE db_tx")
         return
     try:
         conn.execute("BEGIN")
