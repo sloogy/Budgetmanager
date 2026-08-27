@@ -428,7 +428,7 @@ GUI-Tests werden ohne PySide6 automatisch übersprungen. Headless läuft alles m
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "3.0.9"
+APP_VERSION = "3.1.0"
 APP_RELEASE_DATE = "27. August 2026"
 ```
 
