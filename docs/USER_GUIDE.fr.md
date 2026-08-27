@@ -1,6 +1,6 @@
-# BudgetManager 3.0.8 – Manuel utilisateur
+# BudgetManager 3.0.9 – Manuel utilisateur
 
-Ce manuel décrit les fonctions réellement disponibles dans la version 3.0.8. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
+Ce manuel décrit les fonctions réellement disponibles dans la version 3.0.9. BudgetManager conserve les données localement, ne crée aucune écriture sans validation et sépare **budget (prévision)** et **suivi (opérations réelles)**.
 
 ## Premier démarrage en quatre étapes
 

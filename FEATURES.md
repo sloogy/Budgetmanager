@@ -1,3 +1,7 @@
+## Neu in v3.0.9
+
+- Siehe VERSION_INFO.txt und CHANGELOG.md.
+
 ## Neu in v3.0.8
 
 - Bankimport: Buchungen, die auf „nur lernen, nicht buchen" gesetzt waren, werden nicht mehr erneut zum Import angeboten.
