@@ -16,7 +16,7 @@ APP_NAME = "Budgetmanager"
 APP_VERSION = "3.0.8"
 
 # Nur Anzeige (About-Dialog). Kannst du jederzeit anpassen.
-APP_RELEASE_DATE = "25. August 2026"
+APP_RELEASE_DATE = "27. August 2026"
 
 
 def app_window_title() -> str:

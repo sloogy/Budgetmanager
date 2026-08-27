@@ -429,7 +429,7 @@ GUI-Tests werden ohne PySide6 automatisch übersprungen. Headless läuft alles m
 
 ```python
 APP_VERSION = "3.0.8"
-APP_RELEASE_DATE = "25. August 2026"
+APP_RELEASE_DATE = "27. August 2026"
 ```
 
 Prüfen und synchronisieren:
