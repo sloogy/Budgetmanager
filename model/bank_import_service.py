@@ -13,6 +13,7 @@ from pathlib import Path
 
 from model.bank_import_ai import BankImportAI
 from model.bank_statement_reader import BankTransaction
+from model.crypto import suspend_after_commit_autosave
 from model.database import db_transaction
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 from model.undo_redo_model import UndoRedoModel
@@ -300,31 +301,46 @@ class BankImportService:
         undo = UndoRedoModel(self.conn)
         group_id = undo.new_group_id()
         try:
-            for index, tracking_id in enumerate(tracking_ids):
-                row = self.conn.execute(
-                    "SELECT * FROM tracking WHERE id=?",
-                    (tracking_id,),
-                ).fetchone()
-                if not row:
-                    continue
-                new_data = dict(row)
-                try:
-                    tag_rows = self.conn.execute(
-                        "SELECT tag_id FROM entry_tags "
-                        "WHERE entry_id=? ORDER BY tag_id",
+            # Ein Auto-Save fuer die ganze Gruppe statt einem je Buchung.
+            #
+            # Im verschluesselten Normalmodus - dem, in dem die Anwendung
+            # tatsaechlich laeuft - haengt ``EncryptedSession`` an jeden Commit
+            # eine vollstaendige Neuverschluesselung der ``.enc``-Datei. Diese
+            # Schleife committet je Buchung, also schrieb ein Import von 1000
+            # Buchungen die ganze Datei tausendfach neu: 44 Sekunden, in denen
+            # keine Ereignisschleife laeuft und Windows "Keine Rueckmeldung"
+            # anzeigt. Die Datenbank-Commits bleiben unveraendert - gebuendelt
+            # wird nur das Schreiben auf Platte, mit genau einem Save am Ende.
+            # Denselben Weg gehen alle anderen Massenschreibwege der Anwendung
+            # (``category_excel_io``, ``setup_assistant_dialog``, ``budget_tab``,
+            # ``savings_goals_model``); der Bankimport war der einzige, der ihn
+            # nicht ging.
+            with suspend_after_commit_autosave(self.conn):
+                for index, tracking_id in enumerate(tracking_ids):
+                    row = self.conn.execute(
+                        "SELECT * FROM tracking WHERE id=?",
                         (tracking_id,),
-                    ).fetchall()
-                    new_data["_tag_ids"] = [int(item[0]) for item in tag_rows]
-                except sqlite3.OperationalError:
-                    new_data["_tag_ids"] = []
-                undo.record_operation(
-                    "tracking",
-                    "INSERT",
-                    None,
-                    new_data,
-                    group_id=group_id,
-                    clear_redo=index == 0,
-                )
+                    ).fetchone()
+                    if not row:
+                        continue
+                    new_data = dict(row)
+                    try:
+                        tag_rows = self.conn.execute(
+                            "SELECT tag_id FROM entry_tags "
+                            "WHERE entry_id=? ORDER BY tag_id",
+                            (tracking_id,),
+                        ).fetchall()
+                        new_data["_tag_ids"] = [int(item[0]) for item in tag_rows]
+                    except sqlite3.OperationalError:
+                        new_data["_tag_ids"] = []
+                    undo.record_operation(
+                        "tracking",
+                        "INSERT",
+                        None,
+                        new_data,
+                        group_id=group_id,
+                        clear_redo=index == 0,
+                    )
         except (sqlite3.Error, TypeError, ValueError) as exc:
             logger.warning(
                 "Undo-Gruppe für Bankimport konnte nicht erstellt werden: %s",

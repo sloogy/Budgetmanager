@@ -103,6 +103,23 @@ class UndoRedoModel:
         gid = group_id or self.new_group_id()
         ts = datetime.now().isoformat(sep=" ", timespec="seconds")
 
+        # Wer die Klammer nicht geoeffnet hat, schliesst sie auch nicht.
+        #
+        # Laeuft hier bereits eine fremde Transaktion, gehoert die Buchfuehrung
+        # in genau diese Transaktion. Ein eigener Commit schloss sie vorzeitig:
+        # ``lifeplanner_import_service.apply_import`` klammert ``tracking.add``
+        # und den ``lifeplanner_import_state``-INSERT gemeinsam, und
+        # ``tracking.add`` landet ueber diese Methode mitten drin. Nach dem
+        # Commit von hier war die aeussere Klammer zu - scheiterte danach der
+        # Zustands-INSERT, blieb eine Buchung ohne Zustandszeile stehen, und
+        # der anschliessende ``ROLLBACK`` meldete statt der echten Ursache nur
+        # noch "cannot rollback - no transaction is active".
+        #
+        # Der Zeitpunkt der Pruefung ist wichtig: ``DELETE FROM redo_stack``
+        # weiter unten oeffnet selbst eine implizite Transaktion. Danach waere
+        # jede eigene Transaktion nicht mehr von einer fremden zu unterscheiden.
+        fremde_transaktion = bool(self.conn.in_transaction)
+
         if clear_redo:
             try:
                 self.conn.execute("DELETE FROM redo_stack")
@@ -155,7 +172,6 @@ class UndoRedoModel:
             f"INSERT INTO undo_stack({col_sql}) VALUES({placeholders})",  # nosec B608
             values,
         )
-        self.conn.commit()
 
         # Pruning: Älteste Gruppen entfernen wenn Stack > MAX_UNDO_ENTRIES.
         #
@@ -180,16 +196,28 @@ class UndoRedoModel:
         except Exception as e:
             logger.warning("undo_stack pruning fehlgeschlagen: %s", e)
         finally:
-            # Das Pruning ist DML. Ohne eigenen Commit laesst es eine implizite
+            # Genau ein Commit, und nur fuer die eigene Transaktion.
+            #
+            # Das Pruning ist DML. Ohne Commit laesst es eine implizite
             # Transaktion offen, die niemandem gehoert: ``conn.in_transaction``
             # bleibt True, und der naechste ``db_transaction`` haelt das fuer
             # eine aeussere Klammer und verzichtet auf eigenes BEGIN/COMMIT.
             # Genau so verlor ein Bankimport ab der zweiten Datei seine
             # Atomaritaet - ein Fehler mitten im Block rollte nichts zurueck.
-            try:
-                self.conn.commit()
-            except sqlite3.Error as exc:
-                logger.warning("Commit nach undo_stack-Pruning fehlgeschlagen: %s", exc)
+            #
+            # Der Commit steht deshalb hier statt zusaetzlich hinter dem INSERT:
+            # INSERT und Pruning sind ein Vorgang und brauchen eine Transaktion,
+            # nicht zwei. Im verschluesselten Modus haengt ``EncryptedSession``
+            # an jeden Commit einen Auto-Save der **ganzen** ``.enc``-Datei -
+            # zwei Commits je Buchung hiessen zwei komplette Neuverschluesselungen
+            # je importierter Zeile.
+            if not fremde_transaktion:
+                try:
+                    self.conn.commit()
+                except sqlite3.Error as exc:
+                    logger.warning(
+                        "Commit nach undo_stack-Pruning fehlgeschlagen: %s", exc
+                    )
 
     def undo(self) -> bool:
         """Undoes the last group. Returns True if something changed."""
