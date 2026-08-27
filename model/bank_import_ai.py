@@ -12,8 +12,11 @@ import re
 import sqlite3
 import unicodedata
 from collections import Counter, defaultdict
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from types import MappingProxyType
+from typing import Protocol
 
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 
@@ -32,6 +35,34 @@ class AIPrediction:
     method: str
     allocation_percent: float | None = None
     allocation_rule_tag: str = ""
+
+
+@dataclass(frozen=True)
+class MerchantMemoryEntry:
+    """Ein bestaetigter Haendlereintrag, bereits gegen die Stammdaten gefiltert."""
+
+    category: str
+    tags: tuple[str, ...]
+    confirmations: int
+
+
+@dataclass(frozen=True)
+class FeedbackExample:
+    """Ein aktives Lernbeispiel; Tags sind bereits auf echte Tags reduziert."""
+
+    fingerprint: str
+    category: str
+    tags: tuple[str, ...]
+    tokens: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class TagAllocationRule:
+    """Eine Kostenanteil-Regel aus ``ai_tag_rules``."""
+
+    tag_name: str
+    allocation_percent: float
+    priority: int
 
 
 @dataclass(frozen=True)
@@ -75,6 +106,255 @@ def _jaccard(left: set[str], right: set[str]) -> float:
     if not left or not right:
         return 0.0
     return len(left & right) / len(left | right)
+
+
+def nocase_key(value: str) -> str:
+    """Bildet SQLites ``COLLATE NOCASE`` nach - es faltet nur ``A``-``Z``.
+
+    Ein Snapshot muss dieselben Treffer liefern wie die SQL-Abfragen, aus denen
+    er gefuellt wurde. ``str.casefold`` faltet zu viel (etwa das griechische
+    Sigma) und wuerde Tags zusammenziehen, die SQLite getrennt haelt.
+    """
+    return "".join(
+        chr(ord(ch) + 32) if "A" <= ch <= "Z" else ch for ch in str(value or "")
+    )
+
+
+def validate_typ(typ: str) -> str:
+    value = str(typ or "").strip()
+    if value not in _ALLOWED_TYPES:
+        raise ValueError(f"Unbekannter BudgetManager-Typ: {value!r}")
+    return value
+
+
+def validate_tag_names(
+    tags: Sequence[str], known_tags: Mapping[str, str]
+) -> tuple[str, ...]:
+    """Ersetzt Tagnamen durch die Schreibweise der Stammdaten."""
+    valid: list[str] = []
+    for tag in tags:
+        raw = str(tag or "").strip()
+        if not raw:
+            continue
+        canonical = known_tags.get(nocase_key(raw))
+        if canonical is None:
+            raise ValueError(f"Tag {raw!r} existiert nicht im BudgetManager.")
+        if canonical not in valid:
+            valid.append(canonical)
+    return tuple(valid)
+
+
+def filter_known_tags(raw_json: str, known_tags: Mapping[str, str]) -> tuple[str, ...]:
+    """Liest eine gespeicherte Tagliste und wirft geloeschte Tags weg."""
+    try:
+        values = tuple(str(value) for value in json.loads(str(raw_json or "[]")))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return ()
+    return tuple(value for value in values if nocase_key(value) in known_tags)
+
+
+def decode_tokens(raw_json: str) -> tuple[str, ...]:
+    try:
+        return tuple(str(value) for value in json.loads(str(raw_json or "[]")))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return ()
+
+
+def resolve_allocation(
+    rules: Sequence[TagAllocationRule],
+    tags: Sequence[str],
+    *,
+    known_tags: Mapping[str, str],
+) -> tuple[float | None, str]:
+    """Bestimmt den Kostenanteil aus den Tag-Regeln - ohne Datenbankzugriff."""
+    names = validate_tag_names(tags, known_tags)
+    if not names:
+        return None, ""
+    wanted = {name.casefold() for name in names}
+    ordered = sorted(
+        rules, key=lambda rule: (-int(rule.priority), nocase_key(rule.tag_name))
+    )
+    matching = [rule for rule in ordered if str(rule.tag_name).casefold() in wanted]
+    if not matching:
+        return None, ""
+    highest = int(matching[0].priority)
+    top = [rule for rule in matching if int(rule.priority) == highest]
+    percents = {float(rule.allocation_percent) for rule in top}
+    if len(percents) != 1:
+        return None, ""
+    return float(top[0].allocation_percent), str(top[0].tag_name)
+
+
+class AIKnowledgeSource(Protocol):
+    """Alles, was die Vorhersage braucht - egal ob aus DB oder aus Snapshot."""
+
+    def categories_for(self, typ: str) -> frozenset[str]: ...
+
+    def merchant_entry(
+        self, *, fingerprint: str, typ: str
+    ) -> MerchantMemoryEntry | None: ...
+
+    def feedback_examples(self, typ: str) -> tuple[FeedbackExample, ...]: ...
+
+    def allocation_for_tags(self, tags: Sequence[str]) -> tuple[float | None, str]: ...
+
+
+def predict_from_knowledge(
+    knowledge: AIKnowledgeSource,
+    *,
+    typ: str,
+    description: str,
+    counterparty: str = "",
+) -> AIPrediction:
+    """Die eine Vorhersagerechnung.
+
+    Sie steht bewusst ausserhalb von :class:`BankImportAI`, damit derselbe
+    Code sowohl auf der Datenbank als auch auf einem eingefrorenen Snapshot
+    laeuft. Zwei Fassungen derselben Formel wuerden frueher oder spaeter
+    auseinanderlaufen, und der Unterschied faellt in einem Importvorschlag
+    niemandem auf.
+    """
+    typ = validate_typ(typ)
+    available = knowledge.categories_for(typ)
+    if not available:
+        return AIPrediction("", (), 0.0, "no_categories")
+    fingerprint = _fingerprint(description, counterparty)
+    if fingerprint:
+        entry = knowledge.merchant_entry(fingerprint=fingerprint, typ=typ)
+        if entry is not None and entry.category in available:
+            allocation, source_tag = knowledge.allocation_for_tags(entry.tags)
+            return AIPrediction(
+                entry.category,
+                entry.tags,
+                min(0.995, 0.90 + 0.015 * int(entry.confirmations)),
+                "merchant_memory",
+                allocation,
+                source_tag,
+            )
+
+    examples = [
+        example
+        for example in knowledge.feedback_examples(typ)
+        if example.category in available
+    ]
+    if not examples:
+        return AIPrediction("", (), 0.0, "untrained")
+
+    query = _tokens(" ".join((counterparty, description)))
+    query_set = set(query)
+    best: tuple[float, FeedbackExample] | None = None
+    for example in examples:
+        sim = _jaccard(
+            query_set or set(fingerprint.split()), set(example.fingerprint.split())
+        )
+        if best is None or sim > best[0]:
+            best = (sim, example)
+    if best and best[0] >= 0.72:
+        example = best[1]
+        allocation, source_tag = knowledge.allocation_for_tags(example.tags)
+        return AIPrediction(
+            example.category,
+            example.tags,
+            min(0.89, 0.62 + best[0] * 0.30),
+            "similar_merchant",
+            allocation,
+            source_tag,
+        )
+    if not query:
+        return AIPrediction("", (), 0.0, "no_features")
+
+    category_docs: Counter[str] = Counter()
+    category_tokens: dict[str, Counter[str]] = defaultdict(Counter)
+    vocabulary: set[str] = set()
+    tag_votes: dict[str, Counter[str]] = defaultdict(Counter)
+    for example in examples:
+        category_docs[example.category] += 1
+        category_tokens[example.category].update(example.tokens)
+        vocabulary.update(example.tokens)
+        for tag in example.tags:
+            tag_votes[example.category][tag] += 1
+    total_docs = sum(category_docs.values())
+    vocab_size = max(1, len(vocabulary))
+    scores: dict[str, float] = {}
+    for category in category_docs:
+        score = math.log(
+            (category_docs[category] + 1) / (total_docs + len(category_docs))
+        )
+        counts = category_tokens[category]
+        denominator = sum(counts.values()) + vocab_size
+        for token in query:
+            score += math.log((counts[token] + 1) / denominator)
+        scores[category] = score
+    top = max(scores, key=lambda name: scores[name])
+    maximum = max(scores.values())
+    weights = {cat: math.exp(score - maximum) for cat, score in scores.items()}
+    confidence = weights[top] / sum(weights.values())
+    if len(scores) == 1:
+        confidence = min(confidence, 0.70)
+    tags = tuple(tag for tag, _count in tag_votes[top].most_common())
+    allocation, source_tag = knowledge.allocation_for_tags(tags)
+    return AIPrediction(
+        top,
+        tags,
+        round(float(confidence), 4),
+        "naive_bayes",
+        allocation,
+        source_tag,
+    )
+
+
+@dataclass(frozen=True)
+class AIKnowledgeSnapshot:
+    """Eingefrorenes KI-Wissen ohne jede Datenbankbindung.
+
+    Der Snapshot wird auf dem besitzenden Thread gezogen; danach rechnet er
+    ohne SQLite-Verbindung weiter und darf an einen Worker gereicht werden.
+    """
+
+    categories: Mapping[str, frozenset[str]]
+    known_tags: Mapping[str, str]
+    merchant_memory: Mapping[tuple[str, str], MerchantMemoryEntry]
+    feedback: Mapping[str, tuple[FeedbackExample, ...]]
+    tag_rules: tuple[TagAllocationRule, ...]
+
+    @classmethod
+    def freeze(
+        cls,
+        *,
+        categories: Mapping[str, frozenset[str]],
+        known_tags: Mapping[str, str],
+        merchant_memory: Mapping[tuple[str, str], MerchantMemoryEntry],
+        feedback: Mapping[str, tuple[FeedbackExample, ...]],
+        tag_rules: Sequence[TagAllocationRule],
+    ) -> AIKnowledgeSnapshot:
+        return cls(
+            categories=MappingProxyType(dict(categories)),
+            known_tags=MappingProxyType(dict(known_tags)),
+            merchant_memory=MappingProxyType(dict(merchant_memory)),
+            feedback=MappingProxyType(dict(feedback)),
+            tag_rules=tuple(tag_rules),
+        )
+
+    def categories_for(self, typ: str) -> frozenset[str]:
+        return self.categories.get(validate_typ(typ), frozenset())
+
+    def merchant_entry(
+        self, *, fingerprint: str, typ: str
+    ) -> MerchantMemoryEntry | None:
+        return self.merchant_memory.get((fingerprint, typ))
+
+    def feedback_examples(self, typ: str) -> tuple[FeedbackExample, ...]:
+        return self.feedback.get(typ, ())
+
+    def allocation_for_tags(self, tags: Sequence[str]) -> tuple[float | None, str]:
+        return resolve_allocation(self.tag_rules, tags, known_tags=self.known_tags)
+
+    def predict(
+        self, *, typ: str, description: str, counterparty: str = ""
+    ) -> AIPrediction:
+        return predict_from_knowledge(
+            self, typ=typ, description=description, counterparty=counterparty
+        )
 
 
 def _is_twint(signal: BookingSignal) -> bool:
@@ -173,10 +453,14 @@ class BankImportAI:
         self.conn.commit()
 
     def _validate_typ(self, typ: str) -> str:
-        value = str(typ or "").strip()
-        if value not in _ALLOWED_TYPES:
-            raise ValueError(f"Unbekannter BudgetManager-Typ: {value!r}")
-        return value
+        return validate_typ(typ)
+
+    def _known_tag_names(self) -> dict[str, str]:
+        """Alle echten Tagnamen, nach NOCASE-Schluessel greifbar."""
+        names: dict[str, str] = {}
+        for row in self.conn.execute("SELECT name FROM tags ORDER BY rowid"):
+            names.setdefault(nocase_key(str(row[0])), str(row[0]))
+        return names
 
     def _validate_category(self, typ: str, category: str) -> str:
         typ = self._validate_typ(typ)
@@ -191,21 +475,8 @@ class BankImportAI:
             )
         return str(row[0])
 
-    def _validate_tags(self, tags: tuple[str, ...] | list[str]) -> tuple[str, ...]:
-        valid: list[str] = []
-        for tag in tags:
-            raw = str(tag or "").strip()
-            if not raw:
-                continue
-            row = self.conn.execute(
-                "SELECT name FROM tags WHERE name=? COLLATE NOCASE LIMIT 1", (raw,)
-            ).fetchone()
-            if not row:
-                raise ValueError(f"Tag {raw!r} existiert nicht im BudgetManager.")
-            name = str(row[0])
-            if name not in valid:
-                valid.append(name)
-        return tuple(valid)
+    def _validate_tags(self, tags: Sequence[str]) -> tuple[str, ...]:
+        return validate_tag_names(tags, self._known_tag_names())
 
     def set_tag_allocation_rule(
         self, tag_name: str, percent: float, *, priority: int = 0
@@ -227,29 +498,18 @@ class BankImportAI:
         )
         self.conn.commit()
 
-    def allocation_for_tags(
-        self, tags: tuple[str, ...] | list[str]
-    ) -> tuple[float | None, str]:
-        names = self._validate_tags(tags)
-        if not names:
-            return None, ""
-        wanted = {name.casefold() for name in names}
-        rows = [
-            row
+    def _tag_rules(self) -> tuple[TagAllocationRule, ...]:
+        return tuple(
+            TagAllocationRule(str(row[0]), float(row[1]), int(row[2]))
             for row in self.conn.execute(
-                "SELECT tag_name, allocation_percent, priority "
-                "FROM ai_tag_rules ORDER BY priority DESC, tag_name COLLATE NOCASE"
+                "SELECT tag_name, allocation_percent, priority FROM ai_tag_rules"
             ).fetchall()
-            if str(row[0]).casefold() in wanted
-        ]
-        if not rows:
-            return None, ""
-        highest = int(rows[0][2])
-        top = [row for row in rows if int(row[2]) == highest]
-        percents = {float(row[1]) for row in top}
-        if len(percents) != 1:
-            return None, ""
-        return float(top[0][1]), str(top[0][0])
+        )
+
+    def allocation_for_tags(self, tags: Sequence[str]) -> tuple[float | None, str]:
+        return resolve_allocation(
+            self._tag_rules(), tags, known_tags=self._known_tag_names()
+        )
 
     def learn(
         self,
@@ -320,126 +580,80 @@ class BankImportAI:
         if commit:
             self.conn.commit()
 
-    def _available_categories(self, typ: str) -> set[str]:
-        return {
+    def categories_for(self, typ: str) -> frozenset[str]:
+        return frozenset(
             str(row[0])
             for row in self.conn.execute(
-                "SELECT name FROM categories WHERE typ=?", (self._validate_typ(typ),)
+                "SELECT name FROM categories WHERE typ=?", (validate_typ(typ),)
             ).fetchall()
-        }
+        )
 
-    def _safe_tags(self, raw_json: str) -> tuple[str, ...]:
-        try:
-            values = tuple(str(v) for v in json.loads(str(raw_json or "[]")))
-            return tuple(
-                v
-                for v in values
-                if self.conn.execute(
-                    "SELECT 1 FROM tags WHERE name=? COLLATE NOCASE", (v,)
-                ).fetchone()
+    def merchant_entry(
+        self, *, fingerprint: str, typ: str
+    ) -> MerchantMemoryEntry | None:
+        row = self.conn.execute(
+            "SELECT category,tags_json,confirmations FROM ai_merchant_memory "
+            "WHERE fingerprint=? AND typ=?",
+            (fingerprint, typ),
+        ).fetchone()
+        if not row:
+            return None
+        return MerchantMemoryEntry(
+            str(row[0]),
+            filter_known_tags(str(row[1]), self._known_tag_names()),
+            int(row[2]),
+        )
+
+    def feedback_examples(self, typ: str) -> tuple[FeedbackExample, ...]:
+        known = self._known_tag_names()
+        return tuple(
+            FeedbackExample(
+                str(row[0]),
+                str(row[1]),
+                filter_known_tags(str(row[2]), known),
+                decode_tokens(str(row[3])),
             )
-        except (TypeError, ValueError, json.JSONDecodeError):
-            return ()
-
-    def predict(
-        self, *, typ: str, description: str, counterparty: str = ""
-    ) -> AIPrediction:
-        typ = self._validate_typ(typ)
-        available = self._available_categories(typ)
-        if not available:
-            return AIPrediction("", (), 0.0, "no_categories")
-        fingerprint = _fingerprint(description, counterparty)
-        if fingerprint:
-            row = self.conn.execute(
-                "SELECT category,tags_json,confirmations FROM ai_merchant_memory "
-                "WHERE fingerprint=? AND typ=?",
-                (fingerprint, typ),
-            ).fetchone()
-            if row and str(row[0]) in available:
-                tags = self._safe_tags(str(row[1]))
-                allocation, source_tag = self.allocation_for_tags(tags)
-                return AIPrediction(
-                    str(row[0]),
-                    tags,
-                    min(0.995, 0.90 + 0.015 * int(row[2])),
-                    "merchant_memory",
-                    allocation,
-                    source_tag,
-                )
-
-        examples = [
-            row
             for row in self.conn.execute(
                 "SELECT fingerprint,category,tags_json,tokens_json "
                 "FROM ai_feedback WHERE active=1 AND typ=?",
                 (typ,),
             ).fetchall()
-            if str(row[1]) in available
-        ]
-        if not examples:
-            return AIPrediction("", (), 0.0, "untrained")
+        )
 
-        query = _tokens(" ".join((counterparty, description)))
-        query_set = set(query)
-        best = None
-        for row in examples:
-            sim = _jaccard(
-                query_set or set(fingerprint.split()), set(str(row[0]).split())
-            )
-            if best is None or sim > best[0]:
-                best = (sim, row)
-        if best and best[0] >= 0.72:
-            row = best[1]
-            tags = self._safe_tags(str(row[2]))
-            allocation, source_tag = self.allocation_for_tags(tags)
-            return AIPrediction(
-                str(row[1]),
-                tags,
-                min(0.89, 0.62 + best[0] * 0.30),
-                "similar_merchant",
-                allocation,
-                source_tag,
-            )
-        if not query:
-            return AIPrediction("", (), 0.0, "no_features")
+    def predict(
+        self, *, typ: str, description: str, counterparty: str = ""
+    ) -> AIPrediction:
+        """Vorhersage direkt auf der Datenbank.
 
-        category_docs: Counter[str] = Counter()
-        category_tokens: dict[str, Counter[str]] = defaultdict(Counter)
-        vocabulary: set[str] = set()
-        tag_votes: dict[str, Counter[str]] = defaultdict(Counter)
-        for row in examples:
-            category = str(row[1])
-            row_tokens = tuple(json.loads(str(row[3])))
-            category_docs[category] += 1
-            category_tokens[category].update(row_tokens)
-            vocabulary.update(row_tokens)
-            for tag in self._safe_tags(str(row[2])):
-                tag_votes[category][tag] += 1
-        total_docs = sum(category_docs.values())
-        vocab_size = max(1, len(vocabulary))
-        scores: dict[str, float] = {}
-        for category in category_docs:
-            score = math.log(
-                (category_docs[category] + 1) / (total_docs + len(category_docs))
+        Die Rechnung selbst steckt in :func:`predict_from_knowledge`; hier
+        werden nur die Zeilen nachgeladen, die sie anfordert. Ein Snapshot
+        beantwortet dieselben Fragen aus eingefrorenen Daten und kommt darum
+        zwangslaeufig auf dasselbe Ergebnis.
+        """
+        return predict_from_knowledge(
+            self, typ=typ, description=description, counterparty=counterparty
+        )
+
+    def knowledge_snapshot(self) -> AIKnowledgeSnapshot:
+        """Friert das KI-Wissen fuer die Weitergabe an einen Worker ein."""
+        known_tags = self._known_tag_names()
+        categories: dict[str, frozenset[str]] = {}
+        feedback: dict[str, tuple[FeedbackExample, ...]] = {}
+        for typ in sorted(_ALLOWED_TYPES):
+            categories[typ] = self.categories_for(typ)
+            feedback[typ] = self.feedback_examples(typ)
+        merchant_memory: dict[tuple[str, str], MerchantMemoryEntry] = {}
+        for row in self.conn.execute(
+            "SELECT fingerprint,typ,category,tags_json,confirmations "
+            "FROM ai_merchant_memory"
+        ).fetchall():
+            merchant_memory[(str(row[0]), str(row[1]))] = MerchantMemoryEntry(
+                str(row[2]), filter_known_tags(str(row[3]), known_tags), int(row[4])
             )
-            counts = category_tokens[category]
-            denominator = sum(counts.values()) + vocab_size
-            for token in query:
-                score += math.log((counts[token] + 1) / denominator)
-            scores[category] = score
-        top = max(scores, key=scores.get)
-        maximum = max(scores.values())
-        weights = {cat: math.exp(score - maximum) for cat, score in scores.items()}
-        confidence = weights[top] / sum(weights.values())
-        if len(scores) == 1:
-            confidence = min(confidence, 0.70)
-        tags = tuple(tag for tag, _count in tag_votes[top].most_common())
-        allocation, source_tag = self.allocation_for_tags(tags)
-        return AIPrediction(
-            top,
-            tags,
-            round(float(confidence), 4),
-            "naive_bayes",
-            allocation,
-            source_tag,
+        return AIKnowledgeSnapshot.freeze(
+            categories=categories,
+            known_tags=known_tags,
+            merchant_memory=merchant_memory,
+            feedback=feedback,
+            tag_rules=self._tag_rules(),
         )

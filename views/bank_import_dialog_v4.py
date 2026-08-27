@@ -50,12 +50,15 @@ from model.bank_import_ai import (
     match_twint_reimbursement,
 )
 from model.bank_import_service import BankImportItem, source_digest
+from model.bank_import_snapshot import (
+    BankImportAnalysisSnapshot,
+    capture_analysis_snapshot,
+)
 from model.bank_statement_reader import (
     BankStatementError,
     BankTransaction,
     load_transactions,
 )
-from model.category_model import CategoryModel
 from model.credit_card_statement_reader import is_credit_card_csv, load_credit_card_csv
 from model.tags_model import TagsModel
 from model.twint_import_policy import (
@@ -264,11 +267,16 @@ class BankImportDialog(QDialog):
     def __init__(self, conn: sqlite3.Connection, parent=None):
         super().__init__(parent)
         self.conn = conn
-        self.categories = CategoryModel(conn)
+        # Kategorien liest die Analyse nur noch aus dem Snapshot; ``tags``
+        # bleibt fuer den Tag-Auswahldialog, der auf dem GUI-Thread laeuft.
         self.tags = TagsModel(conn)
         self.service = TwintAwareBankImportService(conn)
         self.ai = self.service.ai
         self.marker_store = BankImportMarkerStore(conn)
+        # Ab hier rechnet die Analyse ausschliesslich aus diesem Snapshot.
+        # Die Modelle darueber bleiben fuer die Schreibwege (Import, Lernen)
+        # und beruehren die Datenbank nur auf diesem Thread.
+        self.snapshot: BankImportAnalysisSnapshot = self._capture_snapshot()
 
         self.sources: list[LoadedSource] = []
         self.transactions: list[BankTransaction] = []
@@ -290,6 +298,11 @@ class BankImportDialog(QDialog):
         self.setMinimumSize(980, 620)
         self._build_ui()
         self._refresh_ui()
+
+    def _capture_snapshot(self) -> BankImportAnalysisSnapshot:
+        """Friert die Analysedaten auf dem besitzenden Thread ein."""
+        self.snapshot = capture_analysis_snapshot(self.conn, ai_model=self.ai)
+        return self.snapshot
 
     @staticmethod
     def _category_token(typ: str, category: str) -> str:
@@ -479,7 +492,7 @@ class BankImportDialog(QDialog):
         self.cmb_bulk_category.clear()
         self.cmb_bulk_category.addItem(tr("bank_import_v4.choose_bulk_category"), "")
         for typ in (TYP_EXPENSES, TYP_INCOME):
-            for display, name in self.categories.list_names_tree(typ):
+            for display, name in self.snapshot.category_tree_for(typ):
                 self.cmb_bulk_category.addItem(
                     f"{typ} · {display.strip()}", self._category_token(typ, name)
                 )
@@ -499,7 +512,7 @@ class BankImportDialog(QDialog):
         for type_index, typ in enumerate(types):
             if type_index:
                 combo.insertSeparator(combo.count())
-            for display, name in self.categories.list_names_tree(typ):
+            for display, name in self.snapshot.category_tree_for(typ):
                 label = (
                     display.strip()
                     if typ == preferred_type
@@ -529,6 +542,7 @@ class BankImportDialog(QDialog):
             self._add_paths(paths)
 
     def _add_paths(self, paths: list[str]) -> None:
+        self._capture_snapshot()
         errors: list[str] = []
         currency = get_currency().upper()
         known = {str(Path(source.path).resolve()) for source in self.sources}
@@ -551,7 +565,7 @@ class BankImportDialog(QDialog):
                         + tr("bank_import_v4.same_file_already_loaded")
                     )
                     continue
-                duplicates = self.service.duplicate_indexes(transactions, digest)
+                duplicates = self.snapshot.duplicate_indexes(transactions, digest)
             except (BankStatementError, OSError, ValueError) as exc:
                 errors.append(f"{Path(path).name}: {exc}")
                 continue
@@ -574,6 +588,7 @@ class BankImportDialog(QDialog):
             )
 
     def _rebuild_from_sources(self) -> None:
+        self._capture_snapshot()
         previous_states: dict[tuple[str, str, int], ReviewState] = {}
         for old_index, state in self.states.items():
             if not (0 <= old_index < len(self.transactions)):
@@ -617,7 +632,7 @@ class BankImportDialog(QDialog):
             groups[digest].append(index)
         for digest, indexes in groups.items():
             local = [self.transactions[index] for index in indexes]
-            marked = self.marker_store.marked_indexes(
+            marked = self.snapshot.marked_indexes(
                 local, digest, marker_kind="twint_credit"
             )
             self.marked_twint_indexes.update(indexes[pos] for pos in marked)
@@ -627,7 +642,7 @@ class BankImportDialog(QDialog):
             # nicht buchen" gesetzt wurden, tragen ``twint_ai``. Ohne diese
             # zweite Abfrage hielt V4 sie fuer unmarkiert und bot sie erneut
             # zum Import an.
-            ai_marked = self.marker_store.marked_indexes(
+            ai_marked = self.snapshot.marked_indexes(
                 local, digest, marker_kind="twint_ai"
             )
             self.ai_marker_indexes.update(indexes[pos] for pos in ai_marked)
@@ -682,11 +697,11 @@ class BankImportDialog(QDialog):
                 continue
             if is_twint_credit(tx):
                 digest = self._digest_for_index(index)
-                preferred = self.marker_store.classification(
+                preferred = self.snapshot.classification(
                     tx, digest, marker_kind="twint_credit"
                 )
                 if not all(preferred):
-                    preferred = self.marker_store.suggest_category(tx)
+                    preferred = self.snapshot.suggest_category(tx)
                 state = ReviewState(
                     use=not self._is_learned(index) and all(preferred),
                     typ=TYP_TWINT_AI,
@@ -700,11 +715,11 @@ class BankImportDialog(QDialog):
                 # gesetzt. Sie bleibt ein Lernsignal und wird nicht erneut zum
                 # Import angeboten.
                 digest = self._digest_for_index(index)
-                preferred = self.marker_store.classification(
+                preferred = self.snapshot.classification(
                     tx, digest, marker_kind="twint_ai"
                 )
                 if not all(preferred):
-                    preferred = self.marker_store.suggest_category(tx)
+                    preferred = self.snapshot.suggest_category(tx)
                 state = ReviewState(
                     use=False,
                     typ=TYP_TWINT_AI,
@@ -715,7 +730,7 @@ class BankImportDialog(QDialog):
                 )
             else:
                 typ = TYP_INCOME if tx.amount > 0 else TYP_EXPENSES
-                prediction = self.ai.predict(
+                prediction = self.snapshot.predict(
                     typ=typ,
                     description=tx.description,
                     counterparty=tx.counterparty,
@@ -905,10 +920,7 @@ class BankImportDialog(QDialog):
         state = self.states[index]
         if not state.category_typ or not state.category:
             return set()
-        ids = self.tags.get_tag_ids_for_category_name(
-            state.category_typ, state.category
-        )
-        return {tag.name for tag in self.tags.get_tags_by_ids(ids)}
+        return self.snapshot.tags_for_category(state.category_typ, state.category)
 
     def _all_tags(self, index: int) -> tuple[str, ...]:
         state = self.states[index]
@@ -929,7 +941,9 @@ class BankImportDialog(QDialog):
             if match is not None:
                 return max(0.0, base - match.reimbursement_amount), "twint"
         try:
-            allocation, source_tag = self.ai.allocation_for_tags(self._all_tags(index))
+            allocation, source_tag = self.snapshot.allocation_for_tags(
+                self._all_tags(index)
+            )
         except ValueError:
             allocation, source_tag = None, ""
         if state.typ == TYP_EXPENSES and allocation is not None:
@@ -1175,6 +1189,10 @@ class BankImportDialog(QDialog):
         )
         if dialog.exec() != QDialog.DialogCode.Accepted:
             return
+        # Der Tag-Dialog darf neue Tags anlegen. Ohne diesen frischen Snapshot
+        # kennt die Analyse sie nicht, und der Import bräche mit "Tag existiert
+        # nicht" ab, obwohl der Nutzer ihn gerade selbst erstellt hat.
+        self._capture_snapshot()
         decisions = dialog.tag_states()
         for index in checked:
             manual = set(self.states[index].manual_tags)
@@ -1381,7 +1399,7 @@ class BankImportDialog(QDialog):
             and allocation_source
             and allocation_source != "twint"
         ):
-            allocation, _tag = self.ai.allocation_for_tags(tags)
+            allocation, _tag = self.snapshot.allocation_for_tags(tags)
             if allocation is not None:
                 details += (
                     f" | Bankimport: Original {abs(float(tx.amount)):.2f} {tx.currency}; "

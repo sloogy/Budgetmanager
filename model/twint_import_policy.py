@@ -33,11 +33,17 @@ def is_twint_credit(tx: BankTransaction) -> bool:
     return "twint" in text
 
 
-def _ai_fingerprint(tx: BankTransaction) -> str:
+def ai_fingerprint(tx: BankTransaction) -> str:
+    """Schluessel des TWINT-Kategoriegedaechtnisses zu einer Buchungszeile."""
     text = f"{tx.counterparty} {tx.description}".casefold()
     text = re.sub(r"\b\d{5,}\b", " ", text)
     text = re.sub(r"[^a-z0-9äöüß]+", " ", text)
     return " ".join(text.split())
+
+
+# Der alte private Name bleibt als Alias, damit bestehende Aufrufer und Tests
+# unveraendert weiterlaufen.
+_ai_fingerprint = ai_fingerprint
 
 
 class TwintAwareBankImportService(BankImportService):
