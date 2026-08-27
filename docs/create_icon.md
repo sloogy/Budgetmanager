@@ -51,11 +51,39 @@ Das Skript schreibt:
 | `resources/icons/budgetmanager-{16,32,48,64,128,256,512}.png` | Einzelgroessen fuer Qt/Desktop |
 | `resources/icons/budgetmanager.png` | 1024 px, generisches App-Icon |
 | `resources/icons/budgetmanager.ico` | Mehrfachaufloesung 16/24/32/48/64/128/256 px |
-| `resources/icons/budgetmanager-logo.png` | Banner fuer Startbildschirm und Dialoge, randlos zugeschnitten |
+| `resources/icons/budgetmanager-logo.png` | Banner fuer helle Flaechen, randlos zugeschnitten |
+| `resources/icons/budgetmanager-logo-hell.png` | Dieselbe Zeichnung fuer dunkle Flaechen |
 
 Skaliert wird durchgaengig mit `Image.LANCZOS` auf RGBA — die Transparenz
 bleibt in jeder Groesse erhalten. Das Motiv wird **zentriert**, nie
 beschnitten und nie verzerrt.
+
+---
+
+## Warum es das Banner zweimal gibt
+
+Der Schriftzug ist zur Haelfte dunkelblau (`#0D1B3A`). Auf hellem Grund ist
+das richtig; auf den dunklen Designprofilen — die Panelfarben gehen bis
+`#050505` — verschwindet genau dieses halbe Wort. Ein einziges Banner kann das
+nicht loesen. `tools/create_icon.py` erzeugt deshalb eine zweite Fassung, in
+der Dunkelblau zu Weiss und Petrol wie Gruen aufgehellt werden; zugeordnet
+wird ueber den naechstliegenden der vier Ankerpunkte der Bildmappe.
+
+Welche Fassung erscheint, entscheidet `utils/branding.py`, nicht die
+Aufrufstelle — sonst muesste jeder Dialog dieselbe Fallunterscheidung erneut
+treffen und einer wuerde sie vergessen. Entschieden wird in zwei Stufen:
+
+| Lage | Quelle |
+|---|---|
+| Im Hauptfenster (ThemeManager erreichbar) | `bg_panel` des aktiven Designprofils |
+| Anmeldedialog, Erststart-Assistent, Startbildschirm | Qt-Palette |
+
+Die zweite Zeile ist kein Notnagel: Diese Flaechen erscheinen, **bevor** das
+Hauptfenster ein Profil anwendet. Sie liegen auf der Systemflaeche, und genau
+die beschreibt die Palette. Umgekehrt waere die Palette im Hauptfenster
+falsch — der ThemeManager setzt ausschliesslich ein Stylesheet und nie eine
+`QPalette`, ein dunkler Desktop mit hellem Profil ergaebe sonst das helle
+Banner auf heller Flaeche.
 
 ---
 

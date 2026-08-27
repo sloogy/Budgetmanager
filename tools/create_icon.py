@@ -11,7 +11,8 @@ Ziele:
     resources/icons/budgetmanager-{16,32,48,64,128,256,512}.png
     resources/icons/budgetmanager.png       (1024 px, Linux/Qt)
     resources/icons/budgetmanager.ico       (Mehrfachaufloesung, Windows)
-    resources/icons/budgetmanager-logo.png  (Banner, randlos zugeschnitten)
+    resources/icons/budgetmanager-logo.png       (Banner fuer helle Flaechen)
+    resources/icons/budgetmanager-logo-hell.png  (Banner fuer dunkle Flaechen)
 
 Warum die Quellbilder nicht direkt ausgeliefert werden
 ------------------------------------------------------
@@ -27,6 +28,15 @@ korrekt zentriert. Genau deshalb passiert hier zweierlei:
   Quadrat mit gleichem Rand ringsum. Ein Icon darf nicht randlos sein - in
   16 px klebt es sonst an der Kante - aber der Rand muss auf allen vier
   Seiten gleich sein, sonst haengt das Symbol in der Taskleiste schief.
+
+Warum es das Banner zweimal gibt
+--------------------------------
+Der Schriftzug ist zur Haelfte dunkelblau (#0D1B3A). Auf hellem Grund ist das
+richtig; auf den dunklen Themes des Programms - die Seitenleisten gehen bis
+#050505 - verschwindet das halbe Wort. Ein einziges Banner kann das nicht
+loesen, deshalb entsteht daneben eine helle Fassung: Dunkelblau wird weiss,
+Petrol und Gruen werden aufgehellt. Welche Fassung angezeigt wird, entscheidet
+zur Laufzeit ``utils.branding`` anhand der Fensterfarbe.
 
 Frueher zeichnete dieses Skript ein Platzhalter-Icon selbst. Seit die Suite
 ein echtes Markenbild hat, waere ein gezeichneter Ersatz falsch: die Icons
@@ -58,6 +68,7 @@ ICON_DIR = PROJECT_ROOT / "resources" / "icons"
 SOURCE_PATH = ICON_DIR / "budgetmanager-source.png"
 LOGO_SOURCE_PATH = ICON_DIR / "budgetmanager-logo-source.png"
 LOGO_PATH = ICON_DIR / "budgetmanager-logo.png"
+LOGO_HELL_PATH = ICON_DIR / "budgetmanager-logo-hell.png"
 
 # Einzel-PNGs, die Qt/Linux-Desktops und der Installer ausliefern.
 PNG_SIZES = (16, 32, 48, 64, 128, 256, 512)
@@ -83,6 +94,18 @@ ICON_MARGIN_RATIO = 0.02
 # Bildpunkt, die Schwelle ist also unkritisch gewaehlt.
 ALPHA_SCHWELLE = 8
 
+# Die vier Flaechenfarben der Suite-Bildmappe und ihre Entsprechung fuer
+# dunkle Flaechen. Zugeordnet wird ueber den naechstliegenden Ankerpunkt: Die
+# Bilder bestehen aus flachen Farbfeldern, die nur gegen die Transparenz
+# weichgezeichnet sind - zwischen zwei Feldern liegen kaum Mischwerte, an
+# denen die Zuordnung kippen koennte.
+FARB_ANKER: tuple[tuple[tuple[int, int, int], tuple[int, int, int]], ...] = (
+    ((13, 27, 58), (255, 255, 255)),  # Dunkelblau -> Weiss
+    ((14, 116, 144), (77, 195, 220)),  # Petrol -> helles Petrol
+    ((86, 180, 74), (124, 214, 112)),  # Gruen -> helles Gruen
+    ((245, 245, 245), (245, 245, 245)),  # Weiss bleibt Weiss
+)
+
 
 def _load(path: Path, beschreibung: str) -> Image.Image:
     if not path.is_file():
@@ -92,7 +115,9 @@ def _load(path: Path, beschreibung: str) -> Image.Image:
     return Image.open(path).convert("RGBA")
 
 
-def motiv_rahmen(image: Image.Image, *, schwelle: int = ALPHA_SCHWELLE) -> tuple[int, int, int, int] | None:
+def motiv_rahmen(
+    image: Image.Image, *, schwelle: int = ALPHA_SCHWELLE
+) -> tuple[int, int, int, int] | None:
     """Der Rahmen um alles, was sichtbar zum Motiv gehoert.
 
     Gemessen wird gegen :data:`ALPHA_SCHWELLE`, nicht gegen Null - warum,
@@ -114,7 +139,9 @@ def trimmed(image: Image.Image) -> Image.Image:
     return image.crop(box)
 
 
-def square(image: Image.Image, *, margin_ratio: float = ICON_MARGIN_RATIO) -> Image.Image:
+def square(
+    image: Image.Image, *, margin_ratio: float = ICON_MARGIN_RATIO
+) -> Image.Image:
     """Setzt ``image`` mittig auf ein transparentes Quadrat mit gleichem Rand.
 
     Nicht zuschneiden und nicht verzerren: das Motiv behaelt sein
@@ -164,15 +191,55 @@ def write_ico(source: Image.Image) -> Path:
     return target
 
 
-def write_logo(source: Image.Image) -> Path:
-    """Schreibt das ausgelieferte Banner (zugeschnitten, sonst unveraendert)."""
+def fuer_dunkle_flaechen(image: Image.Image) -> Image.Image:
+    """Faerbt das Bild fuer dunklen Untergrund um.
+
+    Jeder sichtbare Bildpunkt bekommt die Zielfarbe des naechstliegenden
+    Ankers aus :data:`FARB_ANKER`. Unsichtbare Bildpunkte bleiben unberuehrt -
+    ihre Farbe wird nie gezeigt, und der Schleier aus der Bildmappe traegt
+    Werte, die jede Zuordnung nur verwirren wuerden.
+
+    Die Zuordnung wird zwischengespeichert: Das Banner hat knapp eine Million
+    Bildpunkte, aber nur eine Handvoll verschiedener Farben.
+    """
+    anker = [(a, t) for a, t in FARB_ANKER]
+    zwischenspeicher: dict[tuple[int, int, int], tuple[int, int, int]] = {}
+
+    def ziel(farbe: tuple[int, int, int]) -> tuple[int, int, int]:
+        treffer = zwischenspeicher.get(farbe)
+        if treffer is None:
+            r, g, b = farbe
+            treffer = min(
+                anker,
+                key=lambda paar: (paar[0][0] - r) ** 2
+                + (paar[0][1] - g) ** 2
+                + (paar[0][2] - b) ** 2,
+            )[1]
+            zwischenspeicher[farbe] = treffer
+        return treffer
+
+    # Ueber die Rohbytes statt ueber getdata/putdata: das spart eine Million
+    # Tupelobjekte und laeuft auf jeder Pillow-Fassung ohne Verfallshinweis.
+    roh = bytearray(image.tobytes())
+    for i in range(0, len(roh), 4):
+        if roh[i + 3] <= ALPHA_SCHWELLE:
+            continue
+        roh[i], roh[i + 1], roh[i + 2] = ziel((roh[i], roh[i + 1], roh[i + 2]))
+    return Image.frombytes("RGBA", image.size, bytes(roh))
+
+
+def write_logo(source: Image.Image) -> list[Path]:
+    """Schreibt beide Bannerfassungen: fuer helle und fuer dunkle Flaechen."""
     source.save(LOGO_PATH, format="PNG")
-    return LOGO_PATH
+    fuer_dunkle_flaechen(source).save(LOGO_HELL_PATH, format="PNG")
+    return [LOGO_PATH, LOGO_HELL_PATH]
 
 
 def create_icons() -> int:
     icon_source = load_icon_source()
-    print(f"Icon-Quelle : {SOURCE_PATH.name} -> {icon_source.width}x{icon_source.height}")
+    print(
+        f"Icon-Quelle : {SOURCE_PATH.name} -> {icon_source.width}x{icon_source.height}"
+    )
 
     for path in write_pngs(icon_source):
         print(f"  geschrieben: {path.relative_to(PROJECT_ROOT)}")
@@ -184,9 +251,11 @@ def create_icons() -> int:
     )
 
     logo_source = load_logo_source()
-    logo = write_logo(logo_source)
-    print(f"Logo-Quelle : {LOGO_SOURCE_PATH.name} -> {logo_source.width}x{logo_source.height}")
-    print(f"  geschrieben: {logo.relative_to(PROJECT_ROOT)}")
+    print(
+        f"Logo-Quelle : {LOGO_SOURCE_PATH.name} -> {logo_source.width}x{logo_source.height}"
+    )
+    for path in write_logo(logo_source):
+        print(f"  geschrieben: {path.relative_to(PROJECT_ROOT)}")
     print("Fertig.")
     return 0
 

@@ -115,6 +115,138 @@ def test_ausgeliefertes_banner_hat_keinen_unsichtbaren_rand(v4_app):
     assert (rechts, unten) == (breite, hoehe)
 
 
+def _mittlere_helligkeit(path: Path) -> float:
+    """Durchschnittliche Helligkeit aller sichtbaren Bildpunkte, 0.0 bis 1.0."""
+    from PySide6.QtGui import QImage
+
+    bild = QImage(str(path))
+    assert not bild.isNull(), f"{path.name} laesst sich nicht laden"
+    summe = 0.0
+    gezaehlt = 0
+    for y in range(bild.height()):
+        for x in range(bild.width()):
+            farbe = bild.pixelColor(x, y)
+            if farbe.alpha() > ALPHA_SCHWELLE:
+                summe += farbe.lightnessF()
+                gezaehlt += 1
+    assert gezaehlt, f"{path.name} ist vollstaendig unsichtbar"
+    return summe / gezaehlt
+
+
+def test_es_gibt_eine_fassung_fuer_dunkle_flaechen(v4_app):
+    """Das Banner muss auf dunklem Grund lesbar sein.
+
+    Der Schriftzug ist zur Haelfte dunkelblau (#0D1B3A). Auf den dunklen
+    Themes - Fensterfarben bis #050505 - ist genau dieses halbe Wort weg. Der
+    Test vergleicht die mittlere Helligkeit beider Fassungen: die helle muss
+    deutlich heller sein, sonst ist sie nur eine Kopie.
+    """
+    dunkel = ICON_DIR / "budgetmanager-logo.png"
+    hell = ICON_DIR / "budgetmanager-logo-hell.png"
+    assert hell.is_file(), "Ohne helle Fassung ist das Logo in dunklen Themes halb weg"
+
+    assert _png_size(hell) == _png_size(dunkel), "Beide Fassungen zeigen dasselbe Bild"
+    assert _mittlere_helligkeit(hell) > _mittlere_helligkeit(dunkel) + 0.15
+
+
+def test_beide_bannerfassungen_sind_adressierbar(v4_app):
+    from utils.branding import logo_path
+
+    assert logo_path(fuer_dunklen_untergrund=False).name == "budgetmanager-logo.png"
+    assert logo_path(fuer_dunklen_untergrund=True).name == "budgetmanager-logo-hell.png"
+
+
+def test_das_designprofil_schlaegt_die_qt_palette(v4_app):
+    """Im Hauptfenster entscheidet das Profil, nicht der Desktop.
+
+    Der ThemeManager setzt nur ein Stylesheet. Wer hier die Qt-Palette
+    fragte, bekaeme die Farben des Desktops - auf einem dunklen Desktop mit
+    hellem Profil also das helle Banner auf heller Flaeche.
+    """
+    from PySide6.QtGui import QColor, QPalette
+    from PySide6.QtWidgets import QWidget
+
+    from settings import Settings
+    from theme_manager import ThemeManager
+    from utils.branding import untergrund_ist_dunkel
+    from views.ui_colors import invalidate_color_cache
+
+    fenster = QWidget()
+    try:
+        for profil, erwartet in (("Standard Dunkel", True), ("Standard Hell", False)):
+            verwalter = ThemeManager(Settings())
+            assert verwalter.set_current_profile(profil), f"{profil} fehlt"
+            fenster.theme_manager = verwalter
+
+            # Die Palette sagt jeweils das Gegenteil des Profils.
+            palette = QPalette(fenster.palette())
+            palette.setColor(
+                QPalette.Window, QColor("#f6f7f9" if erwartet else "#101418")
+            )
+            fenster.setPalette(palette)
+
+            invalidate_color_cache()
+            assert untergrund_ist_dunkel(fenster) is erwartet
+    finally:
+        invalidate_color_cache()
+        fenster.deleteLater()
+
+
+def test_ohne_designprofil_zaehlt_die_palette(v4_app):
+    """Vor dem Hauptfenster ist die Palette die richtige Auskunft.
+
+    Anmeldedialog, Erststart-Assistent und Startbildschirm laufen, bevor ein
+    Profil angewendet wird. Sie liegen auf der Systemflaeche - und genau die
+    beschreibt die Palette.
+    """
+    from PySide6.QtGui import QColor, QPalette
+    from PySide6.QtWidgets import QWidget
+
+    from utils.branding import untergrund_ist_dunkel
+
+    widget = QWidget()
+    try:
+        assert getattr(widget.window(), "theme_manager", None) is None
+        for farbe, erwartet in (("#f6f7f9", False), ("#101418", True)):
+            palette = QPalette(widget.palette())
+            palette.setColor(QPalette.Window, QColor(farbe))
+            widget.setPalette(palette)
+            assert untergrund_ist_dunkel(widget) is erwartet
+    finally:
+        widget.deleteLater()
+
+
+def test_logo_label_nimmt_auf_dunklem_grund_die_helle_fassung(v4_app):
+    """Ein Dialog mit dunkler Palette bekommt sichtbar helleres Bild."""
+    from PySide6.QtGui import QColor, QPalette
+    from PySide6.QtWidgets import QWidget
+
+    from utils.branding import make_logo_label
+
+    def mittelwert(fensterfarbe: str) -> float:
+        traeger = QWidget()
+        palette = QPalette(traeger.palette())
+        palette.setColor(QPalette.Window, QColor(fensterfarbe))
+        traeger.setPalette(palette)
+        try:
+            label = make_logo_label(traeger, 200)
+            assert label is not None
+            bild = label.pixmap().toImage()
+            summe = anzahl = 0.0
+            for y in range(bild.height()):
+                for x in range(bild.width()):
+                    farbe = bild.pixelColor(x, y)
+                    if farbe.alpha() > ALPHA_SCHWELLE:
+                        summe += farbe.lightnessF()
+                        anzahl += 1
+            assert anzahl
+            return summe / anzahl
+        finally:
+            traeger.deleteLater()
+
+    assert mittelwert("#101418") > mittelwert("#f6f7f9") + 0.15
+
+
 @pytest.mark.parametrize("size", (128, 256, 512))
 def test_icon_motiv_sitzt_mittig(v4_app, size: int):
     """Gleicher Rand links wie rechts und oben wie unten.
@@ -143,9 +275,9 @@ def test_icon_motiv_fuellt_die_flaeche(v4_app, size: int):
     """
     links, oben, rechts, unten = _motiv_rahmen(ICON_DIR / f"budgetmanager-{size}.png")
     laengste_kante = max(rechts - links, unten - oben)
-    assert laengste_kante >= 0.9 * size, (
-        f"{size}px: Motiv belegt nur {laengste_kante} von {size} Bildpunkten"
-    )
+    assert (
+        laengste_kante >= 0.9 * size
+    ), f"{size}px: Motiv belegt nur {laengste_kante} von {size} Bildpunkten"
 
 
 # ── Erzeugte Icons ───────────────────────────────────────────────
