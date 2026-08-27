@@ -1376,13 +1376,17 @@
   },
   "import_progress": {
     "cancel_tip": "Interrompre l'étape en cours",
+    "file_position": "Fichier {current} sur {total}",
     "phase_categorize": "Catégorisation par IA",
     "phase_duplicates": "Vérification des doublons",
+    "phase_parse": "Détection des écritures",
     "phase_read": "Lecture du fichier",
     "phase_review": "Préparation de la liste de contrôle",
+    "phase_tags": "Préparation des étiquettes",
     "phase_twint": "Analyse TWINT",
     "status_items": "{activity} · {current} / {total} · {percent} %",
-    "status_percent": "{activity} · {percent} %"
+    "status_percent": "{activity} · {percent} %",
+    "status_prefix": "{prefix} · {status}"
   },
   "income13": {
     "amount": "Montant :",

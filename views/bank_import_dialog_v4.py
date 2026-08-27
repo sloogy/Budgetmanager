@@ -457,8 +457,12 @@ class BankImportDialog(QDialog):
 
         # Der Fortschrittsbereich sitzt zwischen Tabelle und Aktionsleiste:
         # unten im Fenster, mittig, und solange nichts laeuft vollstaendig
-        # ausgeblendet. Bedient wird er ab P1.3 vom Analyse-Worker.
+        # ausgeblendet. Bedient wird er vom Analyse-Worker.
         self.progress_area = ImportProgressArea(self)
+        # Der Abbruchwunsch haengt am Dialog und nicht am jeweiligen Worker:
+        # so gibt es genau eine Verbindung statt einer je Lauf, und sie zeigt
+        # nie auf einen bereits abgeraeumten Worker.
+        self.progress_area.cancel_requested.connect(self.request_analysis_cancel)
         root.addWidget(self.progress_area)
 
         bottom = QHBoxLayout()
@@ -602,7 +606,10 @@ class BankImportDialog(QDialog):
         thread.started.connect(worker.run)
         worker.status_changed.connect(self.progress_area.set_activity)
         worker.progress_changed.connect(self.progress_area.set_percent)
-        worker.item_progress.connect(self.progress_area.set_item_progress)
+        # Stueckzahlen ohne eigene Prozentrechnung: Der Balken zeigt den
+        # gewichteten Gesamtfortschritt, nicht den der laufenden Phase.
+        worker.item_progress.connect(self.progress_area.set_item_counts)
+        worker.file_progress.connect(self.progress_area.set_file_progress)
         worker.indeterminate.connect(self.progress_area.set_indeterminate)
         worker.finished.connect(self._on_analysis_finished)
         worker.failed.connect(self._on_analysis_failed)
@@ -617,9 +624,11 @@ class BankImportDialog(QDialog):
         self._analysis_thread = thread
         self._analysis_worker = worker
         self._analysis_active = True
-        # Abbrechen bleibt vorerst aus: den Knopf bedient erst P1.4. Ein
-        # sichtbarer Knopf ohne Wirkung waere schlimmer als keiner.
-        self.progress_area.start(phase_label(PHASE_READ), cancellable=False)
+        # Die Analyse ist jederzeit abbrechbar: Sie schreibt nichts in die
+        # Datenbank, und ihr Ergebnis wird erst am Ende in einem Stueck
+        # uebernommen. Ein Abbruch laesst die Pruefliste deshalb genau so
+        # stehen, wie sie vor dem Lauf war.
+        self.progress_area.start(phase_label(PHASE_READ), cancellable=True)
         self._refresh_ui()
         self._connect_quit_hook()
         thread.start()
@@ -637,6 +646,26 @@ class BankImportDialog(QDialog):
             return
         app.aboutToQuit.connect(self._stop_analysis)
         self._quit_hook_connected = True
+
+    @Slot()
+    def request_analysis_cancel(self) -> None:
+        """Bittet den laufenden Lauf zu enden - der Knopf im Fortschrittsbereich.
+
+        Bewusst ein direkter Aufruf und keine Signalverbindung zum Worker: Der
+        Worker lebt im Fremd-Thread, eine automatische Verbindung waere queued
+        und wuerde erst abgearbeitet, wenn dessen Ereignisschleife wieder
+        drankommt. Die steht aber still, solange ``run()`` rechnet - der
+        Abbruch traefe also genau dann nicht ein, wenn er gebraucht wird.
+        ``request_cancel()`` setzt nur ein ``threading.Event`` und ist von
+        jedem Thread aus sicher aufrufbar.
+
+        Der Dialog wartet hier **nicht** auf das Ende. Das Fenster bleibt
+        bedienbar, der Worker meldet sich mit ``cancelled()``, und erst dann
+        verschwindet der Balken.
+        """
+        worker = self._analysis_worker
+        if worker is not None:
+            worker.request_cancel()
 
     @Slot()
     def _stop_analysis(self) -> None:

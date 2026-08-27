@@ -2,8 +2,13 @@ from datetime import date
 from decimal import Decimal
 
 import pypdf
+import pytest
 
-from model.bank_statement_reader import load_csv, load_pdf
+from model.bank_statement_reader import (
+    BankStatementError,
+    load_csv,
+    load_pdf,
+)
 
 
 def test_zkb_csv_uses_chf_debit_credit_not_betrag_detail(tmp_path):
@@ -78,6 +83,38 @@ def test_csv_accepts_timestamp_and_short_date(tmp_path):
     ]
 
 
+def test_ein_leeres_blatt_reisst_den_import_nicht_mit(tmp_path, monkeypatch):
+    """Eine Seite ohne Inhaltsstrom ist gueltiges PDF - ein leeres Blatt.
+
+    pypdf meldet das nicht als "kein Text", sondern greift beim Aufbau des
+    Inhaltsstroms mit ``KeyError: '/Contents'`` daneben. Ungefangen reisst
+    ein einzelnes leeres Blatt den ganzen Import mit, und der Nutzer sieht
+    einen KeyError statt der Auskunft, dass die Datei keinen Text hergibt.
+
+    Geprueft wird beides: dass der Lauf ueberhaupt bis zur Schranke kommt,
+    und dass die Meldung die fachliche ist.
+    """
+    path = tmp_path / "leer.pdf"
+    path.write_bytes(b"%PDF-1.4 test placeholder")
+
+    class LeeresBlatt:
+        def extract_text(self, extraction_mode=None):
+            raise KeyError("/Contents")
+
+    class FakeReader:
+        def __init__(self, _path):
+            self.pages = [LeeresBlatt()]
+
+        def close(self):
+            pass
+
+    monkeypatch.setattr(pypdf, "PdfReader", FakeReader)
+
+    with pytest.raises(BankStatementError) as fehler:
+        load_pdf(path)
+    assert "extrahierbaren Text" in str(fehler.value)
+
+
 def test_pdf_reader_uses_pypdf_text_and_parses_booking_line(tmp_path, monkeypatch):
     path = tmp_path / "konto.pdf"
     path.write_bytes(b"%PDF-1.4 test placeholder")
@@ -86,13 +123,21 @@ def test_pdf_reader_uses_pypdf_text_and_parses_booking_line(tmp_path, monkeypatc
         def extract_text(self):
             return "23.08.2026 COOP Einkauf -12,50 CHF\n"
 
+    geschlossen: list[bool] = []
+
     class FakeReader:
         def __init__(self, _path):
             self.pages = [FakePage()]
 
+        def close(self):
+            geschlossen.append(True)
+
     monkeypatch.setattr(pypdf, "PdfReader", FakeReader)
     rows = load_pdf(path)
 
+    # Der Leser wird freigegeben, sobald der Text heraus ist. Unter Windows
+    # blockiert ein offener Strom sonst das Loeschen der Datei.
+    assert geschlossen == [True]
     assert len(rows) == 1
     assert rows[0].booking_date == date(2026, 8, 23)
     assert rows[0].amount == Decimal("-12.50")
@@ -124,13 +169,19 @@ def test_zkb_pdf_separates_amount_valuta_and_balance(tmp_path, monkeypatch):
             assert extraction_mode == "layout"
             return "\n".join((header, debit_line, credit_line))
 
+    geschlossen: list[bool] = []
+
     class FakeReader:
         def __init__(self, _path):
             self.pages = [FakePage()]
 
+        def close(self):
+            geschlossen.append(True)
+
     monkeypatch.setattr(pypdf, "PdfReader", FakeReader)
     rows = load_pdf(path)
 
+    assert geschlossen == [True]
     assert len(rows) == 2
     assert rows[0].booking_date == date(2026, 8, 21)
     assert rows[0].amount == Decimal("-19.85")

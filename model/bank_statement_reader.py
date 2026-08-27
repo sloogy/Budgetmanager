@@ -485,16 +485,33 @@ def _parse_zkb_layout_lines(
     return result
 
 
+def _page_text_or_empty(extract_text: Any, **wie: Any) -> str:
+    """Ruft ``extract_text`` auf und wertet ein leeres Blatt als leeren Text.
+
+    Eine Seite ohne ``/Contents`` ist gültiges PDF — ein leeres Blatt. pypdf
+    meldet das nicht als "kein Text", sondern greift beim Aufbau des
+    Inhaltsstroms mit ``KeyError: '/Contents'`` daneben. Ohne diesen Fang
+    reißt ein einzelnes leeres Blatt den ganzen Import mit, und zwar mit
+    einer Meldung, die nach einem kaputten Programm aussieht statt nach
+    einer Datei ohne Text. Die Schranke in :func:`load_pdf` sagt danach das
+    Richtige: "PDF enthält keinen extrahierbaren Text."
+    """
+    try:
+        return str(extract_text(**wie) or "")
+    except KeyError:
+        return ""
+
+
 def _extract_pdf_page_text(page: Any) -> str:
     extract_text = getattr(page, "extract_text", None)
     if not callable(extract_text):
         return ""
     try:
-        return str(extract_text(extraction_mode="layout") or "")
+        return _page_text_or_empty(extract_text, extraction_mode="layout")
     except TypeError:
         # Defensiver Rückfall für ältere pypdf-Versionen. Der gepinnte
         # BudgetManager-Build verwendet pypdf 6.x und nimmt den Layout-Pfad.
-        return str(extract_text() or "")
+        return _page_text_or_empty(extract_text)
 
 
 def load_pdf(path: str | Path, default_currency: str = "CHF") -> list[BankTransaction]:
@@ -506,17 +523,25 @@ def load_pdf(path: str | Path, default_currency: str = "CHF") -> list[BankTransa
         ) from exc
     source = Path(path)
     _validate_source(source)
+    # ``close()`` im ``finally``: Der Reader haelt den Dateistrom, bis er
+    # freigegeben wird - auch wenn eine der Schranken unten zuschlaegt oder
+    # der Aufrufer den Lauf abbricht. Unter Windows blockiert ein solcher
+    # Strom das Loeschen und Verschieben der Datei; sich darauf zu verlassen,
+    # dass Python das Objekt schon rechtzeitig einsammelt, waere geraten.
     reader = PdfReader(str(source))
-    if len(reader.pages) > MAX_PDF_PAGES:
-        raise BankStatementError(f"PDF enthält mehr als {MAX_PDF_PAGES} Seiten.")
-    lines: list[str] = []
-    text_chars = 0
-    for page in reader.pages:
-        text = _extract_pdf_page_text(page)
-        text_chars += len(text)
-        if text_chars > MAX_PDF_TEXT_CHARS:
-            raise BankStatementError("PDF enthält zu viel extrahierten Text.")
-        lines.extend(line.rstrip() for line in text.splitlines() if line.strip())
+    try:
+        if len(reader.pages) > MAX_PDF_PAGES:
+            raise BankStatementError(f"PDF enthält mehr als {MAX_PDF_PAGES} Seiten.")
+        lines: list[str] = []
+        text_chars = 0
+        for page in reader.pages:
+            text = _extract_pdf_page_text(page)
+            text_chars += len(text)
+            if text_chars > MAX_PDF_TEXT_CHARS:
+                raise BankStatementError("PDF enthält zu viel extrahierten Text.")
+            lines.extend(line.rstrip() for line in text.splitlines() if line.strip())
+    finally:
+        reader.close()
     if not lines:
         raise BankStatementError(
             "PDF enthält keinen extrahierbaren Text. " "Scan-PDFs benötigen lokale OCR."

@@ -1376,13 +1376,17 @@
   },
   "import_progress": {
     "cancel_tip": "Stop the running step",
+    "file_position": "File {current} of {total}",
     "phase_categorize": "AI categorisation",
     "phase_duplicates": "Checking duplicates",
+    "phase_parse": "Detecting bookings",
     "phase_read": "Reading file",
     "phase_review": "Preparing review list",
+    "phase_tags": "Preparing tags",
     "phase_twint": "Analysing TWINT",
     "status_items": "{activity} · {current} / {total} · {percent} %",
-    "status_percent": "{activity} · {percent} %"
+    "status_percent": "{activity} · {percent} %",
+    "status_prefix": "{prefix} · {status}"
   },
   "income13": {
     "amount": "Amount:",

@@ -11,9 +11,16 @@ bereit, die ein Analyse-Worker spaeter bedient::
 
     worker.status_changed.connect(area.set_activity)
     worker.progress_changed.connect(area.set_percent)
-    worker.item_progress.connect(area.set_item_progress)
+    worker.item_progress.connect(area.set_item_counts)
+    worker.file_progress.connect(area.set_file_progress)
     worker.finished.connect(lambda _result: area.stop())
-    area.cancel_requested.connect(worker.request_cancel)
+    area.cancel_requested.connect(dialog.request_analysis_cancel)
+
+Der Prozentwert und die Stueckzahlen sind getrennt: Der Balken zeigt den
+Gesamtfortschritt ueber alle Dateien und alle Phasen, die Stueckzahlen die
+gerade sichtbare Taetigkeit. Deshalb ``set_item_counts`` statt
+``set_item_progress`` - Letzteres leitet den Prozentwert aus den Stueckzahlen
+ab und ist fuer Vorgaenge aus einem einzigen Durchlauf gedacht.
 
 Zur Fuellfarbe: Sie stammt aus dem Designprofil und ist dieselbe Farbe, mit
 der die aktive Navigationsschaltflaeche der Seitenleiste hinterlegt ist
@@ -140,6 +147,8 @@ class ImportProgressArea(QWidget):
         self._percent: int | None = None
         self._current: int | None = None
         self._total: int | None = None
+        self._file: int = 0
+        self._files: int = 0
         self._active = False
 
         # Waagrecht mitwachsen, senkrecht nur so hoch wie noetig - sonst
@@ -280,6 +289,8 @@ class ImportProgressArea(QWidget):
         self._activity = activity
         self._current = None
         self._total = None
+        self._file = 0
+        self._files = 0
         self._active = True
         self.apply_theme()
         self.btn_cancel.setEnabled(True)
@@ -294,6 +305,8 @@ class ImportProgressArea(QWidget):
         self._percent = None
         self._current = None
         self._total = None
+        self._file = 0
+        self._files = 0
         self.bar.setRange(0, 100)
         self.bar.setValue(0)
         self.lbl_status.setText("")
@@ -328,15 +341,42 @@ class ImportProgressArea(QWidget):
         self._refresh_status()
 
     def set_item_progress(self, current: int, total: int) -> None:
-        """Slot fuer ``item_progress(int, int)`` - Prozent folgt dem Verhaeltnis."""
+        """Stueckzahlen samt daraus abgeleitetem Prozentwert.
+
+        Fuer Vorgaenge, die aus einem einzigen Durchlauf bestehen und deshalb
+        keine eigene Gesamtrechnung brauchen. Der Bankimport benutzt statt
+        dessen :meth:`set_item_counts` plus :meth:`set_percent`: Dort meinen
+        Stueckzahl und Prozentwert verschiedene Dinge - die Stueckzahl die
+        laufende Phase, der Prozentwert den ganzen Lauf ueber alle Dateien.
+        """
+        self.set_item_counts(current, total)
+        gesamt = self._total or 0
+        erledigt = self._current or 0
+        if gesamt > 0:
+            self.set_percent(round(erledigt * 100 / gesamt))
+
+    def set_item_counts(self, current: int, total: int) -> None:
+        """Slot fuer ``item_progress(int, int)`` - nur die Stueckzahlen.
+
+        Der Prozentwert bleibt unberuehrt; er kommt beim Bankimport aus dem
+        global gewichteten Fortschritt und wuerde von einer Phasenzahl
+        ueberschrieben.
+        """
         total = max(0, int(total))
         current = max(0, min(int(current), total)) if total else max(0, int(current))
         self._current = current
         self._total = total
-        if total > 0:
-            self.set_percent(round(current * 100 / total))
-        else:
-            self._refresh_status()
+        self._refresh_status()
+
+    def set_file_progress(self, current: int, total: int) -> None:
+        """Slot fuer ``file_progress(int, int)`` - "Datei 3 von 5".
+
+        Erst ab zwei Quellen sichtbar: "Datei 1 von 1" ist keine Information,
+        sondern eine zusaetzliche Zeilenlaenge.
+        """
+        self._files = max(0, int(total))
+        self._file = max(0, min(int(current), self._files))
+        self._refresh_status()
 
     def set_indeterminate(self) -> None:
         """Unbestimmter Balken fuer Schritte ohne belastbare Restmenge."""
@@ -361,21 +401,41 @@ class ImportProgressArea(QWidget):
     def _refresh_status(self) -> None:
         self.lbl_status.setText(self._compose_status())
 
+    def _file_prefix(self) -> str:
+        """ "Datei 3 von 5" - oder nichts, solange es nur eine Quelle gibt."""
+        if self._files < 2 or self._file < 1:
+            return ""
+        return trf(
+            "import_progress.file_position",
+            current=self._file,
+            total=self._files,
+        )
+
     def _compose_status(self) -> str:
         if not self._activity:
             return ""
         if self._percent is None:
-            return self._activity
+            return self._with_file(self._activity)
         if self._current is not None and self._total:
-            return trf(
-                "import_progress.status_items",
+            return self._with_file(
+                trf(
+                    "import_progress.status_items",
+                    activity=self._activity,
+                    current=self._current,
+                    total=self._total,
+                    percent=self._percent,
+                )
+            )
+        return self._with_file(
+            trf(
+                "import_progress.status_percent",
                 activity=self._activity,
-                current=self._current,
-                total=self._total,
                 percent=self._percent,
             )
-        return trf(
-            "import_progress.status_percent",
-            activity=self._activity,
-            percent=self._percent,
         )
+
+    def _with_file(self, status: str) -> str:
+        prefix = self._file_prefix()
+        if not prefix:
+            return status
+        return trf("import_progress.status_prefix", prefix=prefix, status=status)

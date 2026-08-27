@@ -1376,13 +1376,17 @@
   },
   "import_progress": {
     "cancel_tip": "Laufenden Schritt abbrechen",
+    "file_position": "Datei {current} von {total}",
     "phase_categorize": "KI-Kategorisierung",
     "phase_duplicates": "Duplikate prüfen",
+    "phase_parse": "Buchungen erkennen",
     "phase_read": "Datei lesen",
     "phase_review": "Review-Liste vorbereiten",
+    "phase_tags": "Tags vorbereiten",
     "phase_twint": "TWINT analysieren",
     "status_items": "{activity} · {current} / {total} · {percent} %",
-    "status_percent": "{activity} · {percent} %"
+    "status_percent": "{activity} · {percent} %",
+    "status_prefix": "{prefix} · {status}"
   },
   "income13": {
     "amount": "Betrag:",

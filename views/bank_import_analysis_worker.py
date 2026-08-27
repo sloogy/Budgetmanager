@@ -21,6 +21,14 @@ Abbruch ist kooperativ. ``request_cancel()`` setzt ein ``threading.Event``,
 die Rechnung fragt es an ihren Schleifengrenzen ab und endet mit
 ``cancelled()``. ``QThread.terminate()`` kommt hier nicht vor - es liesse
 halboffene Dateihandles zurueck.
+
+**``request_cancel()`` muss direkt aufgerufen werden**, nicht ueber eine
+normale Signalverbindung. Der Worker lebt im Fremd-Thread; eine automatische
+Verbindung waere deshalb *queued* und wuerde erst abgearbeitet, wenn dessen
+Ereignisschleife wieder drankommt - und die steht still, solange ``run()``
+rechnet. Der Abbruch traefe damit genau dann nicht ein, wenn er gebraucht
+wird. ``threading.Event.set()`` ist threadsicher; der direkte Aufruf aus dem
+GUI-Thread ist der richtige Weg.
 """
 
 from __future__ import annotations
@@ -33,8 +41,10 @@ from PySide6.QtCore import QCoreApplication, QObject, QThread, Signal, Slot
 from model.bank_import_analysis import (
     PHASE_CATEGORIZE,
     PHASE_DUPLICATES,
+    PHASE_PARSE,
     PHASE_READ,
     PHASE_REVIEW,
+    PHASE_TAGS,
     PHASE_TWINT,
     AnalysisCancelled,
     AnalysisRequest,
@@ -67,12 +77,16 @@ def phase_label(phase: str) -> str:
     """Anzeigetext einer Analysephase in der aktiven Sprache."""
     if phase == PHASE_READ:
         return tr("import_progress.phase_read")
+    if phase == PHASE_PARSE:
+        return tr("import_progress.phase_parse")
     if phase == PHASE_DUPLICATES:
         return tr("import_progress.phase_duplicates")
     if phase == PHASE_TWINT:
         return tr("import_progress.phase_twint")
     if phase == PHASE_CATEGORIZE:
         return tr("import_progress.phase_categorize")
+    if phase == PHASE_TAGS:
+        return tr("import_progress.phase_tags")
     if phase == PHASE_REVIEW:
         return tr("import_progress.phase_review")
     return ""
@@ -82,43 +96,53 @@ class _SignalSink(ProgressSink):
     """Uebersetzt Fortschrittsmeldungen in Signale des Workers.
 
     Gedrosselt, weil jede Meldung einen Thread-Wechsel kostet: gemeldet wird
-    nur, wenn sich die ganze Prozentzahl aendert oder die Phase endet. Ein
-    Auszug mit 5000 Zeilen erzeugt so hoechstens gut hundert Ereignisse statt
-    fuenftausend.
+    nur, wenn sich etwas Sichtbares aendert. Ein Auszug mit 5000 Zeilen erzeugt
+    so hoechstens gut hundert Ereignisse je Phase statt fuenftausend.
+
+    Prozentwert und Stueckzahlen werden getrennt gedrosselt und sagen bewusst
+    Verschiedenes: Der Prozentwert kommt aus
+    :class:`~model.bank_import_analysis.WeightedProgress` und meint den ganzen
+    Lauf; die Stueckzahlen meinen die gerade sichtbare Taetigkeit.
     """
 
     def __init__(self, worker: BankImportAnalysisWorker) -> None:
         self._worker = worker
         self._phase = ""
-        self._last_percent = -1
+        self._percent = -1
+        self._item_percent = -1
+        self._file: tuple[int, int] = (0, 0)
 
     def phase(self, phase: str) -> None:
         if phase == self._phase:
             return
         self._phase = phase
-        self._last_percent = -1
+        self._item_percent = -1
         self._worker.status_changed.emit(phase_label(phase))
+
+    def file(self, current: int, total: int) -> None:
+        if (current, total) == self._file:
+            return
+        self._file = (current, total)
+        self._worker.file_progress.emit(int(current), int(total))
 
     def items(self, current: int, total: int) -> None:
         if total <= 0:
-            # Nichts zu tun ist nicht "unbekannt", sondern fertig.
-            self.percent(100)
             return
         percent = round(current * 100 / total)
-        if percent == self._last_percent and current < total:
+        if percent == self._item_percent and current < total:
             return
-        self._last_percent = percent
+        self._item_percent = percent
         self._worker.item_progress.emit(current, total)
 
     def percent(self, value: int | None) -> None:
         if value is None:
-            self._last_percent = -1
+            self._percent = -1
             self._worker.indeterminate.emit()
             return
-        if value == self._last_percent:
+        if int(value) == self._percent:
             return
-        self._last_percent = value
-        self._worker.progress_changed.emit(int(value))
+        self._percent = int(value)
+        self._worker.progress_changed.emit(self._percent)
 
     def cancelled(self) -> bool:
         return self._worker.is_cancelled()
@@ -133,6 +157,8 @@ class BankImportAnalysisWorker(QObject):
     progress_changed = Signal(int)
     #: Erledigte und gesamte Einzelposten der laufenden Phase.
     item_progress = Signal(int, int)
+    #: Laufende Nummer und Anzahl der Quelldateien - "Datei 3 von 5".
+    file_progress = Signal(int, int)
     #: Kein belastbarer Prozentwert - der Balken laeuft unbestimmt (Regel 1.7).
     indeterminate = Signal()
     #: Fertiges :class:`~model.bank_import_analysis.AnalysisResult`.
