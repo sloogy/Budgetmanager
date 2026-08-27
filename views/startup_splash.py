@@ -27,8 +27,9 @@ from utils.branding import logo_pixmap
 
 logger = logging.getLogger(__name__)
 
-# Logische Fensterbreite des Splash. Das Banner ist 2172x724, daraus werden
-# rund 560x187 Punkte — gross genug zum Lesen, klein genug, um nicht zu stoeren.
+# Logische Fensterbreite des Splash. Das ausgelieferte Banner ist randlos
+# zugeschnitten (rund 1965x450), daraus werden etwa 560x128 Punkte — gross
+# genug zum Lesen, klein genug, um nicht zu stoeren.
 SPLASH_WIDTH = 560
 
 # Absolute Obergrenze. Auch wenn jeder regulaere Schliesspfad ausfaellt, ist

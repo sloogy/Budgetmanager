@@ -52,7 +52,7 @@ def _resolve_asset(relative_path: str) -> Path | None:
 
 
 def logo_path() -> Path | None:
-    """Pfad zum breiten Logo-Banner (2172x724) oder ``None``."""
+    """Pfad zum breiten Logo-Banner oder ``None``."""
     return _resolve_asset(LOGO_RELATIVE_PATH)
 
 

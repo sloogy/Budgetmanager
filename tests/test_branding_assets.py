@@ -21,6 +21,11 @@ ICON_DIR = ROOT / "resources" / "icons"
 PNG_SIZES = (16, 32, 48, 64, 128, 256, 512)
 EXPECTED_ICO_SIZES = {16, 32, 48, 64, 128, 256}
 
+# Dieselbe Schwelle wie in tools/create_icon.py: Die gelieferten Marken-PNGs
+# tragen einen unsichtbaren Alphaschleier, der jede Randmessung gegen Null
+# wertlos macht.
+ALPHA_SCHWELLE = 8
+
 
 def _png_size(path: Path) -> tuple[int, int]:
     """Breite/Hoehe aus dem IHDR-Block eines PNG."""
@@ -55,21 +60,92 @@ def _ico_sizes(path: Path) -> set[tuple[int, int]]:
 # ── Quellbilder ──────────────────────────────────────────────────
 
 
+def _motiv_rahmen(path: Path) -> tuple[int, int, int, int]:
+    """Rahmen um alles Sichtbare: links, oben, rechts, unten (rechts/unten exklusiv)."""
+    from PySide6.QtGui import QImage
+
+    bild = QImage(str(path))
+    assert not bild.isNull(), f"{path.name} laesst sich nicht laden"
+    links, oben = bild.width(), bild.height()
+    rechts = unten = 0
+    for y in range(bild.height()):
+        for x in range(bild.width()):
+            if bild.pixelColor(x, y).alpha() > ALPHA_SCHWELLE:
+                links = min(links, x)
+                oben = min(oben, y)
+                rechts = max(rechts, x + 1)
+                unten = max(unten, y + 1)
+    assert rechts > links and unten > oben, f"{path.name} ist vollstaendig unsichtbar"
+    return links, oben, rechts, unten
+
+
 def test_markenquellbilder_liegen_im_repo():
     source = ICON_DIR / "budgetmanager-source.png"
-    logo = ICON_DIR / "budgetmanager-logo.png"
+    logo_source = ICON_DIR / "budgetmanager-logo-source.png"
 
     assert source.is_file(), "Ohne Quellbild sind die Icons nicht reproduzierbar"
-    assert logo.is_file(), "Ohne Logo-Banner gibt es keinen Startbildschirm"
+    assert logo_source.is_file(), "Ohne Bannerquelle ist das Logo nicht reproduzierbar"
 
     width, height = _png_size(source)
     assert width == height, "Das Icon-Quellbild muss quadratisch sein"
     assert width >= 512, "Das Quellbild muss groesser sein als die groesste Ausgabe"
     assert _png_has_alpha(source)
 
-    logo_width, logo_height = _png_size(logo)
+    logo_width, logo_height = _png_size(logo_source)
     assert logo_width > logo_height, "Das Logo-Banner ist ein breites Bild"
+    assert _png_has_alpha(logo_source)
+
+
+def test_ausgeliefertes_banner_hat_keinen_unsichtbaren_rand(v4_app):
+    """Das Banner muss randlos sein, sonst passt es in keine Flaeche.
+
+    Die Quelldatei traegt oben 37 und unten 119 unsichtbare Bildpunkte. Wer
+    ein solches Bild in eine Flaeche fester Hoehe legt, bekommt ein Logo, das
+    zu klein wirkt und sichtbar nach oben rutscht - obwohl das Layout korrekt
+    zentriert. tools/create_icon.py schneidet das weg; hier steht, dass es
+    passiert ist.
+    """
+    logo = ICON_DIR / "budgetmanager-logo.png"
+    assert logo.is_file(), "Ohne Logo-Banner gibt es keinen Startbildschirm"
     assert _png_has_alpha(logo)
+
+    breite, hoehe = _png_size(logo)
+    links, oben, rechts, unten = _motiv_rahmen(logo)
+    assert (links, oben) == (0, 0)
+    assert (rechts, unten) == (breite, hoehe)
+
+
+@pytest.mark.parametrize("size", (128, 256, 512))
+def test_icon_motiv_sitzt_mittig(v4_app, size: int):
+    """Gleicher Rand links wie rechts und oben wie unten.
+
+    Das Quellbild ist unsymmetrisch beschnitten (links 41, rechts 48, oben 42,
+    unten 28 Bildpunkte). Unkorrigiert haengt das Symbol in Taskleiste und
+    Titelleiste schief - sichtbar erst neben anderen Symbolen.
+    """
+    pfad = ICON_DIR / f"budgetmanager-{size}.png"
+    links, oben, rechts, unten = _motiv_rahmen(pfad)
+    rand_rechts = size - rechts
+    rand_unten = size - unten
+    # Eine ungerade Restbreite laesst sich nicht gleichmaessig verteilen,
+    # deshalb ein Bildpunkt Spielraum.
+    assert abs(links - rand_rechts) <= 1, f"{size}px sitzt waagerecht schief"
+    assert abs(oben - rand_unten) <= 1, f"{size}px sitzt senkrecht schief"
+
+
+@pytest.mark.parametrize("size", (128, 256, 512))
+def test_icon_motiv_fuellt_die_flaeche(v4_app, size: int):
+    """Das Motiv soll die Kachel fuellen, nicht darin schwimmen.
+
+    Ohne diese Schranke faellt es nicht auf, wenn jemand ein Quellbild mit
+    breitem Rand einsetzt: Das Icon ist dann korrekt erzeugt und trotzdem in
+    jeder Groesse zu klein.
+    """
+    links, oben, rechts, unten = _motiv_rahmen(ICON_DIR / f"budgetmanager-{size}.png")
+    laengste_kante = max(rechts - links, unten - oben)
+    assert laengste_kante >= 0.9 * size, (
+        f"{size}px: Motiv belegt nur {laengste_kante} von {size} Bildpunkten"
+    )
 
 
 # ── Erzeugte Icons ───────────────────────────────────────────────
