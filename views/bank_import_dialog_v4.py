@@ -68,7 +68,7 @@ from model.twint_import_policy import (
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 from utils.accessibility import configure_dialog_tab_order
-from utils.i18n import tr
+from utils.i18n import tr, trf
 from utils.money import get_currency
 from utils.notifications import show_info, show_warning
 from views.bank_import_analysis_worker import BankImportAnalysisWorker, phase_label
@@ -94,6 +94,57 @@ def _park_until_finished(thread: QThread) -> None:
     _PARKED_THREADS.add(thread)
     thread.finished.connect(lambda: _PARKED_THREADS.discard(thread))
     thread.finished.connect(thread.deleteLater)
+
+
+# ── Bloecke des finalen Imports ───────────────────────────────────
+#
+# Ein Block ist genau eine Datenbanktransaktion. ``_BATCH_TWINT_CREDIT`` und
+# ``_BATCH_TWINT_AI`` tragen absichtlich die Werte, die
+# ``mark_classifications(marker_kind=...)`` erwartet.
+_BATCH_PLAN = "plan"
+_BATCH_TWINT_CREDIT = "twint_credit"
+_BATCH_TWINT_AI = "twint_ai"
+
+# Was eine Schreibtransaktion realistisch werfen kann. Bewusst aufgezaehlt und
+# nicht ``Exception``: Ein Programmierfehler soll sichtbar abstuerzen, statt als
+# "Import teilweise fehlgeschlagen" zu erscheinen.
+_IMPORT_WRITE_ERRORS = (sqlite3.Error, OSError, RuntimeError, TypeError, ValueError)
+
+_BATCH_ERROR_TITLE = {
+    _BATCH_PLAN: "bank_import_v4.partial_failure",
+    _BATCH_TWINT_CREDIT: "bank_import_v4.ai_partial_failure",
+    _BATCH_TWINT_AI: "bank_import_v4.ai_partial_failure",
+}
+_BATCH_ERROR_TEXT = {
+    _BATCH_PLAN: "bank_import_v4.partial_failure_text",
+    _BATCH_TWINT_CREDIT: "bank_import_v4.ai_partial_failure_text",
+    _BATCH_TWINT_AI: "bank_import_v4.ai_partial_failure_text",
+}
+
+
+@dataclasses.dataclass(frozen=True)
+class _ImportBatch:
+    """Ein atomarer Schreibblock samt seiner Stelle in der Dateifolge."""
+
+    kind: str
+    digest: str
+    rows: int
+    file_position: int
+    file_count: int
+
+
+@dataclasses.dataclass
+class _ImportOutcome:
+    """Was die Schreibschleife tatsaechlich geschafft hat."""
+
+    imported: int = 0
+    skipped: int = 0
+    learned: int = 0
+    completed: int = 0
+    cancelled: bool = False
+    error: Exception | None = None
+    error_title: str = "bank_import_v4.partial_failure"
+    error_text: str = "bank_import_v4.partial_failure_text"
 
 
 class SearchableCategoryCombo(QComboBox):
@@ -300,6 +351,13 @@ class BankImportDialog(QDialog):
         self._analysis_active = False
         self._quit_hook_connected = False
 
+        # Finaler Import. Er laeuft im Bedien-Thread; ``_import_running`` haelt
+        # die Wiedereinstiege heraus, die das Pumpen der Ereignisschleife sonst
+        # erlauben wuerde, ``_import_cancel_requested`` traegt den Abbruchwunsch
+        # bis zur naechsten sicheren Blockgrenze.
+        self._import_running = False
+        self._import_cancel_requested = False
+
         self.setWindowTitle(tr("bank_import.window_title"))
         self.resize(1280, 760)
         self.setMinimumSize(980, 620)
@@ -462,7 +520,7 @@ class BankImportDialog(QDialog):
         # Der Abbruchwunsch haengt am Dialog und nicht am jeweiligen Worker:
         # so gibt es genau eine Verbindung statt einer je Lauf, und sie zeigt
         # nie auf einen bereits abgeraeumten Worker.
-        self.progress_area.cancel_requested.connect(self.request_analysis_cancel)
+        self.progress_area.cancel_requested.connect(self._on_progress_cancel_requested)
         root.addWidget(self.progress_area)
 
         bottom = QHBoxLayout()
@@ -760,10 +818,22 @@ class BankImportDialog(QDialog):
     def done(self, result: int) -> None:
         # Sammelpunkt fuer accept(), reject() und den Fensterschliesser: der
         # Worker muss enden, bevor Qt diesen Dialog abraeumt.
+        if self._import_running:
+            # Die Schreibschleife pumpt die Ereignisse; ein Escape oder ein
+            # Klick auf das Fensterkreuz kaeme genau hier an und wuerde den
+            # Dialog mitten in einer offenen Transaktion abraeumen. Der Wunsch
+            # wird als Abbruch verbucht und an der naechsten Blockgrenze
+            # beachtet.
+            self._import_cancel_requested = True
+            return
         self._stop_analysis()
         super().done(result)
 
     def closeEvent(self, event) -> None:
+        if self._import_running:
+            self._import_cancel_requested = True
+            event.ignore()
+            return
         self._stop_analysis()
         super().closeEvent(event)
 
@@ -1354,11 +1424,19 @@ class BankImportDialog(QDialog):
         # Waehrend der Analyse bleibt das Fenster bedienbar - Rollen, Suchen,
         # Sortieren gehen weiter. Nur was die Pruefliste selbst umbaut, ruht
         # solange, sonst liefen zwei Rechnungen gegeneinander.
+        # Waehrend des finalen Imports ruht dagegen alles: Die Schleife pumpt
+        # die Ereignisse, damit der Abbrechen-Knopf ankommt - jeder andere
+        # Klick traefe eine Pruefliste, die gerade geschrieben wird.
         busy = self.analysis_running()
-        self.btn_add_files.setEnabled(not busy)
-        self.btn_sources.setEnabled(not busy)
-        if busy:
+        self.btn_add_files.setEnabled(not busy and not self._import_running)
+        self.btn_sources.setEnabled(not busy and not self._import_running)
+        if busy or self._import_running:
             self.btn_import.setEnabled(False)
+        if self._import_running:
+            self.table.setEnabled(False)
+            self.btn_learn_only.setEnabled(False)
+        else:
+            self.table.setEnabled(True)
 
     def _build_item(self, index: int) -> BankImportItem | None:
         state = self.states[index]
@@ -1414,6 +1492,11 @@ class BankImportDialog(QDialog):
         )
 
     def import_selected(self) -> None:
+        if self._import_running:
+            # Waehrend des Imports pumpt die Schleife die Ereignisse, damit der
+            # Abbrechen-Knopf ankommt. Ein zweiter Klick auf "Importieren"
+            # kaeme denselben Weg - und wuerde die Bloecke doppelt schreiben.
+            return
         checked = self._checked_indexes()
         if not checked:
             show_info(
@@ -1479,41 +1562,32 @@ class BankImportDialog(QDialog):
         if answer != QMessageBox.StandardButton.Yes:
             return
 
-        imported = 0
-        skipped = 0
-        learned = 0
-        completed = 0
-        try:
-            for digest, items in plan_groups.items():
-                result = self.service.import_items(items, document_digest=digest)
-                imported += result.imported
-                skipped += result.skipped_duplicates
-                completed += 1
-        except (sqlite3.Error, OSError, RuntimeError, TypeError, ValueError) as exc:
+        batches = self._plan_import_batches(plan_groups, twint_groups, ai_groups)
+        outcome = self._run_import_batches(
+            batches, plan_groups, twint_groups, ai_groups
+        )
+
+        if outcome.error is not None:
             show_warning(
                 self,
-                tr("bank_import_v4.partial_failure"),
-                tr("bank_import_v4.partial_failure_text").format(
-                    imported=imported, batches=completed, error=exc
+                tr(outcome.error_title),
+                trf(
+                    outcome.error_text,
+                    imported=outcome.imported,
+                    batches=outcome.completed,
+                    error=outcome.error,
                 ),
             )
             return
-
-        try:
-            for digest, classifications in twint_groups.items():
-                learned += self.marker_store.mark_classifications(
-                    classifications, digest, marker_kind="twint_credit"
-                )
-            for digest, classifications in ai_groups.items():
-                learned += self.marker_store.mark_classifications(
-                    classifications, digest, marker_kind="twint_ai"
-                )
-        except (sqlite3.Error, ValueError) as exc:
-            show_warning(
+        if outcome.cancelled:
+            show_info(
                 self,
-                tr("bank_import_v4.ai_partial_failure"),
-                tr("bank_import_v4.ai_partial_failure_text").format(
-                    imported=imported, error=exc
+                tr("bank_import_v4.cancel_title"),
+                trf(
+                    "bank_import_v4.cancel_text",
+                    imported=outcome.imported,
+                    batches=outcome.completed,
+                    learned=outcome.learned,
                 ),
             )
             return
@@ -1522,10 +1596,177 @@ class BankImportDialog(QDialog):
             self,
             tr("bank_import_v4.done_title"),
             tr("bank_import_v4.done_text").format(
-                imported=imported, skipped=skipped, learned=learned
+                imported=outcome.imported,
+                skipped=outcome.skipped,
+                learned=outcome.learned,
             ),
         )
         self.accept()
+
+    # ── Finaler Import: ehrlicher Fortschritt ohne zweiten Thread ──
+    #
+    # Der Import bleibt bewusst im Bedien-Thread. Er schreibt in dieselbe
+    # SQLite-Connection, die dieser Thread besitzt; sie in einen Worker zu
+    # reichen, verbietet Regel 1.4, und sie fuer den Import aufzutrennen hiesse,
+    # eine zweite DB-Architektur neben Autosave und Verschluesselung zu bauen.
+    # Ehrlich wird der Fortschritt deshalb anders:
+    #
+    # * Ein Block ist genau eine Transaktion. Waehrend er laeuft, gibt es
+    #   keine seriose Restmenge - also unbestimmter Balken plus die Aussage,
+    #   dass der aktuelle Block sicher gespeichert wird (Regel 1.7).
+    # * Zwischen zwei Bloecken steht ein gesicherter Stand. Erst dort wird der
+    #   Prozentwert gesetzt und der Abbruchwunsch gelesen (Regel 1.8).
+    # * Die Bloecke sind nach Datei gruppiert. Ein Abbruch laesst damit ganze
+    #   Dateien zurueck, nie eine halbe.
+
+    def import_running(self) -> bool:
+        """True, solange die Schreibschleife des finalen Imports laeuft."""
+        return self._import_running
+
+    @Slot()
+    def _on_progress_cancel_requested(self) -> None:
+        """Ein Knopf, zwei Vorgaenge: Analyse-Worker oder Schreibschleife."""
+        if self._import_running:
+            # Nur ein Wunsch. Gelesen wird er zwischen zwei Bloecken; mitten in
+            # einer offenen Transaktion gaebe es nichts Sicheres zu tun.
+            self._import_cancel_requested = True
+            return
+        self.request_analysis_cancel()
+
+    def _plan_import_batches(
+        self,
+        plan_groups: dict[str, list[BankImportItem]],
+        twint_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+    ) -> list[_ImportBatch]:
+        """Ordnet die Schreibbloecke nach Quelle statt nach Art.
+
+        Nach Art gruppiert - erst alle Buchungen, dann alle Marker - waere ein
+        Abbruch in der Mitte genau der verbotene Fall: jede Datei halb fertig.
+        Nach Quelle gruppiert ist eine Datei vollstaendig geschrieben, bevor die
+        naechste beginnt.
+        """
+        digests: list[str] = []
+        for gruppe in (plan_groups, twint_groups, ai_groups):
+            for digest in gruppe:
+                if digest not in digests:
+                    digests.append(digest)
+        batches: list[_ImportBatch] = []
+        for position, digest in enumerate(digests, start=1):
+            for kind, gruppe in (
+                (_BATCH_PLAN, plan_groups),
+                (_BATCH_TWINT_CREDIT, twint_groups),
+                (_BATCH_TWINT_AI, ai_groups),
+            ):
+                rows = gruppe.get(digest) or []
+                if not rows:
+                    continue
+                batches.append(
+                    _ImportBatch(
+                        kind=kind,
+                        digest=digest,
+                        rows=len(rows),
+                        file_position=position,
+                        file_count=len(digests),
+                    )
+                )
+        return batches
+
+    def _run_import_batches(
+        self,
+        batches: list[_ImportBatch],
+        plan_groups: dict[str, list[BankImportItem]],
+        twint_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+    ) -> _ImportOutcome:
+        """Schreibt Block fuer Block und meldet dazwischen den Stand."""
+        total = sum(batch.rows for batch in batches)
+        outcome = _ImportOutcome()
+        self._import_running = True
+        self._import_cancel_requested = False
+        self.progress_area.start(
+            tr("import_progress.phase_import"), cancellable=True, percent=0
+        )
+        self._refresh_ui()
+        geschrieben = 0
+        try:
+            for batch in batches:
+                self._pump_ui()
+                if self._import_cancel_requested:
+                    outcome.cancelled = True
+                    break
+                self._show_batch_running(batch)
+                try:
+                    self._write_batch(
+                        batch, plan_groups, twint_groups, ai_groups, outcome
+                    )
+                except _IMPORT_WRITE_ERRORS as exc:
+                    # Der gescheiterte Block ist als Ganzes zurueckgerollt;
+                    # dafuer sorgt ``db_transaction``. Was davor liegt, steht
+                    # committet und bleibt stehen - jede Datei ganz oder gar nicht.
+                    outcome.error = exc
+                    outcome.error_title = _BATCH_ERROR_TITLE[batch.kind]
+                    outcome.error_text = _BATCH_ERROR_TEXT[batch.kind]
+                    break
+                outcome.completed += 1
+                geschrieben += batch.rows
+                self._show_batch_done(batch, geschrieben, total)
+        finally:
+            self._import_running = False
+            self._import_cancel_requested = False
+            self.progress_area.stop()
+            self._refresh_ui()
+        return outcome
+
+    def _write_batch(
+        self,
+        batch: _ImportBatch,
+        plan_groups: dict[str, list[BankImportItem]],
+        twint_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+        outcome: _ImportOutcome,
+    ) -> None:
+        """Genau eine Transaktion - hier wird nichts aufgeteilt."""
+        if batch.kind == _BATCH_PLAN:
+            result = self.service.import_items(
+                plan_groups[batch.digest], document_digest=batch.digest
+            )
+            outcome.imported += result.imported
+            outcome.skipped += result.skipped_duplicates
+            return
+        gruppe = twint_groups if batch.kind == _BATCH_TWINT_CREDIT else ai_groups
+        outcome.learned += self.marker_store.mark_classifications(
+            gruppe[batch.digest],
+            batch.digest,
+            marker_kind=batch.kind,
+        )
+
+    def _show_batch_running(self, batch: _ImportBatch) -> None:
+        """Unbestimmter Balken: waehrend der Transaktion gibt es keine Quote."""
+        self.progress_area.set_file_progress(batch.file_position, batch.file_count)
+        self.progress_area.set_activity(tr("import_progress.phase_commit"))
+        self.progress_area.set_indeterminate()
+        self._pump_ui()
+
+    def _show_batch_done(self, batch: _ImportBatch, done: int, total: int) -> None:
+        """Zwischen zwei Bloecken steht ein gesicherter Stand - hier zaehlt es."""
+        self.progress_area.set_file_progress(batch.file_position, batch.file_count)
+        self.progress_area.set_activity(tr("import_progress.phase_import"))
+        self.progress_area.set_item_counts(done, total)
+        self.progress_area.set_percent(round(done * 100 / total) if total else 100)
+        self._pump_ui()
+
+    def _pump_ui(self) -> None:
+        """Laesst Qt zeichnen und den Abbrechen-Klick zustellen.
+
+        Der einzige Ersatz fuer einen Worker-Thread, den es hier geben darf.
+        Reentranz ist abgesichert: ``import_selected`` kehrt sofort zurueck,
+        solange ``_import_running`` steht, ``_refresh_ui`` sperrt die Knoepfe,
+        und ``done()`` verweigert das Schliessen waehrend eines Blocks.
+        """
+        app = QApplication.instance()
+        if app is not None:
+            app.processEvents()
 
 
 # ``LoadedSource`` und ``ReviewState`` wohnen seit dem Analyse-Worker im

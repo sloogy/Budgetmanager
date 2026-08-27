@@ -1386,7 +1386,9 @@
     "phase_twint": "Analysing TWINT",
     "status_items": "{activity} · {current} / {total} · {percent} %",
     "status_percent": "{activity} · {percent} %",
-    "status_prefix": "{prefix} · {status}"
+    "status_prefix": "{prefix} · {status}",
+    "phase_import": "Saving entries",
+    "phase_commit": "Saving the current import block safely"
   },
   "income13": {
     "amount": "Amount:",
@@ -2527,12 +2529,14 @@
     "confirm_title": "Confirm bank import",
     "confirm_text": "Import {budget} budget entries and learn {ai} TWINT assignments?\n\nTWINT credits are never booked as income.",
     "partial_failure": "Bank import partially failed",
-    "partial_failure_text": "{imported} entries from {batches} file batches were already imported.\n\nError: {error}",
+    "partial_failure_text": "{imported} entries from {batches} fully saved blocks are kept. The failed block was rolled back completely – no half-imported file is left in the database.\n\nError: {error}",
     "ai_partial_failure": "TWINT learning incomplete",
-    "ai_partial_failure_text": "{imported} budget entries were imported, but not all TWINT assignments could be saved.\n\nError: {error}",
+    "ai_partial_failure_text": "{imported} entries from {batches} fully saved blocks are kept. The failed block of TWINT assignments was rolled back completely.\n\nError: {error}",
     "done_title": "Bank import complete",
     "done_text": "{imported} entries imported · {skipped} duplicates skipped · {learned} TWINT assignments learned.",
     "status_suggestion": "Suggestion {confidence}% · confirm",
-    "same_file_already_loaded": "This file is already loaded in the current review."
+    "same_file_already_loaded": "This file is already loaded in the current review.",
+    "cancel_title": "Bank import cancelled",
+    "cancel_text": "Cancelled between two blocks.\n\n{imported} entries and {learned} TWINT assignments from {batches} fully saved blocks are kept. There are no half-written blocks: cancelling only takes effect between two transactions.\n\nRunning the import again skips whatever is already saved."
   }
 }

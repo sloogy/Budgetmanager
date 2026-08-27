@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import itertools
 import logging
 import sqlite3
 from contextlib import contextmanager
@@ -71,6 +72,9 @@ def checkpoint_wal(conn: sqlite3.Connection) -> bool:
     return not busy
 
 
+_savepoint_counter = itertools.count()
+
+
 @contextmanager
 def db_transaction(conn: sqlite3.Connection):
     """Context Manager für atomare Datenbank-Transaktionen.
@@ -83,10 +87,28 @@ def db_transaction(conn: sqlite3.Connection):
             conn.execute("INSERT INTO …")
             conn.execute("UPDATE …")
         # → automatisch COMMIT bei Erfolg, ROLLBACK bei Exception
+
+    Läuft bereits eine Transaktion, wird der Block über einen SAVEPOINT
+    geklammert. Vorher lief er dort ohne jede Klammer mit: ein Fehler rollte
+    dann **nichts** zurück, und die halb geschriebenen Zeilen blieben in einer
+    fremden Transaktion stehen, bis irgendein späterer ``commit()`` sie
+    festschrieb. Ein SAVEPOINT macht den Block auch verschachtelt atomar, ohne
+    die äußere Klammer vorzeitig zu schließen.
     """
     if conn.in_transaction:
-        # Already inside an outer transaction — participate without own BEGIN/COMMIT
-        yield conn
+        name = f"db_tx_{next(_savepoint_counter)}"
+        conn.execute(f"SAVEPOINT {name}")
+        # try/finally statt except: Der Block soll auch bei GeneratorExit oder
+        # KeyboardInterrupt zurueckgerollt werden, und der Ausnahmen-Ratchet
+        # bekommt keinen weiteren breiten Handler.
+        erfolgreich = False
+        try:
+            yield conn
+            erfolgreich = True
+        finally:
+            if not erfolgreich:
+                conn.execute(f"ROLLBACK TO {name}")
+            conn.execute(f"RELEASE {name}")
         return
     try:
         conn.execute("BEGIN")

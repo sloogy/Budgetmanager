@@ -1386,7 +1386,9 @@
     "phase_twint": "Analyse TWINT",
     "status_items": "{activity} · {current} / {total} · {percent} %",
     "status_percent": "{activity} · {percent} %",
-    "status_prefix": "{prefix} · {status}"
+    "status_prefix": "{prefix} · {status}",
+    "phase_import": "Enregistrement des écritures",
+    "phase_commit": "Le bloc d’import en cours est enregistré en toute sécurité"
   },
   "income13": {
     "amount": "Montant :",
@@ -2527,12 +2529,14 @@
     "confirm_title": "Confirmer l’import bancaire",
     "confirm_text": "Importer {budget} écritures et apprendre {ai} associations TWINT ?\n\nLes crédits TWINT ne sont jamais comptabilisés comme revenu.",
     "partial_failure": "Import bancaire partiellement échoué",
-    "partial_failure_text": "{imported} écritures provenant de {batches} lots ont déjà été importées.\n\nErreur : {error}",
+    "partial_failure_text": "{imported} écritures provenant de {batches} blocs entièrement enregistrés sont conservées. Le bloc en échec a été entièrement annulé – aucun fichier à moitié importé ne reste dans la base de données.\n\nErreur : {error}",
     "ai_partial_failure": "Apprentissage TWINT incomplet",
-    "ai_partial_failure_text": "{imported} écritures ont été importées, mais toutes les associations TWINT n’ont pas pu être enregistrées.\n\nErreur : {error}",
+    "ai_partial_failure_text": "{imported} écritures provenant de {batches} blocs entièrement enregistrés sont conservées. Le bloc en échec contenant les associations TWINT a été entièrement annulé.\n\nErreur : {error}",
     "done_title": "Import bancaire terminé",
     "done_text": "{imported} écritures importées · {skipped} doublons ignorés · {learned} associations TWINT apprises.",
     "status_suggestion": "Suggestion {confidence}% · confirmer",
-    "same_file_already_loaded": "Ce fichier est déjà chargé dans la vérification actuelle."
+    "same_file_already_loaded": "Ce fichier est déjà chargé dans la vérification actuelle.",
+    "cancel_title": "Import bancaire interrompu",
+    "cancel_text": "Interrompu entre deux blocs.\n\n{imported} écritures et {learned} associations TWINT provenant de {batches} blocs entièrement enregistrés sont conservées. Il n’existe pas de bloc à moitié écrit : l’interruption n’agit qu’entre deux transactions.\n\nUne nouvelle exécution ignore ce qui est déjà enregistré."
   }
 }

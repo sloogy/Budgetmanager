@@ -1386,7 +1386,9 @@
     "phase_twint": "TWINT analysieren",
     "status_items": "{activity} · {current} / {total} · {percent} %",
     "status_percent": "{activity} · {percent} %",
-    "status_prefix": "{prefix} · {status}"
+    "status_prefix": "{prefix} · {status}",
+    "phase_import": "Buchungen speichern",
+    "phase_commit": "Aktueller Importblock wird sicher gespeichert"
   },
   "income13": {
     "amount": "Betrag:",
@@ -2527,12 +2529,14 @@
     "confirm_title": "Bankimport bestätigen",
     "confirm_text": "{budget} Budgetbuchungen importieren und {ai} TWINT-Zuordnungen lernen?\n\nTWINT-Eingänge werden nie als Einkommen gebucht.",
     "partial_failure": "Bankimport teilweise fehlgeschlagen",
-    "partial_failure_text": "{imported} Buchungen aus {batches} Datei-Batches wurden bereits übernommen.\n\nFehler: {error}",
+    "partial_failure_text": "{imported} Buchungen aus {batches} vollständig gespeicherten Blöcken bleiben erhalten. Der fehlgeschlagene Block wurde vollständig zurückgerollt – es steht keine halb importierte Datei in der Datenbank.\n\nFehler: {error}",
     "ai_partial_failure": "TWINT-Lernen unvollständig",
-    "ai_partial_failure_text": "{imported} Budgetbuchungen wurden übernommen, aber nicht alle TWINT-Zuordnungen konnten gespeichert werden.\n\nFehler: {error}",
+    "ai_partial_failure_text": "{imported} Buchungen aus {batches} vollständig gespeicherten Blöcken bleiben erhalten. Der fehlgeschlagene Block mit TWINT-Zuordnungen wurde vollständig zurückgerollt.\n\nFehler: {error}",
     "done_title": "Bankimport abgeschlossen",
     "done_text": "{imported} Buchungen importiert · {skipped} Duplikate übersprungen · {learned} TWINT-Zuordnungen gelernt.",
     "status_suggestion": "Vorschlag {confidence}% · bestätigen",
-    "same_file_already_loaded": "Diese Datei ist bereits im aktuellen Review geladen."
+    "same_file_already_loaded": "Diese Datei ist bereits im aktuellen Review geladen.",
+    "cancel_title": "Bankimport abgebrochen",
+    "cancel_text": "Abgebrochen zwischen zwei Blöcken.\n\n{imported} Buchungen und {learned} TWINT-Zuordnungen aus {batches} vollständig gespeicherten Blöcken bleiben erhalten. Angefangene Blöcke gibt es nicht: Der Abbruch greift nur zwischen zwei Transaktionen.\n\nEin erneuter Lauf überspringt, was bereits gespeichert ist."
   }
 }

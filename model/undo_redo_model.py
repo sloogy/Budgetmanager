@@ -179,6 +179,17 @@ class UndoRedoModel:
             )
         except Exception as e:
             logger.warning("undo_stack pruning fehlgeschlagen: %s", e)
+        finally:
+            # Das Pruning ist DML. Ohne eigenen Commit laesst es eine implizite
+            # Transaktion offen, die niemandem gehoert: ``conn.in_transaction``
+            # bleibt True, und der naechste ``db_transaction`` haelt das fuer
+            # eine aeussere Klammer und verzichtet auf eigenes BEGIN/COMMIT.
+            # Genau so verlor ein Bankimport ab der zweiten Datei seine
+            # Atomaritaet - ein Fehler mitten im Block rollte nichts zurueck.
+            try:
+                self.conn.commit()
+            except sqlite3.Error as exc:
+                logger.warning("Commit nach undo_stack-Pruning fehlgeschlagen: %s", exc)
 
     def undo(self) -> bool:
         """Undoes the last group. Returns True if something changed."""
