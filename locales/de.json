@@ -1376,6 +1376,11 @@
   },
   "import_progress": {
     "cancel_tip": "Laufenden Schritt abbrechen",
+    "phase_categorize": "KI-Kategorisierung",
+    "phase_duplicates": "Duplikate prüfen",
+    "phase_read": "Datei lesen",
+    "phase_review": "Review-Liste vorbereiten",
+    "phase_twint": "TWINT analysieren",
     "status_items": "{activity} · {current} / {total} · {percent} %",
     "status_percent": "{activity} · {percent} %"
   },

@@ -1,6 +1,8 @@
 from datetime import date
 from pathlib import Path
 
+from tests.conftest import warte_auf_analyse
+
 # ---------------------------------------------------------------------------
 # Verhaltenstests gegen die echte V4-Klasse (Offscreen-Qt, echte SQLite-DB).
 # Bis v3.0.6 standen hier zehn Zusicherungen der Bauart
@@ -119,6 +121,7 @@ def test_v4_versehentlich_geladene_datei_laesst_sich_wieder_entfernen(
 
     dialog = v4_dialog([], quellen=[])
     dialog._add_paths([str(bank), str(karte)])
+    warte_auf_analyse(dialog)
     assert len(dialog.sources) == 2
     assert dialog.table.rowCount() == 2
 
@@ -130,6 +133,7 @@ def test_v4_versehentlich_geladene_datei_laesst_sich_wieder_entfernen(
     ]
     assert len(entfernen) == 2
     entfernen[1].trigger()
+    warte_auf_analyse(dialog)
 
     assert [Path(quelle.path).name for quelle in dialog.sources] == ["bank.csv"]
     assert len(dialog.transactions) == 1
@@ -547,6 +551,7 @@ def test_v4_waehlt_den_kreditkarten_adapter_vor_dem_allgemeinen_leser(
 
     dialog = v4_dialog([], quellen=[])
     dialog._add_paths([str(pfad)])
+    warte_auf_analyse(dialog)
 
     assert len(dialog.sources) == 1
     quelle = dialog.sources[0]
@@ -567,6 +572,7 @@ def test_v4_laedt_mehrere_kontoauszuege_in_ein_review(v4_dialog, tmp_path):
 
     dialog = v4_dialog([], quellen=[])
     dialog._add_paths([str(bank), str(karte)])
+    warte_auf_analyse(dialog)
 
     assert [quelle.source_format for quelle in dialog.sources] == [
         "Bank-CSV/PDF",
@@ -579,4 +585,5 @@ def test_v4_laedt_mehrere_kontoauszuege_in_ein_review(v4_dialog, tmp_path):
 
     # Dieselbe Datei ein zweites Mal aendert nichts.
     dialog._add_paths([str(bank)])
+    warte_auf_analyse(dialog)
     assert len(dialog.sources) == 2

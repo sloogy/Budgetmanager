@@ -1376,6 +1376,11 @@
   },
   "import_progress": {
     "cancel_tip": "Interrompre l'étape en cours",
+    "phase_categorize": "Catégorisation par IA",
+    "phase_duplicates": "Vérification des doublons",
+    "phase_read": "Lecture du fichier",
+    "phase_review": "Préparation de la liste de contrôle",
+    "phase_twint": "Analyse TWINT",
     "status_items": "{activity} · {current} / {total} · {percent} %",
     "status_percent": "{activity} · {percent} %"
   },

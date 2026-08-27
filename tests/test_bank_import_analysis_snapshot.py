@@ -35,7 +35,12 @@ from model.twint_import_policy import (
     TwintAwareBankImportService,
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
-from tests.conftest import V4_DIGEST, V4_KATEGORIE, V4_KATEGORIE_ZWEI
+from tests.conftest import (
+    V4_DIGEST,
+    V4_KATEGORIE,
+    V4_KATEGORIE_ZWEI,
+    warte_auf_analyse,
+)
 
 _DIGEST = V4_DIGEST
 
@@ -372,6 +377,8 @@ def test_dialog_analyse_kommt_ohne_die_db_modelle_aus(v4_dialog, v4_tx, monkeypa
 
     dialog._rebuild_from_sources()
 
+    warte_auf_analyse(dialog)
+
     assert len(dialog.states) == 2
     assert dialog._effective_amount(0)[0] == pytest.approx(24.50)
     assert dialog._all_tags(0) == ()
@@ -394,6 +401,7 @@ def test_dialog_zieht_den_snapshot_vor_jeder_analyse_neu(v4_dialog, v4_tx):
         counterparty="",
     )
     dialog._rebuild_from_sources()
+    warte_auf_analyse(dialog)
 
     frisch = dialog.snapshot.predict(typ=TYP_EXPENSES, description="COOP")
     assert frisch.category == V4_KATEGORIE

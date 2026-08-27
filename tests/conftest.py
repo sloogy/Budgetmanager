@@ -90,6 +90,31 @@ V4_DIGEST_ZWEI = "b" * 64
 V4_KATEGORIE = "Testkategorie"
 V4_KATEGORIE_ZWEI = "Zweitkategorie"
 
+# Seit P1.3 rechnet der Dialog die Analyse in einem Worker-Thread. Wer sie
+# anstoesst, bekommt die Pruefliste nicht mehr in derselben Zeile zurueck.
+V4_ANALYSE_TIMEOUT_S = 30.0
+
+
+def warte_auf_analyse(dialog, *, timeout: float = V4_ANALYSE_TIMEOUT_S) -> None:
+    """Pumpt die Ereignisschleife, bis der Analyse-Worker fertig ist.
+
+    Damit fahren alle Bankimport-Tests durch den echten Thread statt an ihm
+    vorbei - genau das macht sie zur Regressionsprobe fuer den Worker.
+    """
+    import time
+
+    from PySide6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    ende = time.monotonic() + timeout
+    while dialog.analysis_running() and time.monotonic() < ende:
+        if app is not None:
+            app.processEvents()
+        time.sleep(0.001)
+    if app is not None:
+        app.processEvents()
+    assert not dialog.analysis_running(), "Analyse-Worker wurde nicht fertig"
+
 
 @pytest.fixture(scope="session")
 def v4_app():
@@ -172,6 +197,7 @@ def v4_dialog(v4_app, v4_conn):
             for quell_digest, name, zeilen in quellen
         ]
         dialog._rebuild_from_sources()
+        warte_auf_analyse(dialog)
         erzeugte.append(dialog)
         return dialog
 

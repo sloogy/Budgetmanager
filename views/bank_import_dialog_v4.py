@@ -15,12 +15,12 @@ bleibt erhalten.
 
 from __future__ import annotations
 
+import dataclasses
 import sqlite3
 from collections import defaultdict
-from dataclasses import dataclass, field
 from pathlib import Path
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QThread, Signal, Slot
 from PySide6.QtGui import QAction, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QAbstractItemView,
@@ -44,58 +44,56 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from model.bank_import_ai import (
-    BookingSignal,
-    ReimbursementMatch,
-    match_twint_reimbursement,
+from model.bank_import_ai import ReimbursementMatch
+from model.bank_import_analysis import (
+    PHASE_READ,
+    AnalysisRequest,
+    AnalysisResult,
+    LoadedSource,
+    ReviewState,
+    StateKey,
+    state_key,
 )
-from model.bank_import_service import BankImportItem, source_digest
+from model.bank_import_service import BankImportItem
 from model.bank_import_snapshot import (
     BankImportAnalysisSnapshot,
     capture_analysis_snapshot,
 )
-from model.bank_statement_reader import (
-    BankStatementError,
-    BankTransaction,
-    load_transactions,
-)
-from model.credit_card_statement_reader import is_credit_card_csv, load_credit_card_csv
+from model.bank_statement_reader import BankTransaction
 from model.tags_model import TagsModel
 from model.twint_import_policy import (
     TYP_TWINT_AI,
     BankImportMarkerStore,
     TwintAwareBankImportService,
-    is_twint_credit,
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 from utils.accessibility import configure_dialog_tab_order
 from utils.i18n import tr
 from utils.money import get_currency
 from utils.notifications import show_info, show_warning
+from views.bank_import_analysis_worker import BankImportAnalysisWorker, phase_label
 from views.import_progress_area import ImportProgressArea
 
 _CATEGORY_SEPARATOR = "\x1f"
 _READY_CONFIDENCE = 0.80
 
+# Wie lange das Schliessen auf den Analyse-Worker wartet, bevor der Thread
+# geparkt wird. Grosszuegig, weil der Abbruch kooperativ ist: die Rechnung
+# endet am naechsten Pruefpunkt, nicht mitten im Dateiparser.
+_ANALYSIS_STOP_WAIT_MS = 8000
 
-@dataclass
-class LoadedSource:
-    path: str
-    digest: str
-    source_format: str
-    transactions: list[BankTransaction]
-    duplicate_indexes: set[int]
+# Threads, die beim Schliessen ausnahmsweise noch liefen. Ohne diese Liste
+# raeumt Python das QThread-Objekt zusammen mit dem Dialog ab, und Qt beendet
+# den Prozess dann mit "QThread: Destroyed while thread is still running" -
+# nach dem Schliessen, wenn niemand mehr hinsieht.
+_PARKED_THREADS: set[QThread] = set()
 
 
-@dataclass
-class ReviewState:
-    use: bool
-    typ: str
-    category_typ: str = ""
-    category: str = ""
-    manual_tags: set[str] = field(default_factory=set)
-    confidence: float = 0.0
-    prediction_method: str = ""
+def _park_until_finished(thread: QThread) -> None:
+    """Haelt einen noch laufenden Thread am Leben, bis er wirklich endet."""
+    _PARKED_THREADS.add(thread)
+    thread.finished.connect(lambda: _PARKED_THREADS.discard(thread))
+    thread.finished.connect(thread.deleteLater)
 
 
 class SearchableCategoryCombo(QComboBox):
@@ -294,6 +292,14 @@ class BankImportDialog(QDialog):
         self._updating = False
         self._last_checkbox_row: int | None = None
 
+        # Analyse-Worker. ``_analysis_active`` sagt, ob das Ergebnis des
+        # laufenden Laufs noch erwuenscht ist; nach dem Schliessen ist es das
+        # nicht mehr, auch wenn der Thread noch ein Signal nachschiebt.
+        self._analysis_thread: QThread | None = None
+        self._analysis_worker: BankImportAnalysisWorker | None = None
+        self._analysis_active = False
+        self._quit_hook_connected = False
+
         self.setWindowTitle(tr("bank_import.window_title"))
         self.resize(1280, 760)
         self.setMinimumSize(980, 620)
@@ -318,16 +324,6 @@ class BankImportDialog(QDialog):
         if typ not in {TYP_EXPENSES, TYP_INCOME}:
             return "", ""
         return typ, category
-
-    @staticmethod
-    def _signal(index: int, tx: BankTransaction) -> BookingSignal:
-        return BookingSignal(
-            booking_id=f"row:{index}",
-            booking_date=tx.booking_date,
-            amount=float(tx.amount),
-            description=tx.description,
-            counterparty=tx.counterparty,
-        )
 
     def _build_ui(self) -> None:
         root = QVBoxLayout(self)
@@ -549,244 +545,202 @@ class BankImportDialog(QDialog):
             self._add_paths(paths)
 
     def _add_paths(self, paths: list[str]) -> None:
-        self._capture_snapshot()
-        errors: list[str] = []
-        currency = get_currency().upper()
-        known = {str(Path(source.path).resolve()) for source in self.sources}
-        known_digests = {source.digest for source in self.sources}
-        for path in paths:
-            resolved = str(Path(path).resolve())
-            if resolved in known:
-                continue
-            try:
-                if is_credit_card_csv(path):
-                    transactions = load_credit_card_csv(path, currency)
-                    source_format = "Kreditkarten-CSV"
-                else:
-                    transactions = load_transactions(path, currency)
-                    source_format = "Bank-CSV/PDF"
-                digest = source_digest(path)
-                if digest in known_digests:
-                    errors.append(
-                        f"{Path(path).name}: "
-                        + tr("bank_import_v4.same_file_already_loaded")
-                    )
-                    continue
-                duplicates = self.snapshot.duplicate_indexes(transactions, digest)
-            except (BankStatementError, OSError, ValueError) as exc:
-                errors.append(f"{Path(path).name}: {exc}")
-                continue
-            self.sources.append(
-                LoadedSource(path, digest, source_format, transactions, duplicates)
-            )
-            known.add(resolved)
-            known_digests.add(digest)
-
-        if not self.sources:
-            if errors:
-                show_warning(self, tr("bank_import_v4.load_failed"), "\n".join(errors))
-            return
-        self._rebuild_from_sources()
-        if errors:
-            show_warning(
-                self,
-                tr("bank_import_v4.some_files_skipped"),
-                "\n".join(errors),
-            )
+        """Nimmt neu gewaehlte Dateien in die laufende Analyse auf."""
+        self._start_analysis(new_paths=tuple(paths))
 
     def _rebuild_from_sources(self) -> None:
-        self._capture_snapshot()
-        previous_states: dict[tuple[str, str, int], ReviewState] = {}
-        for old_index, state in self.states.items():
-            if not (0 <= old_index < len(self.transactions)):
+        """Rechnet die Pruefliste aus den bereits geladenen Quellen neu."""
+        self._start_analysis()
+
+    # ── Analyse-Worker ────────────────────────────────────────────
+    # Die Rechnung selbst steht Qt-frei in ``model.bank_import_analysis`` und
+    # laeuft in ``views.bank_import_analysis_worker`` in einem eigenen Thread.
+    # Der Dialog gibt ihr nur den eingefrorenen Snapshot mit, zeigt Fortschritt
+    # und uebernimmt am Ende das Ergebnis - alles Weitere bleibt hier draussen.
+
+    def analysis_running(self) -> bool:
+        """True, solange ein Analyse-Worker arbeitet."""
+        return self._analysis_thread is not None
+
+    def _previous_states(self) -> dict[StateKey, ReviewState]:
+        """Bisherige Entscheidungen, damit ein Neuaufbau sie nicht wegwirft.
+
+        Bewusst Kopien: die Originale gehoeren dem GUI-Thread und duerfen
+        waehrend der Rechnung weiterleben, ohne dass der Worker mitliest.
+        """
+        previous: dict[StateKey, ReviewState] = {}
+        for index, state in self.states.items():
+            if not (0 <= index < len(self.transactions)):
                 continue
-            tx = self.transactions[old_index]
-            digest = self._digest_for_index(old_index)
-            previous_states[
-                (digest, str(tx.source_name or ""), int(tx.source_index))
-            ] = state
-
-        self.transactions = []
-        self._transaction_digests = []
-        self.duplicate_indexes = set()
-        offset = 0
-        for source in self.sources:
-            self.transactions.extend(source.transactions)
-            self._transaction_digests.extend(
-                source.digest for _tx in source.transactions
+            tx = self.transactions[index]
+            previous[state_key(self._digest_for_index(index), tx)] = (
+                dataclasses.replace(state, manual_tags=set(state.manual_tags))
             )
-            self.duplicate_indexes.update(
-                offset + index for index in source.duplicate_indexes
-            )
-            offset += len(source.transactions)
+        return previous
 
-        self._refresh_twint_sets()
-        self._build_matches()
-        self._initialize_states(previous_states)
+    def _analysis_request(self, new_paths: tuple[str, ...]) -> AnalysisRequest:
+        """Buendelt alles, was der Worker braucht - auf diesem Thread gelesen."""
+        self._capture_snapshot()
+        return AnalysisRequest(
+            snapshot=self.snapshot,
+            sources=tuple(self.sources),
+            new_paths=new_paths,
+            currency=get_currency().upper(),
+            previous_states=self._previous_states(),
+            same_file_message=tr("bank_import_v4.same_file_already_loaded"),
+        )
+
+    def _start_analysis(self, *, new_paths: tuple[str, ...] = ()) -> None:
+        if self.analysis_running():
+            # Zwei gleichzeitige Laeufe haetten zwei Meinungen zur Pruefliste.
+            return
+        request = self._analysis_request(new_paths)
+
+        thread = QThread()
+        worker = BankImportAnalysisWorker(request)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.status_changed.connect(self.progress_area.set_activity)
+        worker.progress_changed.connect(self.progress_area.set_percent)
+        worker.item_progress.connect(self.progress_area.set_item_progress)
+        worker.indeterminate.connect(self.progress_area.set_indeterminate)
+        worker.finished.connect(self._on_analysis_finished)
+        worker.failed.connect(self._on_analysis_failed)
+        worker.cancelled.connect(self._on_analysis_cancelled)
+        for signal in (worker.finished, worker.failed, worker.cancelled):
+            signal.connect(thread.quit)
+            signal.connect(worker.deleteLater)
+        thread.finished.connect(
+            lambda beendeter=thread: self._on_analysis_thread_finished(beendeter)
+        )
+
+        self._analysis_thread = thread
+        self._analysis_worker = worker
+        self._analysis_active = True
+        # Abbrechen bleibt vorerst aus: den Knopf bedient erst P1.4. Ein
+        # sichtbarer Knopf ohne Wirkung waere schlimmer als keiner.
+        self.progress_area.start(phase_label(PHASE_READ), cancellable=False)
+        self._refresh_ui()
+        self._connect_quit_hook()
+        thread.start()
+
+    def _connect_quit_hook(self) -> None:
+        """Auch ein globales ``quit()`` darf den Thread nicht zerlegen.
+
+        Restore, Updater oder das Ende der Windows-Sitzung beenden die
+        Anwendung, ohne diesen Dialog zu schliessen. Ohne diesen Haken faende
+        Qt beim Abraeumen einen laufenden QThread vor und beendete den Prozess
+        hart.
+        """
+        app = QApplication.instance()
+        if app is None or self._quit_hook_connected:
+            return
+        app.aboutToQuit.connect(self._stop_analysis)
+        self._quit_hook_connected = True
+
+    @Slot()
+    def _stop_analysis(self) -> None:
+        """Beendet einen laufenden Worker kooperativ und wartet auf ihn."""
+        thread = self._analysis_thread
+        worker = self._analysis_worker
+        self._analysis_active = False
+        self._analysis_thread = None
+        self._analysis_worker = None
+        if thread is None:
+            return
+        if worker is not None:
+            worker.request_cancel()
+        thread.quit()
+        if thread.wait(_ANALYSIS_STOP_WAIT_MS):
+            thread.deleteLater()
+            return
+        # Der Thread haengt laenger als erwartet. Ihn jetzt abzuraeumen waere
+        # der harte Prozessabbruch; stattdessen bleibt er am Leben, bis er von
+        # selbst endet.
+        _park_until_finished(thread)
+
+    def _on_analysis_thread_finished(self, thread: QThread) -> None:
+        if thread is not self._analysis_thread:
+            # Ein bereits abgeloester Lauf meldet sich nach - etwa ein beim
+            # Schliessen geparkter Thread. Er darf einen inzwischen frisch
+            # gestarteten Lauf nicht als beendet markieren.
+            thread.deleteLater()
+            return
+        self._analysis_thread = None
+        self._analysis_worker = None
+        self._analysis_active = False
+        thread.deleteLater()
+        # Letzte Instanz gegen einen stehengebliebenen Balken: wer hier
+        # ankommt, hat den Lauf hinter sich - egal ob mit Ergebnis, Fehler
+        # oder einer Ausnahme, die den Worker vorzeitig beendet hat.
+        if self.progress_area.is_active():
+            self.progress_area.stop()
+        self._refresh_ui()
+
+    @Slot(object)
+    def _on_analysis_finished(self, result: AnalysisResult) -> None:
+        if not self._analysis_active:
+            return
+        self.progress_area.stop()
+        self._apply_analysis(result)
+
+    @Slot(str)
+    def _on_analysis_failed(self, message: str) -> None:
+        if not self._analysis_active:
+            return
+        self.progress_area.stop()
+        self._refresh_ui()
+        show_warning(self, tr("bank_import_v4.load_failed"), message)
+
+    @Slot()
+    def _on_analysis_cancelled(self) -> None:
+        if not self._analysis_active:
+            return
+        self.progress_area.stop()
+        self._refresh_ui()
+
+    def _apply_analysis(self, result: AnalysisResult) -> None:
+        """Uebernimmt das Worker-Ergebnis in die Pruefliste."""
+        self.sources = list(result.sources)
+        self.transactions = list(result.transactions)
+        self._transaction_digests = list(result.transaction_digests)
+        self.duplicate_indexes = set(result.duplicate_indexes)
+        self.twint_credit_indexes = set(result.twint_credit_indexes)
+        self.marked_twint_indexes = set(result.marked_twint_indexes)
+        self.ai_marker_indexes = set(result.ai_marker_indexes)
+        self.matches = dict(result.matches)
+        self.matched_credit_indexes = set(result.matched_credit_indexes)
+        self.states = dict(result.states)
         self._view_order = list(range(len(self.transactions)))
         self._populate_table()
         self._rebuild_sources_menu()
         self._refresh_ui()
+        if result.errors:
+            show_warning(
+                self,
+                (
+                    tr("bank_import_v4.some_files_skipped")
+                    if self.sources
+                    else tr("bank_import_v4.load_failed")
+                ),
+                "\n".join(result.errors),
+            )
 
-    def _refresh_twint_sets(self) -> None:
-        self.twint_credit_indexes = {
-            index for index, tx in enumerate(self.transactions) if is_twint_credit(tx)
-        }
-        self.marked_twint_indexes = set()
-        self.ai_marker_indexes = set()
-        groups: dict[str, list[int]] = defaultdict(list)
-        for index, digest in enumerate(self._transaction_digests):
-            groups[digest].append(index)
-        for digest, indexes in groups.items():
-            local = [self.transactions[index] for index in indexes]
-            marked = self.snapshot.marked_indexes(
-                local, digest, marker_kind="twint_credit"
-            )
-            self.marked_twint_indexes.update(indexes[pos] for pos in marked)
-            # ``bank_import_marker_state.external_id`` ist Primaerschluessel:
-            # je Buchungszeile existiert genau ein Marker, die Art steht in
-            # ``marker_kind``. Zeilen, die in 3.0.3-3.0.6 auf "nur lernen,
-            # nicht buchen" gesetzt wurden, tragen ``twint_ai``. Ohne diese
-            # zweite Abfrage hielt V4 sie fuer unmarkiert und bot sie erneut
-            # zum Import an.
-            ai_marked = self.snapshot.marked_indexes(
-                local, digest, marker_kind="twint_ai"
-            )
-            self.ai_marker_indexes.update(indexes[pos] for pos in ai_marked)
+    # ── Ende des Dialogs ──────────────────────────────────────────
+
+    def done(self, result: int) -> None:
+        # Sammelpunkt fuer accept(), reject() und den Fensterschliesser: der
+        # Worker muss enden, bevor Qt diesen Dialog abraeumt.
+        self._stop_analysis()
+        super().done(result)
+
+    def closeEvent(self, event) -> None:
+        self._stop_analysis()
+        super().closeEvent(event)
 
     def _is_learned(self, index: int) -> bool:
         """True, wenn die Zeile bereits als reines Lernsignal markiert ist."""
         return index in self.marked_twint_indexes or index in self.ai_marker_indexes
-
-    def _build_matches(self) -> None:
-        self.matches.clear()
-        self.matched_credit_indexes.clear()
-        credits = [
-            self._signal(index, tx)
-            for index, tx in enumerate(self.transactions)
-            if tx.amount > 0
-            and index not in self.duplicate_indexes
-            and index not in self.marked_twint_indexes
-        ]
-        for index, tx in enumerate(self.transactions):
-            if tx.amount >= 0 or index in self.duplicate_indexes:
-                continue
-            match = match_twint_reimbursement(self._signal(index, tx), credits)
-            if match is None:
-                continue
-            try:
-                credit_index = int(match.credit_id.split(":", 1)[1])
-            except (ValueError, IndexError):
-                continue
-            if (
-                credit_index in self.matched_credit_indexes
-                or credit_index in self.marked_twint_indexes
-            ):
-                continue
-            self.matches[index] = match
-            self.matched_credit_indexes.add(credit_index)
-
-    def _initialize_states(
-        self, previous_states: dict[tuple[str, str, int], ReviewState] | None = None
-    ) -> None:
-        previous_states = previous_states or {}
-        self.states = {}
-        for index, tx in enumerate(self.transactions):
-            if index in self.duplicate_indexes:
-                self.states[index] = ReviewState(
-                    False,
-                    (
-                        TYP_TWINT_AI
-                        if is_twint_credit(tx)
-                        else (TYP_INCOME if tx.amount > 0 else TYP_EXPENSES)
-                    ),
-                )
-                continue
-            if is_twint_credit(tx):
-                digest = self._digest_for_index(index)
-                preferred = self.snapshot.classification(
-                    tx, digest, marker_kind="twint_credit"
-                )
-                if not all(preferred):
-                    preferred = self.snapshot.suggest_category(tx)
-                state = ReviewState(
-                    use=not self._is_learned(index) and all(preferred),
-                    typ=TYP_TWINT_AI,
-                    category_typ=preferred[0] if all(preferred) else "",
-                    category=preferred[1] if all(preferred) else "",
-                    confidence=0.95 if all(preferred) else 0.0,
-                    prediction_method="twint_memory" if all(preferred) else "",
-                )
-            elif index in self.ai_marker_indexes:
-                # Zeile wurde frueher bewusst auf "nur lernen, nicht buchen"
-                # gesetzt. Sie bleibt ein Lernsignal und wird nicht erneut zum
-                # Import angeboten.
-                digest = self._digest_for_index(index)
-                preferred = self.snapshot.classification(
-                    tx, digest, marker_kind="twint_ai"
-                )
-                if not all(preferred):
-                    preferred = self.snapshot.suggest_category(tx)
-                state = ReviewState(
-                    use=False,
-                    typ=TYP_TWINT_AI,
-                    category_typ=preferred[0] if all(preferred) else "",
-                    category=preferred[1] if all(preferred) else "",
-                    confidence=0.95 if all(preferred) else 0.0,
-                    prediction_method="twint_memory" if all(preferred) else "",
-                )
-            else:
-                typ = TYP_INCOME if tx.amount > 0 else TYP_EXPENSES
-                prediction = self.snapshot.predict(
-                    typ=typ,
-                    description=tx.description,
-                    counterparty=tx.counterparty,
-                )
-                state = ReviewState(
-                    use=True,
-                    typ=typ,
-                    category_typ=typ if prediction.category else "",
-                    category=prediction.category,
-                    confidence=float(prediction.confidence),
-                    prediction_method=prediction.method,
-                )
-            previous = previous_states.get(
-                (
-                    self._digest_for_index(index),
-                    str(tx.source_name or ""),
-                    int(tx.source_index),
-                )
-            )
-            if previous is not None:
-                state.use = previous.use
-                state.typ = previous.typ
-                state.category_typ = previous.category_typ
-                state.category = previous.category
-                state.manual_tags = set(previous.manual_tags)
-            self.states[index] = state
-
-        # Ein sicherer TWINT-Erstattungstreffer übernimmt die bereits bekannte
-        # Kategorie der zugehörigen Ausgabe. Damit wird die Lernzeile nicht zu
-        # einem zusätzlichen Pflichtschritt im normalen Import.
-        for expense_index, match in self.matches.items():
-            try:
-                credit_index = int(match.credit_id.split(":", 1)[1])
-            except (ValueError, IndexError):
-                continue
-            expense_state = self.states.get(expense_index)
-            credit_state = self.states.get(credit_index)
-            if (
-                expense_state is None
-                or credit_state is None
-                or credit_state.category
-                or not expense_state.category
-            ):
-                continue
-            credit_state.category_typ = expense_state.category_typ
-            credit_state.category = expense_state.category
-            credit_state.confidence = max(0.90, expense_state.confidence)
-            credit_state.prediction_method = "twint_match"
-            credit_state.use = not self._is_learned(credit_index)
 
     def _populate_table(self) -> None:
         self._updating = True
@@ -1368,6 +1322,15 @@ class BankImportDialog(QDialog):
             else tr("bank_import_v4.add_files")
         )
 
+        # Waehrend der Analyse bleibt das Fenster bedienbar - Rollen, Suchen,
+        # Sortieren gehen weiter. Nur was die Pruefliste selbst umbaut, ruht
+        # solange, sonst liefen zwei Rechnungen gegeneinander.
+        busy = self.analysis_running()
+        self.btn_add_files.setEnabled(not busy)
+        self.btn_sources.setEnabled(not busy)
+        if busy:
+            self.btn_import.setEnabled(False)
+
     def _build_item(self, index: int) -> BankImportItem | None:
         state = self.states[index]
         if (
@@ -1536,4 +1499,13 @@ class BankImportDialog(QDialog):
         self.accept()
 
 
-__all__ = ["BankImportDialog", "SearchableCategoryCombo", "TagSelectionDialog"]
+# ``LoadedSource`` und ``ReviewState`` wohnen seit dem Analyse-Worker im
+# Modell; hier bleiben sie als Name stehen, damit bestehende Aufrufer und
+# Tests sie weiterhin ueber den Dialog beziehen koennen.
+__all__ = [
+    "BankImportDialog",
+    "LoadedSource",
+    "ReviewState",
+    "SearchableCategoryCombo",
+    "TagSelectionDialog",
+]
