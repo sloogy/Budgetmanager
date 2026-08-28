@@ -1,8 +1,8 @@
-# 💰 BudgetManager v3.1.1
+# 💰 BudgetManager v3.1.2
 
 Der BudgetManager beantwortet zwei Fragen, die eine Kontoauszugs-App nicht beantwortet: **Wohin soll mein Geld dieses Jahr gehen — und wohin geht es tatsächlich?**
 
-![Version](https://img.shields.io/badge/version-3.1.1-blue)
+![Version](https://img.shields.io/badge/version-3.1.2-blue)
 ![Python](https://img.shields.io/badge/python-3.11+-green)
 ![GUI](https://img.shields.io/badge/gui-PySide6%20%2F%20Qt6-purple)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)
@@ -428,7 +428,7 @@ GUI-Tests werden ohne PySide6 automatisch übersprungen. Headless läuft alles m
 `app_info.py` ist die einzige manuelle Versionsquelle:
 
 ```python
-APP_VERSION = "3.1.1"
+APP_VERSION = "3.1.2"
 APP_RELEASE_DATE = "28. August 2026"
 ```
 

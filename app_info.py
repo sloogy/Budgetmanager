@@ -13,7 +13,7 @@ from __future__ import annotations
 APP_NAME = "Budgetmanager"
 
 # SemVer-Release-Version
-APP_VERSION = "3.1.1"
+APP_VERSION = "3.1.2"
 
 # Nur Anzeige (About-Dialog). Kannst du jederzeit anpassen.
 APP_RELEASE_DATE = "28. August 2026"

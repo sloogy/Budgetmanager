@@ -1,4 +1,4 @@
-# BudgetManager v3.1.1 — Feature-Übersicht
+# BudgetManager v3.1.2 — Feature-Übersicht
 
 BudgetManager ist eine lokale Desktop-App für Budgetplanung, Buchungen, Kategorien, Fixkosten, wiederkehrende Zahlungen, Sparziele und Auswertungen.
 
