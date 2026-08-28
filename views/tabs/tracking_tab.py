@@ -35,6 +35,7 @@ from model.category_model import CategoryModel
 from model.coverage_model import CoverageResult, coverage_from_tracking_rows
 from model.savings_goals_model import SavingsGoalBoundsError, SavingsGoalsModel
 from model.tags_model import TagsModel
+from model.tracking_correction import TrackingCorrectionLearner
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
 from utils.i18n import db_typ_from_display, display_typ, tr, trf
@@ -765,7 +766,15 @@ class TrackingTab(QWidget):
                 item = lw.item(i)
                 if item.checkState() == Qt.Checked:
                     new_ids.append(item.data(Qt.UserRole))
+            # Auch das ist eine Korrektur an einer importierten Buchung: Der
+            # Anwender nimmt der KI eine Tagvergabe ab. Der Stand davor muss
+            # vor dem Schreiben stehen.
+            korrektur = TrackingCorrectionLearner(self.conn)
+            vorher = korrektur.snapshot(int(entry_id))
             self.tags_model.set_entry_tags(entry_id, new_ids)
+            korrektur.relearn(
+                int(entry_id), vorher, learn_enabled=self._ai_learning_enabled()
+            )
             try:
                 current_details = (
                     self.table.item(sel, 4).text() if self.table.item(sel, 4) else ""
@@ -786,6 +795,15 @@ class TrackingTab(QWidget):
                 logger.debug("Tag-Aktionstext fuer bestehende Buchung: %s", exc)
             self._reload_tags()
             self.refresh()
+
+    def _ai_learning_enabled(self) -> bool:
+        """Der P2.1-Lernschalter. Ohne Einstellungsobjekt gilt die Vorgabe."""
+        einstellungen = self.settings
+        if einstellungen is None:
+            from settings import Settings
+
+            einstellungen = Settings()
+        return bool(einstellungen.get("bank_import_ai_learning_enabled", True))
 
     def _duplicate_selected(self):
         """Dupliziert den ausgewählten Eintrag (mit heutigem Datum)."""

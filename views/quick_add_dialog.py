@@ -29,6 +29,7 @@ from model.savings_goals_model import (
     SavingsGoalBoundsError,
 )
 from model.tags_model import TagsModel
+from model.tracking_correction import TrackingCorrectionLearner
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS, normalize_typ
 from settings import Settings
@@ -390,6 +391,15 @@ class QuickAddDialog(QDialog):
         self._details_auto_from_tags = True
         self._details_user_edited = False
 
+    def _ai_learning_enabled(self) -> bool:
+        """Der P2.1-Schalter, hier nur gelesen.
+
+        Steht er aus, wird eine Korrektur genauso wenig gelernt wie ein
+        Import - Ausschalten heisst ausschalten, nicht "ausser bei
+        Korrekturen".
+        """
+        return bool(self._settings.get("bank_import_ai_learning_enabled", True))
+
     def _selected_tag_ids(self) -> tuple[int, ...]:
         """Liest die angehakten Tags aus der Schnelleingabe."""
         ids: list[int] = []
@@ -676,6 +686,11 @@ class QuickAddDialog(QDialog):
 
         try:
             if self._edit_row_id is not None:
+                # Der Stand *vor* der Aenderung ist nur jetzt zu haben. Ohne
+                # ihn liesse sich nicht unterscheiden, ob der Anwender der KI
+                # widersprochen oder nur den Betrag berichtigt hat.
+                korrektur = TrackingCorrectionLearner(self.conn)
+                vorher = korrektur.snapshot(int(self._edit_row_id))
                 self.tracking.update(
                     self._edit_row_id,
                     d,
@@ -686,6 +701,13 @@ class QuickAddDialog(QDialog):
                     savings_action=savings_action,
                 )
                 self.tags_model.set_entry_tags(int(self._edit_row_id), list(tag_ids))
+                # Erst nach den Tags: vorher stuende der alte Tagstand noch da,
+                # und die KI lernte eine Kategorie mit den Tags von gestern.
+                korrektur.relearn(
+                    int(self._edit_row_id),
+                    vorher,
+                    learn_enabled=self._ai_learning_enabled(),
+                )
             else:
                 new_id = self.tracking.add(
                     d,

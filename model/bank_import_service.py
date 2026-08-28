@@ -140,6 +140,8 @@ class BankImportService:
                 source_name TEXT NOT NULL,
                 source_index INTEGER NOT NULL,
                 payload_hash TEXT NOT NULL,
+                original_description TEXT NOT NULL DEFAULT '',
+                original_counterparty TEXT NOT NULL DEFAULT '',
                 imported_at TEXT NOT NULL
             )
             """
@@ -148,6 +150,27 @@ class BankImportService:
             "CREATE INDEX IF NOT EXISTS idx_bank_import_tracking "
             "ON bank_import_state(tracking_id)"
         )
+        spalten = {
+            str(row[1])
+            for row in self.conn.execute(
+                "PRAGMA table_info(bank_import_state)"
+            ).fetchall()
+        }
+        # Die beiden Textspalten sind der Beleg fuer eine spaetere Korrektur:
+        # Was die Bank geschrieben hat - nicht der Text, den der Import daraus
+        # fuer die Buchungsdetails zusammengesetzt hat. Aeltere Datenbanken
+        # bekommen sie leer; eine Korrektur an einer solchen Buchung wird dann
+        # nicht zurueckgelernt, statt aus dem Anzeigetext geraten zu werden.
+        if "original_description" not in spalten:
+            self.conn.execute(
+                "ALTER TABLE bank_import_state "
+                "ADD COLUMN original_description TEXT NOT NULL DEFAULT ''"
+            )
+        if "original_counterparty" not in spalten:
+            self.conn.execute(
+                "ALTER TABLE bank_import_state "
+                "ADD COLUMN original_counterparty TEXT NOT NULL DEFAULT ''"
+            )
         self.conn.commit()
 
     def is_duplicate(self, tx: BankTransaction, document_digest: str) -> bool:
@@ -279,14 +302,17 @@ class BankImportService:
             """
             INSERT INTO bank_import_state(
                 external_id, tracking_id, source_digest, source_name,
-                source_index, payload_hash, imported_at
-            ) VALUES(?,?,?,?,?,?,?)
+                source_index, payload_hash, original_description,
+                original_counterparty, imported_at
+            ) VALUES(?,?,?,?,?,?,?,?,?)
             ON CONFLICT(external_id) DO UPDATE SET
                 tracking_id=excluded.tracking_id,
                 source_digest=excluded.source_digest,
                 source_name=excluded.source_name,
                 source_index=excluded.source_index,
                 payload_hash=excluded.payload_hash,
+                original_description=excluded.original_description,
+                original_counterparty=excluded.original_counterparty,
                 imported_at=excluded.imported_at
             """,
             (
@@ -296,6 +322,8 @@ class BankImportService:
                 tx.source_name,
                 int(tx.source_index),
                 _payload_hash(tx),
+                str(tx.description or ""),
+                str(tx.counterparty or ""),
                 datetime.now(UTC).isoformat(),
             ),
         )
