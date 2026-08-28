@@ -101,7 +101,7 @@
     "reset_tip": "Supprime tous les modèles appris. Les écritures, budgets, catégories, étiquettes et objectifs d'épargne restent inchangés.",
     "security_encrypted": "Les données d'apprentissage se trouvent dans la base de données utilisateur chiffrée.",
     "security_plain": "Les données d'apprentissage se trouvent dans la base de données utilisateur. Cette base n'est pas chiffrée.",
-    "security_quick": "Les données d'apprentissage se trouvent dans la base de données utilisateur chiffrée. En accès rapide sans mot de passe, la clé est toutefois lisible sur cet ordinateur - cela ne protège pas contre un accès physique à l'appareil.",
+    "security_quick": "Les données d'apprentissage se trouvent dans la base de données utilisateur chiffrée. En accès rapide sans mot de passe, la clé est toutefois lisible sur cet ordinateur - cela ne protège pas contre un accès physique à l'appareil. La clé est en outre copiée dans chaque sauvegarde : toute personne possédant le fichier de sauvegarde peut lire les données d'apprentissage, même sur un autre ordinateur. Avec un code PIN ou un mot de passe, ce n'est pas le cas.",
     "security_secret": "Les données d'apprentissage se trouvent dans la base de données utilisateur chiffrée. La clé est protégée par votre mot de passe ou votre code PIN.",
     "use_ai": "Utiliser la catégorisation par IA",
     "use_ai_tip": "L'IA locale propose des catégories lors d'un import bancaire. Si elle est désactivée, les catégories restent vides ; ce qui a déjà été appris est conservé."

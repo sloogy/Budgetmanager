@@ -101,7 +101,7 @@
     "reset_tip": "Deletes every learned pattern. Bookings, budgets, categories, tags and savings goals stay untouched.",
     "security_encrypted": "The learning data lives in the encrypted user database.",
     "security_plain": "The learning data lives in the user database. That database is not encrypted.",
-    "security_quick": "The learning data lives in the encrypted user database. In quick access without a password the key is stored readable on this computer - that is no protection against someone using the device.",
+    "security_quick": "The learning data lives in the encrypted user database. In quick access without a password the key is stored readable on this computer - that is no protection against someone using the device. The key is also copied into every backup: anyone holding the backup file can read the learning data, even on another computer. With a PIN or a password it is not.",
     "security_secret": "The learning data lives in the encrypted user database. The key is protected by your password or PIN.",
     "use_ai": "Use AI categorisation",
     "use_ai_tip": "The local AI suggests categories during a bank import. With it off the categories stay empty; what was already learned is kept."

@@ -101,7 +101,7 @@
     "reset_tip": "Löscht alle gelernten Muster. Buchungen, Budgets, Kategorien, Tags und Sparziele bleiben unverändert.",
     "security_encrypted": "Die Lerndaten liegen in der verschlüsselten Benutzer-Datenbank.",
     "security_plain": "Die Lerndaten liegen in der Benutzer-Datenbank. Diese Datenbank ist nicht verschlüsselt.",
-    "security_quick": "Die Lerndaten liegen in der verschlüsselten Benutzer-Datenbank. Im Schnellzugang ohne Passwort liegt der Schlüssel allerdings lesbar auf diesem Rechner - gegen fremden Zugriff auf das Gerät schützt das nicht.",
+    "security_quick": "Die Lerndaten liegen in der verschlüsselten Benutzer-Datenbank. Im Schnellzugang ohne Passwort liegt der Schlüssel allerdings lesbar auf diesem Rechner - gegen fremden Zugriff auf das Gerät schützt das nicht. Der Schlüssel wird zudem in jede Sicherung mitkopiert: Wer die Sicherungsdatei besitzt, kann die Lerndaten lesen, auch auf einem anderen Rechner. Mit PIN oder Passwort ist das nicht so.",
     "security_secret": "Die Lerndaten liegen in der verschlüsselten Benutzer-Datenbank. Der Schlüssel ist durch dein Passwort bzw. deine PIN geschützt.",
     "use_ai": "KI-Kategorisierung verwenden",
     "use_ai_tip": "Die lokale KI schlägt beim Bankimport Kategorien vor. Ist sie aus, bleiben die Kategorien leer; bereits Gelerntes bleibt erhalten."
