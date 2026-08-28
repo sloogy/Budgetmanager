@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
+from model.ai_learning_source import SOURCE_MANUAL
 from model.bank_import_ai import BankImportAI
 from model.bank_statement_reader import BankTransaction
 from model.crypto import suspend_after_commit_autosave
@@ -30,6 +31,11 @@ class BankImportItem:
     tags: tuple[str, ...]
     amount: float
     details: str
+    #: Woher die Kategorie dieser Zeile stammt - siehe
+    #: :mod:`model.ai_learning_source`. Der Importdialog leitet sie aus dem
+    #: Prueflistenvermerk ab; ein Programmaufruf, der die Kategorie
+    #: ausdruecklich benennt, ist Handarbeit und behaelt die Vorgabe.
+    learn_source: str = SOURCE_MANUAL
 
 
 @dataclass(frozen=True)
@@ -371,6 +377,11 @@ class BankImportService:
         ``learn=False`` bucht wie sonst, legt aber kein neues KI-Wissen an.
         Bereits Gelerntes bleibt dabei unangetastet - das Lernen wird
         ausgesetzt, nicht rückgängig gemacht.
+
+        Gebucht wird **immer** genau das, was in der Zeile steht. Die
+        Herkunft in ``item.learn_source`` entscheidet ausschliesslich darüber,
+        wie schwer das Signal im Lernspeicher wiegt; ein verworfenes Lernsignal
+        ändert an der Buchung nichts.
         """
         validated: list[tuple[BankImportItem, float, list[int], str]] = []
         skipped = 0
@@ -409,6 +420,7 @@ class BankImportService:
                         counterparty=item.transaction.counterparty,
                         tags=item.tags,
                         commit=False,
+                        source=item.learn_source,
                     )
                 tracking_ids.append(tracking_id)
 

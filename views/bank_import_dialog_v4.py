@@ -44,6 +44,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
+from model.ai_learning_source import source_from_prediction_method
 from model.bank_import_ai import ReimbursementMatch
 from model.bank_import_analysis import (
     PHASE_READ,
@@ -65,6 +66,7 @@ from model.twint_import_policy import (
     TYP_TWINT_AI,
     BankImportMarkerStore,
     TwintAwareBankImportService,
+    TwintClassification,
 )
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 from utils.accessibility import configure_dialog_tab_order
@@ -1600,6 +1602,10 @@ class BankImportDialog(QDialog):
             tags=tags,
             amount=amount,
             details=details,
+            # Der Prueflistenvermerk ist der einzige Beleg dafuer, wie diese
+            # Kategorie zustande kam. Was daraus als Lernquelle folgt, steht
+            # in model/ai_learning_source.py - der Dialog erfindet hier nichts.
+            learn_source=source_from_prediction_method(state.prediction_method),
         )
 
     def import_selected(self) -> None:
@@ -1617,10 +1623,8 @@ class BankImportDialog(QDialog):
             )
             return
         plan_groups: dict[str, list[BankImportItem]] = defaultdict(list)
-        twint_groups: dict[str, list[tuple[BankTransaction, str, str]]] = defaultdict(
-            list
-        )
-        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]] = defaultdict(list)
+        twint_groups: dict[str, list[TwintClassification]] = defaultdict(list)
+        ai_groups: dict[str, list[TwintClassification]] = defaultdict(list)
         try:
             for index in checked:
                 state = self.states[index]
@@ -1635,22 +1639,16 @@ class BankImportDialog(QDialog):
                     # Echte TWINT-Eingaenge tragen ``twint_credit``; manuell auf
                     # "nur lernen" gesetzte Zeilen tragen ``twint_ai``. Der
                     # Primaerschluessel laesst genau einen Marker je Zeile zu.
+                    eintrag = (
+                        self.transactions[index],
+                        state.category_typ,
+                        state.category,
+                        source_from_prediction_method(state.prediction_method),
+                    )
                     if index in self.twint_credit_indexes:
-                        twint_groups[digest].append(
-                            (
-                                self.transactions[index],
-                                state.category_typ,
-                                state.category,
-                            )
-                        )
+                        twint_groups[digest].append(eintrag)
                     else:
-                        ai_groups[digest].append(
-                            (
-                                self.transactions[index],
-                                state.category_typ,
-                                state.category,
-                            )
-                        )
+                        ai_groups[digest].append(eintrag)
                     continue
                 item = self._build_item(index)
                 if item is not None:
@@ -1747,8 +1745,8 @@ class BankImportDialog(QDialog):
     def _plan_import_batches(
         self,
         plan_groups: dict[str, list[BankImportItem]],
-        twint_groups: dict[str, list[tuple[BankTransaction, str, str]]],
-        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+        twint_groups: dict[str, list[TwintClassification]],
+        ai_groups: dict[str, list[TwintClassification]],
     ) -> list[_ImportBatch]:
         """Ordnet die Schreibbloecke nach Quelle statt nach Art.
 
@@ -1787,8 +1785,8 @@ class BankImportDialog(QDialog):
         self,
         batches: list[_ImportBatch],
         plan_groups: dict[str, list[BankImportItem]],
-        twint_groups: dict[str, list[tuple[BankTransaction, str, str]]],
-        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+        twint_groups: dict[str, list[TwintClassification]],
+        ai_groups: dict[str, list[TwintClassification]],
     ) -> _ImportOutcome:
         """Schreibt Block fuer Block und meldet dazwischen den Stand."""
         total = sum(batch.rows for batch in batches)
@@ -1833,8 +1831,8 @@ class BankImportDialog(QDialog):
         self,
         batch: _ImportBatch,
         plan_groups: dict[str, list[BankImportItem]],
-        twint_groups: dict[str, list[tuple[BankTransaction, str, str]]],
-        ai_groups: dict[str, list[tuple[BankTransaction, str, str]]],
+        twint_groups: dict[str, list[TwintClassification]],
+        ai_groups: dict[str, list[TwintClassification]],
         outcome: _ImportOutcome,
     ) -> None:
         """Genau eine Transaktion - hier wird nichts aufgeteilt."""

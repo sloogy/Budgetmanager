@@ -8,10 +8,19 @@ lebt ausschließlich im lokalen KI-Gedächtnis.
 
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 from datetime import UTC, datetime
 
+from model.ai_learning_source import (
+    SOURCE_AI_CONFIRMED,
+    SOURCE_MANUAL,
+    confirms,
+    source_weight,
+    strongest_source,
+    validate_source,
+)
 from model.bank_import_service import (
     BankImportItem,
     BankImportService,
@@ -21,7 +30,16 @@ from model.bank_statement_reader import BankTransaction
 from model.database import db_transaction
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME
 
+logger = logging.getLogger(__name__)
+
 TYP_TWINT_AI = "TWINT (KI)"
+
+#: Eine zu markierende Zeile: Buchung, Kategorietyp, Kategorie - und optional
+#: die Herkunft der Kategorie. Die Dreierform bleibt gueltig, damit die
+#: bisherigen Aufrufer unveraendert weiterlaufen.
+TwintClassification = (
+    tuple[BankTransaction, str, str] | tuple[BankTransaction, str, str, str]
+)
 _AI_CATEGORY_TYPES = frozenset({TYP_EXPENSES, TYP_INCOME})
 
 
@@ -102,10 +120,28 @@ class BankImportMarkerStore:
                 category_typ TEXT NOT NULL,
                 category TEXT NOT NULL,
                 confirmations INTEGER NOT NULL DEFAULT 1,
+                source TEXT NOT NULL DEFAULT 'import_confirmed',
                 updated_at TEXT NOT NULL
             )
             """
         )
+        twint_spalten = {
+            str(row[1])
+            for row in self.conn.execute(
+                "PRAGMA table_info(ai_twint_memory)"
+            ).fetchall()
+        }
+        if "source" not in twint_spalten:
+            # Aeltere Datenbank: dieselbe Begruendung wie in
+            # ``BankImportAI._add_source_column`` - belegbar ist nur, dass der
+            # Vorschlag in der Pruefliste stand und uebernommen wurde.
+            self.conn.execute(
+                "ALTER TABLE ai_twint_memory "
+                "ADD COLUMN source TEXT NOT NULL DEFAULT 'import_confirmed'"
+            )
+            self.conn.execute(
+                "UPDATE ai_twint_memory SET source=?", (SOURCE_AI_CONFIRMED,)
+            )
         self.conn.commit()
 
     def _validate_category(self, category_typ: str, category: str) -> tuple[str, str]:
@@ -187,7 +223,7 @@ class BankImportMarkerStore:
 
     def mark_classifications(
         self,
-        classifications: list[tuple[BankTransaction, str, str]],
+        classifications: list[TwintClassification],
         document_digest: str,
         *,
         marker_kind: str = "twint_credit",
@@ -199,16 +235,26 @@ class BankImportMarkerStore:
         Importzustand und verhindert, dass dieselbe Zeile beim nächsten Lauf
         erneut angeboten wird - füllt aber ``ai_twint_memory`` nicht auf.
         Verallgemeinert wird also nichts mehr, festgehalten schon.
+
+        Ein Eintrag darf ein viertes Feld tragen: die Herkunft der Kategorie
+        (siehe :mod:`model.ai_learning_source`). Ohne dieses Feld gilt
+        ``manual`` - wer hier eine Kategorie ausdrücklich benennt, tut es von
+        Hand. Der Importdialog kennt die echte Herkunft und reicht sie durch.
+        Der Marker selbst ist von der Gewichtung nie betroffen: Er hält fest,
+        was der Anwender für **diese** Zeile entschieden hat, und wird immer
+        geschrieben.
         """
-        normalized: list[tuple[BankTransaction, str, str]] = []
-        for tx, category_typ, category in classifications:
+        normalized: list[tuple[BankTransaction, str, str, str]] = []
+        for eintrag in classifications:
+            tx, category_typ, category = eintrag[0], eintrag[1], eintrag[2]
+            source = validate_source(eintrag[3] if len(eintrag) > 3 else SOURCE_MANUAL)
             typ, name = self._validate_category(category_typ, category)
-            normalized.append((tx, typ, name))
+            normalized.append((tx, typ, name, source))
 
         marked = 0
         now = datetime.now(UTC).isoformat()
         with db_transaction(self.conn):
-            for tx, category_typ, category in normalized:
+            for tx, category_typ, category, source in normalized:
                 ext_id = external_id(tx, document_digest)
                 existed = bool(
                     self.conn.execute(
@@ -245,35 +291,80 @@ class BankImportMarkerStore:
                 )
                 fingerprint = _ai_fingerprint(tx) if learn else ""
                 if fingerprint:
-                    memory = self.conn.execute(
-                        "SELECT category_typ, category, confirmations "
-                        "FROM ai_twint_memory WHERE fingerprint=?",
-                        (fingerprint,),
-                    ).fetchone()
-                    confirmations = 1
-                    if (
-                        memory
-                        and str(memory[0]) == category_typ
-                        and str(memory[1]).casefold() == category.casefold()
-                    ):
-                        confirmations = int(memory[2]) + 1
-                    self.conn.execute(
-                        """
-                        INSERT INTO ai_twint_memory(
-                            fingerprint, category_typ, category,
-                            confirmations, updated_at
-                        ) VALUES(?,?,?,?,?)
-                        ON CONFLICT(fingerprint) DO UPDATE SET
-                            category_typ=excluded.category_typ,
-                            category=excluded.category,
-                            confirmations=excluded.confirmations,
-                            updated_at=excluded.updated_at
-                        """,
-                        (fingerprint, category_typ, category, confirmations, now),
+                    self._remember(
+                        fingerprint=fingerprint,
+                        category_typ=category_typ,
+                        category=category,
+                        source=source,
+                        now=now,
                     )
                 if not existed:
                     marked += 1
         return marked
+
+    def _remember(
+        self,
+        *,
+        fingerprint: str,
+        category_typ: str,
+        category: str,
+        source: str,
+        now: str,
+    ) -> None:
+        """Schreibt das TWINT-Gedaechtnis nach denselben Regeln wie P2.3 sie
+        fuer das Haendlergedaechtnis setzt.
+
+        Zwei Fassungen derselben Rangfolge waeren zwei Stellen, an denen sie
+        auseinanderlaufen kann; die Regel selbst steht darum in
+        :mod:`model.ai_learning_source` und wird hier nur angewandt.
+        """
+        memory = self.conn.execute(
+            "SELECT category_typ, category, confirmations, source "
+            "FROM ai_twint_memory WHERE fingerprint=?",
+            (fingerprint,),
+        ).fetchone()
+        if memory is None:
+            confirmations, neue_source = 1, source
+        else:
+            alt_source = str(memory[3] or "")
+            alt_confirmations = int(memory[2])
+            gleiche_aussage = (
+                str(memory[0]) == category_typ
+                and str(memory[1]).casefold() == category.casefold()
+            )
+            if gleiche_aussage:
+                neue_source = strongest_source(alt_source, source)
+                confirmations = (
+                    alt_confirmations + 1 if confirms(source) else alt_confirmations
+                )
+                if neue_source == alt_source and confirmations == alt_confirmations:
+                    return
+            elif source_weight(source) < source_weight(alt_source):
+                logger.info(
+                    "TWINT-Lernsignal verworfen: %s widerspricht gespeichertem %s "
+                    "(%s Bestaetigungen)",
+                    source,
+                    alt_source or "unbekannt",
+                    alt_confirmations,
+                )
+                return
+            else:
+                confirmations, neue_source = 1, source
+        self.conn.execute(
+            """
+            INSERT INTO ai_twint_memory(
+                fingerprint, category_typ, category,
+                confirmations, source, updated_at
+            ) VALUES(?,?,?,?,?,?)
+            ON CONFLICT(fingerprint) DO UPDATE SET
+                category_typ=excluded.category_typ,
+                category=excluded.category,
+                confirmations=excluded.confirmations,
+                source=excluded.source,
+                updated_at=excluded.updated_at
+            """,
+            (fingerprint, category_typ, category, confirmations, neue_source, now),
+        )
 
     def mark_transactions(
         self,

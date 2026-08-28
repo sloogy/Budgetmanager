@@ -7,6 +7,7 @@ bestätigten Buchungen und darf weder Kategorien noch Tags erfinden.
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 import sqlite3
@@ -18,7 +19,19 @@ from datetime import UTC, date, datetime
 from types import MappingProxyType
 from typing import Protocol
 
+from model.ai_learning_source import (
+    SOURCE_AI_CONFIRMED,
+    SOURCE_IMPORT_CONFIRMED,
+    SOURCE_MANUAL,
+    confidence_cap,
+    confirms,
+    source_weight,
+    strongest_source,
+    validate_source,
+)
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
+
+logger = logging.getLogger(__name__)
 
 _ALLOWED_TYPES = frozenset({TYP_INCOME, TYP_EXPENSES, TYP_SAVINGS})
 _LONG_NUMBER = re.compile(r"\b\d{5,}\b")
@@ -44,6 +57,50 @@ class MerchantMemoryEntry:
     category: str
     tags: tuple[str, ...]
     confirmations: int
+    #: Staerkstes Signal, das diesen Eintrag getragen hat. Steht hinten und
+    #: hat eine Vorgabe, damit die bisherigen Positionsaufrufe unveraendert
+    #: weiterlaufen; die Vorgabe ist die schwaechste Quelle, weil ein Aufrufer,
+    #: der nichts sagt, nichts belegt.
+    source: str = SOURCE_IMPORT_CONFIRMED
+
+
+@dataclass(frozen=True)
+class MerchantRecord:
+    """Der gespeicherte Stand eines Fingerprints, roh aus der Tabelle.
+
+    Bewusst nicht :class:`MerchantMemoryEntry`: Der Vergleich in
+    :meth:`BankImportAI._weigh` muss die Tagliste **wortgleich** so sehen, wie
+    sie in der Spalte steht. ``MerchantMemoryEntry`` hat die Tags da schon
+    gegen die Stammdaten gefiltert - ein zwischenzeitlich geloeschtes Tag
+    saehe dort wie eine geaenderte Aussage aus.
+    """
+
+    category: str
+    tags_json: str
+    confirmations: int
+    source: str
+
+
+@dataclass(frozen=True)
+class LearnOutcome:
+    """Was ein Lernversuch im Haendlergedaechtnis bewirkt hat.
+
+    ``learn`` gab bisher nichts zurueck. Mit der Gewichtung kann ein Aufruf
+    aber folgenlos bleiben - naemlich dann, wenn ein schwaecheres Signal einer
+    staerkeren, bereits gespeicherten Entscheidung widerspricht. Ein Aufrufer,
+    der das wissen will, kann jetzt nachsehen; wer den Rueckgabewert ignoriert,
+    merkt von der Aenderung nichts.
+    """
+
+    #: Wurde das Haendlergedaechtnis geschrieben?
+    stored: bool
+    #: Herkunft, die nach dem Aufruf am Eintrag steht.
+    source: str
+    #: Bestaetigungszaehler nach dem Aufruf.
+    confirmations: int
+    #: True, wenn der Aufruf verworfen wurde, weil eine staerkere Quelle
+    #: etwas anderes gespeichert hatte.
+    superseded: bool = False
 
 
 @dataclass(frozen=True)
@@ -54,6 +111,10 @@ class FeedbackExample:
     category: str
     tags: tuple[str, ...]
     tokens: tuple[str, ...]
+    #: Herkunft des Beispiels. Reine Eigenbestaetigung kommt hier gar nicht
+    #: erst an - :meth:`BankImportAI.feedback_examples` laesst sie weg -, das
+    #: Feld haelt fest, welches Signal die Verallgemeinerung traegt.
+    source: str = SOURCE_IMPORT_CONFIRMED
 
 
 @dataclass(frozen=True)
@@ -226,7 +287,14 @@ def predict_from_knowledge(
             return AIPrediction(
                 entry.category,
                 entry.tags,
-                min(0.995, 0.90 + 0.015 * int(entry.confirmations)),
+                # Der Deckel kommt aus der Herkunft, nicht mehr aus einer
+                # festen Zahl. Ein Eintrag, den nur die KI sich selbst
+                # bestaetigt hat, bleibt damit auf seinem Startwert stehen -
+                # er kann nicht "immer sicherer falsch" werden.
+                min(
+                    confidence_cap(entry.source),
+                    0.90 + 0.015 * int(entry.confirmations),
+                ),
                 "merchant_memory",
                 allocation,
                 source_tag,
@@ -425,6 +493,7 @@ class BankImportAI:
                 category TEXT NOT NULL,
                 tags_json TEXT NOT NULL DEFAULT '[]',
                 confirmations INTEGER NOT NULL DEFAULT 1,
+                source TEXT NOT NULL DEFAULT 'import_confirmed',
                 updated_at TEXT NOT NULL,
                 PRIMARY KEY (fingerprint, typ)
             );
@@ -437,6 +506,7 @@ class BankImportAI:
                 tags_json TEXT NOT NULL DEFAULT '[]',
                 tokens_json TEXT NOT NULL,
                 active INTEGER NOT NULL DEFAULT 1 CHECK(active IN (0,1)),
+                source TEXT NOT NULL DEFAULT 'import_confirmed',
                 created_at TEXT NOT NULL
             );
             CREATE TABLE IF NOT EXISTS ai_tag_rules (
@@ -450,7 +520,55 @@ class BankImportAI:
                 ON ai_feedback(active, typ, category);
             """
         )
+        self._add_source_column("ai_merchant_memory")
+        self._add_source_column("ai_feedback")
         self.conn.commit()
+
+    def _columns(self, table: str) -> frozenset[str]:
+        """Spaltennamen einer der beiden KI-Tabellen.
+
+        ``PRAGMA table_info`` nimmt keinen Platzhalter, deshalb steht der
+        Tabellenname im String. Er kommt nie von aussen: Die einzigen beiden
+        Aufrufe stehen zwei Zeilen weiter oben und nennen feste Namen.
+        """
+        if table == "ai_merchant_memory":
+            rows = self.conn.execute("PRAGMA table_info(ai_merchant_memory)").fetchall()
+        elif table == "ai_feedback":
+            rows = self.conn.execute("PRAGMA table_info(ai_feedback)").fetchall()
+        else:  # pragma: no cover - Programmierfehler, kein Laufzeitfall
+            raise ValueError(f"Unbekannte KI-Tabelle: {table!r}")
+        return frozenset(str(row[1]) for row in rows)
+
+    def _add_source_column(self, table: str) -> None:
+        """Ruestet die Herkunftsspalte in einer aelteren Datenbank nach.
+
+        **Warum die Bestandszeilen ``ai_confirmed`` bekommen und nicht
+        ``manual``.** Vor P2.3 hat der Import jede bestaetigte Zeile gleich
+        gewichtet; ob eine Zuordnung von Hand gesetzt oder nur stehen gelassen
+        wurde, ist im Nachhinein nicht mehr feststellbar. ``manual`` waere eine
+        Behauptung ohne Beleg. ``import_confirmed`` waere die Gegenrichtung und
+        wuerde gewachsenes Wissen entwerten - die Zuversicht eines lange
+        bestaetigten Haendlers fiele auf den Startwert zurueck. ``ai_confirmed``
+        ist das, was sich tatsaechlich belegen laesst: Der Vorschlag stand in
+        der Pruefliste und wurde importiert. Eine spaetere Handarbeit hebt den
+        Eintrag jederzeit an.
+        """
+        if "source" in self._columns(table):
+            return
+        if table == "ai_merchant_memory":
+            self.conn.execute(
+                "ALTER TABLE ai_merchant_memory "
+                "ADD COLUMN source TEXT NOT NULL DEFAULT 'import_confirmed'"
+            )
+            self.conn.execute(
+                "UPDATE ai_merchant_memory SET source=?", (SOURCE_AI_CONFIRMED,)
+            )
+        else:
+            self.conn.execute(
+                "ALTER TABLE ai_feedback "
+                "ADD COLUMN source TEXT NOT NULL DEFAULT 'import_confirmed'"
+            )
+            self.conn.execute("UPDATE ai_feedback SET source=?", (SOURCE_AI_CONFIRMED,))
 
     def _validate_typ(self, typ: str) -> str:
         return validate_typ(typ)
@@ -520,40 +638,72 @@ class BankImportAI:
         counterparty: str = "",
         tags: tuple[str, ...] | list[str] = (),
         commit: bool = True,
-    ) -> None:
-        """Lernt nur bestätigte Daten; ``commit=False`` dient atomaren Batch-Imports."""
+        source: str = SOURCE_MANUAL,
+    ) -> LearnOutcome:
+        """Lernt nur bestätigte Daten; ``commit=False`` dient atomaren Batch-Imports.
+
+        ``source`` sagt, **woher** die Zuordnung kommt (siehe
+        :mod:`model.ai_learning_source`). Daraus folgen drei Dinge:
+
+        * Ein Signal, das einer bereits gespeicherten, **stärkeren**
+          Entscheidung widerspricht, wird verworfen - Handarbeit überlebt einen
+          späteren Rateversuch.
+        * Nur ein echtes Signal erhöht den Bestätigungszähler. Die
+          automatische Eigenbestätigung tut es nicht: Die KI darf sich nicht
+          dadurch sicherer werden, dass sie ihren eigenen Rat noch einmal liest.
+        * Die Herkunft am Eintrag deckelt später die Zuversicht der Vorhersage.
+
+        Die Vorgabe ist ``manual``. Wer diese Methode direkt aufruft, benennt
+        eine Kategorie ausdrücklich - das ist Handarbeit, und die bisherigen
+        Aufrufer verhalten sich damit unverändert. Der Importdialog kennt die
+        echte Herkunft und reicht sie durch.
+        """
         typ = self._validate_typ(typ)
         category = self._validate_category(typ, category)
         tags = self._validate_tags(tags)
+        source = validate_source(source)
         fingerprint = _fingerprint(description, counterparty)
         if not fingerprint:
             raise ValueError("Buchung enthält keinen lernbaren Text.")
-        now = datetime.now(UTC).isoformat()
+        tags_json = json.dumps(tags, ensure_ascii=False)
         row = self.conn.execute(
-            "SELECT category, tags_json, confirmations FROM ai_merchant_memory "
+            "SELECT category, tags_json, confirmations, source FROM ai_merchant_memory "
             "WHERE fingerprint=? AND typ=?",
             (fingerprint, typ),
         ).fetchone()
-        confirmations = 1
-        tags_json = json.dumps(tags, ensure_ascii=False)
-        if (
-            row
-            and str(row[0]).casefold() == category.casefold()
-            and str(row[1]) == tags_json
-        ):
-            confirmations = int(row[2]) + 1
+        stand: MerchantRecord | None = None
+        if row is not None:
+            stand = MerchantRecord(
+                str(row[0]), str(row[1]), int(row[2]), str(row[3] or "")
+            )
+        entscheidung = self._weigh(
+            stand, category=category, tags_json=tags_json, source=source
+        )
+        if not entscheidung.stored:
+            return entscheidung
+
+        now = datetime.now(UTC).isoformat()
         self.conn.execute(
             """
             INSERT INTO ai_merchant_memory(
-                fingerprint,typ,category,tags_json,confirmations,updated_at
-            ) VALUES(?,?,?,?,?,?)
+                fingerprint,typ,category,tags_json,confirmations,source,updated_at
+            ) VALUES(?,?,?,?,?,?,?)
             ON CONFLICT(fingerprint,typ) DO UPDATE SET
               category=excluded.category,
               tags_json=excluded.tags_json,
               confirmations=excluded.confirmations,
+              source=excluded.source,
               updated_at=excluded.updated_at
             """,
-            (fingerprint, typ, category, tags_json, confirmations, now),
+            (
+                fingerprint,
+                typ,
+                category,
+                tags_json,
+                entscheidung.confirmations,
+                entscheidung.source,
+                now,
+            ),
         )
         self.conn.execute(
             "UPDATE ai_feedback SET active=0 "
@@ -564,8 +714,9 @@ class BankImportAI:
         self.conn.execute(
             """
             INSERT INTO ai_feedback(
-                fingerprint,typ,raw_text,category,tags_json,tokens_json,active,created_at
-            ) VALUES(?,?,?,?,?,?,1,?)
+                fingerprint,typ,raw_text,category,tags_json,tokens_json,
+                active,source,created_at
+            ) VALUES(?,?,?,?,?,?,1,?,?)
             """,
             (
                 fingerprint,
@@ -574,11 +725,68 @@ class BankImportAI:
                 category,
                 tags_json,
                 json.dumps(_tokens(raw_text), ensure_ascii=False),
+                source,
                 now,
             ),
         )
         if commit:
             self.conn.commit()
+        return entscheidung
+
+    @staticmethod
+    def _weigh(
+        stand: MerchantRecord | None,
+        *,
+        category: str,
+        tags_json: str,
+        source: str,
+    ) -> LearnOutcome:
+        """Entscheidet allein aus Herkunft und Bestand, ob geschrieben wird.
+
+        Ohne Datenbankzugriff, damit die Regel für sich prüfbar ist - sie ist
+        der eigentliche Inhalt von P2.3 und soll nicht nur über einen
+        vollständigen Import erreichbar sein.
+        """
+        if stand is None:
+            # Erstes Wissen zu diesem Fingerprint. Auch ein schwaches Signal
+            # darf das anlegen: Es widerspricht niemandem, und ohne diesen
+            # Fall lernte eine frische Datenbank nie etwas.
+            return LearnOutcome(True, source, 1)
+
+        alt_source = stand.source
+        alt_confirmations = stand.confirmations
+        gleiche_aussage = (
+            stand.category.casefold() == category.casefold()
+            and stand.tags_json == tags_json
+        )
+        if gleiche_aussage:
+            neue_source = strongest_source(alt_source, source)
+            neue_confirmations = (
+                alt_confirmations + 1 if confirms(source) else alt_confirmations
+            )
+            if neue_source == alt_source and neue_confirmations == alt_confirmations:
+                # Die KI liest ihren eigenen Rat noch einmal. Nichts daran ist
+                # neu - kein Zähler, keine Herkunft, kein zusätzliches
+                # Lernbeispiel. Der Eintrag bleibt, wie er ist.
+                return LearnOutcome(False, alt_source, alt_confirmations)
+            return LearnOutcome(True, neue_source, neue_confirmations)
+
+        if source_weight(source) < source_weight(alt_source):
+            # Widerspruch von unten: Ein schwächeres Signal will eine stärker
+            # belegte Entscheidung umschreiben. Gebucht wird trotzdem, was in
+            # der Prüfliste steht - gelernt wird es nicht.
+            logger.info(
+                "KI-Lernsignal verworfen: %s widerspricht gespeichertem %s "
+                "(%s Bestätigungen)",
+                source,
+                alt_source or "unbekannt",
+                alt_confirmations,
+            )
+            return LearnOutcome(False, alt_source, alt_confirmations, superseded=True)
+        # Widerspruch von oben oder auf Augenhöhe: Die neue Aussage gilt, und
+        # der Zähler beginnt von vorn - die alten Bestätigungen galten einer
+        # anderen Kategorie.
+        return LearnOutcome(True, source, 1)
 
     def categories_for(self, typ: str) -> frozenset[str]:
         return frozenset(
@@ -592,7 +800,7 @@ class BankImportAI:
         self, *, fingerprint: str, typ: str
     ) -> MerchantMemoryEntry | None:
         row = self.conn.execute(
-            "SELECT category,tags_json,confirmations FROM ai_merchant_memory "
+            "SELECT category,tags_json,confirmations,source FROM ai_merchant_memory "
             "WHERE fingerprint=? AND typ=?",
             (fingerprint, typ),
         ).fetchone()
@@ -602,9 +810,23 @@ class BankImportAI:
             str(row[0]),
             filter_known_tags(str(row[1]), self._known_tag_names()),
             int(row[2]),
+            str(row[3] or ""),
         )
 
     def feedback_examples(self, typ: str) -> tuple[FeedbackExample, ...]:
+        """Aktive Lernbeispiele - ohne die reine Eigenbestaetigung.
+
+        Aus diesen Beispielen verallgemeinert die Vorhersage auf *fremde*
+        Buchungstexte (``similar_merchant`` und ``naive_bayes``). Eine Zeile
+        mit der Herkunft ``import_confirmed`` hat dafuer nichts beizutragen:
+        Sie sagt nur, dass die KI ihren eigenen Vorschlag wiedergefunden hat.
+        Liesse man sie mitrechnen, breitete sich ein einmaliger Irrtum ueber
+        den Wortstatistik-Zweig auf immer mehr Haendler aus - derselbe
+        Kreislauf, nur eine Ebene hoeher.
+
+        Geloescht wird dabei nichts. Die Zeile bleibt im Lernspeicher stehen
+        und traegt ihre Herkunft; sie zaehlt nur nicht als Beleg.
+        """
         known = self._known_tag_names()
         return tuple(
             FeedbackExample(
@@ -612,11 +834,12 @@ class BankImportAI:
                 str(row[1]),
                 filter_known_tags(str(row[2]), known),
                 decode_tokens(str(row[3])),
+                str(row[4] or ""),
             )
             for row in self.conn.execute(
-                "SELECT fingerprint,category,tags_json,tokens_json "
-                "FROM ai_feedback WHERE active=1 AND typ=?",
-                (typ,),
+                "SELECT fingerprint,category,tags_json,tokens_json,source "
+                "FROM ai_feedback WHERE active=1 AND typ=? AND source<>?",
+                (typ, SOURCE_IMPORT_CONFIRMED),
             ).fetchall()
         )
 
@@ -644,11 +867,14 @@ class BankImportAI:
             feedback[typ] = self.feedback_examples(typ)
         merchant_memory: dict[tuple[str, str], MerchantMemoryEntry] = {}
         for row in self.conn.execute(
-            "SELECT fingerprint,typ,category,tags_json,confirmations "
+            "SELECT fingerprint,typ,category,tags_json,confirmations,source "
             "FROM ai_merchant_memory"
         ).fetchall():
             merchant_memory[(str(row[0]), str(row[1]))] = MerchantMemoryEntry(
-                str(row[2]), filter_known_tags(str(row[3]), known_tags), int(row[4])
+                str(row[2]),
+                filter_known_tags(str(row[3]), known_tags),
+                int(row[4]),
+                str(row[5] or ""),
             )
         return AIKnowledgeSnapshot.freeze(
             categories=categories,
