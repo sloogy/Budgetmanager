@@ -1,5 +1,5 @@
 Budgetmanager Version 3.1.1
-Datum: 27. August 2026
+Datum: 28. August 2026
 
 ZUSTAND DER BRUECKE UND GRUENE GATES 2.2.73 2.3.0 2.4.1 2.5.0 3.0.9 3.1.1
 -------------------------------------------------------------
