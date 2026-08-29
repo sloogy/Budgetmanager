@@ -42,7 +42,11 @@ from model.finance_insight_engine import (
     FinanceInsightEngine,
 )
 from model.migrations import migrate_all
-from model.savings_goals_model import SavingsGoalsModel
+from model.savings_goals_model import (
+    ACTION_CORRECTION,
+    STATUS_RELEASED,
+    SavingsGoalsModel,
+)
 from model.tags_model import TagsModel
 from model.tracking_model import TrackingModel
 from model.typ_constants import TYP_EXPENSES, TYP_INCOME, TYP_SAVINGS
@@ -87,6 +91,14 @@ def _monatsbetrag(kategorie: str, monat: int) -> float:
     if kategorie == KLEIDUNG:
         return 300.0 if monat <= 9 else 100.0
     raise AssertionError(f"unbekannte Kategorie {kategorie}")
+
+
+def _leere_datenbank() -> sqlite3.Connection:
+    conn = verbindung_merken(sqlite3.connect(":memory:"))
+    conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA foreign_keys = ON")
+    migrate_all(conn)
+    return conn
 
 
 @pytest.fixture
@@ -519,3 +531,230 @@ def test_die_engine_haelt_keinen_eigenen_stand(haushalt, engine, jahr) -> None:
     )
     haushalt.commit()
     assert engine.period_totals(jahr).expenses == pytest.approx(vorher + 60.0)
+
+
+def test_korrektur_bleibt_beim_sparziel_vorzeichenrichtig() -> None:
+    conn = _leere_datenbank()
+    CategoryModel(conn).create(TYP_SAVINGS, NOTGROSCHEN)
+    SavingsGoalsModel(conn).create(NOTGROSCHEN, 1000.0, category=NOTGROSCHEN)
+
+    tracking = TrackingModel(conn)
+    tracking.add(date(2025, 1, 26), TYP_SAVINGS, NOTGROSCHEN, 300.0, "Sparen")
+    tracking.add(date(2025, 2, 26), TYP_SAVINGS, NOTGROSCHEN, 300.0, "Sparen")
+    tracking.add(
+        date(2025, 2, 27),
+        TYP_SAVINGS,
+        NOTGROSCHEN,
+        -200.0,
+        "Korrektur",
+        savings_action=ACTION_CORRECTION,
+    )
+
+    engine = FinanceInsightEngine(conn)
+    ziel = engine.savings_goal_states()[0]
+
+    assert engine.period_totals([(2025, 1), (2025, 2)]).net_savings == pytest.approx(
+        400.0
+    )
+    assert ziel.current_amount == pytest.approx(400.0)
+    assert ziel.observed_monthly_contribution == pytest.approx(200.0)
+    assert ziel.contribution_months == 2
+
+
+def test_sparkategorien_und_spartrend_behalten_ihr_vorzeichen() -> None:
+    conn = _leere_datenbank()
+    CategoryModel(conn).create(TYP_SAVINGS, NOTGROSCHEN)
+    tracking = TrackingModel(conn)
+    for monat in range(1, 10):
+        tracking.add(date(2025, monat, 26), TYP_SAVINGS, NOTGROSCHEN, 300.0, "Sparen")
+    for monat in range(10, 13):
+        tracking.add(date(2025, monat, 26), TYP_SAVINGS, NOTGROSCHEN, -400.0, "Bezug")
+
+    engine = FinanceInsightEngine(conn)
+
+    trend_kategorie = engine.category_trend(TYP_SAVINGS, NOTGROSCHEN, today=HEUTE)
+    assert trend_kategorie is not None
+    assert trend_kategorie.previous_median == pytest.approx(300.0)
+    assert trend_kategorie.recent_median == pytest.approx(-400.0)
+    assert trend_kategorie.direction == DIRECTION_DOWN
+
+    trend_gesamt = engine.category_trend(TYP_SAVINGS, None, today=HEUTE)
+    assert trend_gesamt is not None
+    assert trend_gesamt.previous_median == pytest.approx(300.0)
+    assert trend_gesamt.recent_median == pytest.approx(-400.0)
+    assert trend_gesamt.direction == DIRECTION_DOWN
+
+    monate = [(2025, 10), (2025, 11), (2025, 12)]
+    kategorien = engine.category_totals(TYP_SAVINGS, monate)
+    assert len(kategorien) == 1
+    assert kategorien[0].amount == pytest.approx(-1200.0)
+    assert engine.period_totals(monate).net_savings == pytest.approx(-1200.0)
+
+
+def test_gutschriftsmonat_und_budgetguthaben_bleiben_negativ() -> None:
+    conn = _leere_datenbank()
+    kategorien = CategoryModel(conn)
+    kategorien.create(TYP_INCOME, LOHN)
+    kategorien.create(TYP_EXPENSES, "Rueckfluss")
+
+    tracking = TrackingModel(conn)
+    tracking.add(date(2025, 1, 25), TYP_INCOME, LOHN, 5000.0, "Lohn")
+    tracking.add(date(2025, 1, 27), TYP_EXPENSES, "Rueckfluss", -200.0, "Gutschrift")
+    conn.execute(
+        "INSERT INTO budget(year, month, typ, category, amount) VALUES(?,?,?,?,?)",
+        (2025, 1, TYP_EXPENSES, "Rueckfluss", 300.0),
+    )
+    conn.commit()
+
+    engine = FinanceInsightEngine(conn)
+    januar = engine.month_totals(2025, 1)
+    assert januar.expenses == pytest.approx(-200.0)
+    assert januar.surplus == pytest.approx(5200.0)
+
+    abweichungen = engine.budget_deviations(2025, 1, typ=TYP_EXPENSES)
+    assert len(abweichungen) == 1
+    assert abweichungen[0].actual == pytest.approx(-200.0)
+    assert abweichungen[0].rest == pytest.approx(500.0)
+    assert abweichungen[0].is_over is False
+
+
+def test_vergleichsfenster_folgt_dem_kalender_statt_den_buchungen() -> None:
+    conn = _leere_datenbank()
+    CategoryModel(conn).create(TYP_EXPENSES, LEBENSMITTEL)
+    tracking = TrackingModel(conn)
+    for monat in (1, 2, 3):
+        tracking.add(date(2025, monat, 4), TYP_EXPENSES, LEBENSMITTEL, 10.0, "Probe")
+
+    engine = FinanceInsightEngine(conn)
+    heute = date(2025, 12, 15)
+    assert engine.last_complete_month(today=heute) == (2025, 11)
+
+    monate = engine.recent_complete_months(3, today=heute)
+    assert monate == [(2025, 9), (2025, 10), (2025, 11)]
+
+    je_monat = engine.monthly_totals(monate)
+    assert all(je_monat[monat].expenses == pytest.approx(0.0) for monat in monate)
+
+
+def test_tag_summen_verrechnen_rueckerstattungen_je_monat() -> None:
+    conn = _leere_datenbank()
+    CategoryModel(conn).create(TYP_EXPENSES, LEBENSMITTEL)
+    tags = TagsModel(conn)
+    haushalt_tag = tags.create("Probe")
+
+    tracking = TrackingModel(conn)
+    plus = tracking.add(date(2025, 1, 4), TYP_EXPENSES, LEBENSMITTEL, 100.0, "+")
+    minus = tracking.add(date(2025, 1, 5), TYP_EXPENSES, LEBENSMITTEL, -150.0, "-")
+    tags.assign_to_entry(plus, haushalt_tag)
+    tags.assign_to_entry(minus, haushalt_tag)
+
+    totals = FinanceInsightEngine(conn).tag_totals(TYP_EXPENSES, [(2025, 1)])
+    assert len(totals) == 1
+    assert totals[0].bookings == 2
+    assert totals[0].amount == pytest.approx(50.0)
+
+
+def test_ungueltiges_tracking_datum_wird_ignoriert_statt_die_engine_zu_stoppen() -> (
+    None
+):
+    conn = _leere_datenbank()
+    CategoryModel(conn).create(TYP_EXPENSES, LEBENSMITTEL)
+    TrackingModel(conn).add(date(2025, 1, 4), TYP_EXPENSES, LEBENSMITTEL, 100.0, "ok")
+    conn.execute(
+        "INSERT INTO tracking(date, typ, category, amount, details) VALUES(?,?,?,?,?)",
+        ("2025/01/05", TYP_EXPENSES, LEBENSMITTEL, 999.0, "kaputt"),
+    )
+    conn.commit()
+
+    engine = FinanceInsightEngine(conn)
+    assert engine.booking_months() == [(2025, 1)]
+    assert engine.month_totals(2025, 1).expenses == pytest.approx(100.0)
+    kategorien = engine.category_totals(TYP_EXPENSES, [(2025, 1)])
+    assert len(kategorien) == 1
+    assert kategorien[0].amount == pytest.approx(100.0)
+
+
+def test_dauerauftraege_achten_auf_start_und_enddatum() -> None:
+    conn = _leere_datenbank()
+    CategoryModel(conn).create(TYP_EXPENSES, MIETE)
+    for details, start_date, end_date in (
+        ("gueltig", "2020-01-01", "2099-12-31"),
+        ("abgelaufen", "2020-01-01", "2020-12-31"),
+        ("zukuenftig", "2099-01-01", None),
+    ):
+        conn.execute(
+            "INSERT INTO recurring_transactions("
+            "typ, category, amount, details, day_of_month, is_active, start_date, end_date, created_date"
+            ") VALUES(?,?,?,?,?,?,?,?,?)",
+            (
+                TYP_EXPENSES,
+                MIETE,
+                1800.0,
+                details,
+                1,
+                1,
+                start_date,
+                end_date,
+                "2020-01-01",
+            ),
+        )
+    conn.commit()
+
+    dauerauftraege = FinanceInsightEngine(conn).recurring_commitments()
+    assert [d.details for d in dauerauftraege] == ["gueltig"]
+
+
+def test_budgetabweichungen_decken_den_einkommenspfad_ab() -> None:
+    conn = _leere_datenbank()
+    CategoryModel(conn).create(TYP_INCOME, LOHN)
+    TrackingModel(conn).add(date(2025, 1, 25), TYP_INCOME, LOHN, 5000.0, "Lohn")
+    conn.execute(
+        "INSERT INTO budget(year, month, typ, category, amount) VALUES(?,?,?,?,?)",
+        (2025, 1, TYP_INCOME, LOHN, 4500.0),
+    )
+    conn.commit()
+
+    abweichungen = FinanceInsightEngine(conn).budget_deviations(2025, 1, typ=TYP_INCOME)
+    assert len(abweichungen) == 1
+    assert abweichungen[0].actual == pytest.approx(5000.0)
+    assert abweichungen[0].rest == pytest.approx(500.0)
+    assert abweichungen[0].is_over is False
+    assert abweichungen[0].deviation_percent == pytest.approx(500.0 / 4500.0 * 100.0)
+
+
+def test_months_with_bookings_zaehlt_sparse_kategorien_richtig() -> None:
+    conn = _leere_datenbank()
+    kategorien = CategoryModel(conn)
+    kategorien.create(TYP_EXPENSES, "A")
+    kategorien.create(TYP_EXPENSES, "B")
+    tracking = TrackingModel(conn)
+    tracking.add(date(2025, 1, 4), TYP_EXPENSES, "A", 10.0, "Jan")
+    tracking.add(date(2025, 3, 4), TYP_EXPENSES, "A", 10.0, "Mrz")
+    tracking.add(date(2025, 3, 6), TYP_EXPENSES, "B", 10.0, "Mrz")
+
+    totals = {
+        c.category: c
+        for c in FinanceInsightEngine(conn).category_totals(
+            TYP_EXPENSES, [(2025, 1), (2025, 2), (2025, 3)]
+        )
+    }
+    assert totals["A"].months_with_bookings == 2
+    assert totals["B"].months_with_bookings == 1
+
+
+def test_sparziele_koennen_auf_aktive_gefiltert_werden() -> None:
+    conn = _leere_datenbank()
+    kategorien = CategoryModel(conn)
+    kategorien.create(TYP_SAVINGS, "Aktiv")
+    kategorien.create(TYP_SAVINGS, "Archiv")
+    ziele = SavingsGoalsModel(conn)
+    ziele.create("Aktiv", 1000.0, category="Aktiv")
+    archiv_id = ziele.create("Archiv", 1000.0, category="Archiv")
+    conn.execute(
+        "UPDATE savings_goals SET status=? WHERE id=?", (STATUS_RELEASED, archiv_id)
+    )
+    conn.commit()
+
+    engine = FinanceInsightEngine(conn)
+    assert {z.name for z in engine.savings_goal_states()} == {"Aktiv", "Archiv"}
+    assert [z.name for z in engine.savings_goal_states(only_active=True)] == ["Aktiv"]

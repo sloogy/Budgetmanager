@@ -17,25 +17,21 @@ Import auf ``model.bank_import_ai`` & Co. hinein, wird der Testlauf rot.
 Konventionen, die hier bewusst *nicht* neu erfunden werden
 -----------------------------------------------------------
 
-**Vorzeichen.** ``model/budget_suggestion_engine.py`` liest den Ist-Wert
-einer Kategorie als ``abs(SUM(amount))`` - der Betrag faengt Datenbanken ab,
-in denen Ausgaben durchgaengig negativ gespeichert wurden. Diese Datei haelt
-sich an dieselbe Regel, damit Coach und Budgetvorschlag ueber derselben
-Kategorie nie zwei verschiedene Zahlen nennen. Der Betrag wirkt auf die
-*Summe* eines Monats, nicht auf die einzelne Zeile: Eine Rueckerstattung
-innerhalb des Monats verrechnet sich also korrekt, statt die Ausgaben zu
-erhoehen.
+**Vorzeichen.** Einkommen und Ersparnisse bleiben vorzeichenrichtig. Bei
+Ersparnissen trennt ``tracking.savings_action`` zwischen Einzahlung,
+Korrektur und Bezug; fehlt die Spalte oder ist sie leer, entscheidet das
+Vorzeichen - dieselbe Regel wie in ``TrackingModel._normalize_savings_action``
+und ``SavingsGoalsModel._tracking_totals``.
 
-Weil die Kategoriewerte je Kategorie und die Monatssumme je Typ gebildet
-werden, koennen beide bei gemischten Vorzeichen innerhalb eines Monats
-auseinanderlaufen. Das ist gewollt: Die Kategoriewerte stehen spaeter dem
-Kategoriebudget gegenueber und muessen dessen Rechnung folgen. In einer
-einheitlich vorzeichenrichtigen Datenbank sind beide Wege identisch.
+Ausgaben bleiben auf Monats- und Budgetebene ebenfalls vorzeichenrichtig:
+Eine Rueckerstattung darf den Monatswert senken und ihn notfalls auch
+negativ machen. Die Kategorielisten bleiben davon bewusst getrennt und
+sortieren nach Betragshoehe; dort wird der Betrag nur bei Ausgaben
+normalisiert, um durchgaengig negativ gespeicherte Ausgaben abzufangen.
 
 **Ersparnisse.** Ein Bezug vom Sparkonto ist keine negative Einzahlung.
-``tracking.savings_action`` trennt beides; fehlt die Spalte oder ist sie
-leer, entscheidet das Vorzeichen - dieselbe Regel wie in
-``TrackingModel._normalize_savings_action``.
+Eine Korrektur bleibt eine Korrektur und wird nicht per ``abs()`` in eine
+Einzahlung umgedeutet.
 
 **Median statt Mittelwert** (Architekturregel 1.3): Ein einzelner
 Ausreissermonat darf einen Trend nicht kippen.
@@ -257,15 +253,36 @@ class SavingsGoalState:
         return self.current_amount / self.target_amount * 100.0
 
 
-def _month_key(value: str) -> tuple[int, int]:
-    """(Jahr, Monat) aus einem ISO-Datum ``YYYY-MM-DD``."""
-    return int(value[0:4]), int(value[5:7])
+def _month_key(value: str) -> tuple[int, int] | None:
+    """(Jahr, Monat) aus einem ISO-Datum ``YYYY-MM-DD``.
+
+    Ungueltige oder fremde Datumsformate werden ignoriert, statt die ganze
+    Engine fuer einen einzelnen kaputten Eintrag scheitern zu lassen.
+    """
+    try:
+        parsed = date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+    return parsed.year, parsed.month
 
 
 def _previous_month(year: int, month: int) -> tuple[int, int]:
     if month == 1:
         return year - 1, 12
     return year, month - 1
+
+
+def _category_display_amount(typ_db: str, amount: float) -> float:
+    """Oeffentlicher Kategorienwert fuer einen aufsummierten Betrag."""
+    return abs(amount) if typ_db == TYP_EXPENSES else amount
+
+
+def _is_savings_withdrawal(action: str, amount: float) -> bool:
+    return (
+        action == ACTION_WITHDRAWAL
+        or (action == "correction" and amount < 0)
+        or (not action and amount < 0)
+    )
 
 
 class FinanceInsightEngine:
@@ -286,19 +303,25 @@ class FinanceInsightEngine:
         rows = self.conn.execute(
             "SELECT DISTINCT substr(date,1,7) AS ym FROM tracking ORDER BY ym"
         ).fetchall()
-        return [(int(str(r[0])[0:4]), int(str(r[0])[5:7])) for r in rows if r[0]]
+        monate: list[tuple[int, int]] = []
+        for row in rows:
+            if not row[0]:
+                continue
+            monat = _month_key(str(row[0]) + "-01")
+            if monat is not None:
+                monate.append(monat)
+        return monate
 
     def last_complete_month(self, today: date | None = None) -> tuple[int, int] | None:
-        """Juengster Monat mit Buchungen, der nicht mehr laeuft.
+        """Juengster abgeschlossener Kalendermonat.
 
         Ein Monat gilt als abgeschlossen, sobald der heutige Tag in einem
-        spaeteren Monat liegt. Gibt es nur den laufenden Monat, ist die
-        Antwort ``None`` - ehrlicher als ein halber Monat als Vergleichswert.
+        spaeteren Monat liegt. Die Antwort haengt bewusst *nicht* an den
+        Buchungen: Ein Monat ohne Buchung ist eine Aussage und darf nicht
+        stillschweigend durch einen aelteren ersetzt werden.
         """
         heute = today or date.today()
-        laufend = (heute.year, heute.month)
-        vergangene = [m for m in self.booking_months() if m < laufend]
-        return vergangene[-1] if vergangene else None
+        return _previous_month(heute.year, heute.month)
 
     def recent_complete_months(
         self, count: int, today: date | None = None
@@ -339,10 +362,7 @@ class FinanceInsightEngine:
             ergebnis[monat] = Totals(
                 months=1,
                 income=float(summen.get(TYP_INCOME, 0.0)),
-                # abs auf der Monatssumme: faengt durchgaengig negativ
-                # gespeicherte Ausgaben ab, laesst aber eine Rueckerstattung
-                # innerhalb des Monats korrekt verrechnen.
-                expenses=abs(float(summen.get(TYP_EXPENSES, 0.0))),
+                expenses=float(summen.get(TYP_EXPENSES, 0.0)),
                 savings_deposits=deposits,
                 savings_withdrawals=withdrawals,
             )
@@ -393,7 +413,7 @@ class FinanceInsightEngine:
         for (monat, kategorie), betrag in je_kategorie.items():
             if monat not in gewuenscht:
                 continue
-            wert = betrag if is_income(typ_db) else abs(betrag)
+            wert = _category_display_amount(typ_db, betrag)
             summen[kategorie] = summen.get(kategorie, 0.0) + wert
             if abs(betrag) > 1e-9:
                 monate[kategorie] = monate.get(kategorie, 0) + 1
@@ -494,7 +514,7 @@ class FinanceInsightEngine:
         werte: list[float] = []
         for monat in months:
             betrag = roh.get((monat, category), 0.0)
-            werte.append(betrag if is_income(typ_db) else abs(betrag))
+            werte.append(_category_display_amount(typ_db, betrag))
         return werte
 
     # ── Budgetabweichungen ──────────────────────────────────────────────
@@ -536,7 +556,7 @@ class FinanceInsightEngine:
             if typ_db and eintrag_typ != typ_db:
                 continue
             roh = ist.get(schluessel, 0.0)
-            actual = roh if is_income(eintrag_typ) else abs(roh)
+            actual = float(roh)
             has_budget = schluessel in budgets
             budget = budgets.get(schluessel, 0.0)
             if eintrag_typ not in attribute_je_typ:
@@ -631,6 +651,7 @@ class FinanceInsightEngine:
         if not gewuenscht:
             return []
 
+        roh_je_monat: dict[tuple[str, str], float] = {}
         summen: dict[str, float] = {}
         anzahl: dict[str, int] = {}
         for row in self.conn.execute(
@@ -645,10 +666,14 @@ class FinanceInsightEngine:
                 continue
             name = str(row[1])
             betrag = float(row[2] or 0.0)
-            summen[name] = summen.get(name, 0.0) + (
-                betrag if is_income(typ_db) else abs(betrag)
-            )
+            schluessel = (str(row[0]), name)
+            roh_je_monat[schluessel] = roh_je_monat.get(schluessel, 0.0) + betrag
             anzahl[name] = anzahl.get(name, 0) + 1
+
+        for (_monat, name), betrag in roh_je_monat.items():
+            summen[name] = summen.get(name, 0.0) + _category_display_amount(
+                typ_db, betrag
+            )
 
         ergebnis = [
             TagTotal(tag=name, typ=typ_db, amount=betrag, bookings=anzahl[name])
@@ -665,10 +690,14 @@ class FinanceInsightEngine:
         braucht beides und darf es nicht vermischen.
         """
         ergebnis: list[RecurringCommitment] = []
+        heute = date.today().isoformat()
         for row in self.conn.execute(
             "SELECT typ, category, amount, day_of_month, COALESCE(details,'') "
-            "FROM recurring_transactions WHERE is_active = 1 "
-            "ORDER BY typ, category"
+            "FROM recurring_transactions "
+            "WHERE is_active = 1 AND start_date <= ? "
+            "AND (end_date IS NULL OR end_date = '' OR end_date >= ?) "
+            "ORDER BY typ, category",
+            (heute, heute),
         ):
             typ_db = normalize_typ(str(row[0]))
             betrag = float(row[2] or 0.0)
@@ -693,6 +722,8 @@ class FinanceInsightEngine:
             "GROUP BY ym, typ"
         ):
             monat = _month_key(str(row[0]) + "-01")
+            if monat is None:
+                continue
             ergebnis.setdefault(monat, {})[normalize_typ(str(row[1]))] = float(
                 row[2] or 0.0
             )
@@ -709,6 +740,8 @@ class FinanceInsightEngine:
             (typ_db,),
         ):
             monat = _month_key(str(row[0]) + "-01")
+            if monat is None:
+                continue
             ergebnis[(monat, str(row[1]))] = float(row[2] or 0.0)
         return ergebnis
 
@@ -717,6 +750,7 @@ class FinanceInsightEngine:
 
         Fehlt ``savings_action`` (aeltere Datenbank) oder ist sie leer,
         entscheidet das Vorzeichen - dieselbe Regel wie beim Schreiben.
+        Korrektionen bleiben vorzeichenrichtig wie in ``SavingsGoalsModel._tracking_totals``.
         """
         hat_spalte = self._has_savings_action_column()
         auswahl = "savings_action" if hat_spalte else "NULL"
@@ -727,19 +761,25 @@ class FinanceInsightEngine:
             (TYP_SAVINGS,),
         ):
             monat = _month_key(str(row[0]) + "-01")
+            if monat is None:
+                continue
             betrag = float(row[1] or 0.0)
             aktion = str(row[2] or "").strip().lower()
             eimer = ergebnis.setdefault(monat, [0.0, 0.0])
-            if aktion == ACTION_WITHDRAWAL or (not aktion and betrag < 0):
+            if _is_savings_withdrawal(aktion, betrag):
                 eimer[1] += abs(betrag)
             else:
-                eimer[0] += abs(betrag)
+                eimer[0] += betrag
         return {m: (w[0], w[1]) for m, w in ergebnis.items()}
 
     def _savings_deposits_by_category_month(
         self,
     ) -> dict[str, dict[tuple[int, int], float]]:
-        """Einzahlungen je Sparziel-Kategorie und Monat (ohne Bezuege)."""
+        """Contributions je Sparziel-Kategorie und Monat (alles außer Bezuege).
+
+        Includes deposits, corrections (positive and negative).
+        Only excludes withdrawals (action='withdrawal').
+        """
         hat_spalte = self._has_savings_action_column()
         auswahl = "savings_action" if hat_spalte else "NULL"
         ergebnis: dict[str, dict[tuple[int, int], float]] = {}
@@ -750,11 +790,15 @@ class FinanceInsightEngine:
         ):
             betrag = float(row[2] or 0.0)
             aktion = str(row[3] or "").strip().lower()
-            if aktion == ACTION_WITHDRAWAL or (not aktion and betrag < 0):
+            if aktion == ACTION_WITHDRAWAL:
+                continue
+            if not aktion and betrag < 0:
                 continue
             monat = _month_key(str(row[0]) + "-01")
+            if monat is None:
+                continue
             je_kategorie = ergebnis.setdefault(str(row[1]), {})
-            je_kategorie[monat] = je_kategorie.get(monat, 0.0) + abs(betrag)
+            je_kategorie[monat] = je_kategorie.get(monat, 0.0) + betrag
         return ergebnis
 
     def _has_savings_action_column(self) -> bool:
